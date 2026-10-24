@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
                             QJsonObject{{"cue", 0}, {"cueProgress", 1}, {"x", 500},
                                         {"easing", "ease-in-out"}}
                         }}
-                    }}, QJsonObject{
+                    }, QJsonObject{
                         {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0},
                         {"cueProgress", 0.5}
                     }}},
