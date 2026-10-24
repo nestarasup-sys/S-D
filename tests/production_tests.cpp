@@ -29,7 +29,8 @@ int main(int argc, char **argv) {
         check(parsed.error.isEmpty(), "example parses with omitted optional fields");
         check(parsed.recipe.scenes.size() == 6, "six narrative scenes");
         const QByteArray invalidSyntax = QByteArray("{") + '\n' + "bad:";
-        check(studio::parseRecipe(invalidSyntax, directory.path()).error.contains("linha 2"),
+        const auto syntaxError = studio::parseRecipe(invalidSyntax, directory.path()).error;
+        check(syntaxError.contains("linha 2") && syntaxError.contains("coluna"),
               "JSON syntax errors return the correct line and column");
         auto root = QJsonDocument::fromJson(bytes).object();
         auto reject = [&](QJsonObject value) {

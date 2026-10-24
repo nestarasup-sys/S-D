@@ -94,7 +94,7 @@ Comandos PowerShell para desenvolvimento:
 .\scripts\run.ps1
 ```
 
-Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano inicial](PLANO-INICIAL.md) mantém a visão de produto.
+Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano futuro](FUTURO-DO-APP.md) mantém o estado atual e a visão de produto.
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
 

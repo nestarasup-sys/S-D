@@ -51,14 +51,16 @@ int main(int argc, char **argv) {
         animated.keyframes = {{0, 0, 0, 0, 1, 1}, {60, 100, 0, 0, 1, 1, "ease-in"}};
         p.nodes.push_back(animated);
         p.camera = {{0, 640, 360, 1, 0}, {60, 740, 360, 2, 0, "ease-out"}};
-        check(studio::supportedEasing("ease-in-out") && !studio::supportedEasing("bounce"),
-              "known keyframe easing types only");
+        check(studio::supportedEasing("linear") && studio::supportedEasing("ease-in") &&
+                  studio::supportedEasing("ease-out") && studio::supportedEasing("ease-in-out") &&
+                  !studio::supportedEasing("bounce"),
+              "all four named keyframe easing curves are supported");
         check(std::abs(studio::evaluate(animated, 30).x - 12.5) < .001,
               "incoming ease-in uses cubic interpolation");
         check(std::abs(studio::evaluateCamera(p, 30).x - 727.5) < .001,
               "camera ease-out uses cubic interpolation");
-        check(studio::serialize(studio::deserialize(studio::serialize(p)).project) ==
-                  studio::serialize(p), "eased keyframes survive schema 3 roundtrip");
+        check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
+              "eased keyframes survive schema 3 roundtrip");
         auto badCurve = p;
         badCurve.camera[1].easing = "spring-unknown";
         check(!studio::validate(badCurve).empty(), "reject unsupported camera curve");

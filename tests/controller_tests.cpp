@@ -1,11 +1,12 @@
 #include "editor_controller.hpp"
 #include <QElapsedTimer>
 #include <QFile>
+#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QGuiApplication>
 #include <QTemporaryDir>
 #include <QThread>
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -39,7 +40,13 @@ int main(int argc, char **argv) {
         check(firstEntry["event"] == "import-start" && secondEntry["event"] == "recipe-invalid" &&
                   !logBytes.contains("{bad json"),
               "diagnostics contain event metadata and error, never raw recipe content");
-        check(c.nodeModel()->rowCount() == 3, "three initial rows");
+        const auto *compositionGroup = studio::findNode(c.project(), "composition-board");
+        const auto childLayers =
+            std::count_if(c.project().nodes.begin(), c.project().nodes.end(),
+                          [](const auto &node) { return node.parentId == "composition-board"; });
+        check(c.nodeModel()->rowCount() == 4 && compositionGroup &&
+                  compositionGroup->kind == studio::NodeKind::Group && childLayers == 3,
+              "demo exposes three child layers and their composition group");
         int resets = 0;
         QObject::connect(c.nodeModel(), &QAbstractItemModel::modelReset, [&] { ++resets; });
         auto previous = c.selected()["x"].toDouble();

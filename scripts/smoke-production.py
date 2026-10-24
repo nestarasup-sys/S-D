@@ -35,7 +35,7 @@ project_path = output / "project.studio.json"
 project = json.loads(project_path.read_text(encoding="utf-8"))
 report = json.loads((output / "production-report.json").read_text(encoding="utf-8"))
 assert report["status"] == "ready" and len(project["scenes"]) == 6
-assert project["schemaVersion"] == 2 and report["frameCount"] == project["duration"]
+assert project["schemaVersion"] == 3 and report["frameCount"] == project["duration"]
 with wave.open(str(output / "media/master.wav"), "rb") as audio:
     assert audio.getframerate() == 24000 and audio.getnchannels() == 1
     samples = array.array("h", audio.readframes(audio.getnframes()))

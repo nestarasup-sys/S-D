@@ -1,6 +1,6 @@
 # ADR 0006 — presets de grupos reutilizáveis
 
-Data: 24/10/2026. Estado: código proposto; execução da suíte e smokes pendentes.
+Data: 24/10/2026. Estado: implementado e verificado localmente.
 
 ## Motivação
 
@@ -16,8 +16,8 @@ A biblioteca aceitava um único nó sem keyframes, apesar de projetos schema 3 j
 
 ## Limitações
 
-O manifesto pessoal depende da instalação e os assets não são empacotados no JSON. Presets de composição não são instâncias vinculadas nem aceitam retiming automático; não há multi seleção, curva de easing, vídeo como camada nem componentes com parâmetros editáveis em lote.
+O manifesto pessoal depende da instalação e os assets não são empacotados no JSON. Presets de composição não são instâncias vinculadas nem aceitam retiming automático; não há multi seleção, curvas Bézier personalizadas, vídeo como camada nem componentes com parâmetros editáveis em lote. A animação aceita as curvas nomeadas `linear`, `ease-in`, `ease-out` e `ease-in-out`.
 
 ## Verificação
 
-Foram acrescentados testes automatizados para salvamento, reinserção, undo, IDs, hierarquia, keyframes e compilação por JSON. A suíte e os smokes de Windows/Qt ainda não foram executados neste ambiente. Rodar `scripts/build.ps1 -Test`, `scripts/smoke.ps1`, `scripts/smoke-production.ps1`, `scripts/smoke-workspace.ps1` e `scripts/update-ai-guide.ps1` antes de aprovar o PR.
+Foram acrescentados testes automatizados para salvamento, reinserção, undo, IDs, hierarquia, keyframes e compilação por JSON. Em 24/10/2026, `scripts/build.ps1 -Test` passou (4/4), assim como `scripts/smoke.ps1`, `scripts/smoke-workspace.ps1`, `scripts/smoke-production.ps1` e `scripts/update-ai-guide.ps1`. O smoke de produção usa a voz SAPI instalada `Microsoft Maria Desktop` e compara quadros do MP4 renderizado com a composição.
