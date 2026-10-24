@@ -133,6 +133,11 @@
         "worried"
     ],
     "productionVersion": 1,
-    "projectVersion": 2,
+    "projectCapabilities": [
+        "group-hierarchy",
+        "transform-keyframes-linear",
+        "camera-2d-keyframes"
+    ],
+    "projectVersion": 3,
     "width": 1280
 }
