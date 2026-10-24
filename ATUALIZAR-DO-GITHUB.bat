@@ -26,8 +26,8 @@ if errorlevel 1 (
 )
 if errorlevel 1 goto switch_failed
 
-git pull --ff-only origin master
-if errorlevel 1 goto pull_failed
+git pull --rebase origin master
+if errorlevel 1 goto rebase_failed
 
 echo.
 echo Studio Dark atualizado com origin/master.
@@ -59,9 +59,11 @@ goto failed
 echo ERRO: nao foi possivel mudar para a branch local master.
 goto failed
 
-:pull_failed
-echo ERRO: a atualizacao nao pode ser aplicada como fast-forward.
-echo Confira os commits locais e remotos antes de resolver a divergencia.
+:rebase_failed
+echo ERRO: nao foi possivel integrar as alteracoes locais com origin/master.
+echo O Git preservou os arquivos e pode ter pausado por conflito.
+echo Consulte o estado com git status; resolva os conflitos e execute git rebase --continue,
+echo ou cancele a operacao com git rebase --abort.
 goto failed
 
 :failed
