@@ -57,7 +57,7 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
             const int fixed = u.targetDurationSeconds > 0
                                   ? int(std::llround(u.targetDurationSeconds * 30)) : 0;
             if (fixed > 0 && fixed < minSpeech) {
-                plan.error = QString("Fala %1 pede %2 frames; precisa de %3 no mínimo (limite de 15%%).")
+                plan.error = QString("Fala %1 pede %2 frames; precisa de %3 no mínimo (limite de 15%).")
                                  .arg(u.id).arg(fixed).arg(minSpeech);
                 return plan;
             }

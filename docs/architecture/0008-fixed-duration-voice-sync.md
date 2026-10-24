@@ -10,7 +10,7 @@ Antes, a duração emergia de WAVs locais e pausas fixas. Uma IA não podia impo
 
 - Receita v2: `timingMode: natural` por padrão. `fit-to-duration` exige `targetDurationSeconds` global de 1 a 600 s; `preserveVoicePitch: true` é obrigatório se declarado.
 - Cenas aceitam `targetDurationSeconds` opcional. Narrações aceitam string antiga ou `{text,targetDurationSeconds}`. Esse alvo de fala é uma **janela de voz e pausa**.
-- Duracões são arredondadas a frames de 30 FPS; o somatório das cenas alocadas bate exatamente com o alvo.
+- Durações são arredondadas a frames de 30 FPS; o somatório das cenas alocadas bate exatamente com o alvo.
 - `cueProgress: 0..1` substitui `offsetSeconds` em elemento, keyframe ou câmera, ancorado no início e no último frame da **fala audível**, não na pausa. As duas referências temporais são mutuamente exclusivas em um mesmo objeto.
 - O modo `natural` preserva seu planejamento anterior quando não há propriedades de duração-alvo.
 
@@ -21,7 +21,7 @@ Antes, a duração emergia de WAVs locais e pausas fixas. Uma IA não podia impo
 3. Limitar compressão por voz a 1,15×. Se o tempo planejado exigir mais, rejeitar com identificação da fala ou cena inviável.
 4. No worker Windows, usar `STUDIO_FFMPEG` ou `ffmpeg` disponível no PATH e o filtro `atempo` apenas para trechos mais longos que seu orçamento; arredondar a amostra ao frame.
 5. Montar pausas, marcadores, legendas e keyframes após a voz ser ajustada; mixer de trilha trabalha sobre a duração resultante.
-6. Registrar modo, duração-alvo, total de frames e sincronização no relatório da produção, e etapas/erros no JSONL da importação IA.
+6. Registrar modo, duração-alvo, total de frames, janelas de fala/cena, fator de velocidade e avisos de pausas longas no relatório da produção, e etapas/erros no JSONL da importação IA.
 
 ## Limites e verificação
 
