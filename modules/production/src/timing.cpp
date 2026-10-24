@@ -106,17 +106,26 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
             return plan;
         }
         distribute(slots, openCues, weights, target.durationFrames - allocated);
+        int assignedToCues = 0;
         for (std::size_t ci = 0; ci < scene.narration.size(); ++ci) {
             auto &cue = target.cues[ci];
             const auto count = std::int64_t(utterances[cue.id].samples.size());
             const int natural = int((count + samplesPerFrame - 1) / samplesPerFrame);
             cue.slotFrames = slots[ci];
             cue.speechFrames = std::min(natural, cue.slotFrames);
+            assignedToCues += cue.slotFrames;
+            if (cue.slotFrames - cue.speechFrames > 90)
+                plan.warnings.push_back(
+                    QString("Pausa de mais de 3 segundos após a fala %1. Reveja ritmo e roteiro.")
+                        .arg(cue.id));
             if (double(count) / (cue.speechFrames * samplesPerFrame) > maxVoiceSpeed + 1e-9) {
                 plan.error = "Fala " + cue.id + " exigiria aceleração acima de 15%.";
                 return plan;
             }
         }
+        if (target.durationFrames - assignedToCues > 150)
+            plan.warnings.push_back(
+                QString("Cena %1 contém mais de 5 segundos de pausa final.").arg(scene.id));
     }
     return plan;
 }

@@ -127,6 +127,8 @@ int main(int argc, char **argv) {
     const auto plan = studio::planNarrationTiming(parsed.recipe, utterances);
     if (!plan.error.isEmpty())
         return fail(plan.error);
+    for (const auto &warning : plan.warnings)
+        report("Aviso de ritmo: " + warning, 65);
     if (parsed.recipe.timingMode == "fit-to-duration") {
         report("Conferindo duração e adaptando velocidade sem alterar a altura da voz", 65);
         const auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg");
@@ -206,6 +208,7 @@ int main(int argc, char **argv) {
                                     {"timingMode", parsed.recipe.timingMode},
                                     {"targetDurationSeconds", parsed.recipe.targetDurationSeconds},
                                     {"maxVoiceAcceleration", 1.15},
+                                    {"timingWarnings", QJsonArray::fromStringList(plan.warnings)},
                                     {"preserveVoicePitch", parsed.recipe.preserveVoicePitch},
                                     {"scenes", timings},
                                     {"alignment", parsed.recipe.timingMode == "fit-to-duration"

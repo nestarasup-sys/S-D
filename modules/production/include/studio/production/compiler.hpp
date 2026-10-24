@@ -16,6 +16,7 @@ struct TimedScene {
 struct TimingPlan {
     std::vector<TimedScene> scenes;
     int targetFrames{0};
+    QStringList warnings;
     QString error;
 };
 // Run after the voice is measured. Reject requests requiring >15% acceleration.

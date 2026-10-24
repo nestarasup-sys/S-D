@@ -318,6 +318,16 @@ int main(int argc, char **argv) {
         check(shortRecipe.error.isEmpty() &&
                   !studio::planNarrationTiming(shortRecipe.recipe, timedRaw).error.isEmpty(),
               "unattainable target produces an actionable error, not artificial voice");
+        auto longPlanRecipe = timedRecipe.recipe;
+        longPlanRecipe.targetDurationSeconds = 30;
+        for (auto &scene : longPlanRecipe.scenes) {
+            scene.targetDurationSeconds = 0;
+            for (auto &cue : scene.narration)
+                cue.targetDurationSeconds = 0;
+        }
+        const auto longPlan = studio::planNarrationTiming(longPlanRecipe, timedRaw);
+        check(longPlan.error.isEmpty() && !longPlan.warnings.isEmpty(),
+              "very long silent gaps trigger explicit pacing warnings");
         auto invalidTiming = timed;
         invalidTiming["preserveVoicePitch"] = false;
         check(!studio::parseRecipe(QJsonDocument(invalidTiming).toJson(), directory.path()).error.isEmpty(),
