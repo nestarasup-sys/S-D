@@ -138,6 +138,7 @@
         "transform-keyframes-linear",
         "camera-2d-keyframes",
         "personal-library-assets",
+        "reusable-group-presets",
         "optional-visual-captions"
     ],
     "productionVersion": 2,
