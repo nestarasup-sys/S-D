@@ -10,6 +10,8 @@
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <memory>
+#include <cmath>
+#include <algorithm>
 #include <studio/production/compiler.hpp>
 #include <studio/storage/project_store.hpp>
 #include <studio/storage/workspace_store.hpp>
@@ -111,17 +113,68 @@ int main(int argc, char **argv) {
         return fail("Manifesto de voz ausente.");
     auto manifest = QJsonDocument::fromJson(manifestFile.readAll()).object();
     QMap<QString, studio::PcmAudio> utterances;
+    QMap<QString, QString> wavPaths;
     for (auto value : manifest["utterances"].toArray()) {
         auto line = value.toObject();
         auto audio = studio::readWave(line["path"].toString());
         if (!audio.error.isEmpty())
             return fail(audio.error);
         utterances.insert(line["id"].toString(), std::move(audio.audio));
+        wavPaths.insert(line["id"].toString(), line["path"].toString());
     }
     if (!parser.value("cancel-file").isEmpty() && QFile::exists(parser.value("cancel-file")))
         return fail("Produção cancelada; projeto anterior preservado.");
+    const auto plan = studio::planNarrationTiming(parsed.recipe, utterances);
+    if (!plan.error.isEmpty())
+        return fail(plan.error);
+    if (parsed.recipe.timingMode == "fit-to-duration") {
+        report("Conferindo duração e adaptando velocidade sem alterar a altura da voz", 65);
+        const auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg");
+        int index = 0;
+        for (const auto &scene : plan.scenes)
+            for (const auto &cue : scene.cues) {
+                if (!parser.value("cancel-file").isEmpty() &&
+                    QFile::exists(parser.value("cancel-file")))
+                    return fail("Produção cancelada; projeto anterior preservado.");
+                auto &samples = utterances[cue.id].samples;
+                const auto cap = std::int64_t(cue.speechFrames) * studio::ProductionSampleRate / 30;
+                if (std::int64_t(samples.size()) <= cap)
+                    continue;
+                const double tempo = double(samples.size()) / cap;
+                if (tempo > 1.15 + 1e-9)
+                    return fail("Aceleração acima do limite de 15% na fala " + cue.id);
+                const auto adjustedPath = temp.filePath(QString("retimed-%1.wav").arg(index++));
+                QProcess process;
+                process.start(ffmpeg,
+                              {"-nostdin", "-y", "-hide_banner", "-loglevel", "error",
+                               "-i", wavPaths.value(cue.id), "-af",
+                               QString("atempo=%1").arg(tempo, 0, 'f', 9),
+                               "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le", adjustedPath});
+                if (!process.waitForStarted(10000))
+                    return fail("FFmpeg indisponível para ajuste de fala: " + process.errorString());
+                if (!process.waitForFinished(30000)) {
+                    process.kill();
+                    process.waitForFinished(5000);
+                    return fail("FFmpeg excedeu o tempo no ajuste da fala " + cue.id);
+                }
+                if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
+                    return fail("FFmpeg falhou ao ajustar a fala " + cue.id + ": " +
+                                QString::fromLocal8Bit(process.readAllStandardError()).left(1000));
+                auto adjusted = studio::readWave(adjustedPath);
+                if (!adjusted.error.isEmpty())
+                    return fail("Falha ao ler fala ajustada: " + adjusted.error);
+                // atempo rounds individual packets; clamp to the exact frame budget.
+                if (adjusted.audio.samples.empty() ||
+                    std::abs(double(adjusted.audio.samples.size()) - cap) > cap * .08)
+                    return fail("FFmpeg produziu duração inesperada para a fala " + cue.id);
+                adjusted.audio.samples.resize(std::size_t(cap), 0);
+                samples = std::move(adjusted.audio.samples);
+            }
+    }
     report("Montando cenas e sincronizando", 75);
-    auto compiled = studio::compileProduction(parsed.recipe, utterances, output + "/media/master.wav");
+    auto compiled = studio::compileProduction(
+        parsed.recipe, utterances, output + "/media/master.wav",
+        parsed.recipe.timingMode == "fit-to-duration" ? &plan : nullptr);
     if (!compiled.error.isEmpty())
         return fail(compiled.error);
     for (auto pair : {std::pair{output + "/media/narration.wav", &compiled.voice},
@@ -150,8 +203,14 @@ int main(int argc, char **argv) {
                                     {"frameCount", double(compiled.project.duration)},
                                     {"nodes", int(compiled.project.nodes.size())},
                                     {"recipeVersion", parsed.recipe.version},
+                                    {"timingMode", parsed.recipe.timingMode},
+                                    {"targetDurationSeconds", parsed.recipe.targetDurationSeconds},
+                                    {"maxVoiceAcceleration", 1.15},
+                                    {"preserveVoicePitch", parsed.recipe.preserveVoicePitch},
                                     {"scenes", timings},
-                                    {"alignment", "measured-utterance-audio"},
+                                    {"alignment", parsed.recipe.timingMode == "fit-to-duration"
+                                                       ? "measured-speech-and-frame-exact-slots"
+                                                       : "measured-utterance-audio"},
                                     {"audio", "voice + procedural music + scene chime"}})
               .toJson());
     report("Pronto", 100);
