@@ -388,7 +388,7 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 
 ### Entregas concluídas
 
-- **Projeto schema 3:** grupos hierárquicos, keyframes lineares de transformação e câmera 2D. Prévia e render worker usam o mesmo avaliador; seleção e arraste no preview convertem coordenadas pela câmera e hierarquia. Projetos v1/v2 existentes continuam legíveis.
+- **Projeto schema 3:** grupos hierárquicos, keyframes lineares ou com easing nomeado de transformação e câmera 2D. Prévia e render worker usam o mesmo avaliador; seleção e arraste no preview convertem coordenadas pela câmera e hierarquia. Projetos v1/v2 existentes continuam legíveis.
 - **Receita de produção v2 e biblioteca pessoal:** layout livre, grupos, keyframes ligados a cues de fala, câmera, legendas visuais opcionais e referências por ID a itens pessoais. Receitas v1 continuam aceitas. O guia salvo pelo app inclui o manifesto atual e a produção mantém uma cópia do guia usado.
 - **Documentação/artefatos:** guia de IA, exemplo executável e ADR `0005-production-v2-personal-library.md`.
 
@@ -396,5 +396,5 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 
 - O editor agrupa um elemento por vez; multi seleção e componentes vinculados ainda faltam. Presets de grupos com keyframes já são suportados.
 - `kind: library` aceita mídia, presets simples e grupos animados; o JSON continua dependente do catálogo local e não empacota mídia.
-- Benchmark entre renderizadores, curvas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
+- Benchmark entre renderizadores, curvas Bézier personalizadas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
 - O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.

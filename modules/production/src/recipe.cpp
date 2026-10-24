@@ -335,8 +335,16 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         return fail("Receita excede 1 MiB.");
     QJsonParseError error;
     auto doc = QJsonDocument::fromJson(bytes, &error);
-    if (error.error != QJsonParseError::NoError || !doc.isObject())
-        return fail("JSON de produção inválido.");
+    if (error.error != QJsonParseError::NoError) {
+        const auto prefix = bytes.left(std::clamp<qsizetype>(error.offset, 0, bytes.size()));
+        const auto line = prefix.count('\n') + 1;
+        const auto lastBreak = prefix.lastIndexOf('\n');
+        const auto column = QString::fromUtf8(prefix.mid(lastBreak + 1)).size() + 1;
+        return fail(QString("JSON inválido: %1 (linha %2, coluna %3).")
+                        .arg(error.errorString()).arg(line).arg(column));
+    }
+    if (!doc.isObject())
+        return fail("A raiz do JSON deve ser um objeto.");
     const auto o = doc.object();
     if (!o["version"].isDouble() || std::floor(o["version"].toDouble()) != o["version"].toDouble())
         return fail("Versão da receita deve ser inteira.");

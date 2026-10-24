@@ -32,11 +32,12 @@ int main(int argc, char **argv) {
               "invalid production creates a diagnostic log without starting a worker");
         QFile diagnostic(c.latestProductionLog());
         check(diagnostic.open(QIODevice::ReadOnly), "diagnostic log exists");
-        const auto entries = diagnostic.readAll().split('\n');
+        const auto logBytes = diagnostic.readAll();
+        const auto entries = logBytes.split('\n');
         auto firstEntry = QJsonDocument::fromJson(entries[0]).object();
         auto secondEntry = QJsonDocument::fromJson(entries[1]).object();
         check(firstEntry["event"] == "import-start" && secondEntry["event"] == "recipe-invalid" &&
-                  !diagnostic.readAll().contains("{bad json"),
+                  !logBytes.contains("{bad json"),
               "diagnostics contain event metadata and error, never raw recipe content");
         check(c.nodeModel()->rowCount() == 3, "three initial rows");
         int resets = 0;

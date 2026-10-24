@@ -28,6 +28,8 @@ int main(int argc, char **argv) {
         auto parsed = studio::parseRecipe(bytes, directory.path());
         check(parsed.error.isEmpty(), "example parses with omitted optional fields");
         check(parsed.recipe.scenes.size() == 6, "six narrative scenes");
+        check(studio::parseRecipe("{\\n bad:", directory.path()).error.contains("linha"),
+              "JSON syntax errors return line and column for diagnostics");
         auto root = QJsonDocument::fromJson(bytes).object();
         auto reject = [&](QJsonObject value) {
             return !studio::parseRecipe(QJsonDocument(value).toJson(), directory.path()).error.isEmpty();

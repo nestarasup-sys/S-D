@@ -229,7 +229,7 @@ A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. 
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, curvas de easing ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, trajetórias/curvas Bézier personalizadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
 
 ## Capacidades em JSON
 

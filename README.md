@@ -46,7 +46,7 @@ Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o g
 
 ## Diagnóstico de importação
 
-O botão **Logs** no topo abre os arquivos locais de diagnóstico de importações IA. Cada tentativa gera um arquivo `production-*.jsonl` com data, etapas, mensagens de validação e códigos de término, mesmo quando o JSON é rejeitado antes de iniciar a voz. Os 30 logs mais recentes são mantidos; não são enviados automaticamente, e o conteúdo integral do roteiro/JSON não é registrado. Para relatar uma falha, compartilhe o `.jsonl` correspondente e, se puder, o `.production.json` com dados pessoais removidos. Os logs são apenas da importação/produção IA, não de todos os eventos da interface.
+O botão **Logs** no topo abre os arquivos locais de diagnóstico de importações IA. Cada tentativa gera um arquivo `production-*.jsonl` com data, etapas, mensagens de validação e códigos de término, mesmo quando o JSON é rejeitado antes de iniciar a voz. Os 30 logs mais recentes são mantidos; não são enviados automaticamente, e o conteúdo integral do roteiro/JSON não é registrado. Mensagens de erro podem conter caminhos ou identificadores locais; revise os logs antes de compartilhá-los. Para relatar uma falha, compartilhe o `.jsonl` correspondente e, se puder, o `.production.json` com dados pessoais removidos. Os logs são apenas da importação/produção IA, não de todos os eventos da interface.
 
 ## Testar pela interface
 
@@ -106,6 +106,6 @@ A evolução proposta a partir do vídeo de referência está em [Futuro do apli
 
 Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, produção declarativa, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2.
 
-Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, enquadramento de câmera por alvo, curvas não lineares, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
+Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, enquadramento de câmera por alvo, curvas Bézier personalizadas/trajectórias, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.
