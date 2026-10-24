@@ -124,6 +124,7 @@ ApplicationWindow {
                 Label { visible: editor.producing || editor.exporting; text: editor.producing ? "Montando " + editor.productionProgress + "%" : "Exportando " + editor.exportProgress + "%"; color: "#b4f078"; font.pixelSize: 12 }
                 StudioButton { text: "Cancelar tarefa"; visible: editor.producing || editor.exporting; onClicked: editor.producing ? editor.cancelProduction() : editor.cancelExport() }
                 StudioButton { text: "Guia para IA"; quiet: true; onClicked: guideDialog.open() }
+                StudioButton { text: "Logs"; quiet: true; onClicked: editor.openLogsFolder(); ToolTip.text: "Abrir diagnósticos da importação IA"; ToolTip.visible: hovered }
                 Label { text: "TUDO PRONTO PARA CRIAR"; visible: !editor.producing && !editor.exporting && workspace.page !== "editor"; color: "#6b8493"; font.pixelSize: 10; font.letterSpacing: 1 }
             }
         }

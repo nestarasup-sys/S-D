@@ -38,6 +38,7 @@ class EditorController : public QObject {
     Q_PROPERTY(bool producing READ producing NOTIFY productionChanged)
     Q_PROPERTY(int productionProgress READ productionProgress NOTIFY productionChanged)
     Q_PROPERTY(QUrl latestProduction READ latestProduction NOTIFY productionChanged)
+    Q_PROPERTY(QString latestProductionLog READ latestProductionLog NOTIFY productionChanged)
   public:
     explicit EditorController(QObject *parent = nullptr, QString recoveryDirectory = {});
     const studio::Project &project() const {
@@ -64,6 +65,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void importProduction(QUrl recipe);
     Q_INVOKABLE void importCarExample();
     Q_INVOKABLE void cancelProduction();
+    Q_INVOKABLE bool openLogsFolder();
+    QString latestProductionLog() const { return productionLogPath_; }
     QAbstractItemModel *nodeModel() {
         return &nodeModel_;
     }
@@ -160,6 +163,8 @@ class EditorController : public QObject {
     void autosave();
     void reset(studio::Project p, QString path = {}, QByteArray revision = {});
     void setupProduction();
+    void startProductionLog(const QString &recipeFileName);
+    void logProductionEvent(const QString &event, const QString &message = {}, int progress = -1);
     QString currentSceneId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
@@ -176,7 +181,7 @@ class EditorController : public QObject {
     QVariantList waveform_;
     QProcess production_;
     QByteArray productionBuffer_, productionBaseline_;
-    QString productionDirectory_, productionCancel_;
+    QString productionDirectory_, productionCancel_, productionLogPath_, diagnosticsDirectory_;
     int productionProgress_{0};
     QUrl latestProduction_;
 };

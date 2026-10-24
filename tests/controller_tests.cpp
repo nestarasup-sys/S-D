@@ -1,5 +1,8 @@
 #include "editor_controller.hpp"
 #include <QElapsedTimer>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QGuiApplication>
 #include <QTemporaryDir>
 #include <QThread>
@@ -18,6 +21,23 @@ int main(int argc, char **argv) {
     try {
         EditorController c(nullptr, directory.filePath("recovery"));
         check(!c.dirty() && c.selectedId() == "title", "initial selection and clean baseline");
+        const auto badRecipe = directory.filePath("bad.production.json");
+        {
+            QFile file(badRecipe);
+            check(file.open(QIODevice::WriteOnly) && file.write("{bad json") > 0,
+                  "write intentionally malformed production");
+        }
+        c.importProduction(QUrl::fromLocalFile(badRecipe));
+        check(!c.producing() && !c.latestProductionLog().isEmpty(),
+              "invalid production creates a diagnostic log without starting a worker");
+        QFile diagnostic(c.latestProductionLog());
+        check(diagnostic.open(QIODevice::ReadOnly), "diagnostic log exists");
+        const auto entries = diagnostic.readAll().split('\n');
+        auto firstEntry = QJsonDocument::fromJson(entries[0]).object();
+        auto secondEntry = QJsonDocument::fromJson(entries[1]).object();
+        check(firstEntry["event"] == "import-start" && secondEntry["event"] == "recipe-invalid" &&
+                  !diagnostic.readAll().contains("{bad json"),
+              "diagnostics contain event metadata and error, never raw recipe content");
         check(c.nodeModel()->rowCount() == 3, "three initial rows");
         int resets = 0;
         QObject::connect(c.nodeModel(), &QAbstractItemModel::modelReset, [&] { ++resets; });

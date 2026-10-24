@@ -1,10 +1,13 @@
 #include "editor_controller.hpp"
 #include <QCoreApplication>
+#include <QDateTime>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QJsonObject>
 #include <QStandardPaths>
 #include <QSvgRenderer>
@@ -73,6 +76,10 @@ QVariantMap map(const studio::Node &n) {
 EditorController::EditorController(QObject *parent, QString recoveryDirectory) : QObject(parent) {
     savedDocument_ = studio::serialize(project());
     nodeModel_.sync(nodes());
+    diagnosticsDirectory_ =
+        (recoveryDirectory.isEmpty()
+             ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+             : recoveryDirectory) + "/logs";
     setupProduction();
     audioPlayer_.setAudioOutput(&audioOutput_);
     audioOutput_.setVolume(.9);
