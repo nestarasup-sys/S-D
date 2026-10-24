@@ -351,12 +351,17 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
                     "Item copiado para a biblioteca. O arquivo original não precisa ser movido.");
 }
 bool WorkspaceController::canSaveSelection() const {
-    return hasDocument_ && studio::findNode(editor_->project(), editor_->selectedId().toStdString());
+    const auto *node = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
+    return hasDocument_ && node && node->kind != studio::NodeKind::Group;
 }
 bool WorkspaceController::saveSelection(QString name, QString category) {
     auto n = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
     if (!hasDocument_ || !n) {
         notify("Selecione um objeto no editor primeiro.");
+        return false;
+    }
+    if (n->kind == studio::NodeKind::Group) {
+        notify("Salvar composições inteiras na biblioteca ainda será adicionado.");
         return false;
     }
     auto r = store_.addPreset(name, category, *n);

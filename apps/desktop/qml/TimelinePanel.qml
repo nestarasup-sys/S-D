@@ -26,7 +26,7 @@ Rectangle {
                     contentY: tracks.contentY
                     delegate: Label {
                         required property var modelData
-                        width: ListView.view.width; height: 35; text: modelData.name; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
+                        width: ListView.view.width; height: 35; text: (modelData.parentId ? "↳ " : "") + modelData.name; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
                         color: editor.selectedId === modelData.id ? "#b4f078" : "#9baebb"; font.pixelSize: 11
                     }
                 }
@@ -65,7 +65,7 @@ Rectangle {
                                 width: Math.max(4, track.modelData.duration / editor.duration * track.width); height: 35; radius: 5
                                 color: editor.selectedId === track.modelData.id ? "#4c673b" : track.modelData.kind === "text" ? "#2f4956" : "#384440"
                                 border.width: 1; border.color: editor.selectedId === track.modelData.id ? "#b4f078" : "#526874"
-                                Label { anchors.fill: parent; anchors.leftMargin: 10; text: track.modelData.name; color: "#dce8ed"; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; font.pixelSize: 10 }
+                                Label { anchors.fill: parent; anchors.leftMargin: 10; text: (track.modelData.parentId ? "↳ " : "") + track.modelData.name; color: "#dce8ed"; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; font.pixelSize: 10 }
                                 MouseArea {
                                     anchors.fill: parent
                                     property real originX: 0

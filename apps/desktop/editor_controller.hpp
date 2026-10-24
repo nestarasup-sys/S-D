@@ -14,7 +14,8 @@
 class EditorController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QAbstractItemModel *nodes READ nodeModel CONSTANT)
-    Q_PROPERTY(QVariantMap selected READ selected NOTIFY documentChanged)
+    Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectedChanged)
+    Q_PROPERTY(QVariantMap camera READ camera NOTIFY cameraChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
     Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
@@ -68,6 +69,7 @@ class EditorController : public QObject {
         return &nodeModel_;
     }
     QVariantMap selected() const;
+    QVariantMap camera() const;
     QString title() const;
     QString selectedId() const {
         return selectedId_;
@@ -115,6 +117,9 @@ class EditorController : public QObject {
     Q_INVOKABLE void moveClip(QString id, int start);
     Q_INVOKABLE void addNode(QString kind, QUrl source = {});
     Q_INVOKABLE void removeSelected();
+    Q_INVOKABLE void groupSelected();
+    Q_INVOKABLE void recordSelectedKeyframe();
+    Q_INVOKABLE void updateCamera(QString property, double value);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
     Q_INVOKABLE void setFrame(int frame);
@@ -138,6 +143,8 @@ class EditorController : public QObject {
     }
   signals:
     void documentChanged();
+    void selectedChanged();
+    void cameraChanged();
     void frameChanged();
     void playingChanged();
     void messageChanged();

@@ -37,7 +37,7 @@ Rectangle {
                     Label { text: modelData.kind === "group" ? "▱" : modelData.kind === "text" ? "T" : modelData.kind === "image" ? "▧" : "▰"; color: modelData.color; font.pixelSize: 19; Layout.preferredWidth: 22 }
                     ColumnLayout {
                         spacing: 2; Layout.fillWidth: true
-                        Label { text: modelData.name; color: "#d5dfe6"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                        Label { text: (modelData.parentId ? "↳ " : "") + modelData.name; color: "#d5dfe6"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
                         Label { text: (modelData.duration / editor.fps).toFixed(1) + " s  ·  " + (modelData.animated ? "animado" : "estático"); color: "#7d8c99"; font.pixelSize: 10 }
                     }
                 }

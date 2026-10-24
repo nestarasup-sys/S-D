@@ -121,7 +121,10 @@ void PreviewItem::mousePressEvent(QMouseEvent *event) {
             controller_->selectNode(QString::fromStdString(it->id));
             dragParentTransform_ = nodeTransform(controller_->project(), *it, controller_->frame(), false);
             origin_ = dragParentTransform_.inverted().map(point);
-            nodeOrigin_ = {it->x, it->y};
+            const auto state = it->keyframes.empty()
+                                   ? studio::VisualState{it->x, it->y, it->opacity, it->rotation, it->scale}
+                                   : studio::evaluate(*it, controller_->frame());
+            nodeOrigin_ = {state.x, state.y};
             dragging_ = true;
             controller_->beginGesture();
             event->accept();

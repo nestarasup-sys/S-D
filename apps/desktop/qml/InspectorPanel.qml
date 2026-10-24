@@ -36,6 +36,27 @@ Rectangle {
             }
         }
     }
+    component CameraField: ColumnLayout {
+        id: cameraField
+        property string caption
+        property string propertyKey
+        property real currentValue
+        spacing: 5
+        Layout.fillWidth: true
+        Label { text: cameraField.caption; color: "#8193a2"; font.pixelSize: 10 }
+        TextField {
+            id: cameraInput
+            Layout.fillWidth: true; implicitHeight: 32
+            Binding { target: cameraInput; property: "text"; value: Number(cameraField.currentValue).toFixed(2); when: !cameraInput.activeFocus; restoreMode: Binding.RestoreNone }
+            color: "#dce6ee"; font.pixelSize: 12; selectByMouse: true
+            background: Rectangle { color: "#10171e"; radius: 5; border.color: cameraInput.activeFocus ? "#b4f078" : "#303e49" }
+            onEditingFinished: {
+                const value = Number(text)
+                if (!text.trim() || !isFinite(value)) { text = Number(cameraField.currentValue).toFixed(2); return }
+                editor.updateCamera(cameraField.propertyKey, value)
+            }
+        }
+    }
     ScrollView {
         anchors.fill: parent; anchors.margins: 17; clip: true
         contentWidth: availableWidth
@@ -44,6 +65,16 @@ Rectangle {
             Label { text: "INSPETOR"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
+            Label { text: "CÂMERA 2D"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            RowLayout {
+                CameraField { caption: "Centro X"; propertyKey: "x"; currentValue: editor.camera.x }
+                CameraField { caption: "Centro Y"; propertyKey: "y"; currentValue: editor.camera.y }
+            }
+            RowLayout {
+                CameraField { caption: "Zoom"; propertyKey: "zoom"; currentValue: editor.camera.zoom }
+                CameraField { caption: "Rotação"; propertyKey: "rotation"; currentValue: editor.camera.rotation }
+            }
+            Label { text: "Os valores gravam um keyframe no quadro atual."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             ColumnLayout {
                 visible: !!panel.node.id
                 Layout.fillWidth: true; spacing: 12
@@ -62,8 +93,8 @@ Rectangle {
                     Field { caption: "Escala"; propertyKey: "scale"; currentValue: panel.node.scale }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540" }
-                Label { text: "APARÊNCIA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1 }
-                Field { caption: "Cor · #RRGGBB"; propertyKey: "color"; currentValue: panel.node.color; number: false; visible: panel.node.kind !== "image" }
+                Label { text: "APARÊNCIA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.kind !== "group" }
+                Field { caption: "Cor · #RRGGBB"; propertyKey: "color"; currentValue: panel.node.color; number: false; visible: panel.node.kind !== "image" && panel.node.kind !== "group" }
                 Field { caption: "Cor da pele · #RRGGBB"; propertyKey: "secondaryColor"; currentValue: panel.node.secondaryColor; number: false; visible: panel.node.nativeId === "person" }
                 StudioComboBox {
                     Layout.fillWidth: true; visible: panel.node.nativeId === "person"
@@ -109,7 +140,9 @@ Rectangle {
                     Field { caption: "Deslocamento Y"; propertyKey: "travelY"; currentValue: panel.node.travelY }
                 }
                 Field { caption: "Giro no intervalo · graus"; propertyKey: "spinDegrees"; currentValue: panel.node.spinDegrees }
-                StudioButton { text: "Remover objeto"; Layout.fillWidth: true; quiet: true; onClicked: editor.removeSelected() }
+                StudioButton { text: panel.node.kind === "group" ? "Remover grupo e seus filhos" : "Remover objeto"; Layout.fillWidth: true; quiet: true; onClicked: editor.removeSelected() }
+                StudioButton { text: "Criar grupo com este objeto"; Layout.fillWidth: true; visible: panel.node.kind !== "group"; onClicked: editor.groupSelected() }
+                StudioButton { text: "Gravar keyframe · quadro " + editor.frame + " · " + (panel.node.keyframeCount || 0); Layout.fillWidth: true; accent: true; onClicked: editor.recordSelectedKeyframe() }
             }
             Item { Layout.preferredHeight: 12 }
         }

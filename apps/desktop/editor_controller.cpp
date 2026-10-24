@@ -18,9 +18,29 @@ namespace {
 QString q(const std::string &s) {
     return QString::fromStdString(s);
 }
+void upsertKeyframe(std::vector<studio::TransformKeyframe> &keys, studio::TransformKeyframe key) {
+    auto it =
+        std::lower_bound(keys.begin(), keys.end(), key.frame,
+                         [](const auto &candidate, std::int64_t frame) { return candidate.frame < frame; });
+    if (it != keys.end() && it->frame == key.frame)
+        *it = key;
+    else
+        keys.insert(it, key);
+}
+void upsertKeyframe(std::vector<studio::CameraKeyframe> &keys, studio::CameraKeyframe key) {
+    auto it =
+        std::lower_bound(keys.begin(), keys.end(), key.frame,
+                         [](const auto &candidate, std::int64_t frame) { return candidate.frame < frame; });
+    if (it != keys.end() && it->frame == key.frame)
+        *it = key;
+    else
+        keys.insert(it, key);
+}
 QVariantMap map(const studio::Node &n) {
     return {{"id", q(n.id)},
             {"name", q(n.name)},
+            {"parentId", q(n.parentId)},
+            {"keyframeCount", int(n.keyframes.size())},
             {"kind", n.kind == studio::NodeKind::Group    ? "group"
                      : n.kind == studio::NodeKind::Text   ? "text"
                      : n.kind == studio::NodeKind::Shape  ? "shape"
@@ -127,7 +147,22 @@ QVariantList EditorController::nodes() const {
 }
 QVariantMap EditorController::selected() const {
     auto n = studio::findNode(project(), selectedId_.toStdString());
-    return n ? map(*n) : QVariantMap{};
+    if (!n)
+        return {};
+    auto result = map(*n);
+    if (!n->keyframes.empty()) {
+        const auto state = studio::evaluate(*n, frame_);
+        result["x"] = state.x;
+        result["y"] = state.y;
+        result["opacity"] = state.opacity;
+        result["rotation"] = state.rotation;
+        result["scale"] = state.scale;
+    }
+    return result;
+}
+QVariantMap EditorController::camera() const {
+    const auto state = studio::evaluateCamera(project(), frame_);
+    return {{"x", state.x}, {"y", state.y}, {"zoom", state.zoom}, {"rotation", state.rotation}};
 }
 QString EditorController::title() const {
     return q(project().name);
@@ -145,10 +180,13 @@ void EditorController::notify(QString message) {
 void EditorController::changed() {
     autosaveEnabled_ = true;
     emit documentChanged();
+    emit selectedChanged();
+    emit cameraChanged();
 }
 void EditorController::selectNode(QString id) {
     selectedId_ = std::move(id);
     emit documentChanged();
+    emit selectedChanged();
 }
 void EditorController::beginGesture() {
     editor_.beginGesture();
@@ -159,7 +197,11 @@ void EditorController::endGesture() {
 }
 void EditorController::updateSelected(QString key, QVariant value) {
     auto before = selected();
-    if (before.isEmpty() || !before.contains(key) || before[key] == value)
+    const bool transformProperty =
+        key == "x" || key == "y" || key == "opacity" || key == "rotation" || key == "scale";
+    const auto selectedNode = studio::findNode(project(), selectedId_.toStdString());
+    const bool keyframedEdit = selectedNode && !selectedNode->keyframes.empty() && transformProperty;
+    if (before.isEmpty() || !before.contains(key) || (before[key] == value && !keyframedEdit))
         return;
     if ((key == "start" || key == "duration") &&
         (!std::isfinite(value.toDouble()) || std::floor(value.toDouble()) != value.toDouble())) {
@@ -169,6 +211,23 @@ void EditorController::updateSelected(QString key, QVariant value) {
     auto error = editor_.execute([&](studio::Project &p) {
         for (auto &n : p.nodes)
             if (q(n.id) == selectedId_) {
+                if (!n.keyframes.empty() && transformProperty) {
+                    auto state = studio::evaluate(n, frame_);
+                    if (key == "x")
+                        state.x = value.toDouble();
+                    else if (key == "y")
+                        state.y = value.toDouble();
+                    else if (key == "opacity")
+                        state.opacity = value.toDouble();
+                    else if (key == "rotation")
+                        state.rotation = value.toDouble();
+                    else if (key == "scale")
+                        state.scale = value.toDouble();
+                    upsertKeyframe(n.keyframes,
+                                   {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
+                    p.schemaVersion = 3;
+                    continue;
+                }
                 if (key == "text")
                     n.text = value.toString().toStdString();
                 else if (key == "color")
@@ -216,13 +275,27 @@ void EditorController::updateSelected(QString key, QVariant value) {
 }
 void EditorController::moveSelected(double x, double y) {
     auto n = studio::findNode(project(), selectedId_.toStdString());
-    if (!n || (n->x == x && n->y == y))
+    if (!n)
+        return;
+    const auto current = n->keyframes.empty()
+                             ? studio::VisualState{n->x, n->y, n->opacity, n->rotation, n->scale}
+                             : studio::evaluate(*n, frame_);
+    if (current.x == x && current.y == y)
         return;
     auto error = editor_.execute([&](studio::Project &p) {
         for (auto &node : p.nodes)
             if (q(node.id) == selectedId_) {
-                node.x = x;
-                node.y = y;
+                if (node.keyframes.empty()) {
+                    node.x = x;
+                    node.y = y;
+                } else {
+                    auto state = studio::evaluate(node, frame_);
+                    state.x = x;
+                    state.y = y;
+                    upsertKeyframe(node.keyframes,
+                                   {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
+                    p.schemaVersion = 3;
+                }
             }
     });
     if (error.empty())
@@ -234,19 +307,32 @@ void EditorController::moveClip(QString id, int start) {
     auto node = studio::findNode(project(), id.toStdString());
     if (!node)
         return;
-    int lower = 0, upper = duration() - int(node->duration);
-    for (const auto &scene : project().scenes)
-        if (scene.id == node->sceneId) {
-            lower = int(scene.start);
-            upper = int(scene.start + scene.duration - node->duration);
-        }
-    start = std::clamp(start, lower, upper);
-    if (node->start == start)
+    std::vector<std::string> ids{node->id};
+    if (node->kind == studio::NodeKind::Group)
+        for (std::size_t i = 0; i < ids.size(); ++i)
+            for (const auto &child : project().nodes)
+                if (child.parentId == ids[i])
+                    ids.push_back(child.id);
+    int lowerDelta = -int(node->start);
+    int upperDelta = duration() - int(node->start + node->duration);
+    for (const auto &candidate : project().nodes)
+        if (std::find(ids.begin(), ids.end(), candidate.id) != ids.end())
+            for (const auto &scene : project().scenes)
+                if (scene.id == candidate.sceneId) {
+                    lowerDelta = std::max(lowerDelta, int(scene.start - candidate.start));
+                    upperDelta = std::min(
+                        upperDelta, int(scene.start + scene.duration - candidate.start - candidate.duration));
+                }
+    const int delta = std::clamp(start - int(node->start), lowerDelta, upperDelta);
+    if (delta == 0)
         return;
     auto error = editor_.execute([&](studio::Project &p) {
         for (auto &n : p.nodes)
-            if (q(n.id) == id)
-                n.start = start;
+            if (std::find(ids.begin(), ids.end(), n.id) != ids.end()) {
+                n.start += delta;
+                for (auto &key : n.keyframes)
+                    key.frame += delta;
+            }
     });
     if (error.empty())
         changed();
@@ -354,13 +440,121 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     return false;
 }
 void EditorController::removeSelected() {
-    if (selected().isEmpty())
+    const auto *selectedNode = studio::findNode(project(), selectedId_.toStdString());
+    if (!selectedNode)
         return;
+    std::vector<std::string> ids{selectedNode->id};
+    if (selectedNode->kind == studio::NodeKind::Group) {
+        for (std::size_t i = 0; i < ids.size(); ++i)
+            for (const auto &node : project().nodes)
+                if (node.parentId == ids[i])
+                    ids.push_back(node.id);
+    }
     editor_.execute([&](studio::Project &p) {
-        std::erase_if(p.nodes, [&](const studio::Node &n) { return q(n.id) == selectedId_; });
+        std::erase_if(p.nodes, [&](const studio::Node &n) {
+            return std::find(ids.begin(), ids.end(), n.id) != ids.end();
+        });
     });
     selectedId_.clear();
     changed();
+}
+void EditorController::groupSelected() {
+    const auto *selectedNode = studio::findNode(project(), selectedId_.toStdString());
+    if (!selectedNode || selectedNode->kind == studio::NodeKind::Group ||
+        selectedNode->role == "background") {
+        notify("Selecione um objeto, não um grupo ou cenário de fundo.");
+        return;
+    }
+    const studio::Node childSnapshot = *selectedNode;
+    studio::Node group;
+    group.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
+    group.name = (childSnapshot.name.empty() ? std::string("Grupo") : childSnapshot.name + " · grupo");
+    group.kind = studio::NodeKind::Group;
+    group.parentId = childSnapshot.parentId;
+    group.start = childSnapshot.start;
+    group.duration = childSnapshot.duration;
+    group.x = childSnapshot.x;
+    group.y = childSnapshot.y;
+    group.width = childSnapshot.width;
+    group.height = childSnapshot.height;
+    group.sceneId = childSnapshot.sceneId;
+    auto error = editor_.execute([&](studio::Project &p) {
+        auto child = std::find_if(p.nodes.begin(), p.nodes.end(),
+                                  [&](const auto &node) { return node.id == childSnapshot.id; });
+        if (child == p.nodes.end())
+            return;
+        child->x -= group.x;
+        child->y -= group.y;
+        for (auto &key : child->keyframes) {
+            key.x -= group.x;
+            key.y -= group.y;
+        }
+        child->parentId = group.id;
+        p.nodes.push_back(group);
+        p.schemaVersion = 3;
+    });
+    if (error.empty()) {
+        selectedId_ = q(group.id);
+        changed();
+        notify("Grupo criado. O objeto filho continua editável na lista da cena.");
+    } else
+        notify(q(error));
+}
+void EditorController::recordSelectedKeyframe() {
+    const auto *selectedNode = studio::findNode(project(), selectedId_.toStdString());
+    if (!selectedNode) {
+        notify("Selecione um objeto ou grupo antes de gravar um keyframe.");
+        return;
+    }
+    const studio::Node snapshot = *selectedNode;
+    const auto state = studio::evaluate(snapshot, frame_);
+    auto error = editor_.execute([&](studio::Project &p) {
+        auto node = std::find_if(p.nodes.begin(), p.nodes.end(),
+                                 [&](const auto &candidate) { return candidate.id == snapshot.id; });
+        if (node == p.nodes.end())
+            return;
+        if (node->keyframes.empty()) {
+            node->x = state.x;
+            node->y = state.y;
+            node->rotation = state.rotation;
+            node->scale = state.scale;
+            node->opacity = state.opacity;
+            node->animated = false;
+            node->motion = "none";
+            node->travelX = 0;
+            node->travelY = 0;
+            node->spinDegrees = 0;
+        }
+        upsertKeyframe(node->keyframes,
+                       {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
+        p.schemaVersion = 3;
+    });
+    if (error.empty()) {
+        changed();
+        notify(QString("Keyframe gravado no quadro %1.").arg(frame_));
+    } else
+        notify(q(error));
+}
+void EditorController::updateCamera(QString property, double value) {
+    if (property != "x" && property != "y" && property != "zoom" && property != "rotation")
+        return;
+    auto error = editor_.execute([&](studio::Project &p) {
+        auto state = studio::evaluateCamera(p, frame_);
+        if (property == "x")
+            state.x = value;
+        else if (property == "y")
+            state.y = value;
+        else if (property == "zoom")
+            state.zoom = value;
+        else
+            state.rotation = value;
+        upsertKeyframe(p.camera, {frame_, state.x, state.y, state.zoom, state.rotation});
+        p.schemaVersion = 3;
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
 }
 void EditorController::undo() {
     if (editor_.undo())
@@ -382,9 +576,12 @@ void EditorController::presentFrame(int frame) {
     auto oldScene = currentSceneId();
     frame_ = frame;
     emit frameChanged();
+    emit cameraChanged();
+    emit selectedChanged();
     if (oldScene != currentSceneId()) {
         selectedId_.clear();
         emit documentChanged();
+        emit selectedChanged();
     }
 }
 void EditorController::stop() {
@@ -458,6 +655,8 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     autosaveEnabled_ = false;
     emit frameChanged();
     emit documentChanged();
+    emit selectedChanged();
+    emit cameraChanged();
 }
 bool EditorController::open(QUrl url) {
     auto loaded = studio::loadProject(url.toLocalFile());
