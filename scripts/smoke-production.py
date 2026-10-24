@@ -113,6 +113,52 @@ run([bin_dir / "studio_render.exe", "--project", timed_output / "project.studio.
 decoded = run([ffmpeg, "-hide_banner", "-i", fixed_video, "-f", "null", "-"])
 assert re.search(r"frame=\s*240\b", decoded.stderr), "MP4 must encode exactly 240 video frames"
 
-summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4"]}
+# End-to-end v3: several visual shots and timed beats inside one narration scene.
+shots_output = folder / "shots-v3"
+shots_run = run([bin_dir / "studio_produce.exe", "--recipe",
+                 root / "examples/shots-visual-beats-v3.production.json",
+                 "--output-dir", shots_output], timeout=360)
+(folder / "shots-v3.log").write_text(shots_run.stdout + shots_run.stderr, encoding="utf-8")
+shots_project_path = shots_output / "project.studio.json"
+shots_project = json.loads(shots_project_path.read_text(encoding="utf-8"))
+assert shots_project["schemaVersion"] == 4
+assert len(shots_project["scenes"]) == 1 and len(shots_project["shots"]) == 3
+assert len(shots_project["visualBeats"]) == 3
+ordered_shots = sorted(shots_project["shots"], key=lambda shot: shot["start"])
+scene = shots_project["scenes"][0]
+assert ordered_shots[0]["start"] == scene["start"]
+assert ordered_shots[-1]["start"] + ordered_shots[-1]["duration"] == scene["start"] + scene["duration"]
+assert all(left["start"] + left["duration"] == right["start"]
+           for left, right in zip(ordered_shots, ordered_shots[1:]))
+assert all(node.get("shotId") for node in shots_project["nodes"]
+           if node.get("id") in {"carro", "preco", "documento", "aviso"})
+assert any(node.get("keyframes") for node in shots_project["nodes"] if node.get("id") == "preco")
+shots_video = shots_output / "shots-v3.mp4"
+run([bin_dir / "studio_render.exe", "--project", shots_project_path,
+     "--output", shots_video, "--ffmpeg", ffmpeg], timeout=180)
+shots_decode = run([ffmpeg, "-hide_banner", "-i", shots_video, "-f", "null", "-"])
+assert re.search(rf"frame=\s*{shots_project['duration']}\b", shots_decode.stderr)
+proof_frames = sorted({shot["start"] for shot in ordered_shots} |
+                      {beat["frame"] for beat in shots_project["visualBeats"]})
+proof_frames = [frame for frame in proof_frames if frame < shots_project["duration"]]
+for index, frame in enumerate(proof_frames, 1):
+    run([bin_dir / "studio_render.exe", "--project", shots_project_path, "--still", frame,
+         "--output", output / f"v3-reference-{index}.png"])
+select_v3 = "+".join(f"eq(n\\,{frame})" for frame in proof_frames)
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", shots_video,
+     "-vf", f"select={select_v3}", "-fps_mode", "vfr", output / "v3-decoded-%d.png"])
+v3_match = run([ffmpeg, "-hide_banner", "-i", output / "v3-reference-%d.png", "-i",
+                output / "v3-decoded-%d.png", "-lavfi", "psnr", "-f", "null", "-"])
+v3_psnr = re.search(r"average:([0-9.]+|inf)", v3_match.stderr)
+assert v3_psnr and float(v3_psnr.group(1)) > 30, "v3 cuts/beats differ between preview and export"
+v3_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-v3",
+             "--project", shots_project_path, "--frame", proof_frames[len(proof_frames) // 2]], timeout=30)
+(folder / "shots-v3-desktop.log").write_text(v3_ui.stderr, encoding="utf-8")
+for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign", "Binding loop"):
+    assert marker not in v3_ui.stderr, v3_ui.stderr
+v3_runtime = json.loads((output / "interface-v3/runtime.json").read_text(encoding="utf-8"))
+assert v3_runtime["page"] == "editor" and v3_runtime["hasAudio"]
+
+summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "shotsV3Frames": shots_project["duration"], "shotsV3Count": len(ordered_shots), "visualBeatsV3Count": len(shots_project["visualBeats"]), "shotsV3PreviewExportPsnrDb": float(v3_psnr.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "v3 project opens in editor", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4", "v3 independent shots and Visual Beats", "shot coverage and no gaps", "v3 preview/export frame comparison"]}
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(folder), **summary}, indent=2))

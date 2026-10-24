@@ -32,13 +32,19 @@ bool number(const QJsonObject &o, const QString &key, double &target) {
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
                   const QString &label) {
-    if (!allowed(o, {"cue", "progress", "offsetSeconds"}) || !o["cue"].isDouble() ||
+    if (!allowed(o, {"cue", "progress", "cueProgress", "offsetSeconds"}) || !o["cue"].isDouble() ||
         std::floor(o["cue"].toDouble()) != o["cue"].toDouble()) {
         error = label + " precisa de cue inteiro e campos temporais conhecidos.";
         return false;
     }
     time.cue = o["cue"].toInt();
-    if (o.contains("progress") && !o["progress"].isDouble()) {
+    if (o.contains("progress") && o.contains("cueProgress")) {
+        error = label + " use progress ou cueProgress, não ambos.";
+        return false;
+    }
+    const auto progressField =
+        o.contains("cueProgress") ? QStringLiteral("cueProgress") : QStringLiteral("progress");
+    if (o.contains(progressField) && !o[progressField].isDouble()) {
         error = label + " progress precisa ser numérico.";
         return false;
     }
@@ -46,11 +52,16 @@ bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QStrin
         error = label + " offsetSeconds precisa ser numérico.";
         return false;
     }
-    time.progress = o["progress"].toDouble(0);
+    const bool hasProgress = o.contains("progress") || o.contains("cueProgress");
+    if (hasProgress && o.contains("offsetSeconds")) {
+        error = label + " use progress/cueProgress ou offsetSeconds, não ambos.";
+        return false;
+    }
+    time.progress = hasProgress ? o[progressField].toDouble() : -1;
     time.offsetSeconds = o["offsetSeconds"].toDouble(0);
-    if (time.cue < 0 || time.cue >= cueCount || !std::isfinite(time.progress) ||
-        time.progress < 0 || time.progress > 1 || !std::isfinite(time.offsetSeconds) ||
-        time.offsetSeconds < 0 || time.offsetSeconds > 10) {
+    if (time.cue < 0 || time.cue >= cueCount || !std::isfinite(time.progress) || time.progress < 0 ||
+        time.progress > 1 || !std::isfinite(time.offsetSeconds) || time.offsetSeconds < 0 ||
+        time.offsetSeconds > 10) {
         error = label + " está fora dos limites de cue, progress ou offsetSeconds.";
         return false;
     }
@@ -246,9 +257,15 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             return fail("Cue e durações de movimento devem ser inteiros.");
     if (e.contains("progress") && !e["progress"].isDouble())
         return fail("progress de elemento precisa ser numérico.");
+    if (e.contains("progress") && e.contains("cueProgress"))
+        return fail("Use progress ou cueProgress no elemento, não ambos.");
     element.cue = e["cue"].toInt(defaultStart.cue);
-    element.progress = e["progress"].toDouble(e.contains("cue") ? 0 : defaultStart.progress);
+    element.progress = e["progress"].toDouble(e.contains("cue") ? 0 : std::max(0.0, defaultStart.progress));
     element.offsetSeconds = e["offsetSeconds"].toDouble(e.contains("cue") ? 0 : defaultStart.offsetSeconds);
+    element.cueProgress = e["cueProgress"].toDouble(
+        e.contains("progress") ? element.progress : (e.contains("cue") ? -1 : defaultStart.progress));
+    if ((e.contains("cueProgress") || e.contains("progress")) && e.contains("offsetSeconds"))
+        return fail("Use cueProgress/progress ou offsetSeconds no elemento, não ambos.");
     if (e.contains("cueProgress")) {
         if (!number(e, "cueProgress", element.cueProgress) || element.cueProgress < 0 ||
             element.cueProgress > 1 || e.contains("offsetSeconds"))
@@ -280,7 +297,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (!keyValue.isObject())
                 return fail("Keyframe inválido.");
             const auto key = keyValue.toObject();
-            QStringList keyFields{"cue", "offsetSeconds", "cueProgress", "x", "y", "rotation", "scale", "opacity", "easing"};
+            QStringList keyFields{"cue", "offsetSeconds", "cueProgress", "progress", "x",
+                                  "y",   "rotation",      "scale",       "opacity",  "easing"};
             if (version >= 3)
                 keyFields << "progress";
             if (!allowed(key, keyFields))
@@ -291,26 +309,35 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             for (auto field : {"cue", "offsetSeconds", "progress"})
                 if (key.contains(field) && !key[field].isDouble())
                     return fail("Referência temporal de keyframe inválida.");
+            if (key.contains("progress") && key.contains("cueProgress"))
+                return fail("Use progress ou cueProgress no keyframe, não ambos.");
+            const auto keyProgress =
+                key.contains("cueProgress")
+                    ? key["cueProgress"].toDouble(-1)
+                    : key["progress"].toDouble(key.contains("cue") ? -1 : element.cueProgress);
             DirectedKeyframe parsed{key["cue"].toInt(element.cue),
                                     key["progress"].toDouble(key.contains("cue") ? 0 : element.progress),
                                     key["offsetSeconds"].toDouble(0),
-                                    key["cueProgress"].toDouble(-1),
+                                    keyProgress,
                                     key["x"].toDouble(n.x),
                                     key["y"].toDouble(n.y),
                                     key["rotation"].toDouble(n.rotation),
                                     key["scale"].toDouble(n.scale),
                                     key["opacity"].toDouble(n.opacity),
                                     key["easing"].toString("linear").toStdString()};
-            if ((key.contains("easing") && !key["easing"].isString()) ||
-                !supportedEasing(parsed.easing))
+            if ((key.contains("easing") && !key["easing"].isString()) || !supportedEasing(parsed.easing))
                 return fail("Easing de elemento inválido.");
-            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.progress) ||
-                parsed.progress < 0 || parsed.progress > 1 || !std::isfinite(parsed.offsetSeconds) ||
+            if ((key.contains("cueProgress") || key.contains("progress")) && key.contains("offsetSeconds"))
+                return fail("Use progress/cueProgress ou offsetSeconds no keyframe, não ambos.");
             if (key.contains("cueProgress") &&
                 (!number(key, "cueProgress", parsed.cueProgress) || parsed.cueProgress < 0 ||
                  parsed.cueProgress > 1 || key.contains("offsetSeconds")))
                 return fail("cueProgress de keyframe inválido ou combinado com offsetSeconds.");
-            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.offsetSeconds) ||
+            if (key.contains("progress") && (!number(key, "progress", parsed.cueProgress) ||
+                                             parsed.cueProgress < 0 || parsed.cueProgress > 1))
+                return fail("progress de keyframe deve estar entre 0 e 1.");
+            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.progress) ||
+                parsed.progress < 0 || parsed.progress > 1 || !std::isfinite(parsed.offsetSeconds) ||
                 parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
                 return fail("Cue de keyframe inválido.");
             for (auto field : {"x", "y", "rotation", "scale", "opacity"})
@@ -326,7 +353,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
-                              {element.cue, element.progress, element.offsetSeconds}))
+                              {element.cue, element.cueProgress, element.offsetSeconds}))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -392,7 +419,9 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         const auto lastBreak = prefix.lastIndexOf('\n');
         const auto column = QString::fromUtf8(prefix.mid(lastBreak + 1)).size() + 1;
         return fail(QString("JSON inválido: %1 (linha %2, coluna %3).")
-                        .arg(error.errorString()).arg(line).arg(column));
+                        .arg(error.errorString())
+                        .arg(line)
+                        .arg(column));
     }
     if (!doc.isObject())
         return fail("A raiz do JSON deve ser um objeto.");
@@ -400,8 +429,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (!o["version"].isDouble() || std::floor(o["version"].toDouble()) != o["version"].toDouble())
         return fail("Versão da receita deve ser inteira.");
     const int version = o["version"].toInt();
-    if (o["format"] != "studio-dark-production" || (version < 1 || version > 3) ||
-        o["catalogVersion"] != 1)
+    if (o["format"] != "studio-dark-production" || (version < 1 || version > 3) || o["catalogVersion"] != 1)
         return fail("Formato, versão ou catálogo da receita não suportado.");
     QStringList rootKeys{"format",     "version",   "catalogVersion", "title",  "voice",
                          "speechRate", "musicGain", "effectsGain",    "scenes", "sources"};
@@ -418,8 +446,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (r.timingMode != "natural" && r.timingMode != "fit-to-duration")
         return fail("timingMode não suportado.");
     if (o.contains("targetDurationSeconds") &&
-        (!number(o, "targetDurationSeconds", r.targetDurationSeconds) ||
-         r.targetDurationSeconds < 1 || r.targetDurationSeconds > 600))
+        (!number(o, "targetDurationSeconds", r.targetDurationSeconds) || r.targetDurationSeconds < 1 ||
+         r.targetDurationSeconds > 600))
         return fail("targetDurationSeconds precisa estar entre 1 e 600 segundos.");
     if (o.contains("preserveVoicePitch")) {
         if (!o["preserveVoicePitch"].isBool())
@@ -468,8 +496,10 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             sceneKeys << "title" << "kicker" << "background" << "elements";
         else
             sceneKeys << "shots";
+        if (version == 2)
+            sceneKeys << "camera";
         if (version >= 2)
-            sceneKeys << "camera" << "targetDurationSeconds";
+            sceneKeys << "targetDurationSeconds";
         if (!allowed(s, sceneKeys))
             return fail("Campo de cena desconhecido.");
         if (!s["id"].isString() ||
@@ -525,14 +555,14 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         }
         int elementCount = 0;
         if (version == 3) {
-            if (!s["shots"].isArray() || s["shots"].toArray().isEmpty() ||
-                s["shots"].toArray().size() > 64)
+            if (!s["shots"].isArray() || s["shots"].toArray().isEmpty() || s["shots"].toArray().size() > 64)
                 return fail("Cada cena v3 precisa de 1 a 64 shots visuais.");
             for (const auto shotValue : s["shots"].toArray()) {
                 if (!shotValue.isObject())
                     return fail("Shot visual inválido.");
                 const auto shotObject = shotValue.toObject();
-                if (!allowed(shotObject, {"id", "name", "start", "transitionIn", "camera", "elements", "beats"}))
+                if (!allowed(shotObject,
+                             {"id", "name", "start", "transitionIn", "camera", "elements", "beats"}))
                     return fail("Shot contém campo desconhecido.");
                 if (!shotObject["id"].isString() || !shotObject["start"].isObject() ||
                     !shotObject["elements"].isArray())
@@ -546,7 +576,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     return fail("ID ou nome de shot inválido ou duplicado.");
                 ids.insert(shot.id);
                 if (shot.transitionIn != "cut")
-                    return fail("Receita v3 suporta cortes secos; transições animadas virão em uma etapa posterior.");
+                    return fail(
+                        "Receita v3 suporta cortes secos; transições animadas virão em uma etapa posterior.");
                 QString timeError;
                 if (!parseTimeRef(shotObject["start"].toObject(), int(scene.narration.size()), shot.start,
                                   timeError, "start do shot"))
@@ -590,7 +621,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                             !beatObject["at"].isObject() ||
                             !parseTimeRef(beatObject["at"].toObject(), int(scene.narration.size()), beat.at,
                                           timeError, "at do Visual Beat"))
-                            return fail(timeError.isEmpty() ? "Visual Beat sem id único ou referência at." : timeError);
+                            return fail(timeError.isEmpty() ? "Visual Beat sem id único ou referência at."
+                                                            : timeError);
                         ids.insert(beat.id);
                         if (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
                             beat.action != "camera")
@@ -606,9 +638,12 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         if (beat.durationFrames < 0 || beat.durationFrames > 300 ||
                             ((beat.action == "show" || beat.action == "hide") && beat.durationFrames != 0))
                             return fail("Duração do Visual Beat fora dos limites.");
-                        for (auto [key, target] : {std::pair{"x", &beat.x}, {"y", &beat.y},
-                                                   {"rotation", &beat.rotation}, {"scale", &beat.scale},
-                                                   {"opacity", &beat.opacity}, {"zoom", &beat.zoom}}) {
+                        for (auto [key, target] : {std::pair{"x", &beat.x},
+                                                   {"y", &beat.y},
+                                                   {"rotation", &beat.rotation},
+                                                   {"scale", &beat.scale},
+                                                   {"opacity", &beat.opacity},
+                                                   {"zoom", &beat.zoom}}) {
                             if (beatObject.contains(key)) {
                                 if (!beatObject[key].isDouble() || !std::isfinite(beatObject[key].toDouble()))
                                     return fail("Propriedade numérica do Visual Beat inválida.");
@@ -656,7 +691,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 if (!cameraValue.isObject())
                     return fail("Keyframe de câmera inválido.");
                 const auto c = cameraValue.toObject();
-                if (!allowed(c, {"cue", "offsetSeconds", "cueProgress", "x", "y", "zoom", "rotation", "easing"}))
+                if (!allowed(c,
+                             {"cue", "offsetSeconds", "cueProgress", "x", "y", "zoom", "rotation", "easing"}))
                     return fail("Keyframe de câmera contém campo desconhecido.");
                 DirectedCameraKeyframe key;
                 if (c.contains("easing") && !c["easing"].isString())

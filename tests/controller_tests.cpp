@@ -111,6 +111,45 @@ int main(int argc, char **argv) {
         check(c.camera()["keyframeEasing"] == "ease-out", "inspector writes camera easing");
         c.updateCamera("zoom", 1.25);
         check(c.camera()["keyframeEasing"] == "ease-out", "camera update preserves easing");
+        auto shotProject = studio::makeEmpty();
+        shotProject.schemaVersion = 4;
+        shotProject.duration = 120;
+        shotProject.scenes = {{"story", "História", "", 0, 120}};
+        shotProject.shots = {{"wide", "story", "Aberto", "cut", 0, 60},
+                             {"detail", "story", "Detalhe", "cut", 60, 60}};
+        studio::Node wideNode;
+        wideNode.id = "wide-node";
+        wideNode.sceneId = "story";
+        wideNode.shotId = "wide";
+        wideNode.duration = 50;
+        studio::Node detailNode;
+        detailNode.id = "detail-node";
+        detailNode.sceneId = "story";
+        detailNode.shotId = "detail";
+        detailNode.start = 60;
+        detailNode.duration = 60;
+        shotProject.nodes = {wideNode, detailNode};
+        shotProject.visualBeats = {{"detail-beat", "detail", "detail-node", "show", 75, 0}};
+        shotProject.camera = {{59, 640, 360, 1, 0, "linear", "detail"},
+                              {60, 700, 360, 1.1, 0, "linear", "detail"},
+                              {90, 720, 360, 1.2, 0, "linear", "detail"}};
+        check(studio::validate(shotProject).empty(), "shot edit fixture validates");
+        const auto shotPath = QUrl::fromLocalFile(directory.filePath("shots.studio.json"));
+        check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
+                  c.open(shotPath),
+              "open a schema 4 project with independent shots");
+        c.beginGesture();
+        c.moveShotBoundary("detail", 70);
+        c.endGesture();
+        check(c.project().shots[0].duration == 70 && c.project().shots[1].start == 70 &&
+                  c.project().shots[1].duration == 50 &&
+                  studio::findNode(c.project(), "detail-node")->start == 70 &&
+                  c.project().visualBeats.front().frame == 85 && c.project().camera[1].frame == 70,
+              "dragging a shot cut moves its duration, contents, beats and camera together");
+        c.undo();
+        check(c.project().shots[1].start == 60 && c.project().visualBeats.front().frame == 75 &&
+                  c.project().camera[1].frame == 60,
+              "one shot-cut gesture undoes as one action");
         c.setFrame(c.duration() - 1);
         c.togglePlayback();
         check(c.playing() && c.frame() == 0, "play at end restarts");

@@ -11,6 +11,9 @@
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": 200,
     "maxScenes": 20,
+    "maxShots": 256,
+    "maxShotsPerScene": 64,
+    "maxVisualBeats": 4096,
     "media": [
         "png",
         "jpeg",
@@ -143,15 +146,20 @@
         "optional-visual-captions",
         "fixed-duration-timing",
         "cue-progress-sync",
-        "pitch-preserving-atempo"
+        "pitch-preserving-atempo",
+        "independent-shots",
+        "visual-beats-show-hide-transform-camera",
+        "shot-cut-camera"
     ],
-    "productionVersion": 2,
+    "productionVersion": 3,
     "projectCapabilities": [
         "group-hierarchy",
         "transform-keyframes-linear",
         "camera-2d-keyframes",
-        "keyframe-easing-curves"
+        "keyframe-easing-curves",
+        "shot-ownership",
+        "visual-beat-markers"
     ],
-    "projectVersion": 3,
+    "projectVersion": 4,
     "width": 1280
 }

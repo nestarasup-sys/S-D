@@ -6,15 +6,14 @@
 #include <QImageReader>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonObject>
 #include <QStandardPaths>
 #include <QSvgRenderer>
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
-#include <unordered_map>
 #include <studio/core/library.hpp>
 #include <studio/media/wave.hpp>
+#include <unordered_map>
 
 namespace {
 QString q(const std::string &s) {
@@ -77,9 +76,9 @@ EditorController::EditorController(QObject *parent, QString recoveryDirectory) :
     savedDocument_ = studio::serialize(project());
     nodeModel_.sync(nodes());
     diagnosticsDirectory_ =
-        (recoveryDirectory.isEmpty()
-             ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
-             : recoveryDirectory) + "/logs";
+        (recoveryDirectory.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+                                     : recoveryDirectory) +
+        "/logs";
     setupProduction();
     audioPlayer_.setAudioOutput(&audioOutput_);
     audioOutput_.setVolume(.9);
@@ -161,8 +160,8 @@ QVariantMap EditorController::selected() const {
     if (!n->keyframes.empty()) {
         auto key = std::find_if(n->keyframes.begin(), n->keyframes.end(),
                                 [this](const auto &k) { return k.frame == frame_; });
-        result["keyframeEasing"] = key == n->keyframes.end()
-                                       ? QString{} : QString::fromStdString(key->easing);
+        result["keyframeEasing"] =
+            key == n->keyframes.end() ? QString{} : QString::fromStdString(key->easing);
         const auto state = studio::evaluate(*n, frame_);
         result["x"] = state.x;
         result["y"] = state.y;
@@ -178,8 +177,11 @@ QVariantMap EditorController::camera() const {
     for (const auto &key : project().camera)
         if (key.frame == frame_)
             curve = QString::fromStdString(key.easing);
-    return {{"x", state.x}, {"y", state.y}, {"zoom", state.zoom},
-            {"rotation", state.rotation}, {"keyframeEasing", curve}};
+    return {{"x", state.x},
+            {"y", state.y},
+            {"zoom", state.zoom},
+            {"rotation", state.rotation},
+            {"keyframeEasing", curve}};
 }
 QString EditorController::title() const {
     return q(project().name);
@@ -242,7 +244,7 @@ void EditorController::updateSelected(QString key, QVariant value) {
                         state.scale = value.toDouble();
                     upsertKeyframe(n.keyframes,
                                    {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
-                    p.schemaVersion = 3;
+                    p.schemaVersion = std::max(p.schemaVersion, 3);
                     continue;
                 }
                 if (key == "text")
@@ -311,7 +313,7 @@ void EditorController::moveSelected(double x, double y) {
                     state.y = y;
                     upsertKeyframe(node.keyframes,
                                    {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
-                    p.schemaVersion = 3;
+                    p.schemaVersion = std::max(p.schemaVersion, 3);
                 }
             }
     });
@@ -350,6 +352,88 @@ void EditorController::moveClip(QString id, int start) {
                 for (auto &key : n.keyframes)
                     key.frame += delta;
             }
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
+void EditorController::moveShotBoundary(QString rightShotId, int requestedFrame) {
+    const auto rightId = rightShotId.toStdString();
+    const auto right = std::find_if(project().shots.begin(), project().shots.end(),
+                                    [&](const auto &shot) { return shot.id == rightId; });
+    if (right == project().shots.end())
+        return;
+    const auto left =
+        std::max_element(project().shots.begin(), project().shots.end(), [&](const auto &a, const auto &b) {
+            const bool aCandidate = a.sceneId == right->sceneId && a.start < right->start;
+            const bool bCandidate = b.sceneId == right->sceneId && b.start < right->start;
+            if (aCandidate != bCandidate)
+                return !aCandidate;
+            return aCandidate && a.start < b.start;
+        });
+    if (left == project().shots.end() || left->sceneId != right->sceneId || left->start >= right->start)
+        return;
+    const auto oldBoundary = right->start;
+    const auto rightEnd = right->start + right->duration;
+    const auto boundary = std::clamp<std::int64_t>(requestedFrame, left->start + 1, rightEnd - 1);
+    const auto delta = boundary - oldBoundary;
+    if (delta == 0)
+        return;
+    for (const auto &node : project().nodes) {
+        if (node.shotId == left->id && node.start + node.duration > boundary &&
+            (node.start >= boundary || std::any_of(node.keyframes.begin(), node.keyframes.end(),
+                                                   [&](const auto &key) { return key.frame >= boundary; }))) {
+            notify("O corte não pode atravessar um elemento ou keyframe do shot anterior.");
+            return;
+        }
+        if (node.shotId == rightId) {
+            const bool reachesOldEnd = node.start + node.duration == rightEnd;
+            const auto newStart = node.start + delta;
+            const auto newDuration = reachesOldEnd ? rightEnd - newStart : node.duration;
+            if (newStart >= rightEnd || newDuration < 1 || newStart + newDuration > rightEnd) {
+                notify("O shot não cabe na nova duração porque contém elementos no final do plano.");
+                return;
+            }
+        }
+    }
+    for (const auto &beat : project().visualBeats) {
+        if (beat.shotId == left->id && beat.frame + beat.durationFrames >= boundary) {
+            notify("O corte não pode atravessar um Visual Beat do shot anterior.");
+            return;
+        }
+        if (beat.shotId == rightId && beat.frame + delta + beat.durationFrames >= rightEnd) {
+            notify("O shot não cabe na nova duração porque contém Visual Beats no final do plano.");
+            return;
+        }
+    }
+    const auto leftId = left->id;
+    const auto error = editor_.execute([&](studio::Project &p) {
+        auto leftShot =
+            std::find_if(p.shots.begin(), p.shots.end(), [&](const auto &shot) { return shot.id == leftId; });
+        auto rightShot = std::find_if(p.shots.begin(), p.shots.end(),
+                                      [&](const auto &shot) { return shot.id == rightId; });
+        leftShot->duration += delta;
+        rightShot->start += delta;
+        rightShot->duration -= delta;
+        for (auto &node : p.nodes) {
+            if (node.shotId == leftId && node.start + node.duration > boundary)
+                node.duration = boundary - node.start;
+            if (node.shotId == rightId) {
+                const bool reachedOldEnd = node.start + node.duration == rightEnd;
+                node.start += delta;
+                if (reachedOldEnd)
+                    node.duration = rightEnd - node.start;
+                for (auto &key : node.keyframes)
+                    key.frame += delta;
+            }
+        }
+        for (auto &beat : p.visualBeats)
+            if (beat.shotId == rightId)
+                beat.frame += delta;
+        for (auto &key : p.camera)
+            if (key.shotId == rightId)
+                key.frame += delta;
     });
     if (error.empty())
         changed();
@@ -494,7 +578,7 @@ bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
     }
     const auto rootId = nodes.front().id;
     const auto error = editor_.execute([&](studio::Project &p) {
-        p.schemaVersion = 3;
+        p.schemaVersion = std::max(p.schemaVersion, 3);
         p.nodes.insert(p.nodes.end(), nodes.begin(), nodes.end());
     });
     if (!error.empty()) {
@@ -558,7 +642,7 @@ void EditorController::groupSelected() {
         }
         child->parentId = group.id;
         p.nodes.push_back(group);
-        p.schemaVersion = 3;
+        p.schemaVersion = std::max(p.schemaVersion, 3);
     });
     if (error.empty()) {
         selectedId_ = q(group.id);
@@ -594,7 +678,7 @@ void EditorController::recordSelectedKeyframe() {
         }
         upsertKeyframe(node->keyframes,
                        {frame_, state.x, state.y, state.rotation, state.scale, state.opacity});
-        p.schemaVersion = 3;
+        p.schemaVersion = std::max(p.schemaVersion, 3);
     });
     if (error.empty()) {
         changed();
@@ -609,7 +693,7 @@ void EditorController::setSelectedKeyframeEasing(QString easing) {
     if (!n)
         return;
     const auto at = std::find_if(n->keyframes.begin(), n->keyframes.end(),
-                                [this](const auto &k) { return k.frame == frame_; });
+                                 [this](const auto &k) { return k.frame == frame_; });
     if (at == n->keyframes.end()) {
         notify("Grave primeiro um keyframe neste quadro para configurar a curva.");
         return;
@@ -659,7 +743,7 @@ void EditorController::updateCamera(QString property, double value) {
         else
             state.rotation = value;
         upsertKeyframe(p.camera, {frame_, state.x, state.y, state.zoom, state.rotation});
-        p.schemaVersion = 3;
+        p.schemaVersion = std::max(p.schemaVersion, 3);
     });
     if (error.empty())
         changed();

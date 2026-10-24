@@ -96,7 +96,8 @@ QByteArray serialize(const Project &p) {
                                   {"y", key.y},
                                   {"zoom", key.zoom},
                                   {"rotation", key.rotation},
-                                  {"easing", text(key.easing)}});
+                                  {"easing", text(key.easing)},
+                                  {"shotId", text(key.shotId)}});
     QJsonObject shots;
     QJsonArray shotArray;
     for (const auto &shot : p.shots)
@@ -114,27 +115,33 @@ QByteArray serialize(const Project &p) {
                           {"action", text(beat.action)},
                           {"frame", double(beat.frame)},
                           {"durationFrames", double(beat.durationFrames)}};
-        if (beat.x) value["x"] = *beat.x;
-        if (beat.y) value["y"] = *beat.y;
-        if (beat.rotation) value["rotation"] = *beat.rotation;
-        if (beat.scale) value["scale"] = *beat.scale;
-        if (beat.opacity) value["opacity"] = *beat.opacity;
-        if (beat.zoom) value["zoom"] = *beat.zoom;
+        if (beat.x)
+            value["x"] = *beat.x;
+        if (beat.y)
+            value["y"] = *beat.y;
+        if (beat.rotation)
+            value["rotation"] = *beat.rotation;
+        if (beat.scale)
+            value["scale"] = *beat.scale;
+        if (beat.opacity)
+            value["opacity"] = *beat.opacity;
+        if (beat.zoom)
+            value["zoom"] = *beat.zoom;
         beats.append(value);
     }
-    QJsonObject document{{"format", "studio-dark"},
-                         {"schemaVersion", p.schemaVersion},
-                         {"id", text(p.id)},
-                         {"name", text(p.name)},
-                         {"width", p.width},
-                         {"height", p.height},
-                         {"fps", QJsonObject{{"numerator", p.fps.numerator},
-                                             {"denominator", p.fps.denominator}}},
-                         {"duration", double(p.duration)},
-                         {"nodes", nodes},
-                         {"camera", camera},
-                         {"scenes", scenes},
-                         {"audioSource", text(p.audioSource)}};
+    QJsonObject document{
+        {"format", "studio-dark"},
+        {"schemaVersion", p.schemaVersion},
+        {"id", text(p.id)},
+        {"name", text(p.name)},
+        {"width", p.width},
+        {"height", p.height},
+        {"fps", QJsonObject{{"numerator", p.fps.numerator}, {"denominator", p.fps.denominator}}},
+        {"duration", double(p.duration)},
+        {"nodes", nodes},
+        {"camera", camera},
+        {"scenes", scenes},
+        {"audioSource", text(p.audioSource)}};
     if (p.schemaVersion >= 4) {
         document["shots"] = shotArray;
         document["visualBeats"] = beats;
@@ -152,9 +159,8 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (parse.error != QJsonParseError::NoError || !document.isObject())
         return fail("Arquivo de projeto inválido.");
     auto o = document.object();
-    if (o["format"] != "studio-dark" ||
-        (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 && o["schemaVersion"] != 3 &&
-         o["schemaVersion"] != 4))
+    if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
+                                         o["schemaVersion"] != 3 && o["schemaVersion"] != 4))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -267,7 +273,8 @@ LoadResult deserialize(const QByteArray &bytes) {
                 return fail("Curva de keyframe inválida.");
             n.keyframes.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                                    key["rotation"].toDouble(), key["scale"].toDouble(),
-                                   key["opacity"].toDouble(), key["easing"].toString("linear").toStdString()});
+                                   key["opacity"].toDouble(),
+                                   key["easing"].toString("linear").toStdString()});
         }
         p.nodes.push_back(n);
     }
@@ -284,9 +291,11 @@ LoadResult deserialize(const QByteArray &bytes) {
                 return fail("Transformação de câmera incompleta.");
         if (key.contains("easing") && !key["easing"].isString())
             return fail("Curva de câmera inválida.");
+        if (key.contains("shotId") && !key["shotId"].isString())
+            return fail("Vínculo de câmera com shot inválido.");
         p.camera.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                             key["zoom"].toDouble(), key["rotation"].toDouble(),
-                            key["easing"].toString("linear").toStdString()});
+                            key["easing"].toString("linear").toStdString(), str(key, "shotId")});
     }
     if (o.contains("shots") && !o["shots"].isArray())
         return fail("Lista de shots inválida.");
@@ -318,9 +327,12 @@ LoadResult deserialize(const QByteArray &bytes) {
         beat.action = str(beatObject, "action");
         beat.frame = beatObject["frame"].toInteger();
         beat.durationFrames = beatObject["durationFrames"].toInteger();
-        for (auto [key, target] : {std::pair{"x", &beat.x}, {"y", &beat.y},
-                                   {"rotation", &beat.rotation}, {"scale", &beat.scale},
-                                   {"opacity", &beat.opacity}, {"zoom", &beat.zoom}}) {
+        for (auto [key, target] : {std::pair{"x", &beat.x},
+                                   {"y", &beat.y},
+                                   {"rotation", &beat.rotation},
+                                   {"scale", &beat.scale},
+                                   {"opacity", &beat.opacity},
+                                   {"zoom", &beat.zoom}}) {
             if (beatObject.contains(key) && !beatObject[key].isDouble())
                 return fail("Propriedade de Visual Beat inválida.");
             if (beatObject.contains(key))

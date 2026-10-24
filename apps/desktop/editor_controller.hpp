@@ -33,6 +33,8 @@ class EditorController : public QObject {
     Q_PROPERTY(bool recoveryAvailable READ recoveryAvailable NOTIFY documentChanged)
     Q_PROPERTY(QVariantList library READ library CONSTANT)
     Q_PROPERTY(QVariantList scenes READ scenes NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList shots READ shots NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList visualBeats READ visualBeats NOTIFY documentChanged)
     Q_PROPERTY(QVariantList waveform READ waveform NOTIFY documentChanged)
     Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY documentChanged)
     Q_PROPERTY(bool producing READ producing NOTIFY productionChanged)
@@ -47,6 +49,8 @@ class EditorController : public QObject {
     QVariantList nodes() const;
     QVariantList library() const;
     QVariantList scenes() const;
+    QVariantList shots() const;
+    QVariantList visualBeats() const;
     QVariantList waveform() const {
         return waveform_;
     }
@@ -66,7 +70,9 @@ class EditorController : public QObject {
     Q_INVOKABLE void importCarExample();
     Q_INVOKABLE void cancelProduction();
     Q_INVOKABLE bool openLogsFolder();
-    QString latestProductionLog() const { return productionLogPath_; }
+    QString latestProductionLog() const {
+        return productionLogPath_;
+    }
     QAbstractItemModel *nodeModel() {
         return &nodeModel_;
     }
@@ -117,6 +123,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void endGesture();
     Q_INVOKABLE void moveSelected(double x, double y);
     Q_INVOKABLE void moveClip(QString id, int start);
+    Q_INVOKABLE void moveShotBoundary(QString rightShotId, int frame);
     Q_INVOKABLE void addNode(QString kind, QUrl source = {});
     Q_INVOKABLE void removeSelected();
     Q_INVOKABLE void groupSelected();

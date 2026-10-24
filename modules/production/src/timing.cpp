@@ -7,8 +7,8 @@ namespace studio {
 namespace {
 constexpr int samplesPerFrame = ProductionSampleRate / 30;
 constexpr double maxVoiceSpeed = 1.15;
-void distribute(std::vector<int> &result, const std::vector<int> &indices,
-                const std::vector<int> &weights, int extra) {
+void distribute(std::vector<int> &result, const std::vector<int> &indices, const std::vector<int> &weights,
+                int extra) {
     if (indices.empty() || extra <= 0)
         return;
     std::int64_t total = 0;
@@ -54,22 +54,23 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
             }
             const int minSpeech = std::max(1, int(std::ceil(count / (samplesPerFrame * maxVoiceSpeed))));
             const int natural = int((count + samplesPerFrame - 1) / samplesPerFrame);
-            const int fixed = u.targetDurationSeconds > 0
-                                  ? int(std::llround(u.targetDurationSeconds * 30)) : 0;
+            const int fixed =
+                u.targetDurationSeconds > 0 ? int(std::llround(u.targetDurationSeconds * 30)) : 0;
             if (fixed > 0 && fixed < minSpeech) {
                 plan.error = QString("Fala %1 pede %2 frames; precisa de %3 no mínimo (limite de 15%).")
-                                 .arg(u.id).arg(fixed).arg(minSpeech);
+                                 .arg(u.id)
+                                 .arg(fixed)
+                                 .arg(minSpeech);
                 return plan;
             }
             minimumScene += fixed > 0 ? fixed : minSpeech;
             preferredScene += std::max(natural + 4, fixed);
             target.cues.push_back({u.id, fixed, 0});
         }
-        const int fixed = scene.targetDurationSeconds > 0
-                              ? int(std::llround(scene.targetDurationSeconds * 30)) : 0;
+        const int fixed =
+            scene.targetDurationSeconds > 0 ? int(std::llround(scene.targetDurationSeconds * 30)) : 0;
         if (fixed > 0 && fixed < minimumScene) {
-            plan.error = QString("Cena %1 requer no mínimo %2 frames.")
-                             .arg(scene.id).arg(minimumScene);
+            plan.error = QString("Cena %1 requer no mínimo %2 frames.").arg(scene.id).arg(minimumScene);
             return plan;
         }
         sceneFrames.push_back(fixed > 0 ? fixed : minimumScene);
@@ -78,8 +79,7 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
             openScenes.push_back(int(si));
     }
     const int allocatedScenes = std::accumulate(sceneFrames.begin(), sceneFrames.end(), 0);
-    if (allocatedScenes > plan.targetFrames ||
-        (openScenes.empty() && allocatedScenes != plan.targetFrames)) {
+    if (allocatedScenes > plan.targetFrames || (openScenes.empty() && allocatedScenes != plan.targetFrames)) {
         plan.error = "As durações das cenas não cabem no total planejado.";
         return plan;
     }
@@ -88,30 +88,30 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
         const auto &scene = recipe.scenes[si];
         auto &target = plan.scenes[si];
         target.durationFrames = sceneFrames[si];
-        std::vector<int> slots, weights, openCues;
+        std::vector<int> cueSlots, weights, openCues;
         for (std::size_t ci = 0; ci < scene.narration.size(); ++ci) {
             const auto &u = scene.narration[ci];
             const int count = int(utterances[u.id].samples.size());
             const int natural = (count + samplesPerFrame - 1) / samplesPerFrame;
             const int minimum = std::max(1, int(std::ceil(count / (samplesPerFrame * maxVoiceSpeed))));
             const int fixed = target.cues[ci].slotFrames;
-            slots.push_back(fixed > 0 ? fixed : minimum);
+            cueSlots.push_back(fixed > 0 ? fixed : minimum);
             weights.push_back(std::max(1, natural + 4 - minimum));
             if (fixed == 0)
                 openCues.push_back(int(ci));
         }
-        const int allocated = std::accumulate(slots.begin(), slots.end(), 0);
+        const int allocated = std::accumulate(cueSlots.begin(), cueSlots.end(), 0);
         if (allocated > target.durationFrames) {
             plan.error = "Falas excedem a cena " + scene.id + ". Amplie a cena ou reduza o texto.";
             return plan;
         }
-        distribute(slots, openCues, weights, target.durationFrames - allocated);
+        distribute(cueSlots, openCues, weights, target.durationFrames - allocated);
         int assignedToCues = 0;
         for (std::size_t ci = 0; ci < scene.narration.size(); ++ci) {
             auto &cue = target.cues[ci];
             const auto count = std::int64_t(utterances[cue.id].samples.size());
             const int natural = int((count + samplesPerFrame - 1) / samplesPerFrame);
-            cue.slotFrames = slots[ci];
+            cue.slotFrames = cueSlots[ci];
             cue.speechFrames = std::min(natural, cue.slotFrames);
             assignedToCues += cue.slotFrames;
             if (cue.slotFrames - cue.speechFrames > 90)

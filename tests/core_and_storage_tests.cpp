@@ -72,9 +72,33 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 4;
+        malformed["schemaVersion"] = 5;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
+        auto shotProject = studio::makeEmpty();
+        shotProject.schemaVersion = 4;
+        shotProject.duration = 120;
+        shotProject.scenes = {{"story", "História", "Uma fala", 0, 120}};
+        shotProject.shots = {{"wide", "story", "Plano aberto", "cut", 0, 60},
+                             {"detail", "story", "Detalhe", "cut", 60, 60}};
+        studio::Node shotNode;
+        shotNode.id = "price";
+        shotNode.name = "Preço";
+        shotNode.sceneId = "story";
+        shotNode.shotId = "detail";
+        shotNode.start = 60;
+        shotNode.duration = 60;
+        shotProject.nodes = {shotNode};
+        shotProject.visualBeats = {{"reveal", "detail", "price", "show", 72, 0}};
+        check(studio::validate(shotProject).empty(), "valid independent shots and beat");
+        auto persistedShots = studio::deserialize(studio::serialize(shotProject));
+        check(persistedShots.error.isEmpty() && persistedShots.project.shots.size() == 2 &&
+                  persistedShots.project.visualBeats.size() == 1 &&
+                  persistedShots.project.nodes.front().shotId == "detail",
+              "shots, beat and node ownership survive schema 4 roundtrip");
+        auto brokenShots = shotProject;
+        brokenShots.shots[1].start = 59;
+        check(!studio::validate(brokenShots).empty(), "reject overlapping visual shots");
         check(!studio::deserialize("{broken").error.isEmpty(), "reject broken JSON");
         QTemporaryDir directory;
         auto path = directory.filePath("project.studio.json");

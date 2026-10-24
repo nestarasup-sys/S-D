@@ -11,8 +11,7 @@ double FrameRate::value() const {
     return double(numerator) / denominator;
 }
 bool supportedEasing(const std::string &name) {
-    return name == "linear" || name == "ease-in" || name == "ease-out" ||
-           name == "ease-in-out";
+    return name == "linear" || name == "ease-in" || name == "ease-out" || name == "ease-in-out";
 }
 namespace {
 double eased(double t, const std::string &curve) {
@@ -24,7 +23,7 @@ double eased(double t, const std::string &curve) {
         return t * t * (3 - 2 * t);
     return t; // Preserve original interpolation when easing was absent.
 }
-}
+} // namespace
 std::string validate(const Project &p) {
     if (p.schemaVersion != 2 && p.schemaVersion != 3 && p.schemaVersion != 4)
         return "Versão de projeto não suportada.";
@@ -105,8 +104,7 @@ std::string validate(const Project &p) {
     for (const auto &shot : p.shots) {
         if (shot.id.empty() || !shotIds.insert(shot.id).second || !sceneIds.contains(shot.sceneId) ||
             shot.start < 0 || shot.duration < 1 || shot.start >= p.duration ||
-            shot.duration > p.duration - shot.start || shot.name.size() > 120 ||
-            shot.transitionIn != "cut")
+            shot.duration > p.duration - shot.start || shot.name.size() > 120 || shot.transitionIn != "cut")
             return "Plano visual inválido; esta versão exige cortes secos.";
         const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
             return candidate.id == shot.sceneId;
@@ -118,9 +116,8 @@ std::string validate(const Project &p) {
         shotsByScene[shot.sceneId].push_back(&shot);
     }
     for (auto &[sceneId, sceneShots] : shotsByScene) {
-        std::sort(sceneShots.begin(), sceneShots.end(), [](const auto *a, const auto *b) {
-            return a->start < b->start;
-        });
+        std::sort(sceneShots.begin(), sceneShots.end(),
+                  [](const auto *a, const auto *b) { return a->start < b->start; });
         const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
             return candidate.id == sceneId;
         });
@@ -142,8 +139,7 @@ std::string validate(const Project &p) {
     for (const auto &beat : p.visualBeats) {
         const auto shot = shotsById.find(beat.shotId);
         if (beat.id.empty() || !beatIds.insert(beat.id).second || shot == shotsById.end() || beat.frame < 0 ||
-            beat.frame >= p.duration || beat.durationFrames < 0 ||
-            beat.frame < shot->second->start ||
+            beat.frame >= p.duration || beat.durationFrames < 0 || beat.frame < shot->second->start ||
             beat.durationFrames > shot->second->start + shot->second->duration - beat.frame - 1 ||
             (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
              beat.action != "camera"))
@@ -155,8 +151,7 @@ std::string validate(const Project &p) {
             const auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
                 return candidate.id == beat.targetId;
             });
-            if (node == p.nodes.end() || node->shotId != beat.shotId ||
-                beat.action == "camera")
+            if (node == p.nodes.end() || node->shotId != beat.shotId || beat.action == "camera")
                 return "Visual Beat aponta para um elemento inexistente ou de outro shot.";
         }
         auto validNumber = [](const std::optional<double> &value, double minimum, double maximum) {
@@ -217,9 +212,14 @@ std::string validate(const Project &p) {
         if (key.frame < 0 || key.frame >= p.duration || key.frame <= previousCamera ||
             !std::isfinite(key.x) || std::abs(key.x) > 10000 || !std::isfinite(key.y) ||
             std::abs(key.y) > 10000 || !std::isfinite(key.zoom) || key.zoom < 0.1 || key.zoom > 10 ||
-            !std::isfinite(key.rotation) || std::abs(key.rotation) > 360 ||
-            !supportedEasing(key.easing))
+            !std::isfinite(key.rotation) || std::abs(key.rotation) > 360 || !supportedEasing(key.easing))
             return "Keyframes da câmera inválidos ou fora de ordem.";
+        if (!key.shotId.empty()) {
+            const auto shot = shotsById.find(key.shotId);
+            if (shot == shotsById.end() || key.frame < std::max<std::int64_t>(0, shot->second->start - 1) ||
+                key.frame >= shot->second->start + shot->second->duration)
+                return "Keyframe da câmera aponta para um shot inexistente ou fora do intervalo.";
+        }
         previousCamera = key.frame;
     }
     if (p.audioSource.size() > 4096)
@@ -278,8 +278,10 @@ Project makeDemo() {
     title.parentId = board.id;
     subtitle.parentId = board.id;
     p.nodes = {accent, title, subtitle, board};
-    p.camera = {
-        {0, 640, 360, 1.10, 0}, {72, 640, 360, 1, 0}, {220, 760, 360, 1.08, 0}, {359, 640, 360, 1, 0}};
+    p.camera = {{0, 640, 360, 1.10, 0, "linear", {}},
+                {72, 640, 360, 1, 0, "linear", {}},
+                {220, 760, 360, 1.08, 0, "linear", {}},
+                {359, 640, 360, 1, 0, "linear", {}}};
     return p;
 }
 const Node *findNode(const Project &p, const std::string &id) {

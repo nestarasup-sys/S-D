@@ -41,22 +41,23 @@ Node textNode(std::string id, std::string text, double x, double y, double width
 }
 bool compileElement(const DirectedElement &directed,
                     const std::vector<std::pair<std::int64_t, std::int64_t>> &cues, std::int64_t sceneStart,
-                    std::int64_t sceneEnd, const std::string &sceneId, std::int64_t samplesPerFrame,
-                    Project &project, QString &error) {
+                    std::int64_t sceneEnd, const std::string &sceneId, const std::string &shotId,
+                    std::int64_t samplesPerFrame, Project &project, QString &error) {
     auto node = directed.node;
     const auto cue = cues[directed.cue];
     const auto anchor = cueFrame(cue, directed.offsetSeconds, directed.cueProgress);
     node.start = anchor + (directed.presetTiming ? node.start : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
-    const auto end = directed.presetTiming ? std::min(availableEnd, node.start + node.duration)
-                                           : availableEnd;
+    const auto end =
+        directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
     if (node.start >= end) {
         error = "Elemento começa depois do intervalo disponível: " + QString::fromStdString(node.id);
         return false;
     }
     node.duration = end - node.start;
     node.sceneId = sceneId;
+    node.shotId = shotId;
     if (directed.presetTiming) {
         for (auto &key : node.keyframes)
             key.frame += anchor;
@@ -84,10 +85,33 @@ bool compileElement(const DirectedElement &directed,
         }
     project.nodes.push_back(node);
     for (const auto &child : directed.children)
-        if (!compileElement(child, cues, sceneStart, sceneEnd, sceneId, samplesPerFrame, project, error))
+        if (!compileElement(child, cues, sceneStart, sceneEnd, sceneId, shotId, samplesPerFrame, project,
+                            error))
             return false;
     Q_UNUSED(sceneStart);
     return true;
+}
+std::int64_t resolveTime(const DirectedTime &time,
+                         const std::vector<std::pair<std::int64_t, std::int64_t>> &cues) {
+    return cueFrame(cues[time.cue], time.offsetSeconds, time.progress);
+}
+VisualState beatState(const VisualState &current, const DirectedBeat &beat, double baseOpacity) {
+    auto next = current;
+    if (beat.action == "show")
+        next.opacity = baseOpacity;
+    else if (beat.action == "hide")
+        next.opacity = 0;
+    if (beat.x)
+        next.x = *beat.x;
+    if (beat.y)
+        next.y = *beat.y;
+    if (beat.rotation)
+        next.rotation = *beat.rotation;
+    if (beat.scale)
+        next.scale = *beat.scale;
+    if (beat.opacity)
+        next.opacity = *beat.opacity;
+    return next;
 }
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
@@ -95,24 +119,25 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
-    p.schemaVersion = 3;
+    p.schemaVersion = recipe.version >= 3 ? 4 : 3;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();
     constexpr std::int64_t samplesPerFrame = ProductionSampleRate / 30;
     const bool fixed = recipe.timingMode == "fit-to-duration";
-    if (fixed && (!timing || !timing->error.isEmpty() ||
-                  timing->scenes.size() != recipe.scenes.size() || timing->targetFrames <= 0)) {
+    if (fixed && (!timing || !timing->error.isEmpty() || timing->scenes.size() != recipe.scenes.size() ||
+                  timing->targetFrames <= 0)) {
         r.error = "Plano temporal ajustado ausente ou incompatível.";
         return r;
     }
     std::vector<std::int64_t> transitions;
     int captionIndex = 0;
+    CameraState previousShotCamera{640, 360, 1, 0};
     for (std::size_t sceneIndex = 0; sceneIndex < recipe.scenes.size(); ++sceneIndex) {
         const auto &scene = recipe.scenes[sceneIndex];
         const TimedScene *sceneTiming = fixed ? &timing->scenes[sceneIndex] : nullptr;
-        if (fixed && (sceneTiming->cues.size() != scene.narration.size() ||
-                      sceneTiming->durationFrames <= 0)) {
+        if (fixed &&
+            (sceneTiming->cues.size() != scene.narration.size() || sceneTiming->durationFrames <= 0)) {
             r.error = "Plano temporal de cena inválido.";
             return r;
         }
@@ -216,17 +241,125 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             title.role = "header";
             p.nodes.push_back(title);
         }
-        for (const auto &directed : scene.elements) {
-            if (!compileElement(directed, cues, sceneStart, sceneStart + sceneDuration,
-                                scene.id.toStdString(), samplesPerFrame, p, r.error))
+        if (recipe.version >= 3) {
+            struct ResolvedShot {
+                const DirectedShot *source;
+                std::int64_t start;
+            };
+            std::vector<ResolvedShot> shots;
+            shots.reserve(scene.shots.size());
+            for (const auto &shot : scene.shots)
+                shots.push_back({&shot, resolveTime(shot.start, cues)});
+            std::sort(shots.begin(), shots.end(),
+                      [](const auto &a, const auto &b) { return a.start < b.start; });
+            if (shots.empty() || shots.front().start != sceneStart) {
+                r.error = "O primeiro shot deve começar no início da cena: " + scene.id;
                 return r;
+            }
+            for (std::size_t shotIndex = 0; shotIndex < shots.size(); ++shotIndex) {
+                const auto &directedShot = *shots[shotIndex].source;
+                const auto shotStart = shots[shotIndex].start;
+                const auto shotEnd =
+                    shotIndex + 1 < shots.size() ? shots[shotIndex + 1].start : sceneStart + sceneDuration;
+                if (shotStart < sceneStart || shotStart >= shotEnd || shotEnd > sceneStart + sceneDuration) {
+                    r.error = "Início de shot repetido ou fora dos limites da cena: " + directedShot.id;
+                    return r;
+                }
+                p.shots.push_back({directedShot.id.toStdString(), scene.id.toStdString(),
+                                   directedShot.name.toStdString(), directedShot.transitionIn.toStdString(),
+                                   shotStart, shotEnd - shotStart});
+                for (const auto &element : directedShot.elements)
+                    if (!compileElement(element, cues, shotStart, shotEnd, scene.id.toStdString(),
+                                        directedShot.id.toStdString(), samplesPerFrame, p, r.error))
+                        return r;
+
+                CameraState shotCamera{directedShot.cameraX, directedShot.cameraY, directedShot.cameraZoom,
+                                       directedShot.cameraRotation};
+                if (shotStart > 0)
+                    p.camera.push_back({shotStart - 1, previousShotCamera.x, previousShotCamera.y,
+                                        previousShotCamera.zoom, previousShotCamera.rotation, "linear",
+                                        directedShot.id.toStdString()});
+                p.camera.push_back({shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                    shotCamera.rotation, "linear", directedShot.id.toStdString()});
+                auto beats = directedShot.beats;
+                std::sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
+                    return resolveTime(a.at, cues) < resolveTime(b.at, cues);
+                });
+                for (const auto &beat : beats) {
+                    const auto beatFrame = resolveTime(beat.at, cues);
+                    if (beatFrame < shotStart || beatFrame >= shotEnd ||
+                        beat.durationFrames > shotEnd - beatFrame - 1) {
+                        r.error = "Visual Beat fica fora do shot: " + beat.id;
+                        return r;
+                    }
+                    VisualBeat stored;
+                    stored.id = beat.id.toStdString();
+                    stored.shotId = directedShot.id.toStdString();
+                    stored.targetId = beat.targetId.toStdString();
+                    stored.action = beat.action.toStdString();
+                    stored.frame = beatFrame;
+                    stored.durationFrames = beat.durationFrames;
+                    stored.x = beat.x;
+                    stored.y = beat.y;
+                    stored.rotation = beat.rotation;
+                    stored.scale = beat.scale;
+                    stored.opacity = beat.opacity;
+                    stored.zoom = beat.zoom;
+                    p.visualBeats.push_back(std::move(stored));
+                    if (beat.action == "camera") {
+                        CameraState target = shotCamera;
+                        target.x = beat.x.value_or(target.x);
+                        target.y = beat.y.value_or(target.y);
+                        target.rotation = beat.rotation.value_or(target.rotation);
+                        target.zoom = beat.zoom.value_or(target.zoom);
+                        if (beat.durationFrames > 0)
+                            p.camera.push_back({beatFrame, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                                shotCamera.rotation, "linear",
+                                                directedShot.id.toStdString()});
+                        p.camera.push_back({beatFrame + beat.durationFrames, target.x, target.y, target.zoom,
+                                            target.rotation, "linear", directedShot.id.toStdString()});
+                        shotCamera = target;
+                    } else {
+                        auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
+                            return candidate.id == beat.targetId.toStdString();
+                        });
+                        if (node == p.nodes.end() || node->shotId != directedShot.id.toStdString()) {
+                            r.error =
+                                "Visual Beat aponta para um elemento que não foi criado no shot: " + beat.id;
+                            return r;
+                        }
+                        auto current = evaluate(*node, beatFrame);
+                        const auto target = beatState(current, beat, node->opacity);
+                        std::map<std::int64_t, TransformKeyframe> keysByFrame;
+                        for (const auto &key : node->keyframes)
+                            keysByFrame[key.frame] = key;
+                        if (beat.durationFrames > 0)
+                            keysByFrame[beatFrame] = {beatFrame,        current.x,     current.y,
+                                                      current.rotation, current.scale, current.opacity};
+                        const auto targetFrame = beatFrame + beat.durationFrames;
+                        keysByFrame[targetFrame] = {targetFrame,     target.x,     target.y,
+                                                    target.rotation, target.scale, target.opacity};
+                        node->keyframes.clear();
+                        for (const auto &[frame, key] : keysByFrame) {
+                            Q_UNUSED(frame);
+                            node->keyframes.push_back(key);
+                        }
+                    }
+                }
+                previousShotCamera = shotCamera;
+            }
+        } else {
+            for (const auto &directed : scene.elements) {
+                if (!compileElement(directed, cues, sceneStart, sceneStart + sceneDuration,
+                                    scene.id.toStdString(), {}, samplesPerFrame, p, r.error))
+                    return r;
+            }
         }
         for (const auto &directedCamera : scene.camera) {
-            const auto frame = cueFrame(cues[directedCamera.cue], directedCamera.offsetSeconds,
-                                        directedCamera.cueProgress);
-            p.camera.push_back(
-                {frame, directedCamera.x, directedCamera.y, directedCamera.zoom, directedCamera.rotation,
-                 directedCamera.easing});
+            const auto frame =
+                cueFrame(cues[directedCamera.cue], directedCamera.offsetSeconds, directedCamera.cueProgress);
+            p.camera.push_back({frame, directedCamera.x, directedCamera.y, directedCamera.zoom,
+                                directedCamera.rotation, directedCamera.easing});
         }
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;

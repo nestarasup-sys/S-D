@@ -7,10 +7,11 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QUrl>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QUrl>
 #include <QUuid>
+#include <algorithm>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
 #include <studio/storage/workspace_store.hpp>
@@ -24,9 +25,9 @@ void EditorController::startProductionLog(const QString &recipeFileName) {
     const auto old = directory.entryInfoList({"production-*.jsonl"}, QDir::Files, QDir::Time);
     for (int i = 29; i < old.size(); ++i)
         QFile::remove(old[i].absoluteFilePath());
-    productionLogPath_ = directory.filePath(
-        "production-" + QDateTime::currentDateTimeUtc().toString("yyyyMMdd-HHmmss-zzz") + "-" +
-        QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) + ".jsonl");
+    productionLogPath_ =
+        directory.filePath("production-" + QDateTime::currentDateTimeUtc().toString("yyyyMMdd-HHmmss-zzz") +
+                           "-" + QUuid::createUuid().toString(QUuid::WithoutBraces).left(8) + ".jsonl");
     logProductionEvent("import-start", QFileInfo(recipeFileName).fileName());
     emit productionChanged();
 }
@@ -82,6 +83,34 @@ QVariantList EditorController::scenes() const {
                                 {"duration", int(s.duration)}});
     return list;
 }
+QVariantList EditorController::shots() const {
+    QVariantList list;
+    for (const auto &shot : project().shots) {
+        const bool hasPrevious =
+            std::any_of(project().shots.begin(), project().shots.end(), [&](const auto &other) {
+                return other.sceneId == shot.sceneId && other.start < shot.start;
+            });
+        list.append(QVariantMap{{"id", QString::fromStdString(shot.id)},
+                                {"sceneId", QString::fromStdString(shot.sceneId)},
+                                {"name", QString::fromStdString(shot.name)},
+                                {"transitionIn", QString::fromStdString(shot.transitionIn)},
+                                {"hasPrevious", hasPrevious},
+                                {"start", int(shot.start)},
+                                {"duration", int(shot.duration)}});
+    }
+    return list;
+}
+QVariantList EditorController::visualBeats() const {
+    QVariantList list;
+    for (const auto &beat : project().visualBeats)
+        list.append(QVariantMap{{"id", QString::fromStdString(beat.id)},
+                                {"shotId", QString::fromStdString(beat.shotId)},
+                                {"targetId", QString::fromStdString(beat.targetId)},
+                                {"action", QString::fromStdString(beat.action)},
+                                {"frame", int(beat.frame)},
+                                {"durationFrames", int(beat.durationFrames)}});
+    return list;
+}
 void EditorController::setupProduction() {
     connect(&production_, &QProcess::readyReadStandardOutput, this, [this] {
         productionBuffer_ += production_.readAllStandardOutput();
@@ -112,7 +141,8 @@ void EditorController::setupProduction() {
         [this](int code, QProcess::ExitStatus status) {
             logProductionEvent(code == 0 && status == QProcess::NormalExit ? "completed" : "failed",
                                QString("worker exitCode=%1 exitStatus=%2")
-                                   .arg(code).arg(status == QProcess::NormalExit ? "normal" : "crash"),
+                                   .arg(code)
+                                   .arg(status == QProcess::NormalExit ? "normal" : "crash"),
                                productionProgress_);
             if (code == 0 && status == QProcess::NormalExit) {
                 latestProduction_ = QUrl::fromLocalFile(productionDirectory_ + "/project.studio.json");
@@ -165,8 +195,9 @@ void EditorController::importProduction(QUrl recipe) {
         notify(parsed.error + " (veja Logs)");
         return;
     }
-    logProductionEvent("recipe-valid", QString("version=%1, scenes=%2")
-                           .arg(parsed.recipe.version).arg(parsed.recipe.scenes.size()));
+    logProductionEvent(
+        "recipe-valid",
+        QString("version=%1, scenes=%2").arg(parsed.recipe.version).arg(parsed.recipe.scenes.size()));
     stop();
     productionBaseline_ = studio::serialize(project());
     productionBuffer_.clear();

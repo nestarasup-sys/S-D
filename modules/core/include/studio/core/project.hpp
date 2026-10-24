@@ -21,12 +21,13 @@ struct CameraKeyframe {
     std::int64_t frame{0};
     double x{0}, y{0}, zoom{1}, rotation{0};
     std::string easing{"linear"};
+    std::string shotId; // Allows a cut and its camera events to move as one edit.
     bool operator==(const CameraKeyframe &) const = default;
 };
 struct Node {
     std::string id;
     std::string parentId; // Empty for composition roots; children use parent-local coordinates.
-    std::string shotId; // Empty for legacy/scene-wide elements; otherwise belongs to one visual shot.
+    std::string shotId;   // Empty for legacy/scene-wide elements; otherwise belongs to one visual shot.
     std::string name;
     NodeKind kind{NodeKind::Text};
     std::string text;

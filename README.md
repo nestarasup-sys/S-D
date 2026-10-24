@@ -32,11 +32,19 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 
 1. Escreva seu roteiro em qualquer lugar.
 2. Use o botão **Guia IA** para salvar o guia atual com os itens ativos da sua biblioteca pessoal. A cópia do repositório lista as capacidades nativas e explica como salvar um manifesto local.
-3. Envie à IA o roteiro e o guia gerado; peça uma receita v2 e salve a resposta como `.production.json`.
+3. Envie à IA o roteiro e o guia gerado; peça uma receita v3 quando quiser cortes/ações visuais dentro da mesma cena, ou v2 para uma composição tradicional, e salve como `.production.json`.
 4. No editor, use **Importar produção IA**. O app valida o plano, gera a voz local, mede os tempos e monta as cenas.
 5. Reproduza, ajuste os objetos e exporte MP4.
 
 Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyframes ligados às falas, câmera e referências por ID a itens pessoais ativos. Receitas v1 antigas continuam funcionando. Exemplos: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md), [receita v1 de carros](examples/carros-caros.production.json) e [composição livre v2](examples/composicao-livre-v2.production.json).
+
+## Shots e Visual Beats (receita v3)
+
+Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. Nesta versão, `transitionIn` aceita somente cortes secos.
+
+Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. São convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.
+
+O guia lista os campos, limites e restrições da v3. Exemplo completo: [shots e Visual Beats](examples/shots-visual-beats-v3.production.json). Veja também a [decisão de arquitetura 0009](docs/architecture/0009-shots-and-visual-beats.md).
 
 ## Duração fixa e sincronização proporcional à fala
 
@@ -48,7 +56,7 @@ Objetos, keyframes e câmera podem usar `cueProgress` de 0 a 1 para acompanhar p
 
 O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead, escolher curvas linear/ease-in/ease-out/ease-in-out no inspetor e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
 
-Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Agora grupos inteiros podem ser salvos e reutilizados como presets, inclusive pelo JSON v2 com `kind: library` e um ID do manifesto pessoal. Curvas de keyframes lineares e suavizadas agora podem ser escolhidas no inspetor para a câmera e os objetos. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Agora grupos inteiros podem ser salvos e reutilizados como presets, inclusive pelo JSON v2 com `kind: library` e um ID do manifesto pessoal. Curvas de keyframes lineares e suavizadas agora podem ser escolhidas no inspetor para a câmera e os objetos. Conectores e multi seleção continuam pendentes. Receitas v2 e v3 estão disponíveis; consulte as [decisões de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e [0009](docs/architecture/0009-shots-and-visual-beats.md), além da [direção futura](FUTURO-DO-APP.md).
 
 ## Diagnóstico de importação
 
@@ -104,13 +112,13 @@ Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-pro
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
 
-A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md). Os presets de grupos são detalhados na [ADR 0006](docs/architecture/0006-reusable-group-presets.md).
+A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md). Os presets de grupos são detalhados na [ADR 0006](docs/architecture/0006-reusable-group-presets.md). Shots e Visual Beats estão em [0009](docs/architecture/0009-shots-and-visual-beats.md).
 
 A evolução proposta a partir do vídeo de referência está em [Futuro do aplicativo](FUTURO-DO-APP.md): composição livre, grupos, câmera, documentos, vídeo e direção por IA. Esse documento é planejamento, não uma lista de recursos já implementados.
 
 ## Estado deste corte
 
-Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, produção declarativa, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2.
+Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, receitas v1/v2/v3, shots secos e Visual Beats, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2; v1–v3 continuam abrindo, e a produção v3 usa schema 4.
 
 Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, enquadramento de câmera por alvo, curvas Bézier personalizadas/trajetórias, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
 

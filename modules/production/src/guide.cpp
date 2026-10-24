@@ -22,16 +22,17 @@ QJsonObject capabilities() {
         poses.append(QString::fromStdString(pose));
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
-            {"productionVersion", 2},
-            {"projectVersion", 3},
+            {"productionVersion", 3},
+            {"projectVersion", 4},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
-                        "reusable-group-presets", "optional-visual-captions",
-                         "fixed-duration-timing", "cue-progress-sync", "pitch-preserving-atempo"}},
+                        "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
+                        "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
+                        "visual-beats-show-hide-transform-camera", "shot-cut-camera"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
-                        "keyframe-easing-curves"}},
+                        "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
             {"width", 1280},
             {"height", 720},
             {"fps", 30},
@@ -40,6 +41,9 @@ QJsonObject capabilities() {
             {"poses", poses},
             {"media", QJsonArray{"png", "jpeg", "webp", "bmp", "svg"}},
             {"maxScenes", 20},
+            {"maxShotsPerScene", 64},
+            {"maxShots", 256},
+            {"maxVisualBeats", 4096},
             {"maxNodes", 200},
             {"maxNarrationCharactersPerCue", 150},
             {"audio", QJsonArray{"windows-pt-BR-tts", "procedural-bed", "scene-chime"}}};
@@ -47,7 +51,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 2 · Projeto 3 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 4 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -55,11 +59,11 @@ Você é o diretor audiovisual. Transforme o roteiro em uma produção editável
 
 O usuário escreve o roteiro fora do aplicativo, fornece este guia à IA e salva a resposta em `.production.json`. **Importar produção IA** gera voz local, mede cada fala, resolve os cues, monta o projeto e sincroniza o áudio. A pessoa pode editar cada grupo e elemento no editor e exportar o vídeo. Não invente duração nem timestamps da fala.
 
-Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v2.
+Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções com cortes dentro da mesma fala, use v3.
 
 ## Como planejar a receita
 
-- Responda **somente com JSON válido**, sem comentários, cercas Markdown nem texto de apresentação. Use exatamente `format: "studio-dark-production"`, `version: 2` e `catalogVersion: 1`.
+- Responda **somente com JSON válido**, sem comentários, cercas Markdown nem texto de apresentação. Use `format: "studio-dark-production"` e `catalogVersion: 1`; escolha `version: 3` para shots/Visual Beats ou `version: 2` para a composição de cena tradicional.
 - Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
 - `offsetSeconds` varia de 0 a 10; `cueProgress` usa de 0 a 1 para acompanhar a fala final. Sem duração fixa, a duração natural depende da voz pt-BR e só é conhecida depois de sintetizar o WAV.
 - Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
@@ -67,7 +71,7 @@ Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v
 - Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
 - Revise antes de responder: JSON parseável, IDs únicos, no máximo 20 cenas, de 1 a 10 falas por cena, propriedades dentro dos limites e narração coerente com os visuais.
 
-## Receita v2
+## Receita v2 — compatibilidade
 
 ```json
 {
@@ -150,6 +154,58 @@ O Studio Dark sintetiza cada áudio primeiro, mede amostras a 24 kHz e depois pl
 Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. Isso não é alinhamento palavra por palavra.
 
 **Planejamento:** para 90 s, 2700 quadros a 30 FPS. A IA pode planejar mas não conhece a duração de uma voz local ainda não gerada. Evite silêncios excessivos; se o plano não couber, ajuste a narração ou os tempos. O aplicativo não inventa áudio para satisfazer qualquer número.
+
+## Receita v3 — cenas, shots e Visual Beats
+
+Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
+
+Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` atualmente aceita somente `cut`, que troca composição e câmera em um corte seco. Câmera do shot exige `x`, `y`, `zoom` e `rotation`; não há foco por ID nesta versão.
+
+Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuais editáveis no projeto. Sem referência temporal explícita, começam no início do shot. Os elementos e grupos continuam usando os tipos e propriedades documentados abaixo.
+
+Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. A edição manual ainda não oferece transições sobrepostas.
+
+Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
+
+Exemplo curto, válido e coberto por teste automatizado:
+
+```json
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "O preço do carro",
+  "scenes": [{
+    "id": "oferta",
+    "narration": ["O carro parece barato. Mas há um detalhe escondido."],
+    "shots": [
+      {
+        "id": "aberto", "name": "Carro", "start": {"cue": 0, "cueProgress": 0},
+        "transitionIn": "cut",
+        "camera": {"x": 640, "y": 360, "zoom": 1, "rotation": 0},
+        "elements": [{"id": "carro", "kind": "native", "asset": "car",
+          "x": 360, "y": 290, "width": 460, "height": 210, "cue": 0}]
+      },
+      {
+        "id": "detalhe", "name": "Preço", "start": {"cue": 0, "cueProgress": 0.55},
+        "transitionIn": "cut",
+        "camera": {"x": 640, "y": 360, "zoom": 1.15, "rotation": 0},
+        "elements": [{"id": "preco", "kind": "text", "text": "BARATO?",
+          "x": 420, "y": 240, "width": 440, "height": 100, "fontSize": 68,
+          "cue": 0, "cueProgress": 0.55}],
+        "beats": [
+          {"id": "revelar", "at": {"cue": 0, "cueProgress": 0.7},
+            "action": "show", "target": "preco"},
+          {"id": "aproximar", "at": {"cue": 0, "cueProgress": 0.85},
+            "action": "camera", "durationFrames": 8, "zoom": 1.35}
+        ]
+      }
+    ]
+  }]
+}
+```
+
+Uma demonstração com dois trechos de fala, três planos e beats de transformação está em `examples/shots-visual-beats-v3.production.json`.
 
 ## Composição, grupos e câmera
 
@@ -261,13 +317,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. No formato v2, campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. O projeto compilado permanece editável em schema 3.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots e beats. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v3 continuam abrindo; produções v3 são salvas em schema 4 com marcadores editáveis de shots e beats.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, trajetórias/curvas Bézier personalizadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, trajetórias/curvas Bézier personalizadas, transições além de corte seco, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
 
 ## Capacidades em JSON
 

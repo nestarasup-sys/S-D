@@ -89,6 +89,81 @@ int main(int argc, char **argv) {
         mutedRecipe.effectsGain = 0;
         auto muted = studio::compileProduction(mutedRecipe, speech, directory.filePath("muted.wav"));
         check(muted.mix.samples == muted.voice.samples, "zero gains mute procedural soundtrack");
+        QJsonObject shotRecipeJson{
+            {"format", "studio-dark-production"},
+            {"version", 3},
+            {"catalogVersion", 1},
+            {"title", "Cortes no mesmo trecho"},
+            {"scenes",
+             QJsonArray{QJsonObject{
+                 {"id", "car-story"},
+                 {"narration", QJsonArray{"O carro parecia barato, mas havia uma surpresa."}},
+                 {"shots",
+                  QJsonArray{
+                      QJsonObject{
+                          {"id", "wide"},
+                          {"name", "Plano aberto"},
+                          {"start", QJsonObject{{"cue", 0}, {"progress", 0}}},
+                          {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}},
+                          {"elements", QJsonArray{QJsonObject{{"id", "car-shape"},
+                                                              {"kind", "shape"},
+                                                              {"x", 140},
+                                                              {"y", 300},
+                                                              {"width", 500},
+                                                              {"height", 180},
+                                                              {"color", "#b4f078"}}}}},
+                      QJsonObject{
+                          {"id", "price-cut"},
+                          {"name", "Revelação do preço"},
+                          {"start", QJsonObject{{"cue", 0}, {"progress", 0.5}}},
+                          {"camera", QJsonObject{{"x", 650}, {"y", 350}, {"zoom", 1.25}, {"rotation", 0}}},
+                          {"elements", QJsonArray{QJsonObject{{"id", "price"},
+                                                              {"kind", "text"},
+                                                              {"text", "BARATO?"},
+                                                              {"x", 500},
+                                                              {"y", 250},
+                                                              {"width", 400},
+                                                              {"height", 100},
+                                                              {"fontSize", 64}}}},
+                          {"beats", QJsonArray{QJsonObject{{"id", "reveal-price"},
+                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.7}}},
+                                                           {"action", "show"},
+                                                           {"target", "price"}},
+                                               QJsonObject{{"id", "emphasize-price"},
+                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.8}}},
+                                                           {"action", "transform"},
+                                                           {"target", "price"},
+                                                           {"durationFrames", 2},
+                                                           {"scale", 1.2}},
+                                               QJsonObject{{"id", "camera-push"},
+                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.9}}},
+                                                           {"action", "camera"},
+                                                           {"durationFrames", 2},
+                                                           {"zoom", 1.4}}}}}}}}}}};
+        auto parsedShots = studio::parseRecipe(QJsonDocument(shotRecipeJson).toJson(), directory.path());
+        check(parsedShots.error.isEmpty() && parsedShots.recipe.scenes.front().shots.size() == 2 &&
+                  parsedShots.recipe.scenes.front().shots.back().beats.size() == 3,
+              "v3 parses independent shots and Visual Beats");
+        QFile shotFixture(QString(STUDIO_SOURCE_DIR) + "/examples/shots-visual-beats-v3.production.json");
+        check(shotFixture.open(QIODevice::ReadOnly), "v3 shots example exists");
+        const auto fileRecipe = studio::parseRecipe(shotFixture.readAll(), directory.path());
+        check(fileRecipe.error.isEmpty() && fileRecipe.recipe.version == 3 &&
+                  fileRecipe.recipe.scenes.front().shots.size() == 3,
+              "documented multi-shot v3 fixture is importable");
+        QMap<QString, studio::PcmAudio> shotAudio;
+        studio::PcmAudio shortSpeech;
+        shortSpeech.samples.resize(4800, .1f);
+        shotAudio.insert(parsedShots.recipe.scenes.front().narration.front().id, shortSpeech);
+        auto compiledShots = studio::compileProduction(parsedShots.recipe, shotAudio, "shots.wav");
+        check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 4 &&
+                  compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
+              "shots and beats compile into editable schema 4 project markers");
+        check(studio::validate(compiledShots.project).empty() &&
+                  studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
+                  studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,
+              "beat transforms compile into shot-owned editable keyframes");
+        check(studio::evaluateCamera(compiledShots.project, 7).zoom >= 1.4,
+              "camera Visual Beat produces a timed zoom after its event");
         auto missing = speech;
         missing.remove(parsed.recipe.scenes[0].narration[0].id);
         check(!studio::compileProduction(parsed.recipe, missing, "audio.wav").error.isEmpty(),
@@ -148,14 +223,14 @@ int main(int argc, char **argv) {
             {"captions", false},
             {"musicGain", 0},
             {"effectsGain", 0},
-            {"scenes", QJsonArray{QJsonObject{
-                {"id", "cena"},
-                {"narration", QJsonArray{"Testando uma composição animada."}},
-                {"elements", QJsonArray{QJsonObject{
-                    {"id", "reuse"}, {"kind", "library"}, {"assetId", grouped.id}, {"cue", 0}}}}
-            }}}};
-        auto recipeWithGroup = studio::parseRecipe(QJsonDocument(production).toJson(),
-                                                   directory.path(), catalog.data());
+            {"scenes", QJsonArray{QJsonObject{{"id", "cena"},
+                                              {"narration", QJsonArray{"Testando uma composição animada."}},
+                                              {"elements", QJsonArray{QJsonObject{{"id", "reuse"},
+                                                                                  {"kind", "library"},
+                                                                                  {"assetId", grouped.id},
+                                                                                  {"cue", 0}}}}}}}};
+        auto recipeWithGroup =
+            studio::parseRecipe(QJsonDocument(production).toJson(), directory.path(), catalog.data());
         check(recipeWithGroup.error.isEmpty(), "parse JSON with grouped library asset");
         QMap<QString, studio::PcmAudio> groupVoice;
         studio::PcmAudio voice;
@@ -166,9 +241,9 @@ int main(int argc, char **argv) {
               "compile grouped preset against measured audio");
         const auto *rootNode = studio::findNode(compiledGroup.project, "reuse");
         const auto *childNode = studio::findNode(compiledGroup.project, "reuse-preset-1");
-        check(rootNode && childNode && childNode->parentId == rootNode->id &&
-                  childNode->start == 10 && childNode->duration == 70 &&
-                  childNode->keyframes.size() == 2 && childNode->keyframes.front().frame == 15,
+        check(rootNode && childNode && childNode->parentId == rootNode->id && childNode->start == 10 &&
+                  childNode->duration == 70 && childNode->keyframes.size() == 2 &&
+                  childNode->keyframes.front().frame == 15,
               "group import retains parent, relative time and keyframes");
         check(studio::aiGuide(catalog.data()).contains("composição com 2 partes"),
               "guide includes grouped personal library item");
@@ -179,24 +254,36 @@ int main(int argc, char **argv) {
         check(studio::capabilities()["productionCapabilities"].toArray().contains("reusable-group-presets"),
               "capabilities advertise reusable group assets");
         auto easedJson = QJsonObject{
-            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
-            {"title", "Curvas por cue"}, {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
-            {"scenes", QJsonArray{QJsonObject{
-                {"id", "curvas"}, {"narration", QJsonArray{"Uma curva suaviza a câmera."}},
-                {"elements", QJsonArray{QJsonObject{
-                    {"id", "shape-easing"}, {"kind", "shape"}, {"cue", 0},
-                    {"keyframes", QJsonArray{
-                        QJsonObject{{"cue", 0}, {"x", 0}, {"y", 30}},
-                        QJsonObject{{"cue", 0}, {"offsetSeconds", 1}, {"x", 100}, {"y", 30},
-                                    {"easing", "ease-in"}}
-                    }}
-                }}},
-                {"camera", QJsonArray{
-                    QJsonObject{{"cue", 0}, {"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}},
-                    QJsonObject{{"cue", 0}, {"offsetSeconds", 1}, {"x", 740}, {"y", 360},
-                                {"zoom", 1}, {"rotation", 0}, {"easing", "ease-out"}}
-                }}
-            }}}};
+            {"format", "studio-dark-production"},
+            {"version", 2},
+            {"catalogVersion", 1},
+            {"title", "Curvas por cue"},
+            {"captions", false},
+            {"musicGain", 0},
+            {"effectsGain", 0},
+            {"scenes",
+             QJsonArray{QJsonObject{
+                 {"id", "curvas"},
+                 {"narration", QJsonArray{"Uma curva suaviza a câmera."}},
+                 {"elements", QJsonArray{QJsonObject{
+                                  {"id", "shape-easing"},
+                                  {"kind", "shape"},
+                                  {"cue", 0},
+                                  {"keyframes", QJsonArray{QJsonObject{{"cue", 0}, {"x", 0}, {"y", 30}},
+                                                           QJsonObject{{"cue", 0},
+                                                                       {"offsetSeconds", 1},
+                                                                       {"x", 100},
+                                                                       {"y", 30},
+                                                                       {"easing", "ease-in"}}}}}}},
+                 {"camera",
+                  QJsonArray{QJsonObject{{"cue", 0}, {"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}},
+                             QJsonObject{{"cue", 0},
+                                         {"offsetSeconds", 1},
+                                         {"x", 740},
+                                         {"y", 360},
+                                         {"zoom", 1},
+                                         {"rotation", 0},
+                                         {"easing", "ease-out"}}}}}}}};
         auto easedRecipe = studio::parseRecipe(QJsonDocument(easedJson).toJson(), directory.path());
         check(easedRecipe.error.isEmpty(), "JSON accepts named easing curves");
         auto invalidEasing = easedJson;
@@ -221,45 +308,58 @@ int main(int argc, char **argv) {
                   easedProject.project.camera[1].easing == "ease-out",
               "compiled visual and camera easing persisted");
         check(std::abs(studio::evaluate(*studio::findNode(easedProject.project, "shape-easing"), 15).x -
-                       12.5) < .001, "production uses easing in compositor");
+                       12.5) < .001,
+              "production uses easing in compositor");
         // Fit-to-duration: two exact scene budgets, one utterance requiring <15% acceleration.
         QJsonObject timed = {
-            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
-            {"title", "Tempo fixo"}, {"timingMode", "fit-to-duration"},
-            {"targetDurationSeconds", 4.1}, {"preserveVoicePitch", true},
-            {"musicGain", 0}, {"effectsGain", 0}, {"captions", true},
-            {"scenes", QJsonArray{
-                QJsonObject{
-                    {"id", "intro"}, {"targetDurationSeconds", 2.0},
-                    {"narration", QJsonArray{QJsonObject{{"text", "Primeiro trecho."},
-                                                       {"targetDurationSeconds", 2.0}}}},
-                    {"elements", QJsonArray{QJsonObject{
-                        {"id", "animated-through-speech"}, {"kind", "shape"}, {"cue", 0},
-                        {"cueProgress", 0},
-                        {"keyframes", QJsonArray{
-                            QJsonObject{{"cue", 0}, {"cueProgress", 0}, {"x", 100}},
-                            QJsonObject{{"cue", 0}, {"cueProgress", 1}, {"x", 500},
-                                        {"easing", "ease-in-out"}}
-                        }}
-                    }, QJsonObject{
-                        {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0},
-                        {"cueProgress", 0.5}
-                    }}},
-                    {"camera", QJsonArray{
-                        QJsonObject{{"cue", 0}, {"cueProgress", 0},
-                                    {"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}},
-                        QJsonObject{{"cue", 0}, {"cueProgress", 1},
-                                    {"x", 690}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}
-                    }}
-                },
-                QJsonObject{
-                    {"id", "fim"}, {"targetDurationSeconds", 2.1},
-                    {"narration", QJsonArray{QJsonObject{{"text", "Segundo trecho."},
-                                                       {"targetDurationSeconds", 2.1}}}},
-                    {"elements", QJsonArray{}}
-                }
-            }}
-        };
+            {"format", "studio-dark-production"},
+            {"version", 2},
+            {"catalogVersion", 1},
+            {"title", "Tempo fixo"},
+            {"timingMode", "fit-to-duration"},
+            {"targetDurationSeconds", 4.1},
+            {"preserveVoicePitch", true},
+            {"musicGain", 0},
+            {"effectsGain", 0},
+            {"captions", true},
+            {"scenes",
+             QJsonArray{
+                 QJsonObject{
+                     {"id", "intro"},
+                     {"targetDurationSeconds", 2.0},
+                     {"narration",
+                      QJsonArray{QJsonObject{{"text", "Primeiro trecho."}, {"targetDurationSeconds", 2.0}}}},
+                     {"elements",
+                      QJsonArray{
+                          QJsonObject{{"id", "animated-through-speech"},
+                                      {"kind", "shape"},
+                                      {"cue", 0},
+                                      {"cueProgress", 0},
+                                      {"keyframes",
+                                       QJsonArray{QJsonObject{{"cue", 0}, {"cueProgress", 0}, {"x", 100}},
+                                                  QJsonObject{{"cue", 0},
+                                                              {"cueProgress", 1},
+                                                              {"x", 500},
+                                                              {"easing", "ease-in-out"}}}}},
+                          QJsonObject{
+                              {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0}, {"cueProgress", 0.5}}}},
+                     {"camera", QJsonArray{QJsonObject{{"cue", 0},
+                                                       {"cueProgress", 0},
+                                                       {"x", 640},
+                                                       {"y", 360},
+                                                       {"zoom", 1},
+                                                       {"rotation", 0}},
+                                           QJsonObject{{"cue", 0},
+                                                       {"cueProgress", 1},
+                                                       {"x", 690},
+                                                       {"y", 360},
+                                                       {"zoom", 1},
+                                                       {"rotation", 0}}}}},
+                 QJsonObject{{"id", "fim"},
+                             {"targetDurationSeconds", 2.1},
+                             {"narration", QJsonArray{QJsonObject{{"text", "Segundo trecho."},
+                                                                  {"targetDurationSeconds", 2.1}}}},
+                             {"elements", QJsonArray{}}}}}};
         auto timedRecipe = studio::parseRecipe(QJsonDocument(timed).toJson(), directory.path());
         check(timedRecipe.error.isEmpty() && timedRecipe.recipe.timingMode == "fit-to-duration",
               "parse v2 fixed target, scene/cue slots and proportional keyframes");
@@ -270,21 +370,20 @@ int main(int argc, char **argv) {
         timedRaw.insert(timedRecipe.recipe.scenes[0].narration[0].id, firstSpeech);
         timedRaw.insert(timedRecipe.recipe.scenes[1].narration[0].id, secondSpeech);
         auto timingPlan = studio::planNarrationTiming(timedRecipe.recipe, timedRaw);
-        check(timingPlan.error.isEmpty() && timingPlan.targetFrames == 123 &&
-                  timingPlan.scenes.size() == 2 && timingPlan.scenes[0].durationFrames == 60 &&
-                  timingPlan.scenes[1].durationFrames == 63 &&
+        check(timingPlan.error.isEmpty() && timingPlan.targetFrames == 123 && timingPlan.scenes.size() == 2 &&
+                  timingPlan.scenes[0].durationFrames == 60 && timingPlan.scenes[1].durationFrames == 63 &&
                   timingPlan.scenes[1].cues[0].speechFrames == 63,
               "speech planner creates exact 30-fps budgets within 15% speed cap");
         check(!studio::compileProduction(timedRecipe.recipe, timedRaw, "no-plan.wav").error.isEmpty(),
               "fixed production requires a verified timing plan");
-        check(!studio::compileProduction(timedRecipe.recipe, timedRaw, "unadjusted.wav",
-                                         &timingPlan).error.isEmpty(),
+        check(!studio::compileProduction(timedRecipe.recipe, timedRaw, "unadjusted.wav", &timingPlan)
+                   .error.isEmpty(),
               "unadjusted audio cannot overflow the planned speech slot");
         auto simulatedRetimed = timedRaw;
         // The real worker uses FFmpeg atempo. Unit test supplies already adjusted sample count.
         simulatedRetimed[timedRecipe.recipe.scenes[1].narration[0].id].samples.resize(63 * 800);
-        auto timedResult = studio::compileProduction(timedRecipe.recipe, simulatedRetimed,
-                                                     "timed.wav", &timingPlan);
+        auto timedResult =
+            studio::compileProduction(timedRecipe.recipe, simulatedRetimed, "timed.wav", &timingPlan);
         check(timedResult.error.isEmpty() && timedResult.project.duration == 123 &&
                   timedResult.voice.samples.size() == 123 * 800 &&
                   timedResult.project.scenes[0].duration == 60 &&
@@ -292,8 +391,7 @@ int main(int argc, char **argv) {
               "exact project, audio and scene duration at 30 fps");
         const auto *half = studio::findNode(timedResult.project, "half-speech");
         const auto *animatedSpeech = studio::findNode(timedResult.project, "animated-through-speech");
-        check(half && half->start == 30 && animatedSpeech &&
-                  animatedSpeech->keyframes.size() == 2 &&
+        check(half && half->start == 30 && animatedSpeech && animatedSpeech->keyframes.size() == 2 &&
                   animatedSpeech->keyframes.front().frame == 0 &&
                   animatedSpeech->keyframes.back().frame == 59 &&
                   timedResult.project.camera.back().frame == 59,

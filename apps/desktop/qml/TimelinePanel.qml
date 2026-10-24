@@ -19,7 +19,7 @@ Rectangle {
             Layout.fillWidth: true; Layout.fillHeight: true; spacing: 12
             ColumnLayout {
                 Layout.preferredWidth: 175; Layout.minimumWidth: 175; Layout.maximumWidth: 175; Layout.fillHeight: true; spacing: 8
-                Label { text: "CAMADAS VISUAIS"; color: "#677e90"; font.pixelSize: 9; Layout.preferredHeight: 25 }
+                Label { text: editor.shots.length ? "SHOTS + CAMADAS" : "CAMADAS VISUAIS"; color: "#677e90"; font.pixelSize: 9; Layout.preferredHeight: 25 }
                 ListView {
                     id: trackLabels; Layout.fillWidth: true; Layout.fillHeight: true; clip: true; interactive: false
                     model: editor.nodes; spacing: 6
@@ -47,13 +47,15 @@ Rectangle {
                     MouseArea { anchors.fill: parent; onPressed: function(mouse) { editor.frame = Math.round(mouse.x / width * (editor.duration - 1)) }; onPositionChanged: function(mouse) { if (pressed) editor.frame = Math.round(mouse.x / width * (editor.duration - 1)) } }
                 }
                 Item {
+                    id: shotTrackArea
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                     Repeater {
                         model: 13
                         Rectangle { required property int index; x: index * (parent.width - 1) / 12; width: 1; height: parent.height; color: "#1e2b36" }
                     }
                     ListView {
-                        id: tracks; anchors.fill: parent; model: editor.nodes; clip: true; spacing: 6
+                        id: tracks; anchors.fill: parent; anchors.topMargin: editor.shots.length ? 27 : 0
+                        model: editor.nodes; clip: true; spacing: 6
                         ScrollBar.vertical: ScrollBar {}
                         delegate: Item {
                             id: track
@@ -88,6 +90,74 @@ Rectangle {
                                     onCanceled: editor.endGesture()
                                 }
                             }
+                        }
+                    }
+                    Repeater {
+                        model: editor.shots
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            x: modelData.start / editor.duration * parent.width
+                            y: 1
+                            width: Math.max(6, modelData.duration / editor.duration * parent.width)
+                            height: 22
+                            radius: 4
+                            color: "#304c46"
+                            border.width: 1
+                            border.color: "#70aa81"
+                            z: 2
+                            Label {
+                                anchors.fill: parent; anchors.leftMargin: 6
+                                text: modelData.name; color: "#d7eee1"
+                                verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight
+                                font.pixelSize: 9
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: editor.frame = modelData.start
+                            }
+                            Rectangle {
+                                visible: modelData.hasPrevious
+                                x: 0; y: 0; width: 8; height: parent.height
+                                color: "#b4f078"; opacity: boundaryArea.containsMouse || boundaryArea.pressed ? 1 : 0.55
+                                z: 2
+                                MouseArea {
+                                    id: boundaryArea
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeHorCursor
+                                    property real originX: 0
+                                    property int boundaryStart: 0
+                                    onPressed: function(mouse) {
+                                        if (editor.playing) editor.togglePlayback()
+                                        originX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
+                                        boundaryStart = modelData.start
+                                        editor.beginGesture()
+                                    }
+                                    onPositionChanged: function(mouse) {
+                                        if (pressed) {
+                                            const currentX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
+                                            const nextFrame = boundaryStart + Math.round((currentX - originX) / shotTrackArea.width * editor.duration)
+                                            editor.moveShotBoundary(modelData.id, nextFrame)
+                                        }
+                                    }
+                                    onReleased: editor.endGesture()
+                                    onCanceled: editor.endGesture()
+                                }
+                            }
+                        }
+                    }
+                    Repeater {
+                        model: editor.visualBeats
+                        delegate: Rectangle {
+                            required property var modelData
+                            x: modelData.frame / editor.duration * parent.width - 3
+                            y: 20
+                            width: 7; height: 7; radius: 2
+                            color: modelData.action === "camera" ? "#e9bd69" : "#b4f078"
+                            border.width: 1; border.color: "#101820"
+                            z: 3
+                            ToolTip.visible: beatArea.containsMouse
+                            ToolTip.text: modelData.action + " · " + modelData.targetId
+                            MouseArea { id: beatArea; anchors.fill: parent; hoverEnabled: true; onClicked: editor.frame = modelData.frame }
                         }
                     }
                     Rectangle {
