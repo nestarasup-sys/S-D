@@ -2,6 +2,8 @@
 
 Data: 24/10/2026. Estado: visão inicial de produto; protótipo nativo iniciado.
 
+> Direção de evolução após a análise do vídeo enviado pelo usuário: [FUTURO-DO-APP.md](FUTURO-DO-APP.md). O novo documento prioriza composição livre, grupos, câmera, mídia/documentos e uma receita de direção mais expressiva, aproveitando a base já implementada.
+
 > Atualização: após discussão com o usuário, a implementação experimental passou para C++20 + Qt Quick/QML. As tecnologias web citadas abaixo são o registro da proposta inicial. A decisão vigente, a estrutura real e os limites estão em [ADR 0001](docs/architecture/0001-native-prototype.md) e [README](README.md). O primeiro protótipo é de composição 2D; não conclui todas as etapas deste plano.
 
 > Evolução 0.2: foi implementada a primeira biblioteca nativa e o fluxo roteiro externo → receita JSON → voz/legendas → projeto editável → MP4. Consulte [ADR 0002](docs/architecture/0002-ai-directed-production.md), [guia para IA](docs/GUIA-PARA-IA.md) e [verificação](docs/verification/PRODUCAO-002.md). O exemplo sobre carros prova uma produção curta; os demais itens do roadmap continuam sendo planejamento.
