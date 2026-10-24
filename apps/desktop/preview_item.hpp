@@ -1,6 +1,7 @@
 #pragma once
 #include "editor_controller.hpp"
 #include <QQuickPaintedItem>
+#include <QTransform>
 #include <QtQml/qqmlregistration.h>
 #include <studio/composition/painter.hpp>
 
@@ -28,5 +29,6 @@ class PreviewItem : public QQuickPaintedItem {
     EditorController *controller_{nullptr};
     studio::CompositionPainter painter_;
     QPointF origin_, nodeOrigin_;
+    QTransform dragParentTransform_;
     bool dragging_{false};
 };

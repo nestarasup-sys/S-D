@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
         auto project = studio::deserialize(serialized);
         check(project.error.isEmpty() && studio::serialize(project.project) == serialized,
               "new schema roundtrip with scenes audio and native props");
-        auto legacy = QJsonDocument::fromJson(studio::serialize(studio::makeDemo())).object();
+        auto legacy = QJsonDocument::fromJson(studio::serialize(studio::makeEmpty())).object();
         legacy["schemaVersion"] = 1;
         legacy.remove("scenes");
         legacy.remove("audioSource");

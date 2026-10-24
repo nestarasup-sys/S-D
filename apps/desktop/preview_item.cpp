@@ -1,5 +1,66 @@
 #include "preview_item.hpp"
 #include <QMouseEvent>
+#include <algorithm>
+#include <vector>
+
+namespace {
+QTransform nodeTransform(const studio::Project &project, const studio::Node &node, std::int64_t frame,
+                         bool includeNode) {
+    const auto camera = studio::evaluateCamera(project, frame);
+    QTransform transform;
+    transform.translate(project.width / 2.0, project.height / 2.0);
+    transform.scale(camera.zoom, camera.zoom);
+    transform.rotate(camera.rotation);
+    transform.translate(-camera.x, -camera.y);
+    std::vector<const studio::Node *> chain;
+    auto parentId = includeNode ? node.id : node.parentId;
+    while (!parentId.empty()) {
+        const auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
+                                         [&](const auto &candidate) { return candidate.id == parentId; });
+        if (parent == project.nodes.end())
+            break;
+        chain.push_back(&*parent);
+        parentId = parent->parentId;
+    }
+    std::reverse(chain.begin(), chain.end());
+    for (const auto *part : chain) {
+        const auto state = studio::evaluate(*part, frame);
+        transform.translate(state.x, state.y);
+        transform.translate(part->width / 2, part->height / 2);
+        transform.rotate(state.rotation);
+        transform.scale(state.scale, state.scale);
+        transform.translate(-part->width / 2, -part->height / 2);
+    }
+    return transform;
+}
+void applyNodeTransform(QPainter &painter, const studio::Project &project, const studio::Node &node,
+                        std::int64_t frame) {
+    const auto camera = studio::evaluateCamera(project, frame);
+    painter.translate(project.width / 2.0, project.height / 2.0);
+    painter.scale(camera.zoom, camera.zoom);
+    painter.rotate(camera.rotation);
+    painter.translate(-camera.x, -camera.y);
+    std::vector<const studio::Node *> chain{&node};
+    auto parentId = node.parentId;
+    while (!parentId.empty()) {
+        const auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
+                                         [&](const auto &candidate) { return candidate.id == parentId; });
+        if (parent == project.nodes.end())
+            break;
+        chain.push_back(&*parent);
+        parentId = parent->parentId;
+    }
+    std::reverse(chain.begin(), chain.end());
+    for (const auto *part : chain) {
+        const auto state = studio::evaluate(*part, frame);
+        painter.translate(state.x, state.y);
+        painter.translate(part->width / 2, part->height / 2);
+        painter.rotate(state.rotation);
+        painter.scale(state.scale, state.scale);
+        painter.translate(-part->width / 2, -part->height / 2);
+    }
+}
+} // namespace
 
 PreviewItem::PreviewItem(QQuickItem *parent) : QQuickPaintedItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton);
@@ -27,17 +88,14 @@ void PreviewItem::paint(QPainter *painter) {
     painter_.paint(*painter, p, controller_->frame());
     auto n = studio::findNode(p, controller_->selectedId().toStdString());
     if (n && studio::active(*n, controller_->frame())) {
-        auto state = studio::evaluate(*n, controller_->frame());
         QPen pen(QColor("#b4f078"));
         pen.setWidthF(1.5 * p.width / width());
         pen.setStyle(Qt::DashLine);
         painter->setOpacity(1);
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
-        painter->translate(state.x + n->width / 2, state.y + n->height / 2);
-        painter->rotate(state.rotation);
-        painter->scale(state.scale, state.scale);
-        painter->drawRect(QRectF(-n->width / 2, -n->height / 2, n->width, n->height));
+        applyNodeTransform(*painter, p, *n, controller_->frame());
+        painter->drawRect(QRectF(0, 0, n->width, n->height));
     }
     painter->restore();
 }
@@ -52,21 +110,17 @@ void PreviewItem::mousePressEvent(QMouseEvent *event) {
     auto point = toProject(event->position());
     const auto &nodes = controller_->project().nodes;
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
-        if (!studio::active(*it, controller_->frame()))
+        if (!studio::active(*it, controller_->frame()) || it->kind == studio::NodeKind::Group)
             continue;
         if (it->role == "background")
             continue;
-        auto state = studio::evaluate(*it, controller_->frame());
-        QTransform transform;
-        transform.translate(state.x + it->width / 2, state.y + it->height / 2);
-        transform.rotate(state.rotation);
-        transform.scale(state.scale, state.scale);
-        transform.translate(-it->width / 2, -it->height / 2);
+        const auto transform = nodeTransform(controller_->project(), *it, controller_->frame(), true);
         if (QRectF(0, 0, it->width, it->height).contains(transform.inverted().map(point))) {
             if (controller_->playing())
                 controller_->togglePlayback();
             controller_->selectNode(QString::fromStdString(it->id));
-            origin_ = point;
+            dragParentTransform_ = nodeTransform(controller_->project(), *it, controller_->frame(), false);
+            origin_ = dragParentTransform_.inverted().map(point);
             nodeOrigin_ = {it->x, it->y};
             dragging_ = true;
             controller_->beginGesture();
@@ -80,7 +134,8 @@ void PreviewItem::mousePressEvent(QMouseEvent *event) {
 void PreviewItem::mouseMoveEvent(QMouseEvent *event) {
     if (!dragging_ || !controller_)
         return;
-    auto delta = toProject(event->position()) - origin_;
+    const auto localPoint = dragParentTransform_.inverted().map(toProject(event->position()));
+    auto delta = localPoint - origin_;
     controller_->moveSelected(qRound(nodeOrigin_.x() + delta.x()), qRound(nodeOrigin_.y() + delta.y()));
 }
 void PreviewItem::mouseReleaseEvent(QMouseEvent *) {

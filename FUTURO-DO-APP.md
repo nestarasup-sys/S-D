@@ -338,3 +338,9 @@ Esse piloto deve ser concluído antes de expandir o catálogo de efeitos e model
 - Os próximos investimentos principais são composição, câmera e mídia/documentos; a gestão de projetos e biblioteca da versão 0.3 continua sendo aproveitada.
 
 Próxima ação recomendada: **especificar o modelo de grupos/câmera e a receita v2 mínima, e construir a prova técnica da etapa 0**. Este documento orienta essa implementação futura; não a declara concluída.
+
+## 16. Progresso da implementação
+
+**Primeiro corte iniciado em 24/10/2026:** projeto schema v3 com grupos hierárquicos, keyframes lineares de transformação e câmera 2D. Prévia e render worker usam o mesmo avaliador; seleção e arraste no preview convertem as coordenadas pela câmera e pela hierarquia. O projeto de demonstração já exercita grupo e movimento de câmera. Projetos v1/v2 existentes continuam legíveis.
+
+Esse corte constrói a base do marco 0, mas ainda não conclui o marco: os controles para criar/editar grupos e keyframes, a migração explícita de projetos antigos e a comparação de desempenho entre renderizadores permanecem pendentes. O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada neste corte.

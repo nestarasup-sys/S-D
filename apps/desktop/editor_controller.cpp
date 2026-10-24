@@ -21,7 +21,8 @@ QString q(const std::string &s) {
 QVariantMap map(const studio::Node &n) {
     return {{"id", q(n.id)},
             {"name", q(n.name)},
-            {"kind", n.kind == studio::NodeKind::Text     ? "text"
+            {"kind", n.kind == studio::NodeKind::Group    ? "group"
+                     : n.kind == studio::NodeKind::Text   ? "text"
                      : n.kind == studio::NodeKind::Shape  ? "shape"
                      : n.kind == studio::NodeKind::Native ? "native"
                      : n.kind == studio::NodeKind::Svg    ? "svg"

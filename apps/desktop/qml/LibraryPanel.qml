@@ -34,7 +34,7 @@ Rectangle {
                 border.color: editor.selectedId === modelData.id ? "#557445" : "#2a3540"
                 RowLayout {
                     anchors.fill: parent; anchors.margins: 9; spacing: 9
-                    Label { text: modelData.kind === "text" ? "T" : modelData.kind === "image" ? "▧" : "▰"; color: modelData.color; font.pixelSize: 19; Layout.preferredWidth: 22 }
+                    Label { text: modelData.kind === "group" ? "▱" : modelData.kind === "text" ? "T" : modelData.kind === "image" ? "▧" : "▰"; color: modelData.color; font.pixelSize: 19; Layout.preferredWidth: 22 }
                     ColumnLayout {
                         spacing: 2; Layout.fillWidth: true
                         Label { text: modelData.name; color: "#d5dfe6"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }

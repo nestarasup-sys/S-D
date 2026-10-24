@@ -3,8 +3,10 @@
 #include <QImageReader>
 #include <QLinearGradient>
 #include <QSvgRenderer>
+#include <algorithm>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
+#include <vector>
 
 namespace studio {
 void CompositionPainter::paint(QPainter &painter, const Project &p, std::int64_t frame) {
@@ -16,17 +18,46 @@ void CompositionPainter::paint(QPainter &painter, const Project &p, std::int64_t
     glow.setColorAt(0, QColor("#1e3435"));
     glow.setColorAt(1, QColor("#0b1014"));
     painter.fillRect(QRect(0, 0, p.width, p.height), glow);
+    const auto camera = evaluateCamera(p, frame);
+    painter.save();
+    painter.translate(p.width / 2.0, p.height / 2.0);
+    painter.scale(camera.zoom, camera.zoom);
+    painter.rotate(camera.rotation);
+    painter.translate(-camera.x, -camera.y);
     for (const auto &n : p.nodes) {
-        auto state = evaluate(n, frame);
-        if (state.opacity <= 0)
+        std::vector<const Node *> chain{&n};
+        auto parentId = n.parentId;
+        while (!parentId.empty()) {
+            const auto parent = std::find_if(p.nodes.begin(), p.nodes.end(),
+                                             [&](const Node &candidate) { return candidate.id == parentId; });
+            if (parent == p.nodes.end())
+                break;
+            chain.push_back(&*parent);
+            parentId = parent->parentId;
+        }
+        std::reverse(chain.begin(), chain.end());
+        double opacity = 1;
+        bool visible = true;
+        for (const auto *part : chain) {
+            const auto state = evaluate(*part, frame);
+            if (state.opacity <= 0 || !active(*part, frame)) {
+                visible = false;
+                break;
+            }
+            opacity *= state.opacity;
+        }
+        if (!visible || n.kind == NodeKind::Group)
             continue;
         painter.save();
-        painter.setOpacity(state.opacity);
-        painter.translate(state.x, state.y);
-        painter.translate(n.width / 2, n.height / 2);
-        painter.rotate(state.rotation);
-        painter.scale(state.scale, state.scale);
-        painter.translate(-n.width / 2, -n.height / 2);
+        painter.setOpacity(opacity);
+        for (const auto *part : chain) {
+            const auto state = evaluate(*part, frame);
+            painter.translate(state.x, state.y);
+            painter.translate(part->width / 2, part->height / 2);
+            painter.rotate(state.rotation);
+            painter.scale(state.scale, state.scale);
+            painter.translate(-part->width / 2, -part->height / 2);
+        }
         const QRectF bounds(0, 0, n.width, n.height);
         if (n.kind == NodeKind::Shape) {
             painter.setPen(Qt::NoPen);
@@ -83,6 +114,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &p, std::int64_t
         }
         painter.restore();
     }
+    painter.restore();
 }
 QImage CompositionPainter::frame(const Project &p, std::int64_t f) {
     QImage image(p.width, p.height, QImage::Format_RGBA8888);

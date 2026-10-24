@@ -10,7 +10,7 @@ double FrameRate::value() const {
     return double(numerator) / denominator;
 }
 std::string validate(const Project &p) {
-    if (p.schemaVersion != 2)
+    if (p.schemaVersion != 2 && p.schemaVersion != 3)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -22,6 +22,7 @@ std::string validate(const Project &p) {
     if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200)
         return "Projeto excede os limites deste protótipo.";
     std::unordered_set<std::string> ids;
+    std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
     std::int64_t sceneEnd = 0;
     for (const auto &scene : p.scenes) {
@@ -33,6 +34,10 @@ std::string validate(const Project &p) {
     for (const auto &n : p.nodes) {
         if (n.id.empty() || !ids.insert(n.id).second)
             return "Identificação de objeto duplicada ou vazia.";
+        if (n.kind == NodeKind::Group)
+            parentIds.insert(n.id);
+        if (p.schemaVersion < 3 && (n.kind == NodeKind::Group || !n.parentId.empty() || !n.keyframes.empty()))
+            return "Grupos e keyframes exigem a versão 3 do projeto.";
         if (n.start < 0 || n.duration < 1 || n.start >= p.duration || n.duration > p.duration - n.start)
             return "Objeto fora da duração da sequência.";
         if (!std::isfinite(n.x) || !std::isfinite(n.y) || std::abs(n.x) > 10000 || std::abs(n.y) > 10000 ||
@@ -73,6 +78,54 @@ std::string validate(const Project &p) {
             return "Cor secundária inválida.";
         if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header")
             return "Papel visual desconhecido.";
+    }
+    for (const auto &n : p.nodes) {
+        if (!n.parentId.empty() && (n.parentId == n.id || !parentIds.contains(n.parentId)))
+            return "Grupo pai inexistente ou inválido.";
+        std::unordered_set<std::string> seen{n.id};
+        auto parent = n.parentId;
+        while (!parent.empty()) {
+            if (!seen.insert(parent).second)
+                return "Ciclo encontrado na hierarquia de grupos.";
+            auto it = std::find_if(p.nodes.begin(), p.nodes.end(),
+                                   [&](const Node &candidate) { return candidate.id == parent; });
+            if (it == p.nodes.end())
+                return "Grupo pai inexistente.";
+            parent = it->parentId;
+        }
+        if (!n.parentId.empty()) {
+            const auto parentNode = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
+                return candidate.id == n.parentId;
+            });
+            if (n.start < parentNode->start ||
+                n.start + n.duration > parentNode->start + parentNode->duration)
+                return "Elemento ultrapassa o intervalo do seu grupo.";
+        }
+        if (n.keyframes.size() > 256)
+            return "Um elemento pode ter no máximo 256 keyframes.";
+        std::int64_t previous = -1;
+        for (const auto &key : n.keyframes) {
+            if (key.frame < 0 || key.frame >= p.duration || key.frame <= previous || !std::isfinite(key.x) ||
+                std::abs(key.x) > 10000 || !std::isfinite(key.y) || std::abs(key.y) > 10000 ||
+                !std::isfinite(key.rotation) || std::abs(key.rotation) > 3600 || !std::isfinite(key.scale) ||
+                key.scale < 0.01 || key.scale > 10 || !std::isfinite(key.opacity) || key.opacity < 0 ||
+                key.opacity > 1)
+                return "Keyframes do elemento inválidos ou fora de ordem.";
+            previous = key.frame;
+        }
+    }
+    if (p.schemaVersion < 3 && !p.camera.empty())
+        return "Câmera animada exige a versão 3 do projeto.";
+    if (p.camera.size() > 256)
+        return "A câmera pode ter no máximo 256 keyframes.";
+    std::int64_t previousCamera = -1;
+    for (const auto &key : p.camera) {
+        if (key.frame < 0 || key.frame >= p.duration || key.frame <= previousCamera ||
+            !std::isfinite(key.x) || std::abs(key.x) > 10000 || !std::isfinite(key.y) ||
+            std::abs(key.y) > 10000 || !std::isfinite(key.zoom) || key.zoom < 0.1 || key.zoom > 10 ||
+            !std::isfinite(key.rotation) || std::abs(key.rotation) > 360)
+            return "Keyframes da câmera inválidos ou fora de ordem.";
+        previousCamera = key.frame;
     }
     if (p.audioSource.size() > 4096)
         return "Caminho de áudio inválido.";
@@ -119,7 +172,19 @@ Project makeDemo() {
     subtitle.color = "#a1aba9";
     subtitle.start = 45;
     subtitle.duration = 315;
-    p.nodes = {accent, title, subtitle};
+    Node board;
+    board.id = "composition-board";
+    board.name = "Grupo · Composição";
+    board.kind = NodeKind::Group;
+    board.width = p.width;
+    board.height = p.height;
+    board.duration = p.duration;
+    accent.parentId = board.id;
+    title.parentId = board.id;
+    subtitle.parentId = board.id;
+    p.nodes = {accent, title, subtitle, board};
+    p.camera = {
+        {0, 640, 360, 1.10, 0}, {72, 640, 360, 1, 0}, {220, 760, 360, 1.08, 0}, {359, 640, 360, 1, 0}};
     return p;
 }
 const Node *findNode(const Project &p, const std::string &id) {
@@ -147,6 +212,46 @@ VisualState evaluate(const Node &n, std::int64_t frame) {
     if (n.exitFrames > 0)
         opacity *= std::clamp(double(n.start + n.duration - 1 - frame) / n.exitFrames, 0., 1.);
     const auto scale = n.scale * ((n.animated && n.motion == "pop") ? 0.82 + 0.18 * ease : 1.);
-    return {x, y, opacity, n.rotation + n.spinDegrees * life, scale};
+    VisualState state{x, y, opacity, n.rotation + n.spinDegrees * life, scale};
+    if (n.keyframes.empty())
+        return state;
+    const auto upper =
+        std::upper_bound(n.keyframes.begin(), n.keyframes.end(), frame,
+                         [](std::int64_t f, const TransformKeyframe &key) { return f < key.frame; });
+    if (upper == n.keyframes.begin()) {
+        const auto &key = *upper;
+        return {key.x, key.y, key.opacity, key.rotation, key.scale};
+    }
+    if (upper == n.keyframes.end()) {
+        const auto &key = n.keyframes.back();
+        return {key.x, key.y, key.opacity, key.rotation, key.scale};
+    }
+    const auto &a = *(upper - 1);
+    const auto &b = *upper;
+    const double mixAmount = double(frame - a.frame) / double(b.frame - a.frame);
+    const auto mix = [mixAmount](double from, double to) { return from + (to - from) * mixAmount; };
+    return {mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity), mix(a.rotation, b.rotation),
+            mix(a.scale, b.scale)};
+}
+CameraState evaluateCamera(const Project &p, std::int64_t frame) {
+    CameraState state{p.width / 2.0, p.height / 2.0, 1, 0};
+    if (p.camera.empty())
+        return state;
+    const auto upper =
+        std::upper_bound(p.camera.begin(), p.camera.end(), frame,
+                         [](std::int64_t f, const CameraKeyframe &key) { return f < key.frame; });
+    if (upper == p.camera.begin()) {
+        const auto &k = *upper;
+        return {k.x, k.y, k.zoom, k.rotation};
+    }
+    if (upper == p.camera.end()) {
+        const auto &k = p.camera.back();
+        return {k.x, k.y, k.zoom, k.rotation};
+    }
+    const auto &a = *(upper - 1);
+    const auto &b = *upper;
+    const double t = double(frame - a.frame) / double(b.frame - a.frame);
+    const auto mix = [t](double from, double to) { return from + (to - from) * t; };
+    return {mix(a.x, b.x), mix(a.y, b.y), mix(a.zoom, b.zoom), mix(a.rotation, b.rotation)};
 }
 } // namespace studio

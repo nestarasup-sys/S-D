@@ -38,6 +38,12 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 
 Exemplo pronto: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md) e [direção correspondente](examples/carros-caros.production.json). O botão **Criar vídeo: carros caros** monta esse exemplo diretamente no editor; para criar o MP4, use Exportar.
 
+## Fundação de composição livre (schema v3)
+
+O projeto já aceita grupos hierárquicos, keyframes de posição/escala/rotação/opacidade e câmera 2D animada. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
+
+Este primeiro marco estabelece o formato e o motor. Controles para montar grupos e editar keyframes/câmera na interface, conectores e receita IA v2 ainda serão implementados em etapas seguintes. Consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+
 ## Testar pela interface
 
 1. A demonstração começa com texto e forma animados em uma composição de 12 segundos.

@@ -9,9 +9,20 @@ struct FrameRate {
     int denominator{1};
     double value() const;
 };
-enum class NodeKind { Text, Shape, Image, Native, Svg };
+enum class NodeKind { Text, Shape, Image, Native, Svg, Group };
+struct TransformKeyframe {
+    std::int64_t frame{0};
+    double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};
+    bool operator==(const TransformKeyframe &) const = default;
+};
+struct CameraKeyframe {
+    std::int64_t frame{0};
+    double x{0}, y{0}, zoom{1}, rotation{0};
+    bool operator==(const CameraKeyframe &) const = default;
+};
 struct Node {
     std::string id;
+    std::string parentId; // Empty for composition roots; children use parent-local coordinates.
     std::string name;
     NodeKind kind{NodeKind::Text};
     std::string text;
@@ -27,6 +38,7 @@ struct Node {
     std::string pose{"neutral"}, motion{"rise"}, secondaryColor{"#f3c49a"};
     double rotation{0}, scale{1}, travelX{0}, travelY{0}, spinDegrees{0};
     int motionFrames{24}, exitFrames{0};
+    std::vector<TransformKeyframe> keyframes;
     bool operator==(const Node &) const = default;
 };
 struct SceneMarker {
@@ -36,21 +48,26 @@ struct SceneMarker {
 struct Project {
     std::string id;
     std::string name{"Sem título"};
-    int schemaVersion{2};
+    int schemaVersion{3};
     int width{1280}, height{720};
     FrameRate fps;
     std::int64_t duration{360};
     std::vector<Node> nodes;
     std::vector<SceneMarker> scenes;
+    std::vector<CameraKeyframe> camera;
     std::string audioSource;
 };
 struct VisualState {
     double x, y, opacity, rotation{0}, scale{1};
+};
+struct CameraState {
+    double x{0}, y{0}, zoom{1}, rotation{0};
 };
 std::string validate(const Project &project);
 Project makeDemo();
 Project makeEmpty();
 const Node *findNode(const Project &, const std::string &id);
 VisualState evaluate(const Node &, std::int64_t frame);
+CameraState evaluateCamera(const Project &, std::int64_t frame);
 bool active(const Node &, std::int64_t frame);
 } // namespace studio
