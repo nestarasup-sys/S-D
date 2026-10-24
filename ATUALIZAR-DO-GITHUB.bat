@@ -52,7 +52,7 @@ echo Confira o nome da branch no GitHub antes de continuar.
 goto failed
 
 :fetch_failed
-echo ERRO: nao foi possivel buscar origin/main. Confira a conexao e o acesso ao GitHub.
+echo ERRO: nao foi possivel buscar origin/master. Confira a conexao e o acesso ao GitHub.
 goto failed
 
 :switch_failed
