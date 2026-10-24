@@ -9,8 +9,10 @@
 #include <QSaveFile>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <memory>
 #include <studio/production/compiler.hpp>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 static bool write(const QString &path, const QByteArray &bytes) {
     QSaveFile file(path);
@@ -23,15 +25,32 @@ static void report(QString stage, int progress, QString error = {}) {
                .toJson(QJsonDocument::Compact)
         << Qt::endl;
 }
+static QString missingMedia(const studio::DirectedElement &element) {
+    if (element.node.kind == studio::NodeKind::Image || element.node.kind == studio::NodeKind::Svg) {
+        const auto source = QString::fromStdString(element.node.source);
+        if (!QFileInfo::exists(source))
+            return source;
+    }
+    for (const auto &child : element.children)
+        if (auto missing = missingMedia(child); !missing.isEmpty())
+            return missing;
+    return {};
+}
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
     QCommandLineParser parser;
     parser.addHelpOption();
-    for (auto key : {"recipe", "output-dir", "guide", "capabilities", "cancel-file"})
+    for (auto key : {"recipe", "output-dir", "guide", "capabilities", "cancel-file", "workspace-root"})
         parser.addOption({key, key, key});
     parser.process(app);
+    std::unique_ptr<studio::WorkspaceStore> workspace;
+    if (parser.isSet("workspace-root"))
+        workspace = std::make_unique<studio::WorkspaceStore>(parser.value("workspace-root"));
     if (parser.isSet("guide"))
-        return write(parser.value("guide"), studio::aiGuide().toUtf8()) ? 0 : 1;
+        return write(parser.value("guide"),
+                     studio::aiGuide(workspace ? workspace->data() : QJsonObject{}).toUtf8())
+                   ? 0
+                   : 1;
     if (parser.isSet("capabilities"))
         return write(parser.value("capabilities"), QJsonDocument(studio::capabilities()).toJson()) ? 0 : 1;
     auto fail = [](QString error) {
@@ -42,15 +61,14 @@ int main(int argc, char **argv) {
     if (!input.open(QIODevice::ReadOnly) || input.size() > 1024 * 1024)
         return fail("Não foi possível ler a receita (máximo 1 MiB).");
     auto bytes = input.readAll();
-    auto parsed = studio::parseRecipe(bytes, QFileInfo(input).absolutePath());
+    auto parsed = studio::parseRecipe(bytes, QFileInfo(input).absolutePath(),
+                                      workspace ? workspace->data() : QJsonObject{});
     if (!parsed.error.isEmpty())
         return fail(parsed.error);
     for (const auto &scene : parsed.recipe.scenes)
         for (const auto &element : scene.elements)
-            if ((element.node.kind == studio::NodeKind::Image ||
-                 element.node.kind == studio::NodeKind::Svg) &&
-                !QFileInfo::exists(QString::fromStdString(element.node.source)))
-                return fail("Mídia local ausente: " + QString::fromStdString(element.node.source));
+            if (auto missing = missingMedia(element); !missing.isEmpty())
+                return fail("Mídia local ausente: " + missing);
     auto output = QDir(parser.value("output-dir")).absolutePath();
     if (parser.value("output-dir").isEmpty() || QDir(output).exists())
         return fail("Escolha uma pasta de produção nova.");
@@ -117,7 +135,8 @@ int main(int argc, char **argv) {
         return fail(saved.error);
     if (!write(output + "/subtitles.srt", compiled.subtitles.toUtf8()) ||
         !write(output + "/recipe.production.json", bytes) ||
-        !write(output + "/AI-GUIDE.md", studio::aiGuide().toUtf8()))
+        !write(output + "/AI-GUIDE.md",
+               studio::aiGuide(workspace ? workspace->data() : QJsonObject{}).toUtf8()))
         return fail("Falha ao registrar artefatos de produção.");
     QJsonArray timings;
     for (const auto &s : compiled.project.scenes)
@@ -130,6 +149,7 @@ int main(int argc, char **argv) {
                                     {"durationSeconds", double(compiled.project.duration) / 30},
                                     {"frameCount", double(compiled.project.duration)},
                                     {"nodes", int(compiled.project.nodes.size())},
+                                    {"recipeVersion", parsed.recipe.version},
                                     {"scenes", timings},
                                     {"alignment", "measured-utterance-audio"},
                                     {"audio", "voice + procedural music + scene chime"}})

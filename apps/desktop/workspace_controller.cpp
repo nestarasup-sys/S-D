@@ -6,11 +6,13 @@
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QSvgRenderer>
 #include <algorithm>
 #include <studio/composition/painter.hpp>
 #include <studio/core/library.hpp>
+#include <studio/production/recipe.hpp>
 
 namespace {
 QString defaultRoot() {
@@ -327,12 +329,14 @@ QString WorkspaceController::suggestedAssetName(QUrl source) const {
 }
 bool WorkspaceController::addAsset(QUrl source, QString name, QString category) {
     auto path = source.toLocalFile();
+    QSize mediaSize;
     if (QFileInfo(path).suffix().compare("svg", Qt::CaseInsensitive) == 0) {
         QSvgRenderer svg(path);
         if (QFileInfo(path).size() > 4 * 1024 * 1024 || !svg.isValid()) {
             notify("SVG inválido ou maior que 4 MiB.");
             return false;
         }
+        mediaSize = svg.defaultSize();
     } else {
         QImageReader reader(path);
         auto size = reader.size();
@@ -340,6 +344,7 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
             notify("Imagem inválida ou maior que 40 megapixels.");
             return false;
         }
+        mediaSize = size;
         size.scale(640, 640, Qt::KeepAspectRatio);
         reader.setScaledSize(size);
         if (reader.read().isNull()) {
@@ -347,12 +352,13 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
             return false;
         }
     }
-    return complete(store_.addAsset(name, category, path),
+    return complete(store_.addAsset(name, category, path, mediaSize.width(), mediaSize.height()),
                     "Item copiado para a biblioteca. O arquivo original não precisa ser movido.");
 }
 bool WorkspaceController::canSaveSelection() const {
     const auto *node = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
-    return hasDocument_ && node && node->kind != studio::NodeKind::Group;
+    return hasDocument_ && node && node->kind != studio::NodeKind::Group && node->parentId.empty() &&
+           node->keyframes.empty();
 }
 bool WorkspaceController::saveSelection(QString name, QString category) {
     auto n = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
@@ -362,6 +368,10 @@ bool WorkspaceController::saveSelection(QString name, QString category) {
     }
     if (n->kind == studio::NodeKind::Group) {
         notify("Salvar composições inteiras na biblioteca ainda será adicionado.");
+        return false;
+    }
+    if (!n->parentId.empty() || !n->keyframes.empty()) {
+        notify("Presets de grupos e keyframes ainda serão adicionados à biblioteca.");
         return false;
     }
     auto r = store_.addPreset(name, category, *n);
@@ -387,6 +397,18 @@ bool WorkspaceController::saveSelection(QString name, QString category) {
     studio::CompositionPainter painter;
     painter.frame(p, 60).scaled(480, 270).save(thumbnailPath(r.id));
     return complete(r, "Objeto personalizado salvo na biblioteca.");
+}
+void WorkspaceController::saveAiGuide(QUrl path) {
+    if (!store_.error().isEmpty()) {
+        notify(store_.error());
+        return;
+    }
+    QSaveFile file(path.toLocalFile());
+    const auto bytes = studio::aiGuide(store_.data()).toUtf8();
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
+        notify("Não foi possível salvar o guia com a biblioteca atual.");
+    else
+        notify("Guia para IA salvo com o catálogo nativo e a biblioteca pessoal ativa.");
 }
 bool WorkspaceController::updateAsset(QString id, QString name, QString category) {
     return complete(store_.updateAsset(id, name, category), "Item organizado.");

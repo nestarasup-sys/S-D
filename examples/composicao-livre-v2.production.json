@@ -1,0 +1,105 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Uma ideia em movimento",
+  "voice": "auto",
+  "speechRate": 0,
+  "captions": false,
+  "musicGain": 0.025,
+  "effectsGain": 0.025,
+  "sources": [],
+  "scenes": [
+    {
+      "id": "mapa",
+      "narration": [
+        "Uma história pode começar com uma pergunta.",
+        "Depois, as peças encontram o seu lugar."
+      ],
+      "elements": [
+        {
+          "id": "quadro-investigacao",
+          "kind": "group",
+          "x": 190,
+          "y": 160,
+          "width": 900,
+          "height": 430,
+          "cue": 0,
+          "children": [
+            {
+              "id": "cartao-pergunta",
+              "kind": "shape",
+              "x": 20,
+              "y": 30,
+              "width": 590,
+              "height": 240,
+              "color": "#1d3039",
+              "cue": 0,
+              "keyframes": [
+                {"cue": 0, "x": -55, "y": 35, "opacity": 0, "scale": 0.94},
+                {"cue": 0, "offsetSeconds": 0.45, "x": 20, "y": 30, "opacity": 1, "scale": 1}
+              ]
+            },
+            {
+              "id": "texto-pergunta",
+              "kind": "text",
+              "text": "O que mudou?",
+              "x": 58,
+              "y": 90,
+              "width": 500,
+              "height": 100,
+              "fontSize": 54,
+              "color": "#e4f5e9",
+              "cue": 0
+            },
+            {
+              "id": "etiqueta-resposta",
+              "kind": "native",
+              "asset": "price-tag",
+              "x": 650,
+              "y": 150,
+              "width": 210,
+              "height": 125,
+              "cue": 1,
+              "keyframes": [
+                {"cue": 1, "x": 900, "y": 150, "opacity": 0, "scale": 0.9},
+                {"cue": 1, "offsetSeconds": 0.35, "x": 650, "y": 150, "opacity": 1, "scale": 1}
+              ]
+            }
+          ]
+        }
+      ],
+      "camera": [
+        {"cue": 0, "x": 450, "y": 360, "zoom": 1.28, "rotation": 0},
+        {"cue": 1, "x": 640, "y": 360, "zoom": 0.92, "rotation": 0}
+      ]
+    },
+    {
+      "id": "composicao",
+      "narration": [
+        "Com contexto, a pergunta ganha uma resposta mais clara."
+      ],
+      "elements": [
+        {
+          "id": "resposta",
+          "kind": "text",
+          "text": "A composição acompanha a ideia.",
+          "x": 210,
+          "y": 255,
+          "width": 860,
+          "height": 130,
+          "fontSize": 52,
+          "color": "#b4f078",
+          "cue": 0,
+          "keyframes": [
+            {"cue": 0, "x": 210, "y": 300, "opacity": 0, "scale": 0.96},
+            {"cue": 0, "offsetSeconds": 0.4, "x": 210, "y": 255, "opacity": 1, "scale": 1}
+          ]
+        }
+      ],
+      "camera": [
+        {"cue": 0, "x": 640, "y": 360, "zoom": 1, "rotation": 0}
+      ]
+    }
+  ]
+}

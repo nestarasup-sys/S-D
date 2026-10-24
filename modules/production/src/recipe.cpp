@@ -1,11 +1,17 @@
 #include <QDir>
+#include <QFileInfo>
+#include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSet>
+#include <QSvgRenderer>
 #include <QUrl>
+#include <algorithm>
 #include <cmath>
+#include <map>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
+#include <studio/storage/project_store.hpp>
 
 namespace studio {
 namespace {
@@ -23,8 +29,255 @@ bool number(const QJsonObject &o, const QString &key, double &target) {
     target = o[key].toDouble();
     return true;
 }
+QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
+    for (const auto &value : library["assets"].toArray()) {
+        const auto asset = value.toObject();
+        if (asset["id"].toString() == id)
+            return asset;
+    }
+    return {};
+}
+bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
+                  int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
+                  QString &error, int depth = 0) {
+    auto fail = [&](QString message) {
+        error = std::move(message);
+        return false;
+    };
+    if (depth > 8)
+        return fail("Grupos podem ter no máximo 8 níveis.");
+    QStringList keys{"id",
+                     "kind",
+                     "asset",
+                     "source",
+                     "text",
+                     "x",
+                     "y",
+                     "width",
+                     "height",
+                     "color",
+                     "secondaryColor",
+                     "fontSize",
+                     "opacity",
+                     "rotation",
+                     "scale",
+                     "travelX",
+                     "travelY",
+                     "spinDegrees",
+                     "motion",
+                     "motionFrames",
+                     "exitFrames",
+                     "pose",
+                     "cue",
+                     "offsetSeconds",
+                     "span"};
+    if (version >= 2)
+        keys << "assetId" << "children" << "keyframes";
+    if (!allowed(e, keys))
+        return fail("Elemento contém campo desconhecido.");
+    if (!e["id"].isString() || !e["kind"].isString())
+        return fail("Elemento precisa de id e tipo em texto.");
+    const auto id = e["id"].toString();
+    if (id.isEmpty() || id.size() > 80 || ids.contains(id))
+        return fail("ID de elemento vazio ou duplicado.");
+    ids.insert(id);
+    if (++elementCount > 200)
+        return fail("Produção excede 200 elementos, incluindo grupos.");
+    auto &n = element.node;
+    n.id = id.toStdString();
+    n.name = n.id;
+    const auto kind = e["kind"].toString();
+    if (kind == "group") {
+        if (version < 2 || !e["children"].isArray() || e["children"].toArray().isEmpty())
+            return fail("Grupo exige uma lista não vazia de filhos na receita v2.");
+        n.kind = NodeKind::Group;
+        n.name = "Grupo";
+        n.width = 600;
+        n.height = 400;
+    } else if (kind == "native") {
+        if (!e["asset"].isString())
+            return fail("Elemento nativo precisa do id asset.");
+        n.kind = NodeKind::Native;
+        n.nativeId = e["asset"].toString().toStdString();
+        const auto item = libraryItem(n.nativeId);
+        if (!item)
+            return fail("Objeto nativo desconhecido: " + QString::fromStdString(n.nativeId));
+        n.name = item->name;
+        n.width = item->width;
+        n.height = item->height;
+    } else if (kind == "library") {
+        if (version < 2 || !e["assetId"].isString())
+            return fail("Referência de biblioteca exige assetId e receita v2.");
+        const auto assetId = e["assetId"].toString();
+        const auto asset = libraryAsset(library, assetId);
+        if (asset.isEmpty() || asset["deleted"].toBool())
+            return fail("Item pessoal não está disponível na biblioteca: " + assetId);
+        const auto assetKind = asset["kind"].toString();
+        if (assetKind == "native") {
+            n.kind = NodeKind::Native;
+            n.nativeId = asset["nativeId"].toString().toStdString();
+            const auto item = libraryItem(n.nativeId);
+            if (!item)
+                return fail("Objeto nativo removido do catálogo: " + assetId);
+            n.name = item->name;
+            n.width = item->width;
+            n.height = item->height;
+        } else if (assetKind == "image" || assetKind == "svg") {
+            n.kind = assetKind == "svg" ? NodeKind::Svg : NodeKind::Image;
+            const auto source = asset["source"].toString();
+            if (source.isEmpty() || !QFileInfo::exists(source))
+                return fail("Arquivo do item pessoal ausente: " + assetId);
+            n.source = source.toStdString();
+            n.name = asset["name"].toString().toStdString();
+            if (asset["width"].isDouble() && asset["height"].isDouble()) {
+                n.width = asset["width"].toDouble();
+                n.height = asset["height"].toDouble();
+            } else if (assetKind == "svg") {
+                QSvgRenderer svg(source);
+                if (!svg.isValid() || svg.defaultSize().isEmpty())
+                    return fail("SVG pessoal inválido ou sem dimensões: " + assetId);
+                n.width = svg.defaultSize().width();
+                n.height = svg.defaultSize().height();
+            } else {
+                QImageReader reader(source);
+                const auto size = reader.size();
+                if (!reader.canRead() || size.isEmpty())
+                    return fail("Imagem pessoal inválida ou sem dimensões: " + assetId);
+                n.width = size.width();
+                n.height = size.height();
+            }
+            const double dimensionScale = std::min({1.0, 10000. / n.width, 10000. / n.height});
+            n.width *= dimensionScale;
+            n.height *= dimensionScale;
+        } else if (assetKind == "preset") {
+            const auto loaded = deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
+            if (!loaded.error.isEmpty() || loaded.project.nodes.size() != 1)
+                return fail("Preset da biblioteca inválido: " + assetId);
+            n = loaded.project.nodes.front();
+            n.parentId.clear();
+            n.keyframes.clear();
+            n.name = asset["name"].toString().toStdString();
+        } else
+            return fail("Tipo de item pessoal não suportado na receita: " + assetId);
+        n.id = id.toStdString();
+    } else if (kind == "text") {
+        n.kind = NodeKind::Text;
+        if (e.contains("text") && !e["text"].isString())
+            return fail("Texto do elemento precisa ser uma string.");
+        n.text = e["text"].toString().toStdString();
+        n.name = "Texto";
+    } else if (kind == "shape") {
+        n.kind = NodeKind::Shape;
+        n.name = "Forma";
+    } else if (kind == "image" || kind == "svg") {
+        n.kind = kind == "svg" ? NodeKind::Svg : NodeKind::Image;
+        const auto source = e["source"].toString();
+        if (source.isEmpty() || source.contains("://") || source.startsWith("//") ||
+            source.startsWith("\\\\"))
+            return fail("Mídia deve ser um arquivo local.");
+        n.source = QDir(baseDirectory).absoluteFilePath(source).toStdString();
+        n.name = source.toStdString();
+    } else
+        return fail("Tipo de elemento desconhecido.");
+
+    for (auto pair : {std::pair{"x", &n.x},
+                      {"y", &n.y},
+                      {"width", &n.width},
+                      {"height", &n.height},
+                      {"fontSize", &n.fontSize},
+                      {"opacity", &n.opacity},
+                      {"rotation", &n.rotation},
+                      {"scale", &n.scale},
+                      {"travelX", &n.travelX},
+                      {"travelY", &n.travelY},
+                      {"spinDegrees", &n.spinDegrees}})
+        if (!number(e, pair.first, *pair.second))
+            return fail("Propriedade numérica inválida.");
+    for (auto key : {"color", "secondaryColor", "motion", "pose"})
+        if (e.contains(key) && !e[key].isString())
+            return fail("Cor, movimento ou pose inválidos.");
+    if (e.contains("color"))
+        n.color = e["color"].toString().toStdString();
+    if (e.contains("secondaryColor"))
+        n.secondaryColor = e["secondaryColor"].toString().toStdString();
+    if (e.contains("motion"))
+        n.motion = e["motion"].toString().toStdString();
+    if (e.contains("pose"))
+        n.pose = e["pose"].toString().toStdString();
+    for (auto key : {"cue", "motionFrames", "exitFrames"})
+        if (e.contains(key) && (!e[key].isDouble() || std::floor(e[key].toDouble()) != e[key].toDouble()))
+            return fail("Cue e durações de movimento devem ser inteiros.");
+    element.cue = e["cue"].toInt(0);
+    element.offsetSeconds = e["offsetSeconds"].toDouble(0);
+    n.motionFrames = e["motionFrames"].toInt(24);
+    n.exitFrames = e["exitFrames"].toInt(8);
+    element.utteranceOnly = e["span"].toString("scene") == "utterance";
+    if (!number(e, "offsetSeconds", element.offsetSeconds) || element.offsetSeconds < 0 ||
+        element.offsetSeconds > 10 || element.cue < 0 || element.cue >= cueCount)
+        return fail("Cue ou deslocamento de elemento inválido.");
+    if (e.contains("span") && e["span"] != "scene" && e["span"] != "utterance")
+        return fail("Span deve ser scene ou utterance.");
+    if (e.contains("asset") && kind != "native")
+        return fail("Campo asset só vale para elementos native.");
+    if (e.contains("assetId") && kind != "library")
+        return fail("Campo assetId só vale para elementos library.");
+    if (e.contains("source") && kind != "image" && kind != "svg")
+        return fail("Campo source só vale para imagem ou SVG.");
+    if (e.contains("text") && kind != "text")
+        return fail("Campo text só vale para elementos de texto.");
+    if (e.contains("children") && kind != "group")
+        return fail("Somente grupos podem conter filhos.");
+    if (e.contains("keyframes")) {
+        if (!e["keyframes"].isArray() || e["keyframes"].toArray().size() > 256)
+            return fail("Keyframes devem ser uma lista de até 256 itens.");
+        for (const auto &keyValue : e["keyframes"].toArray()) {
+            if (!keyValue.isObject())
+                return fail("Keyframe inválido.");
+            const auto key = keyValue.toObject();
+            if (!allowed(key, {"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity"}))
+                return fail("Keyframe contém campo desconhecido.");
+            if (key.contains("cue") &&
+                (!key["cue"].isDouble() || std::floor(key["cue"].toDouble()) != key["cue"].toDouble()))
+                return fail("Cue de keyframe deve ser inteiro.");
+            for (auto field : {"cue", "offsetSeconds"})
+                if (key.contains(field) && !key[field].isDouble())
+                    return fail("Referência temporal de keyframe inválida.");
+            DirectedKeyframe parsed{key["cue"].toInt(element.cue),
+                                    key["offsetSeconds"].toDouble(0),
+                                    key["x"].toDouble(n.x),
+                                    key["y"].toDouble(n.y),
+                                    key["rotation"].toDouble(n.rotation),
+                                    key["scale"].toDouble(n.scale),
+                                    key["opacity"].toDouble(n.opacity)};
+            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.offsetSeconds) ||
+                parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
+                return fail("Cue de keyframe inválido.");
+            for (auto field : {"x", "y", "rotation", "scale", "opacity"})
+                if (key.contains(field) && !key[field].isDouble())
+                    return fail("Transformação de keyframe inválida.");
+            element.keyframes.push_back(parsed);
+        }
+    }
+    if (kind == "group")
+        for (const auto &child : e["children"].toArray()) {
+            if (!child.isObject())
+                return fail("Filho de grupo inválido.");
+            DirectedElement parsedChild;
+            if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
+                              parsedChild, error, depth + 1))
+                return false;
+            parsedChild.node.parentId = n.id;
+            element.children.push_back(std::move(parsedChild));
+        }
+    auto candidate = makeEmpty();
+    candidate.nodes = {n};
+    candidate.nodes.front().parentId.clear();
+    if (auto validation = validate(candidate); !validation.empty())
+        return fail(QString::fromStdString(validation));
+    return true;
+}
 } // namespace
-RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory) {
+RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, const QJsonObject &library) {
     RecipeResult result;
     auto fail = [&](QString message) {
         result.error = std::move(message);
@@ -37,12 +290,19 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory) 
     if (error.error != QJsonParseError::NoError || !doc.isObject())
         return fail("JSON de produção inválido.");
     const auto o = doc.object();
-    if (o["format"] != "studio-dark-production" || o["version"] != 1 || o["catalogVersion"] != 1)
+    if (!o["version"].isDouble() || std::floor(o["version"].toDouble()) != o["version"].toDouble())
+        return fail("Versão da receita deve ser inteira.");
+    const int version = o["version"].toInt();
+    if (o["format"] != "studio-dark-production" || (version != 1 && version != 2) || o["catalogVersion"] != 1)
         return fail("Formato, versão ou catálogo da receita não suportado.");
-    if (!allowed(o, {"format", "version", "catalogVersion", "title", "voice", "speechRate", "musicGain",
-                     "effectsGain", "scenes", "sources"}))
+    QStringList rootKeys{"format",     "version",   "catalogVersion", "title",  "voice",
+                         "speechRate", "musicGain", "effectsGain",    "scenes", "sources"};
+    if (version >= 2)
+        rootKeys << "captions";
+    if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
+    r.version = version;
     r.original = o;
     r.title = o["title"].toString().trimmed();
     if (r.title.isEmpty() || r.title.size() > 120)
@@ -51,6 +311,11 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory) 
         if (!o["voice"].isString())
             return fail("Voz inválida.");
         r.voice = o["voice"].toString();
+    }
+    if (o.contains("captions")) {
+        if (!o["captions"].isBool())
+            return fail("captions deve ser true ou false.");
+        r.renderCaptions = o["captions"].toBool();
     }
     if (o.contains("speechRate")) {
         double rate = o["speechRate"].toDouble(100);
@@ -64,25 +329,35 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory) 
     if (!o["scenes"].isArray() || o["scenes"].toArray().isEmpty() || o["scenes"].toArray().size() > 20)
         return fail("Use de 1 a 20 cenas.");
     QSet<QString> ids;
-    int totalText = 0, totalNodes = 0;
+    int totalText = 0, totalNodes = 0, totalCameraKeys = 0;
+    QString elementError;
     for (const auto sceneValue : o["scenes"].toArray()) {
         if (!sceneValue.isObject())
             return fail("Cena inválida.");
         const auto s = sceneValue.toObject();
-        if (!allowed(s, {"id", "title", "kicker", "background", "narration", "elements"}))
+        QStringList sceneKeys{"id", "title", "kicker", "background", "narration", "elements"};
+        if (version >= 2)
+            sceneKeys << "camera";
+        if (!allowed(s, sceneKeys))
             return fail("Campo de cena desconhecido.");
+        if (!s["id"].isString() || (s.contains("title") && !s["title"].isString()) ||
+            (s.contains("kicker") && !s["kicker"].isString()) ||
+            (s.contains("background") && !s["background"].isString()))
+            return fail("Identificação, título, kicker ou cenário da cena inválidos.");
         DirectedScene scene;
         scene.id = s["id"].toString();
         scene.title = s["title"].toString();
         scene.kicker = s["kicker"].toString();
-        scene.background = s["background"].toString("studio");
+        scene.background = s["background"].toString(version == 1 ? "studio" : "");
         if (scene.id.isEmpty() || scene.id.size() > 80 || ids.contains(scene.id) || scene.title.size() > 70 ||
             scene.kicker.size() > 70)
             return fail("Identificação ou texto de cena inválido.");
         ids.insert(scene.id);
-        const auto bg = libraryItem(scene.background.toStdString());
-        if (!bg || bg->category != "cenários")
-            return fail("Cenário desconhecido: " + scene.background);
+        if (!scene.background.isEmpty()) {
+            const auto bg = libraryItem(scene.background.toStdString());
+            if (!bg || bg->category != "cenários")
+                return fail("Cenário desconhecido: " + scene.background);
+        }
         if (!s["narration"].isArray() || s["narration"].toArray().isEmpty() ||
             s["narration"].toArray().size() > 10)
             return fail("Cada cena precisa de 1 a 10 trechos de narração.");
@@ -95,115 +370,49 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory) 
         }
         if (!s["elements"].isArray())
             return fail("Lista de elementos ausente.");
+        int elementCount = 0;
         for (const auto elementValue : s["elements"].toArray()) {
             if (!elementValue.isObject())
                 return fail("Elemento inválido.");
-            const auto e = elementValue.toObject();
-            if (!allowed(e, {"id",
-                             "kind",
-                             "asset",
-                             "source",
-                             "text",
-                             "x",
-                             "y",
-                             "width",
-                             "height",
-                             "color",
-                             "secondaryColor",
-                             "fontSize",
-                             "opacity",
-                             "rotation",
-                             "scale",
-                             "travelX",
-                             "travelY",
-                             "spinDegrees",
-                             "motion",
-                             "motionFrames",
-                             "exitFrames",
-                             "pose",
-                             "cue",
-                             "offsetSeconds",
-                             "span"}))
-                return fail("Elemento contém campo desconhecido.");
             DirectedElement element;
-            auto &n = element.node;
-            auto id = e["id"].toString();
-            if (id.isEmpty() || id.size() > 80 || ids.contains(id))
-                return fail("ID de elemento vazio ou duplicado.");
-            ids.insert(id);
-            n.id = id.toStdString();
-            n.name = n.id;
-            auto kind = e["kind"].toString();
-            if (kind == "native") {
-                n.kind = NodeKind::Native;
-                n.nativeId = e["asset"].toString().toStdString();
-                auto item = libraryItem(n.nativeId);
-                if (!item || item->category == "cenários")
-                    return fail("Objeto nativo desconhecido: " + QString::fromStdString(n.nativeId));
-                n.name = item->name;
-                n.width = item->width;
-                n.height = item->height;
-            } else if (kind == "text") {
-                n.kind = NodeKind::Text;
-                n.text = e["text"].toString().toStdString();
-                n.name = "Texto";
-            } else if (kind == "shape") {
-                n.kind = NodeKind::Shape;
-                n.name = "Forma";
-            } else if (kind == "image" || kind == "svg") {
-                n.kind = kind == "svg" ? NodeKind::Svg : NodeKind::Image;
-                auto source = e["source"].toString();
-                if (source.isEmpty() || source.contains("://") || source.startsWith("//") ||
-                    source.startsWith("\\\\"))
-                    return fail("Mídia deve ser um arquivo local.");
-                n.source = QDir(baseDirectory).absoluteFilePath(source).toStdString();
-                n.name = source.toStdString();
-            } else
-                return fail("Tipo de elemento desconhecido.");
-            for (auto pair : {std::pair{"x", &n.x},
-                              {"y", &n.y},
-                              {"width", &n.width},
-                              {"height", &n.height},
-                              {"fontSize", &n.fontSize},
-                              {"opacity", &n.opacity},
-                              {"rotation", &n.rotation},
-                              {"scale", &n.scale},
-                              {"travelX", &n.travelX},
-                              {"travelY", &n.travelY},
-                              {"spinDegrees", &n.spinDegrees}})
-                if (!number(e, pair.first, *pair.second))
-                    return fail("Propriedade numérica inválida.");
-            for (auto key : {"text", "color", "secondaryColor", "motion", "pose"})
-                if (e.contains(key) && !e[key].isString())
-                    return fail("Texto, cor, movimento ou pose inválido.");
-            if (e.contains("color"))
-                n.color = e["color"].toString().toStdString();
-            if (e.contains("secondaryColor"))
-                n.secondaryColor = e["secondaryColor"].toString().toStdString();
-            if (e.contains("motion"))
-                n.motion = e["motion"].toString().toStdString();
-            if (e.contains("pose"))
-                n.pose = e["pose"].toString().toStdString();
-            for (auto key : {"cue", "motionFrames", "exitFrames"})
-                if (e.contains(key) &&
-                    (!e[key].isDouble() || std::floor(e[key].toDouble()) != e[key].toDouble()))
-                    return fail("Cue e durações de movimento devem ser inteiros.");
-            element.cue = e["cue"].toInt(0);
-            n.motionFrames = e["motionFrames"].toInt(24);
-            n.exitFrames = e["exitFrames"].toInt(8);
-            element.utteranceOnly = e["span"].toString("scene") == "utterance";
-            if (e.contains("span") && e["span"] != "scene" && e["span"] != "utterance")
-                return fail("Span deve ser scene ou utterance.");
-            if (!number(e, "offsetSeconds", element.offsetSeconds) || element.offsetSeconds < 0 ||
-                element.offsetSeconds > 10 || element.cue < 0 || element.cue >= int(scene.narration.size()))
-                return fail("Cue ou deslocamento de elemento inválido.");
-            auto test = makeEmpty();
-            test.nodes = {n};
-            if (auto error = validate(test); !error.empty())
-                return fail(QString::fromStdString(error));
+            if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
+                              int(scene.narration.size()), ids, elementCount, element, elementError))
+                return fail(elementError);
             scene.elements.push_back(std::move(element));
         }
-        totalNodes += int(scene.elements.size() + scene.narration.size() + 3);
+        if (s.contains("camera")) {
+            if (!s["camera"].isArray() || s["camera"].toArray().size() > 256)
+                return fail("Câmera precisa de uma lista de até 256 keyframes por cena.");
+            for (const auto &cameraValue : s["camera"].toArray()) {
+                if (!cameraValue.isObject())
+                    return fail("Keyframe de câmera inválido.");
+                const auto c = cameraValue.toObject();
+                if (!allowed(c, {"cue", "offsetSeconds", "x", "y", "zoom", "rotation"}))
+                    return fail("Keyframe de câmera contém campo desconhecido.");
+                DirectedCameraKeyframe key;
+                for (auto pair : {std::pair{"x", &key.x},
+                                  {"y", &key.y},
+                                  {"zoom", &key.zoom},
+                                  {"rotation", &key.rotation}})
+                    if (!c[pair.first].isDouble() || !std::isfinite(*pair.second = c[pair.first].toDouble()))
+                        return fail("Keyframe de câmera incompleto.");
+                if (c.contains("cue") &&
+                    (!c["cue"].isDouble() || std::floor(c["cue"].toDouble()) != c["cue"].toDouble()))
+                    return fail("Cue de câmera deve ser um inteiro.");
+                key.cue = c["cue"].toInt(0);
+                key.offsetSeconds = c["offsetSeconds"].toDouble(0);
+                if (!number(c, "offsetSeconds", key.offsetSeconds) || key.cue < 0 ||
+                    key.cue >= int(scene.narration.size()) || key.offsetSeconds < 0 || key.offsetSeconds > 10)
+                    return fail("Cue ou deslocamento de câmera inválido.");
+                if (++totalCameraKeys > 256)
+                    return fail("Use no máximo 256 keyframes de câmera na produção.");
+                scene.camera.push_back(key);
+            }
+        }
+        const int headers = version == 1 ? 2 : int(!scene.title.isEmpty()) + int(!scene.kicker.isEmpty());
+        const int background = int(!scene.background.isEmpty());
+        totalNodes +=
+            elementCount + (r.renderCaptions ? int(scene.narration.size()) : 0) + headers + background;
         r.scenes.push_back(std::move(scene));
     }
     if (totalText > 12000 || totalNodes > 200)

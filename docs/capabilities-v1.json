@@ -132,7 +132,15 @@
         "wave",
         "worried"
     ],
-    "productionVersion": 1,
+    "productionCapabilities": [
+        "free-scene-layout",
+        "nested-groups",
+        "transform-keyframes-linear",
+        "camera-2d-keyframes",
+        "personal-library-assets",
+        "optional-visual-captions"
+    ],
+    "productionVersion": 2,
     "projectCapabilities": [
         "group-hierarchy",
         "transform-keyframes-linear",

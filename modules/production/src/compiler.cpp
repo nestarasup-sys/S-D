@@ -1,6 +1,7 @@
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <studio/production/compiler.hpp>
 
 namespace studio {
@@ -28,12 +29,53 @@ Node textNode(std::string id, std::string text, double x, double y, double width
     n.duration = duration;
     return n;
 }
+bool compileElement(const DirectedElement &directed,
+                    const std::vector<std::pair<std::int64_t, std::int64_t>> &cues, std::int64_t sceneStart,
+                    std::int64_t sceneEnd, const std::string &sceneId, std::int64_t samplesPerFrame,
+                    Project &project, QString &error) {
+    auto node = directed.node;
+    const auto cue = cues[directed.cue];
+    node.start = cue.first / samplesPerFrame + std::llround(directed.offsetSeconds * 30);
+    const auto end = directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
+    if (node.start >= end) {
+        error = "Elemento começa depois do intervalo disponível: " + QString::fromStdString(node.id);
+        return false;
+    }
+    node.duration = end - node.start;
+    node.sceneId = sceneId;
+    node.keyframes.clear();
+    for (const auto &directedKey : directed.keyframes) {
+        const auto frame =
+            cues[directedKey.cue].first / samplesPerFrame + std::llround(directedKey.offsetSeconds * 30);
+        if (frame < node.start || frame >= node.start + node.duration) {
+            error = "Keyframe fica fora do intervalo do elemento: " + QString::fromStdString(node.id);
+            return false;
+        }
+        node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
+                                  directedKey.scale, directedKey.opacity});
+    }
+    std::sort(node.keyframes.begin(), node.keyframes.end(),
+              [](const auto &left, const auto &right) { return left.frame < right.frame; });
+    for (std::size_t i = 1; i < node.keyframes.size(); ++i)
+        if (node.keyframes[i - 1].frame == node.keyframes[i].frame) {
+            error =
+                "Dois keyframes do elemento resolvem para o mesmo quadro: " + QString::fromStdString(node.id);
+            return false;
+        }
+    project.nodes.push_back(node);
+    for (const auto &child : directed.children)
+        if (!compileElement(child, cues, sceneStart, sceneEnd, sceneId, samplesPerFrame, project, error))
+            return false;
+    Q_UNUSED(sceneStart);
+    return true;
+}
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
                                 const QString &audioOutput) {
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
+    p.schemaVersion = 3;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();
@@ -68,7 +110,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             caption.sceneId = scene.id.toStdString();
             caption.animated = false;
             caption.motion = "none";
-            p.nodes.push_back(caption);
+            if (recipe.renderCaptions)
+                p.nodes.push_back(caption);
             r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 7, 0);
         }
         r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 5, 0);
@@ -87,49 +130,60 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         }
         p.scenes.push_back(
             {scene.id.toStdString(), scene.title.toStdString(), narration, sceneStart, sceneDuration});
-        Node bg;
-        bg.id = "background-" + scene.id.toStdString();
-        bg.kind = NodeKind::Native;
-        bg.nativeId = scene.background.toStdString();
-        bg.name = "Cenário";
-        bg.x = 0;
-        bg.y = 0;
-        bg.width = 1280;
-        bg.height = 720;
-        bg.start = sceneStart;
-        bg.duration = sceneDuration;
-        bg.animated = false;
-        bg.role = "background";
-        bg.sceneId = scene.id.toStdString();
-        // Insert backgrounds beneath previously collected caption overlays.
-        p.nodes.insert(p.nodes.begin(), bg);
-        auto kicker = textNode("kicker-" + scene.id.toStdString(), scene.kicker.toStdString(), 70, 44, 1140,
-                               35, 19, sceneStart, sceneDuration);
-        kicker.color = "#efb873";
-        kicker.sceneId = scene.id.toStdString();
-        kicker.role = "header";
-        p.nodes.push_back(kicker);
-        auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(), 70, 92, 1140,
-                              140, 58, sceneStart, sceneDuration);
-        title.sceneId = scene.id.toStdString();
-        title.role = "header";
-        p.nodes.push_back(title);
+        if (!scene.background.isEmpty()) {
+            Node bg;
+            bg.id = "background-" + scene.id.toStdString();
+            bg.kind = NodeKind::Native;
+            bg.nativeId = scene.background.toStdString();
+            bg.name = "Cenário";
+            bg.x = 0;
+            bg.y = 0;
+            bg.width = 1280;
+            bg.height = 720;
+            bg.start = sceneStart;
+            bg.duration = sceneDuration;
+            bg.animated = false;
+            bg.role = "background";
+            bg.sceneId = scene.id.toStdString();
+            // Insert backgrounds beneath previously collected caption overlays.
+            p.nodes.insert(p.nodes.begin(), bg);
+        }
+        if (!scene.kicker.isEmpty()) {
+            auto kicker = textNode("kicker-" + scene.id.toStdString(), scene.kicker.toStdString(), 70, 44,
+                                   1140, 35, 19, sceneStart, sceneDuration);
+            kicker.color = "#efb873";
+            kicker.sceneId = scene.id.toStdString();
+            kicker.role = "header";
+            p.nodes.push_back(kicker);
+        }
+        if (!scene.title.isEmpty()) {
+            auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(), 70, 92,
+                                  1140, 140, 58, sceneStart, sceneDuration);
+            title.sceneId = scene.id.toStdString();
+            title.role = "header";
+            p.nodes.push_back(title);
+        }
         for (const auto &directed : scene.elements) {
-            auto n = directed.node;
-            auto cue = cues[directed.cue];
-            n.start = cue.first / samplesPerFrame + std::llround(directed.offsetSeconds * 30);
-            auto end = directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame
-                                              : sceneStart + sceneDuration;
-            if (n.start >= end) {
-                r.error = "Elemento começa depois do intervalo disponível: " + QString::fromStdString(n.id);
+            if (!compileElement(directed, cues, sceneStart, sceneStart + sceneDuration,
+                                scene.id.toStdString(), samplesPerFrame, p, r.error))
                 return r;
-            }
-            n.duration = end - n.start;
-            n.sceneId = scene.id.toStdString();
-            p.nodes.push_back(n);
+        }
+        for (const auto &directedCamera : scene.camera) {
+            const auto frame = cues[directedCamera.cue].first / samplesPerFrame +
+                               std::llround(directedCamera.offsetSeconds * 30);
+            p.camera.push_back(
+                {frame, directedCamera.x, directedCamera.y, directedCamera.zoom, directedCamera.rotation});
         }
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;
+    std::map<std::int64_t, CameraKeyframe> cameraByFrame;
+    for (const auto &key : p.camera)
+        cameraByFrame[key.frame] = key;
+    p.camera.clear();
+    for (const auto &[frame, key] : cameraByFrame) {
+        Q_UNUSED(frame);
+        p.camera.push_back(key);
+    }
     // Captions always remain above scenery and illustration layers.
     std::stable_partition(p.nodes.begin(), p.nodes.end(), [](const Node &n) { return n.role != "caption"; });
     if (auto error = validate(p); !error.empty()) {

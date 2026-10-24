@@ -205,11 +205,11 @@ O editor recebe o plano e faz a validação estrutural. A intenção narrativa e
 
 ## 10. Formato de direção mais expressivo
 
-Recomendo especificar uma **receita v2** e um modelo de projeto que comporte hierarquia, câmera e mídia. A numeração definitiva deve ser registrada quando o contrato for implementado. Projetos antigos devem continuar legíveis e visualmente preservados por migração testada ou caminho legado.
+**Implementado nesta rodada:** receita de produção v2 sobre projeto schema 3. Ela permite cenas sem cabeçalhos ou cenário impostos, grupos aninhados, filhos em coordenadas locais, keyframes sincronizados aos cues de fala, câmera por cue, legendas visuais opcionais e referências a itens da biblioteca pessoal. As receitas v1 continuam aceitas para compatibilidade. O contrato real e o passo a passo estão em [GUIA-PARA-IA.md](docs/GUIA-PARA-IA.md).
 
 O plano autoral mantém vínculos semânticos, como “entrar na segunda frase”. Depois que a voz estiver disponível, o compilador resolve esses vínculos para tempos e frames concretos. Assim, a IA dirige sem inventar a duração da fala.
 
-Exemplo conceitual de direção futura — **não é compatível com o importador v1 atual**:
+Exemplo conceitual de direção futura — **não é o contrato v2 implementado**. Ele ainda usa alvos de documento, assets por caminho e foco semântico de câmera:
 
 ```json
 {
@@ -255,7 +255,7 @@ Exemplo conceitual de direção futura — **não é compatível com o importado
 }
 ```
 
-O arquivo de mídia do exemplo é apenas uma dependência ilustrativa. O aplicativo deverá conferir sua existência. O usuário não precisa escrever esse JSON; ele será o contrato entre a IA e o aplicativo.
+Regiões de documento, foco por ID e planos de câmera semânticos deste exemplo continuam futuros. Na receita v2 atual, a câmera recebe posições explícitas e elementos usam `cue`/`offsetSeconds`. Veja o contrato executável no guia da IA; o usuário não precisa escrever JSON manualmente.
 
 Se uma capacidade ainda não existir, a importação deve apresentar a incompatibilidade e opções concretas de adaptação. Uma extensão instalada pode acrescentar capacidades registradas; o plano de produção continua declarativo.
 
@@ -345,4 +345,6 @@ Próxima ação recomendada: **especificar o modelo de grupos/câmera e a receit
 
 **Controles do primeiro protótipo:** o inspetor cria um grupo em torno do elemento selecionado, grava keyframes no playhead e permite animar centro/zoom/rotação da câmera. Os valores transformáveis do objeto passam a editar o keyframe atual quando há uma trilha. A lista diferencia filhos; arrastar um grupo na timeline desloca sua árvore e suas chaves, e excluir um grupo remove toda a árvore. A interface agrupa um objeto por vez, sem multi seleção, e o salvamento de grupos inteiros na biblioteca ainda não está disponível.
 
-Esse corte entrega o primeiro uso manual da fundação, mas ainda não conclui o marco 0: a comparação de desempenho entre renderizadores permanece pendente. Curvas de velocidade, multi seleção, conectores, salvar composições e a migração explícita de projetos antigos ficam para etapas seguintes. O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.
+**Direção por IA e biblioteca nesta rodada:** importador v2 compila hierarquia, keyframes, câmera, layout livre e legenda visual opcional no mesmo modelo editável. `kind: library` resolve IDs ativos da biblioteca local, incluindo PNG/SVG e presets simples. O botão de guia agora salva manifesto dos itens pessoais ativos e categorias; produção salva uma cópia do guia correspondente. Presets com keyframes e grupos inteiros ainda não podem ser salvos na biblioteca; receitas v2 preservam mídia por caminho local e não empacotam dependências para outra máquina.
+
+Esse corte conclui uma parte substancial das etapas 1, 2 e 5, mas ainda não conclui o marco 0: a comparação de desempenho entre renderizadores permanece pendente. Curvas de velocidade, multi seleção, conectores, regiões de documento, vídeo e a migração explícita de projetos antigos ficam para etapas seguintes. O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.

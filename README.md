@@ -31,12 +31,12 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 ## Seu roteiro com uma IA externa
 
 1. Escreva seu roteiro em qualquer lugar.
-2. Envie à IA o roteiro e o [guia do aplicativo](docs/GUIA-PARA-IA.md). O botão **Guia IA** também salva uma cópia atualizada.
-3. Peça um JSON de produção seguindo o guia e salve a resposta como `.production.json`.
+2. Use o botão **Guia IA** para salvar o guia atual com os itens ativos da sua biblioteca pessoal. A cópia do repositório lista as capacidades nativas e explica como salvar um manifesto local.
+3. Envie à IA o roteiro e o guia gerado; peça uma receita v2 e salve a resposta como `.production.json`.
 4. No editor, use **Importar produção IA**. O app valida o plano, gera a voz local, mede os tempos e monta as cenas.
 5. Reproduza, ajuste os objetos e exporte MP4.
 
-Exemplo pronto: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md) e [direção correspondente](examples/carros-caros.production.json). O botão **Criar vídeo: carros caros** monta esse exemplo diretamente no editor; para criar o MP4, use Exportar.
+Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyframes ligados às falas, câmera e referências por ID a itens pessoais ativos. Receitas v1 antigas continuam funcionando. Exemplos: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md), [receita v1 de carros](examples/carros-caros.production.json) e [composição livre v2](examples/composicao-livre-v2.production.json).
 
 ## Fundação de composição livre (schema v3)
 
@@ -93,6 +93,8 @@ Comandos PowerShell para desenvolvimento:
 Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano inicial](PLANO-INICIAL.md) mantém a visão de produto.
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
+
+A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md).
 
 A evolução proposta a partir do vídeo de referência está em [Futuro do aplicativo](FUTURO-DO-APP.md): composição livre, grupos, câmera, documentos, vídeo e direção por IA. Esse documento é planejamento, não uma lista de recursos já implementados.
 

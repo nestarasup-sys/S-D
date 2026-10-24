@@ -74,6 +74,10 @@ QString validateCatalogue(const QJsonObject &data) {
             if (QString(key) == "assets" &&
                 (!categories.contains(o["categoryId"].toString()) || !o["kind"].isString()))
                 return "Categoria ou tipo de item inválido.";
+            if (QString(key) == "assets" && (o.contains("width") || o.contains("height")) &&
+                (!o["width"].isDouble() || !o["height"].isDouble() || o["width"].toInt() < 1 ||
+                 o["height"].toInt() < 1 || o["width"].toInt() > 30000 || o["height"].toInt() > 30000))
+                return "Dimensões de mídia inválidas no catálogo.";
             if (QString(key) == "projects" &&
                 (!o["path"].isString() || !QFileInfo(o["path"].toString()).isAbsolute()))
                 return "Caminho de projeto inválido.";
@@ -341,8 +345,8 @@ WorkspaceResult WorkspaceStore::deleteCategory(const QString &id) {
         return WorkspaceResult{id, {}};
     });
 }
-WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &category,
-                                         const QString &source) {
+WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &category, const QString &source,
+                                         int width, int height) {
     auto name = input.trimmed();
     if (!validName(name))
         return {{}, "Informe um nome de até 120 caracteres."};
@@ -362,14 +366,15 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
         if (!QFile::exists(owned) && !write(owned, bytes))
             return WorkspaceResult{{}, "Não foi possível copiar a mídia para a biblioteca."};
         auto list = d["assets"].toArray();
-        list.append(QJsonObject{{"id", id},
-                                {"name", name},
-                                {"kind", extension == "svg" ? "svg" : "image"},
-                                {"source", owned},
-                                {"categoryId", category},
-                                {"deleted", false},
-                                {"builtin", false},
-                                {"createdAt", now()}});
+        QJsonObject asset{
+            {"id", id},         {"name", name},           {"kind", extension == "svg" ? "svg" : "image"},
+            {"source", owned},  {"categoryId", category}, {"deleted", false},
+            {"builtin", false}, {"createdAt", now()}};
+        if (width > 0 && height > 0) {
+            asset["width"] = width;
+            asset["height"] = height;
+        }
+        list.append(asset);
         d["assets"] = list;
         return WorkspaceResult{id, {}};
     });

@@ -10,6 +10,7 @@
 #include <QUuid>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 QString EditorController::currentSceneId() const {
     for (const auto &s : project().scenes)
@@ -84,7 +85,14 @@ void EditorController::importProduction(QUrl recipe) {
         notify("Receita excede 1 MiB.");
         return;
     }
-    auto parsed = studio::parseRecipe(file.readAll(), QFileInfo(file).absolutePath());
+    const auto workspaceRoot =
+        QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/workspace";
+    studio::WorkspaceStore workspace(workspaceRoot);
+    if (!workspace.error().isEmpty()) {
+        notify(workspace.error());
+        return;
+    }
+    auto parsed = studio::parseRecipe(file.readAll(), QFileInfo(file).absolutePath(), workspace.data());
     if (!parsed.error.isEmpty()) {
         notify(parsed.error);
         return;
@@ -100,7 +108,7 @@ void EditorController::importProduction(QUrl recipe) {
     productionCancel_ = parent + "/cancel-" + id;
     production_.start(QCoreApplication::applicationDirPath() + "/studio_produce.exe",
                       {"--recipe", recipe.toLocalFile(), "--output-dir", productionDirectory_,
-                       "--cancel-file", productionCancel_});
+                       "--cancel-file", productionCancel_, "--workspace-root", workspaceRoot});
     notify("Preparando produção com voz local…");
     emit productionChanged();
 }
@@ -132,12 +140,4 @@ void EditorController::cancelProduction() {
         file.close();
         notify("Cancelando produção após o trecho atual de voz…");
     }
-}
-void EditorController::saveAiGuide(QUrl url) {
-    QSaveFile file(url.toLocalFile());
-    auto bytes = studio::aiGuide().toUtf8();
-    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
-        notify("Não foi possível salvar o guia.");
-    else
-        notify("Guia para IA salvo. Envie-o junto do seu roteiro à IA escolhida.");
 }

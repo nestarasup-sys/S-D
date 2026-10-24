@@ -64,7 +64,6 @@ class EditorController : public QObject {
     Q_INVOKABLE void importProduction(QUrl recipe);
     Q_INVOKABLE void importCarExample();
     Q_INVOKABLE void cancelProduction();
-    Q_INVOKABLE void saveAiGuide(QUrl path);
     QAbstractItemModel *nodeModel() {
         return &nodeModel_;
     }

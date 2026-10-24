@@ -54,7 +54,7 @@ ApplicationWindow {
     FileDialog {
         id: guideDialog; title: "Salvar guia para enviar à IA"; fileMode: FileDialog.SaveFile
         defaultSuffix: "md"; nameFilters: ["Guia Markdown (*.md)"]
-        onAccepted: editor.saveAiGuide(selectedFile)
+        onAccepted: workspace.saveAiGuide(selectedFile)
     }
     FileDialog {
         id: openDialog; title: "Importar ou abrir projeto"; nameFilters: ["Projeto Studio Dark (*.studio.json)", "JSON (*.json)"]

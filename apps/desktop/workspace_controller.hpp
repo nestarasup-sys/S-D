@@ -73,6 +73,7 @@ class WorkspaceController : public QObject {
     Q_INVOKABLE bool deleteCategory(QString id);
     Q_INVOKABLE bool addAsset(QUrl source, QString name, QString category);
     Q_INVOKABLE bool saveSelection(QString name, QString category);
+    Q_INVOKABLE void saveAiGuide(QUrl path);
     Q_INVOKABLE bool updateAsset(QString id, QString name, QString category);
     Q_INVOKABLE bool deleteAsset(QString id);
     Q_INVOKABLE bool restoreAsset(QString id);
