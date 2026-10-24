@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <studio/core/library.hpp>
 #include <studio/core/project.hpp>
 #include <unordered_set>
 
@@ -9,7 +10,7 @@ double FrameRate::value() const {
     return double(numerator) / denominator;
 }
 std::string validate(const Project &p) {
-    if (p.schemaVersion != 1)
+    if (p.schemaVersion != 2)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -21,6 +22,14 @@ std::string validate(const Project &p) {
     if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200)
         return "Projeto excede os limites deste protótipo.";
     std::unordered_set<std::string> ids;
+    std::unordered_set<std::string> sceneIds;
+    std::int64_t sceneEnd = 0;
+    for (const auto &scene : p.scenes) {
+        if (scene.id.empty() || !sceneIds.insert(scene.id).second || scene.start < sceneEnd ||
+            scene.duration < 1 || scene.start < 0 || scene.duration > p.duration - scene.start)
+            return "Marcadores de cena inválidos ou sobrepostos.";
+        sceneEnd = scene.start + scene.duration;
+    }
     for (const auto &n : p.nodes) {
         if (n.id.empty() || !ids.insert(n.id).second)
             return "Identificação de objeto duplicada ou vazia.";
@@ -39,7 +48,34 @@ std::string validate(const Project &p) {
             return "Texto ou caminho excede o limite.";
         if (n.kind == NodeKind::Image && n.source.empty())
             return "Imagem sem arquivo de origem.";
+        if (n.kind == NodeKind::Svg && n.source.empty())
+            return "Vetor SVG sem arquivo de origem.";
+        if (n.kind == NodeKind::Native && !libraryItem(n.nativeId))
+            return "Objeto nativo desconhecido.";
+        if (!n.sceneId.empty() && !sceneIds.contains(n.sceneId))
+            return "Objeto aponta para cena inexistente.";
+        if (!n.sceneId.empty())
+            for (const auto &scene : p.scenes)
+                if (scene.id == n.sceneId &&
+                    (n.start < scene.start || n.start + n.duration > scene.start + scene.duration))
+                    return "Objeto ultrapassa o intervalo da sua cena.";
+        if (!supportedMotion(n.motion) || !supportedPose(n.pose))
+            return "Movimento ou pose não suportado.";
+        if (!std::isfinite(n.rotation) || std::abs(n.rotation) > 3600 || !std::isfinite(n.scale) ||
+            n.scale < 0.01 || n.scale > 10 || !std::isfinite(n.travelX) || std::abs(n.travelX) > 10000 ||
+            !std::isfinite(n.travelY) || std::abs(n.travelY) > 10000 || !std::isfinite(n.spinDegrees) ||
+            std::abs(n.spinDegrees) > 3600 || n.motionFrames < 1 || n.motionFrames > 300 ||
+            n.exitFrames < 0 || n.exitFrames > 300)
+            return "Parâmetros de animação inválidos.";
+        if (n.secondaryColor.size() != 7 || n.secondaryColor[0] != '#' ||
+            !std::all_of(n.secondaryColor.begin() + 1, n.secondaryColor.end(),
+                         [](unsigned char c) { return std::isxdigit(c); }))
+            return "Cor secundária inválida.";
+        if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header")
+            return "Papel visual desconhecido.";
     }
+    if (p.audioSource.size() > 4096)
+        return "Caminho de áudio inválido.";
     return {};
 }
 Project makeEmpty() {
@@ -96,8 +132,21 @@ bool active(const Node &n, std::int64_t frame) {
 VisualState evaluate(const Node &n, std::int64_t frame) {
     if (!active(n, frame))
         return {n.x, n.y, 0};
-    const auto t = n.animated ? std::clamp(double(frame - n.start) / 24., 0., 1.) : 1.;
+    const auto t = n.animated ? std::clamp(double(frame - n.start) / n.motionFrames, 0., 1.) : 1.;
     const double ease = 1 - std::pow(1 - t, 3);
-    return {n.x, n.y + 28 * (1 - ease), n.opacity * ease};
+    const double life =
+        std::clamp(double(frame - n.start) / std::max<std::int64_t>(1, n.duration - 1), 0., 1.);
+    double x = n.x + n.travelX * life, y = n.y + n.travelY * life;
+    if (n.animated && n.motion == "rise")
+        y += 28 * (1 - ease);
+    if (n.animated && n.motion == "slide-left")
+        x += 70 * (1 - ease);
+    if (n.animated && n.motion == "slide-right")
+        x -= 70 * (1 - ease);
+    double opacity = n.opacity * ((!n.animated || n.motion == "none") ? 1 : ease);
+    if (n.exitFrames > 0)
+        opacity *= std::clamp(double(n.start + n.duration - 1 - frame) / n.exitFrames, 0., 1.);
+    const auto scale = n.scale * ((n.animated && n.motion == "pop") ? 0.82 + 0.18 * ease : 1.);
+    return {x, y, opacity, n.rotation + n.spinDegrees * life, scale};
 }
 } // namespace studio

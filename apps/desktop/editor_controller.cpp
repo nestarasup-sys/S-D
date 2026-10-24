@@ -7,9 +7,12 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QSvgRenderer>
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
+#include <studio/core/library.hpp>
+#include <studio/media/wave.hpp>
 
 namespace {
 QString q(const std::string &s) {
@@ -18,9 +21,11 @@ QString q(const std::string &s) {
 QVariantMap map(const studio::Node &n) {
     return {{"id", q(n.id)},
             {"name", q(n.name)},
-            {"kind", n.kind == studio::NodeKind::Text    ? "text"
-                     : n.kind == studio::NodeKind::Shape ? "shape"
-                                                         : "image"},
+            {"kind", n.kind == studio::NodeKind::Text     ? "text"
+                     : n.kind == studio::NodeKind::Shape  ? "shape"
+                     : n.kind == studio::NodeKind::Native ? "native"
+                     : n.kind == studio::NodeKind::Svg    ? "svg"
+                                                          : "image"},
             {"text", q(n.text)},
             {"color", q(n.color)},
             {"start", int(n.start)},
@@ -31,12 +36,30 @@ QVariantMap map(const studio::Node &n) {
             {"height", n.height},
             {"opacity", n.opacity},
             {"fontSize", n.fontSize},
-            {"animated", n.animated}};
+            {"animated", n.animated},
+            {"nativeId", q(n.nativeId)},
+            {"pose", q(n.pose)},
+            {"motion", q(n.motion)},
+            {"secondaryColor", q(n.secondaryColor)},
+            {"rotation", n.rotation},
+            {"scale", n.scale},
+            {"travelX", n.travelX},
+            {"travelY", n.travelY},
+            {"spinDegrees", n.spinDegrees}};
 }
 } // namespace
 EditorController::EditorController(QObject *parent, QString recoveryDirectory) : QObject(parent) {
     savedDocument_ = studio::serialize(project());
     nodeModel_.sync(nodes());
+    setupProduction();
+    audioPlayer_.setAudioOutput(&audioOutput_);
+    audioOutput_.setVolume(.9);
+    connect(&audioPlayer_, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error, QString text) {
+        if (hasAudio()) {
+            stop();
+            notify("Áudio na prévia: " + text);
+        }
+    });
     connect(this, &EditorController::documentChanged, this, [this] { nodeModel_.sync(nodes()); });
     auto data = recoveryDirectory.isEmpty()
                     ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
@@ -49,7 +72,13 @@ EditorController::EditorController(QObject *parent, QString recoveryDirectory) :
     }
     playback_.setInterval(8);
     connect(&playback_, &QTimer::timeout, this, [this] {
-        const auto next = playStart_ + int(clock_.elapsed() * fps() / 1000.);
+        const auto next = hasAudio() ? int(audioPlayer_.position() * fps() / 1000.)
+                                     : playStart_ + int(clock_.elapsed() * fps() / 1000.);
+        if (hasAudio() && audioPlayer_.mediaStatus() == QMediaPlayer::EndOfMedia) {
+            presentFrame(duration() - 1);
+            stop();
+            return;
+        }
         if (next >= duration()) {
             presentFrame(duration() - 1);
             stop();
@@ -89,8 +118,10 @@ EditorController::EditorController(QObject *parent, QString recoveryDirectory) :
 }
 QVariantList EditorController::nodes() const {
     QVariantList list;
+    const auto scene = currentSceneId();
     for (const auto &n : project().nodes)
-        list.append(map(n));
+        if (n.sceneId.empty() || q(n.sceneId) == scene)
+            list.append(map(n));
     return list;
 }
 QVariantMap EditorController::selected() const {
@@ -159,6 +190,22 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.duration = value.toInt();
                 else if (key == "animated")
                     n.animated = value.toBool();
+                else if (key == "pose")
+                    n.pose = value.toString().toStdString();
+                else if (key == "motion")
+                    n.motion = value.toString().toStdString();
+                else if (key == "secondaryColor")
+                    n.secondaryColor = value.toString().toStdString();
+                else if (key == "rotation")
+                    n.rotation = value.toDouble();
+                else if (key == "scale")
+                    n.scale = value.toDouble();
+                else if (key == "travelX")
+                    n.travelX = value.toDouble();
+                else if (key == "travelY")
+                    n.travelY = value.toDouble();
+                else if (key == "spinDegrees")
+                    n.spinDegrees = value.toDouble();
             }
     });
     if (error.empty())
@@ -186,7 +233,13 @@ void EditorController::moveClip(QString id, int start) {
     auto node = studio::findNode(project(), id.toStdString());
     if (!node)
         return;
-    start = std::clamp(start, 0, duration() - int(node->duration));
+    int lower = 0, upper = duration() - int(node->duration);
+    for (const auto &scene : project().scenes)
+        if (scene.id == node->sceneId) {
+            lower = int(scene.start);
+            upper = int(scene.start + scene.duration - node->duration);
+        }
+    start = std::clamp(start, lower, upper);
     if (node->start == start)
         return;
     auto error = editor_.execute([&](studio::Project &p) {
@@ -204,6 +257,10 @@ void EditorController::addNode(QString kind, QUrl source) {
     n.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     n.start = frame_;
     n.duration = duration() - frame_;
+    n.sceneId = currentSceneId().toStdString();
+    for (const auto &s : project().scenes)
+        if (s.id == n.sceneId)
+            n.duration = std::max<std::int64_t>(1, s.start + s.duration - frame_);
     n.x = 140;
     n.y = 240;
     if (kind == "text") {
@@ -216,6 +273,18 @@ void EditorController::addNode(QString kind, QUrl source) {
         n.width = 260;
         n.height = 160;
         n.color = "#b4f078";
+    } else if (kind == "svg") {
+        auto path = source.toLocalFile();
+        QSvgRenderer svg(path);
+        if (QFileInfo(path).size() > 4 * 1024 * 1024 || !svg.isValid()) {
+            notify("SVG inválido ou maior que 4 MiB.");
+            return;
+        }
+        n.kind = studio::NodeKind::Svg;
+        n.name = QFileInfo(path).fileName().toStdString();
+        n.source = path.toStdString();
+        n.width = 400;
+        n.height = 300;
     } else if (kind == "image") {
         QImageReader reader(source.toLocalFile());
         reader.setAutoTransform(true);
@@ -232,9 +301,29 @@ void EditorController::addNode(QString kind, QUrl source) {
         n.height = std::clamp(640. * size.height() / size.width(), 1., 720.);
         n.x = 320;
         n.y = 100;
+    } else if (const auto item = studio::libraryItem(kind.toStdString())) {
+        n.kind = studio::NodeKind::Native;
+        n.nativeId = item->id;
+        n.name = item->name;
+        n.width = item->width;
+        n.height = item->height;
+        n.color = "#efb873";
+        if (item->category == "cenários") {
+            n.x = 0;
+            n.y = 0;
+            n.width = canvasWidth();
+            n.height = canvasHeight();
+            n.animated = false;
+            n.role = "background";
+        }
     } else
         return;
-    auto error = editor_.execute([&](studio::Project &p) { p.nodes.push_back(n); });
+    auto error = editor_.execute([&](studio::Project &p) {
+        if (n.role == "background")
+            p.nodes.insert(p.nodes.begin(), n);
+        else
+            p.nodes.push_back(n);
+    });
     if (error.empty()) {
         selectedId_ = q(n.id);
         changed();
@@ -268,12 +357,18 @@ void EditorController::presentFrame(int frame) {
     frame = std::clamp(frame, 0, duration() - 1);
     if (frame_ == frame)
         return;
+    auto oldScene = currentSceneId();
     frame_ = frame;
     emit frameChanged();
+    if (oldScene != currentSceneId()) {
+        selectedId_.clear();
+        emit documentChanged();
+    }
 }
 void EditorController::stop() {
     playing_ = false;
     playback_.stop();
+    audioPlayer_.pause();
     emit playingChanged();
 }
 void EditorController::togglePlayback() {
@@ -286,6 +381,15 @@ void EditorController::togglePlayback() {
     playStart_ = frame_;
     clock_.restart();
     playing_ = true;
+    if (hasAudio()) {
+        if (!QFile::exists(q(project().audioSource))) {
+            playing_ = false;
+            notify("Arquivo de áudio ausente.");
+            return;
+        }
+        audioPlayer_.setPosition(qRound64(frame_ * 1000. / fps()));
+        audioPlayer_.play();
+    }
     playback_.start();
     emit playingChanged();
 }
@@ -313,6 +417,21 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     savedDocument_ = studio::serialize(project());
     selectedId_.clear();
     frame_ = 0;
+    audioPlayer_.setSource(project().audioSource.empty() ? QUrl{}
+                                                         : QUrl::fromLocalFile(q(project().audioSource)));
+    waveform_.clear();
+    if (hasAudio()) {
+        auto wave = studio::readWave(q(project().audioSource));
+        if (wave.error.isEmpty())
+            for (int i = 0; i < 256; ++i) {
+                auto begin = wave.audio.samples.size() * i / 256,
+                     end = wave.audio.samples.size() * (i + 1) / 256;
+                double sum = 0;
+                for (auto j = begin; j < end; ++j)
+                    sum += wave.audio.samples[j] * wave.audio.samples[j];
+                waveform_.append(std::sqrt(sum / std::max<std::size_t>(1, end - begin)));
+            }
+    }
     autosaveEnabled_ = false;
     emit frameChanged();
     emit documentChanged();
@@ -380,7 +499,8 @@ void EditorController::exportVideo(QUrl url) {
     render_.start(QCoreApplication::applicationDirPath() + "/studio_render.exe",
                   {"--project", renderSnapshot_, "--output", url.toLocalFile(), "--ffmpeg", ffmpeg,
                    "--cancel-file", cancelPath_});
-    notify("Exportando composição sem áudio. Você pode continuar editando.");
+    notify(hasAudio() ? "Exportando vídeo com narração e trilha. Você pode continuar editando."
+                      : "Exportando composição sem áudio. Você pode continuar editando.");
     emit exportChanged();
 }
 void EditorController::cancelExport() {

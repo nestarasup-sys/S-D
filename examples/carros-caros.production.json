@@ -1,0 +1,271 @@
+{
+  "format": "studio-dark-production",
+  "version": 1,
+  "catalogVersion": 1,
+  "title": "Carro caro: além da etiqueta",
+  "voice": "auto",
+  "speechRate": 0,
+  "musicGain": 0.022,
+  "effectsGain": 0.028,
+  "sources": [
+    {
+      "title": "Banco Central — cuidados ao contratar crédito e custo efetivo total",
+      "url": "https://www.bcb.gov.br/meubc/faqs/p/cuidados-na-hora-de-contratar-uma-operacao-de-credito"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "chaves",
+      "title": "Carro caro.\nSonho mais distante?",
+      "kicker": "01 / O PREÇO DA CHAVE",
+      "background": "showroom",
+      "narration": [
+        "Você olha o preço de um carro e pensa: ficou difícil trocar de chave.",
+        "Mas a conta não termina na etiqueta."
+      ],
+      "elements": [
+        {
+          "id": "carro-principal",
+          "kind": "native",
+          "asset": "car",
+          "x": 340,
+          "y": 344,
+          "width": 600,
+          "height": 274,
+          "color": "#efb873",
+          "motion": "slide-right",
+          "travelX": 30
+        },
+        {
+          "id": "cliente",
+          "kind": "native",
+          "asset": "person",
+          "x": 1010,
+          "y": 264,
+          "width": 150,
+          "height": 292,
+          "color": "#7fbac0",
+          "pose": "worried"
+        },
+        {
+          "id": "etiqueta",
+          "kind": "native",
+          "asset": "price-tag",
+          "x": 90,
+          "y": 316,
+          "width": 190,
+          "height": 114,
+          "color": "#e6ce93",
+          "motion": "pop",
+          "rotation": -7,
+          "cue": 1
+        }
+      ]
+    },
+    {
+      "id": "credito",
+      "title": "A parcela não conta\na história inteira.",
+      "kicker": "02 / FINANCIAMENTO",
+      "background": "office",
+      "narration": [
+        "Se a compra é financiada, entram juros e outros encargos.",
+        "O custo efetivo total ajuda a enxergar essa diferença."
+      ],
+      "elements": [
+        {
+          "id": "contrato",
+          "kind": "native",
+          "asset": "document",
+          "x": 310,
+          "y": 275,
+          "width": 220,
+          "height": 275,
+          "color": "#efb873",
+          "rotation": -4
+        },
+        {
+          "id": "moedas-credito",
+          "kind": "native",
+          "asset": "coins",
+          "x": 650,
+          "y": 355,
+          "width": 240,
+          "height": 192,
+          "color": "#e9be70",
+          "motion": "pop"
+        },
+        {
+          "id": "selo-cet",
+          "kind": "text",
+          "text": "CET = custo efetivo total",
+          "x": 635,
+          "y": 284,
+          "width": 560,
+          "height": 80,
+          "fontSize": 32,
+          "cue": 1,
+          "motion": "fade"
+        }
+      ]
+    },
+    {
+      "id": "uso",
+      "title": "Depois da compra,\na conta continua.",
+      "kicker": "03 / CUSTO DE USO",
+      "background": "street",
+      "narration": [
+        "Depois vêm seguro, combustível, impostos e manutenção."
+      ],
+      "elements": [
+        {
+          "id": "carro-rua",
+          "kind": "native",
+          "asset": "car",
+          "x": 330,
+          "y": 338,
+          "width": 540,
+          "height": 247,
+          "color": "#7fbac0",
+          "motion": "slide-right",
+          "travelX": 90
+        },
+        {
+          "id": "custos-uso",
+          "kind": "text",
+          "text": "SEGURO   /   COMBUSTÍVEL\nIMPOSTOS   /   MANUTENÇÃO",
+          "x": 80,
+          "y": 250,
+          "width": 1120,
+          "height": 80,
+          "fontSize": 27,
+          "color": "#e6ce93",
+          "motion": "fade"
+        }
+      ]
+    },
+    {
+      "id": "orcamento",
+      "title": "Cabe a parcela.\nCabe o compromisso?",
+      "kicker": "04 / ALÉM DO ANÚNCIO",
+      "background": "studio",
+      "narration": [
+        "Uma parcela que parece caber no bolso pode esconder um compromisso bem maior."
+      ],
+      "elements": [
+        {
+          "id": "apresentador",
+          "kind": "native",
+          "asset": "person",
+          "x": 160,
+          "y": 250,
+          "width": 170,
+          "height": 330,
+          "color": "#7fbac0",
+          "pose": "point"
+        },
+        {
+          "id": "barras-custos",
+          "kind": "native",
+          "asset": "bars",
+          "x": 550,
+          "y": 295,
+          "width": 350,
+          "height": 262,
+          "color": "#efb873",
+          "motion": "fade"
+        },
+        {
+          "id": "nota-grafico",
+          "kind": "text",
+          "text": "ILUSTRAÇÃO CONCEITUAL · SEM DADOS ESTATÍSTICOS",
+          "x": 510,
+          "y": 575,
+          "width": 680,
+          "height": 28,
+          "fontSize": 14,
+          "color": "#a9c5c8",
+          "motion": "none"
+        }
+      ]
+    },
+    {
+      "id": "garagem",
+      "title": "O preço de levar.\nO custo de manter.",
+      "kicker": "05 / A CONTA COMPLETA",
+      "background": "street",
+      "narration": [
+        "Carro caro não é só o preço de levar para casa.",
+        "É o custo de manter na garagem e na rua."
+      ],
+      "elements": [
+        {
+          "id": "casa",
+          "kind": "native",
+          "asset": "house",
+          "x": 100,
+          "y": 285,
+          "width": 280,
+          "height": 245,
+          "color": "#8aa8ac"
+        },
+        {
+          "id": "carro-casa",
+          "kind": "native",
+          "asset": "car",
+          "x": 530,
+          "y": 352,
+          "width": 470,
+          "height": 215,
+          "color": "#efb873",
+          "motion": "slide-left",
+          "travelX": -35
+        },
+        {
+          "id": "moedas-uso",
+          "kind": "native",
+          "asset": "coins",
+          "x": 1010,
+          "y": 397,
+          "width": 150,
+          "height": 120,
+          "color": "#e6ce93",
+          "motion": "pop",
+          "cue": 1
+        }
+      ]
+    },
+    {
+      "id": "fecho",
+      "title": "Antes da chave,\nfaça a conta inteira.",
+      "kicker": "06 / ESCOLHA COM MAIS CLAREZA",
+      "background": "studio",
+      "narration": [
+        "Antes de decidir, coloque a conta inteira na mesma página."
+      ],
+      "elements": [
+        {
+          "id": "documento-final",
+          "kind": "native",
+          "asset": "document",
+          "x": 390,
+          "y": 285,
+          "width": 220,
+          "height": 275,
+          "color": "#efb873",
+          "motion": "pop"
+        },
+        {
+          "id": "personagem-final",
+          "kind": "native",
+          "asset": "person",
+          "x": 800,
+          "y": 250,
+          "width": 170,
+          "height": 330,
+          "color": "#7fbac0",
+          "pose": "wave"
+        }
+      ]
+    }
+  ]
+}

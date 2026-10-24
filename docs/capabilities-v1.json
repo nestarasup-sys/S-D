@@ -1,0 +1,138 @@
+{
+    "audio": [
+        "windows-pt-BR-tts",
+        "procedural-bed",
+        "scene-chime"
+    ],
+    "catalogVersion": 1,
+    "format": "studio-dark-capabilities",
+    "fps": 30,
+    "height": 720,
+    "maxNarrationCharactersPerCue": 150,
+    "maxNodes": 200,
+    "maxScenes": 20,
+    "media": [
+        "png",
+        "jpeg",
+        "webp",
+        "bmp",
+        "svg"
+    ],
+    "motions": [
+        "none",
+        "fade",
+        "rise",
+        "slide-left",
+        "slide-right",
+        "pop"
+    ],
+    "nativeAssets": [
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "car",
+            "name": "Carro",
+            "width": 460
+        },
+        {
+            "category": "personagens",
+            "height": 350,
+            "id": "person",
+            "name": "Personagem",
+            "width": 180
+        },
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "house",
+            "name": "Casa",
+            "width": 240
+        },
+        {
+            "category": "objetos",
+            "height": 300,
+            "id": "building",
+            "name": "Prédio",
+            "width": 160
+        },
+        {
+            "category": "objetos",
+            "height": 250,
+            "id": "document",
+            "name": "Documento",
+            "width": 200
+        },
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "computer",
+            "name": "Computador",
+            "width": 280
+        },
+        {
+            "category": "objetos",
+            "height": 220,
+            "id": "phone",
+            "name": "Celular",
+            "width": 120
+        },
+        {
+            "category": "objetos",
+            "height": 200,
+            "id": "coins",
+            "name": "Moedas",
+            "width": 250
+        },
+        {
+            "category": "objetos",
+            "height": 150,
+            "id": "price-tag",
+            "name": "Etiqueta",
+            "width": 250
+        },
+        {
+            "category": "dados",
+            "height": 240,
+            "id": "bars",
+            "name": "Barras ilustrativas",
+            "width": 320
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "street",
+            "name": "Rua",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "office",
+            "name": "Escritório",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "showroom",
+            "name": "Concessionária",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "studio",
+            "name": "Estúdio",
+            "width": 1280
+        }
+    ],
+    "poses": [
+        "neutral",
+        "point",
+        "wave",
+        "worried"
+    ],
+    "productionVersion": 1,
+    "projectVersion": 2,
+    "width": 1280
+}

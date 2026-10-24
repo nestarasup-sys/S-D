@@ -10,3 +10,5 @@
 - Preserve file revisions, atomic writes and prior copies. Test stale-revision failures without overwriting the current project.
 - On Windows use `scripts/build.ps1 -Test` for code changes and `scripts/smoke.ps1` when composition, QML startup or rendering changes.
 - Update `README.md` and the relevant architecture decision when behavior or limitations change. Do not describe planned capabilities as implemented.
+- Native assets/motions/poses must be registered in `core/library`; keep unknown recipe fields rejected. Regenerate AI guide/catalogue with `scripts/update-ai-guide.ps1` after capability changes.
+- After recipe, audio, library or production changes, run `scripts/smoke-production.ps1` (requires a real installed pt-BR Windows voice). Never infer spoken-word timings from text alone.

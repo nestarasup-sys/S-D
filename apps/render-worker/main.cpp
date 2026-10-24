@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QSvgRenderer>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <studio/composition/painter.hpp>
@@ -52,6 +53,15 @@ int main(int argc, char **argv) {
             if (!reader.canRead())
                 return fail("Imagem ausente ou ilegível: " + QString::fromStdString(n.source));
         }
+    for (const auto &n : loaded.project.nodes)
+        if (n.kind == studio::NodeKind::Svg) {
+            QSvgRenderer svg(QString::fromStdString(n.source));
+            if (!svg.isValid())
+                return fail("SVG ausente ou inválido: " + QString::fromStdString(n.source));
+        }
+    if (!loaded.project.audioSource.empty() &&
+        !QFile::exists(QString::fromStdString(loaded.project.audioSource)))
+        return fail("Arquivo de áudio ausente.");
     QTemporaryDir temp(QFileInfo(output).absolutePath() + "/.studio-XXXXXX");
     if (!temp.isValid())
         return fail("Não foi possível criar a pasta temporária.");
@@ -59,20 +69,25 @@ int main(int argc, char **argv) {
     const auto &p = loaded.project;
     QProcess encoder;
     encoder.setProcessChannelMode(QProcess::SeparateChannels);
-    encoder.start(parser.value("ffmpeg"),
-                  {"-y",         "-hide_banner",
-                   "-loglevel",  "error",
-                   "-f",         "rawvideo",
-                   "-pix_fmt",   "rgba",
-                   "-s",         QString::number(p.width) + "x" + QString::number(p.height),
-                   "-r",         QString::number(p.fps.numerator) + "/" + QString::number(p.fps.denominator),
-                   "-i",         "pipe:0",
-                   "-an",        "-c:v",
-                   "libx264",    "-preset",
-                   "veryfast",   "-crf",
-                   "20",         "-pix_fmt",
-                   "yuv420p",    "-movflags",
-                   "+faststart", tempPath});
+    QStringList encoderArgs{
+        "-y",        "-hide_banner",
+        "-loglevel", "error",
+        "-f",        "rawvideo",
+        "-pix_fmt",  "rgba",
+        "-s",        QString::number(p.width) + "x" + QString::number(p.height),
+        "-r",        QString::number(p.fps.numerator) + "/" + QString::number(p.fps.denominator),
+        "-i",        "pipe:0"};
+    if (!p.audioSource.empty())
+        encoderArgs << "-i" << QString::fromStdString(p.audioSource) << "-map" << "0:v:0" << "-map" << "1:a:0"
+                    << "-c:a" << "aac" << "-b:a" << "160k" << "-af" << "apad";
+    else
+        encoderArgs << "-an";
+    encoderArgs << QStringList{
+        "-c:v",      "libx264",    "-preset",  "veryfast",
+        "-crf",      "20",         "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart", "-t",       QString::number(double(p.duration) / p.fps.value(), 'f', 6),
+        tempPath};
+    encoder.start(parser.value("ffmpeg"), encoderArgs);
     if (!encoder.waitForStarted(10000))
         return fail("Não foi possível iniciar o FFmpeg: " + encoder.errorString());
     int last = -1;

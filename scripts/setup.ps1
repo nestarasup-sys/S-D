@@ -15,6 +15,10 @@ if ($Force -or !(Test-Path '.tools/Qt/Tools/mingw1310_64/bin/g++.exe')) {
     python -m aqt install-tool windows desktop tools_mingw1310 -O .tools/Qt
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao baixar compilador.' }
 }
+if ($Force -or !(Test-Path '.tools/Qt/6.8.3/mingw_64/bin/Qt6Multimedia.dll')) {
+    python -m aqt install-qt windows desktop 6.8.3 win64_mingw -O .tools/Qt --modules qtmultimedia --archives qtmultimedia
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao baixar Qt Multimedia.' }
+}
 if ($Force -or !(Test-Path '.tools/formatter/clang_format/data/bin/clang-format.exe')) {
     python -m pip install --target .tools/formatter clang-format==19.1.7
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar formatador C++.' }

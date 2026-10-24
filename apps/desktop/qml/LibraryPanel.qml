@@ -7,18 +7,22 @@ Rectangle {
     signal importImage()
     signal loadDemo()
     signal recover()
+    signal carExample()
+    signal latest()
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 16; spacing: 12
+        anchors.fill: parent; anchors.margins: 16; spacing: 8
         Label { text: "BIBLIOTECA"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
         Label { text: "Sua matéria-prima"; font.pixelSize: 18; font.weight: Font.DemiBold; color: "#e1e8ed" }
-        Label { text: "Comece com um elemento.\nTransforme na sua composição."; color: "#83919e"; font.pixelSize: 11; lineHeight: 1.4 }
-        StudioButton { text: "+   Importar imagem"; Layout.fillWidth: true; accent: true; onClicked: importImage() }
+        StudioButton { text: "▶   Criar vídeo: carros caros"; Layout.fillWidth: true; accent: true; enabled: !editor.producing && !editor.exporting; onClicked: carExample() }
+        StudioButton { text: "+   Importar PNG / SVG"; Layout.fillWidth: true; onClicked: importImage() }
         RowLayout {
             StudioButton { text: "T   Texto"; Layout.fillWidth: true; onClicked: editor.addNode("text") }
             StudioButton { text: "▰   Forma"; Layout.fillWidth: true; onClicked: editor.addNode("shape") }
         }
+        StudioComboBox { id: nativePicker; Layout.fillWidth: true; model: editor.library; textRole: "name"; valueRole: "id" }
+        StudioButton { text: "+   Adicionar objeto nativo"; Layout.fillWidth: true; onClicked: editor.addNode(nativePicker.currentValue) }
         Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540"; Layout.topMargin: 8; Layout.bottomMargin: 6 }
-        Label { text: "OBJETOS NA COMPOSIÇÃO"; color: "#83919e"; font.pixelSize: 10; font.letterSpacing: 1 }
+        Label { text: "OBJETOS DA CENA ATUAL"; color: "#83919e"; font.pixelSize: 10; font.letterSpacing: 1 }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 6
             model: editor.nodes
@@ -41,6 +45,7 @@ Rectangle {
         }
         StudioButton { text: "Carregar demonstração"; Layout.fillWidth: true; quiet: true; onClicked: loadDemo() }
         StudioButton { text: "Recuperar última edição"; Layout.fillWidth: true; visible: editor.recoveryAvailable; onClicked: recover() }
-        Label { text: "Neste teste: texto, formas e imagens.\nVídeo e áudio entram na próxima etapa."; color: "#677987"; font.pixelSize: 10; lineHeight: 1.4; Layout.topMargin: 4 }
+        StudioButton { text: "Abrir resultado da produção"; Layout.fillWidth: true; visible: editor.latestProduction.toString().length > 0; onClicked: latest() }
+        Label { text: "Vetor nativo · PNG · SVG\nVoz local e legendas sincronizadas"; color: "#677987"; font.pixelSize: 10; lineHeight: 1.4; Layout.topMargin: 4 }
     }
 }

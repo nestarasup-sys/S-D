@@ -38,9 +38,11 @@ QByteArray serialize(const Project &p) {
     for (const auto &n : p.nodes)
         nodes.append(QJsonObject{{"id", text(n.id)},
                                  {"name", text(n.name)},
-                                 {"kind", n.kind == NodeKind::Text    ? "text"
-                                          : n.kind == NodeKind::Shape ? "shape"
-                                                                      : "image"},
+                                 {"kind", n.kind == NodeKind::Text     ? "text"
+                                          : n.kind == NodeKind::Shape  ? "shape"
+                                          : n.kind == NodeKind::Native ? "native"
+                                          : n.kind == NodeKind::Svg    ? "svg"
+                                                                       : "image"},
                                  {"text", text(n.text)},
                                  {"color", text(n.color)},
                                  {"source", text(n.source)},
@@ -52,7 +54,27 @@ QByteArray serialize(const Project &p) {
                                  {"height", n.height},
                                  {"opacity", n.opacity},
                                  {"fontSize", n.fontSize},
-                                 {"animated", n.animated}});
+                                 {"animated", n.animated},
+                                 {"nativeId", text(n.nativeId)},
+                                 {"sceneId", text(n.sceneId)},
+                                 {"role", text(n.role)},
+                                 {"pose", text(n.pose)},
+                                 {"motion", text(n.motion)},
+                                 {"secondaryColor", text(n.secondaryColor)},
+                                 {"rotation", n.rotation},
+                                 {"scale", n.scale},
+                                 {"travelX", n.travelX},
+                                 {"travelY", n.travelY},
+                                 {"spinDegrees", n.spinDegrees},
+                                 {"motionFrames", n.motionFrames},
+                                 {"exitFrames", n.exitFrames}});
+    QJsonArray scenes;
+    for (const auto &s : p.scenes)
+        scenes.append(QJsonObject{{"id", text(s.id)},
+                                  {"name", text(s.name)},
+                                  {"narration", text(s.narration)},
+                                  {"start", double(s.start)},
+                                  {"duration", double(s.duration)}});
     return QJsonDocument(QJsonObject{{"format", "studio-dark"},
                                      {"schemaVersion", p.schemaVersion},
                                      {"id", text(p.id)},
@@ -62,7 +84,9 @@ QByteArray serialize(const Project &p) {
                                      {"fps", QJsonObject{{"numerator", p.fps.numerator},
                                                          {"denominator", p.fps.denominator}}},
                                      {"duration", double(p.duration)},
-                                     {"nodes", nodes}})
+                                     {"nodes", nodes},
+                                     {"scenes", scenes},
+                                     {"audioSource", text(p.audioSource)}})
         .toJson();
 }
 LoadResult deserialize(const QByteArray &bytes) {
@@ -76,7 +100,7 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (parse.error != QJsonParseError::NoError || !document.isObject())
         return fail("Arquivo de projeto inválido.");
     auto o = document.object();
-    if (o["format"] != "studio-dark" || o["schemaVersion"] != 1)
+    if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -91,6 +115,18 @@ LoadResult deserialize(const QByteArray &bytes) {
     p.height = o["height"].toInt();
     p.duration = o["duration"].toInteger();
     p.fps = {fps["numerator"].toInt(), fps["denominator"].toInt()};
+    if (o.contains("audioSource") && !o["audioSource"].isString())
+        return fail("Referência de áudio inválida.");
+    p.audioSource = str(o, "audioSource");
+    if (o.contains("scenes") && !o["scenes"].isArray())
+        return fail("Lista de cenas inválida.");
+    for (auto value : o["scenes"].toArray()) {
+        auto s = value.toObject();
+        if (!integer(s["start"]) || !integer(s["duration"]))
+            return fail("Tempo de cena inválido.");
+        p.scenes.push_back({str(s, "id"), str(s, "name"), str(s, "narration"), s["start"].toInteger(),
+                            s["duration"].toInteger()});
+    }
     if (o["nodes"].toArray().size() > 200)
         return fail("Máximo de 200 objetos neste protótipo.");
     for (auto value : o["nodes"].toArray()) {
@@ -99,7 +135,7 @@ LoadResult deserialize(const QByteArray &bytes) {
         auto v = value.toObject();
         Node n;
         auto kind = v["kind"].toString();
-        if (kind != "text" && kind != "shape" && kind != "image")
+        if (kind != "text" && kind != "shape" && kind != "image" && kind != "native" && kind != "svg")
             return fail("Tipo de objeto não suportado.");
         for (auto key : {"start", "duration"})
             if (!integer(v[key]))
@@ -109,7 +145,11 @@ LoadResult deserialize(const QByteArray &bytes) {
                 return fail("Propriedade visual ausente ou inválida.");
         if (!v["animated"].isBool())
             return fail("Animação inválida.");
-        n.kind = kind == "text" ? NodeKind::Text : kind == "shape" ? NodeKind::Shape : NodeKind::Image;
+        n.kind = kind == "text"     ? NodeKind::Text
+                 : kind == "shape"  ? NodeKind::Shape
+                 : kind == "native" ? NodeKind::Native
+                 : kind == "svg"    ? NodeKind::Svg
+                                    : NodeKind::Image;
         n.id = str(v, "id");
         n.name = str(v, "name");
         n.text = str(v, "text");
@@ -124,6 +164,31 @@ LoadResult deserialize(const QByteArray &bytes) {
         n.opacity = v["opacity"].toDouble();
         n.fontSize = v["fontSize"].toDouble();
         n.animated = v["animated"].toBool();
+        for (auto key : {"nativeId", "sceneId", "role", "pose", "motion", "secondaryColor"})
+            if (v.contains(key) && !v[key].isString())
+                return fail("Propriedade de objeto inválida.");
+        n.nativeId = str(v, "nativeId");
+        n.sceneId = str(v, "sceneId");
+        n.role = str(v, "role");
+        if (v.contains("pose"))
+            n.pose = str(v, "pose");
+        if (v.contains("motion"))
+            n.motion = str(v, "motion");
+        if (v.contains("secondaryColor"))
+            n.secondaryColor = str(v, "secondaryColor");
+        for (auto key : {"rotation", "scale", "travelX", "travelY", "spinDegrees"})
+            if (v.contains(key) && !v[key].isDouble())
+                return fail("Animação inválida.");
+        n.rotation = v["rotation"].toDouble(0);
+        n.scale = v["scale"].toDouble(1);
+        n.travelX = v["travelX"].toDouble(0);
+        n.travelY = v["travelY"].toDouble(0);
+        n.spinDegrees = v["spinDegrees"].toDouble(0);
+        for (auto key : {"motionFrames", "exitFrames"})
+            if (v.contains(key) && !integer(v[key]))
+                return fail("Duração da animação inválida.");
+        n.motionFrames = v["motionFrames"].toInt(24);
+        n.exitFrames = v["exitFrames"].toInt(0);
         p.nodes.push_back(n);
     }
     if (auto error = validate(p); !error.empty())

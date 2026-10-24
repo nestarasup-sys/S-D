@@ -72,6 +72,7 @@ Rectangle {
                                     property int startFrame: 0
                                     onPressed: function(mouse) {
                                         track.forceActiveFocus()
+                                        if (editor.playing) editor.togglePlayback()
                                         originX = mapToItem(track, mouse.x, mouse.y).x
                                         startFrame = track.modelData.start
                                         editor.selectNode(track.modelData.id)
@@ -92,6 +93,23 @@ Rectangle {
                     Rectangle {
                         x: editor.frame / editor.duration * (parent.width - 1); y: 0; width: 1; height: parent.height; color: "#b4f078"
                         Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 7; height: 7; radius: 2; color: "#b4f078" }
+                    }
+                }
+            }
+        }
+        RowLayout {
+            visible: editor.hasAudio; Layout.fillWidth: true; Layout.preferredHeight: 28; Layout.minimumHeight: 28; Layout.maximumHeight: 28; spacing: 12
+            Label { text: "VOZ + TRILHA"; Layout.preferredWidth: 175; color: "#82bebd"; font.pixelSize: 10 }
+            Rectangle {
+                Layout.fillWidth: true; Layout.fillHeight: true; color: "#1a333b"; radius: 4; clip: true
+                Repeater {
+                    model: editor.waveform
+                    Rectangle {
+                        required property real modelData
+                        required property int index
+                        x: index * parent.width / 256; width: Math.max(1, parent.width / 256 - 1)
+                        height: Math.min(24, Math.max(2, modelData * 130)); y: (parent.height - height) / 2
+                        color: "#82bebd"
                     }
                 }
             }

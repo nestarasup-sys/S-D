@@ -1,21 +1,34 @@
 # Studio Dark · Native Lab
 
-Protótipo novo em C++20 e Qt Quick/QML para testar a estrutura do futuro editor audiovisual.
+Protótipo 0.2 em C++20 e Qt Quick/QML: roteiro externo → direção por JSON → voz local → projeto editável → MP4 com áudio.
 
 ## Abrir
 
-Clique em **ABRIR-STUDIO.bat**. As ferramentas locais já preparadas ficam em `.tools/`; o executável compilado fica em `build/bin/studio_dark.exe`. O BAT configura os caminhos necessários e abre a janela sem terminal permanente. Não execute apenas o EXE fora desse ambiente de desenvolvimento.
+Clique em **ABRIR-STUDIO.bat**. As ferramentas locais ficam em `.tools/` e os binários em `build/`. O BAT configura os caminhos necessários e abre a versão compilada ativa sem terminal permanente. Não execute apenas o EXE fora desse ambiente de desenvolvimento. Se o editor estiver aberto durante uma compilação, o build usa uma pasta nova e preserva a sessão existente; a próxima abertura usa a versão nova.
 
 Em outra máquina Windows x64 com Python 3.12 e internet, use **PREPARAR-E-COMPILAR.bat**. Downloads não exigem instalação global de Qt ou C++ e ficam na pasta do projeto.
+
+Para gerar o primeiro episódio completo, clique em **CRIAR-VIDEO-CARROS.bat**. Ele cria uma pasta nova em `artifacts/carros-AAAAMMDD-HHMMSS`, gera voz/legendas/cenas, exporta o vídeo e abre o projeto no editor. É necessária uma voz pt-BR instalada no Windows.
+
+## Seu roteiro com uma IA externa
+
+1. Escreva seu roteiro em qualquer lugar.
+2. Envie à IA o roteiro e o [guia do aplicativo](docs/GUIA-PARA-IA.md). O botão **Guia IA** também salva uma cópia atualizada.
+3. Peça um JSON de produção seguindo o guia e salve a resposta como `.production.json`.
+4. No editor, use **Importar produção IA**. O app valida o plano, gera a voz local, mede os tempos e monta as cenas.
+5. Reproduza, ajuste os objetos e exporte MP4.
+
+Exemplo pronto: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md) e [direção correspondente](examples/carros-caros.production.json). O botão **Criar vídeo: carros caros** monta esse exemplo diretamente no editor; para criar o MP4, use Exportar.
 
 ## Testar pela interface
 
 1. A demonstração começa com texto e forma animados em uma composição de 12 segundos.
 2. Reproduza, navegue pela régua e selecione um objeto na biblioteca ou na prévia.
 3. Arraste o objeto na prévia ou ajuste posição, dimensões, texto, cor e tempo no inspetor.
-4. Adicione texto, forma ou uma imagem local. Mova clipes pela timeline; para liberar espaço, reduza a duração pelo inspetor.
+4. Adicione texto, forma, PNG/SVG ou um dos 14 objetos/cenários nativos. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline; para liberar espaço, reduza a duração pelo inspetor.
 5. Use desfazer/refazer, salve com um nome novo e reabra o projeto.
-6. Exporte um MP4 com nome novo. Este corte exporta composição visual **sem áudio**.
+6. Em uma produção gerada, escolha a cena no seletor abaixo da prévia. A biblioteca e a timeline mostram os objetos daquela cena. O áudio permanece fixo enquanto você ajusta visuais.
+7. Exporte MP4 com nome novo. Produções geradas incluem narração, trilha e efeitos; projetos visuais sem master de áudio continuam exportando sem som.
 
 Atalhos: `Ctrl+S` salva, `Ctrl+O` abre, `Ctrl+Z` desfaz e `Ctrl+Shift+Z` refaz. Campos numéricos e de cor aplicam a alteração ao perder o foco; o conteúdo do texto é atualizado durante a digitação. Navegar pela régua pausa a reprodução. A recuperação automática fica disponível pelo botão na biblioteca após uma edição.
 
@@ -25,10 +38,14 @@ Atalhos: `Ctrl+S` salva, `Ctrl+O` abre, `Ctrl+Z` desfaz e `Ctrl+Shift+Z` refaz. 
 apps/
   desktop/          aplicação Qt, ponte C++ e painéis QML
   render-worker/    processo de renderização e codificação
+  production-worker/ validação, voz SAPI e montagem automática
 modules/
   core/             documento e edição, C++ sem Qt
   storage/          JSON, lock, revisões e escrita atômica
   composition/      composição compartilhada entre prévia e exportação
+  media/            PCM/WAV e trilha procedural
+  production/       receita, catálogo, guia e compilador audiovisual
+examples/           roteiro sintético e receita reproduzível
 scripts/            preparo, ambiente, build, execução e smoke audiovisual
 tests/              comandos, tempo, persistência e composição
 docs/architecture/  decisões e limites do protótipo
@@ -43,13 +60,17 @@ Comandos PowerShell para desenvolvimento:
 .\scripts\setup.ps1
 .\scripts\build.ps1 -Test
 .\scripts\smoke.ps1
+.\scripts\smoke-production.ps1
+.\scripts\update-ai-guide.ps1
 .\scripts\run.ps1
 ```
 
-Leia a [decisão de arquitetura](docs/architecture/0001-native-prototype.md) para dependências, protocolo de persistência e limites. O [plano inicial](PLANO-INICIAL.md) mantém a visão de produto.
+Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano inicial](PLANO-INICIAL.md) mantém a visão de produto.
 
 ## Estado deste corte
 
-Há composição de texto/formas/imagens, animação de entrada, reprodução, seleção e arraste no canvas, timeline de objetos, inspetor, histórico, gravação com revisão, cópia anterior, recuperação automática e renderização MP4 em processo separado.
+Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, produção declarativa, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2.
 
-Ainda não há importação de vídeo/áudio, waveform, keyframes editáveis, timeline profissional completa, IA integrada, projetos portáteis ou instalador. Imagens dependem dos arquivos originais. Use uma janela do editor por vez neste protótipo. As ferramentas baixadas são dependências de desenvolvimento; este repositório ainda não é um pacote de distribuição pública.
+Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, câmera global, keyframes arbitrários, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
+
+Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.

@@ -2,6 +2,8 @@
 
 Data: 24/10/2026. Decisão: adotada para o protótipo; desempenho em episódios longos ainda não validado.
 
+> Registro do corte 0.1. A evolução vigente de biblioteca, áudio e produção por receita está em [ADR 0002](0002-ai-directed-production.md). Os limites históricos abaixo não descrevem sozinhos a versão 0.2.
+
 ## Contexto e escolha
 
 O usuário escolheu explorar C++ após discutir uma base desktop para um editor audiovisual novo. Esta decisão substitui os candidatos TypeScript/React/Tauri do plano inicial. O repositório anterior foi apenas referência; nenhum código dele foi importado.

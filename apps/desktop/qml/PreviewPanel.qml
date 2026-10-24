@@ -27,6 +27,12 @@ Rectangle {
                 PreviewItem { anchors.fill: parent; anchors.margins: 1; controller: editor; clip: true }
             }
         }
+        StudioComboBox {
+            Layout.fillWidth: true; visible: editor.scenes.length > 0
+            model: editor.scenes; textRole: "name"; valueRole: "start"
+            currentIndex: Math.max(0, editor.scenes.findIndex(function(s) { return editor.frame >= s.start && editor.frame < s.start + s.duration }))
+            onActivated: editor.frame = currentValue
+        }
         RowLayout {
             Layout.fillWidth: true; spacing: 10
             Label { text: "Arraste os objetos na prévia para posicionar."; font.pixelSize: 10; color: "#6c7d8b" }

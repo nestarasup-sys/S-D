@@ -1,5 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $StudioRoot = Split-Path -Parent $PSScriptRoot
+$StudioBuild = Join-Path $StudioRoot 'build'
+$StudioActiveBuild = Join-Path $StudioRoot 'build/active-build.txt'
+if (Test-Path -LiteralPath $StudioActiveBuild) { $StudioBuild = (Get-Content -LiteralPath $StudioActiveBuild -Raw).Trim() }
+$StudioBin = Join-Path $StudioBuild 'bin'
+$env:STUDIO_BIN_DIR = $StudioBin
 $StudioQt = Join-Path $StudioRoot '.tools/Qt/6.8.3/mingw_64'
 $StudioMingw = Join-Path $StudioRoot '.tools/Qt/Tools/mingw1310_64/bin'
 $StudioCmake = Join-Path $StudioRoot '.tools/python/cmake/data/bin/cmake.exe'

@@ -18,7 +18,11 @@ Rectangle {
         TextField {
             id: input
             Layout.fillWidth: true; implicitHeight: 32
-            text: field.currentValue === undefined ? "" : String(field.currentValue)
+            Binding {
+                target: input; property: "text"
+                value: field.currentValue === undefined ? "" : String(field.currentValue)
+                when: !input.activeFocus; restoreMode: Binding.RestoreNone
+            }
             color: "#dce6ee"; font.pixelSize: 12; selectByMouse: true
             background: Rectangle { color: "#10171e"; radius: 5; border.color: input.activeFocus ? "#b4f078" : "#303e49" }
             onEditingFinished: {
@@ -53,9 +57,20 @@ Rectangle {
                     Field { caption: "Altura"; propertyKey: "height"; currentValue: panel.node.height }
                 }
                 Field { caption: "Opacidade · 0 a 1"; propertyKey: "opacity"; currentValue: panel.node.opacity }
+                RowLayout {
+                    Field { caption: "Rotação · graus"; propertyKey: "rotation"; currentValue: panel.node.rotation }
+                    Field { caption: "Escala"; propertyKey: "scale"; currentValue: panel.node.scale }
+                }
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540" }
                 Label { text: "APARÊNCIA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1 }
                 Field { caption: "Cor · #RRGGBB"; propertyKey: "color"; currentValue: panel.node.color; number: false; visible: panel.node.kind !== "image" }
+                Field { caption: "Cor da pele · #RRGGBB"; propertyKey: "secondaryColor"; currentValue: panel.node.secondaryColor; number: false; visible: panel.node.nativeId === "person" }
+                StudioComboBox {
+                    Layout.fillWidth: true; visible: panel.node.nativeId === "person"
+                    model: ["neutral", "point", "wave", "worried"]
+                    currentIndex: Math.max(0, model.indexOf(panel.node.pose))
+                    onActivated: editor.updateSelected("pose", currentText)
+                }
                 Field { caption: "Tamanho do texto"; propertyKey: "fontSize"; currentValue: panel.node.fontSize; visible: panel.node.kind === "text" }
                 Label { text: "Conteúdo"; color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
                 TextArea {
@@ -84,7 +99,16 @@ Rectangle {
                     text: "Entrada suave"; checked: panel.node.animated || false; font.pixelSize: 12
                     onToggled: editor.updateSelected("animated", checked)
                 }
-                Label { text: "Movimento de entrada de 24 frames.\nAjustes de tempo são validados."; font.pixelSize: 10; color: "#6d8191"; lineHeight: 1.3 }
+                StudioComboBox {
+                    Layout.fillWidth: true; model: ["none", "fade", "rise", "slide-left", "slide-right", "pop"]
+                    currentIndex: Math.max(0, model.indexOf(panel.node.motion))
+                    onActivated: editor.updateSelected("motion", currentText)
+                }
+                RowLayout {
+                    Field { caption: "Deslocamento X"; propertyKey: "travelX"; currentValue: panel.node.travelX }
+                    Field { caption: "Deslocamento Y"; propertyKey: "travelY"; currentValue: panel.node.travelY }
+                }
+                Field { caption: "Giro no intervalo · graus"; propertyKey: "spinDegrees"; currentValue: panel.node.spinDegrees }
                 StudioButton { text: "Remover objeto"; Layout.fillWidth: true; quiet: true; onClicked: editor.removeSelected() }
             }
             Item { Layout.preferredHeight: 12 }

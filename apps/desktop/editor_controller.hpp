@@ -1,6 +1,8 @@
 #pragma once
 #include "node_list_model.hpp"
+#include <QAudioOutput>
 #include <QElapsedTimer>
+#include <QMediaPlayer>
 #include <QObject>
 #include <QProcess>
 #include <QTimer>
@@ -28,12 +30,40 @@ class EditorController : public QObject {
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportChanged)
     Q_PROPERTY(int exportProgress READ exportProgress NOTIFY exportChanged)
     Q_PROPERTY(bool recoveryAvailable READ recoveryAvailable NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList library READ library CONSTANT)
+    Q_PROPERTY(QVariantList scenes READ scenes NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList waveform READ waveform NOTIFY documentChanged)
+    Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY documentChanged)
+    Q_PROPERTY(bool producing READ producing NOTIFY productionChanged)
+    Q_PROPERTY(int productionProgress READ productionProgress NOTIFY productionChanged)
+    Q_PROPERTY(QUrl latestProduction READ latestProduction NOTIFY productionChanged)
   public:
     explicit EditorController(QObject *parent = nullptr, QString recoveryDirectory = {});
     const studio::Project &project() const {
         return editor_.project();
     }
     QVariantList nodes() const;
+    QVariantList library() const;
+    QVariantList scenes() const;
+    QVariantList waveform() const {
+        return waveform_;
+    }
+    bool hasAudio() const {
+        return !project().audioSource.empty();
+    }
+    bool producing() const {
+        return production_.state() != QProcess::NotRunning;
+    }
+    int productionProgress() const {
+        return productionProgress_;
+    }
+    QUrl latestProduction() const {
+        return latestProduction_;
+    }
+    Q_INVOKABLE void importProduction(QUrl recipe);
+    Q_INVOKABLE void importCarExample();
+    Q_INVOKABLE void cancelProduction();
+    Q_INVOKABLE void saveAiGuide(QUrl path);
     QAbstractItemModel *nodeModel() {
         return &nodeModel_;
     }
@@ -108,6 +138,7 @@ class EditorController : public QObject {
     void playingChanged();
     void messageChanged();
     void exportChanged();
+    void productionChanged();
 
   private:
     void changed();
@@ -116,6 +147,8 @@ class EditorController : public QObject {
     void presentFrame(int frame);
     void autosave();
     void reset(studio::Project p, QString path = {}, QByteArray revision = {});
+    void setupProduction();
+    QString currentSceneId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
     QByteArray savedDocument_, revision_, recoveryRevision_, renderBuffer_;
@@ -126,4 +159,12 @@ class EditorController : public QObject {
     bool playing_{false}, autosaveEnabled_{false};
     QProcess render_;
     NodeListModel nodeModel_{this};
+    QMediaPlayer audioPlayer_;
+    QAudioOutput audioOutput_;
+    QVariantList waveform_;
+    QProcess production_;
+    QByteArray productionBuffer_, productionBaseline_;
+    QString productionDirectory_, productionCancel_;
+    int productionProgress_{0};
+    QUrl latestProduction_;
 };

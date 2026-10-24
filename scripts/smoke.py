@@ -11,7 +11,7 @@ import time
 root = Path(sys.argv[1]).resolve()
 out = root / "artifacts" / time.strftime("smoke-%Y%m%d-%H%M%S")
 out.mkdir(parents=True, exist_ok=False)
-bin_dir = root / "build/bin"
+bin_dir = Path(os.environ.get("STUDIO_BIN_DIR", root / "build/bin"))
 ffmpeg = os.environ["STUDIO_FFMPEG"]
 
 

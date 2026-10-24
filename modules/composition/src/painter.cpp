@@ -2,6 +2,8 @@
 #include <QFont>
 #include <QImageReader>
 #include <QLinearGradient>
+#include <QSvgRenderer>
+#include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
 
 namespace studio {
@@ -21,18 +23,35 @@ void CompositionPainter::paint(QPainter &painter, const Project &p, std::int64_t
         painter.save();
         painter.setOpacity(state.opacity);
         painter.translate(state.x, state.y);
+        painter.translate(n.width / 2, n.height / 2);
+        painter.rotate(state.rotation);
+        painter.scale(state.scale, state.scale);
+        painter.translate(-n.width / 2, -n.height / 2);
         const QRectF bounds(0, 0, n.width, n.height);
         if (n.kind == NodeKind::Shape) {
             painter.setPen(Qt::NoPen);
             painter.setBrush(QColor(QString::fromStdString(n.color)));
             painter.drawRoundedRect(bounds, std::min(12., n.height / 2), std::min(12., n.height / 2));
+        } else if (n.kind == NodeKind::Native) {
+            paintNative(painter, n, frame);
+        } else if (n.kind == NodeKind::Svg) {
+            QSvgRenderer svg(QString::fromStdString(n.source));
+            if (svg.isValid())
+                svg.render(&painter, bounds);
         } else if (n.kind == NodeKind::Text) {
+            if (n.role == "caption") {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(QColor(8, 16, 24, 225));
+                painter.drawRoundedRect(bounds, 12, 12);
+            }
             QFont font("Segoe UI");
             font.setPixelSize(qRound(n.fontSize));
             font.setWeight(QFont::DemiBold);
             painter.setFont(font);
             painter.setPen(QColor(QString::fromStdString(n.color)));
-            painter.drawText(bounds, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap,
+            painter.drawText(n.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds,
+                             (n.role == "caption" ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignTop) |
+                                 Qt::TextWordWrap,
                              QString::fromStdString(n.text));
         } else {
             auto path = QString::fromStdString(n.source);

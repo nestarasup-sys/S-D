@@ -34,7 +34,10 @@ void PreviewItem::paint(QPainter *painter) {
         painter->setOpacity(1);
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
-        painter->drawRect(QRectF(state.x, state.y, n->width, n->height));
+        painter->translate(state.x + n->width / 2, state.y + n->height / 2);
+        painter->rotate(state.rotation);
+        painter->scale(state.scale, state.scale);
+        painter->drawRect(QRectF(-n->width / 2, -n->height / 2, n->width, n->height));
     }
     painter->restore();
 }
@@ -51,8 +54,15 @@ void PreviewItem::mousePressEvent(QMouseEvent *event) {
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
         if (!studio::active(*it, controller_->frame()))
             continue;
+        if (it->role == "background")
+            continue;
         auto state = studio::evaluate(*it, controller_->frame());
-        if (QRectF(state.x, state.y, it->width, it->height).contains(point)) {
+        QTransform transform;
+        transform.translate(state.x + it->width / 2, state.y + it->height / 2);
+        transform.rotate(state.rotation);
+        transform.scale(state.scale, state.scale);
+        transform.translate(-it->width / 2, -it->height / 2);
+        if (QRectF(0, 0, it->width, it->height).contains(transform.inverted().map(point))) {
             if (controller_->playing())
                 controller_->togglePlayback();
             controller_->selectNode(QString::fromStdString(it->id));
