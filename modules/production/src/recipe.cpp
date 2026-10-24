@@ -8,6 +8,7 @@
 #include <QUrl>
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <map>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
@@ -87,6 +88,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     n.id = id.toStdString();
     n.name = n.id;
     const auto kind = e["kind"].toString();
+    std::vector<Node> presetNodes;
     if (kind == "group") {
         if (version < 2 || !e["children"].isArray() || e["children"].toArray().isEmpty())
             return fail("Grupo exige uma lista não vazia de filhos na receita v2.");
@@ -151,12 +153,19 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             n.height *= dimensionScale;
         } else if (assetKind == "preset") {
             const auto loaded = deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
-            if (!loaded.error.isEmpty() || loaded.project.nodes.size() != 1)
+            if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
+                !loaded.project.nodes.front().parentId.empty())
                 return fail("Preset da biblioteca inválido: " + assetId);
-            n = loaded.project.nodes.front();
+            presetNodes = loaded.project.nodes;
+            for (const auto &part : presetNodes)
+                if ((part.kind == NodeKind::Image || part.kind == NodeKind::Svg) &&
+                    !QFileInfo::exists(QString::fromStdString(part.source)))
+                    return fail("Mídia de preset ausente: " + assetId);
+            n = presetNodes.front();
             n.parentId.clear();
-            n.keyframes.clear();
             n.name = asset["name"].toString().toStdString();
+            // A single legacy preset remains stretched to the scene as before.
+            element.presetTiming = presetNodes.size() > 1 || !n.keyframes.empty();
         } else
             return fail("Tipo de item pessoal não suportado na receita: " + assetId);
         n.id = id.toStdString();
@@ -269,7 +278,42 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
         }
+    if (!presetNodes.empty() && element.presetTiming) {
+        if (e.contains("keyframes"))
+            return fail("Presets animados usam suas próprias chaves; não combine com keyframes no JSON.");
+        std::size_t expanded = 1;
+        const auto recipeId = id;
+        std::function<bool(DirectedElement &, const std::string &, int)> expand =
+            [&](DirectedElement &parent, const std::string &parentId, int level) {
+                for (std::size_t i = 1; i < presetNodes.size(); ++i) {
+                    const auto &part = presetNodes[i];
+                    if (part.parentId != parentId)
+                        continue;
+                    if (level > 8)
+                        return fail("Composição da biblioteca excede 8 níveis de grupos.");
+                    DirectedElement child;
+                    child.node = part;
+                    const auto childId = recipeId + "-preset-" + QString::number(expanded++);
+                    if (ids.contains(childId) || ++elementCount > 200)
+                        return fail("Composição da biblioteca ultrapassa IDs ou limite de 200 elementos.");
+                    ids.insert(childId);
+                    child.node.id = childId.toStdString();
+                    child.node.parentId = parent.node.id;
+                    child.cue = element.cue;
+                    child.offsetSeconds = element.offsetSeconds;
+                    child.utteranceOnly = element.utteranceOnly;
+                    child.presetTiming = true;
+                    if (!expand(child, part.id, level + 1))
+                        return false;
+                    parent.children.push_back(std::move(child));
+                }
+                return true;
+            };
+        if (!expand(element, presetNodes.front().id, depth + 1) || expanded != presetNodes.size())
+            return fail(error.isEmpty() ? "Preset com hierarquia incompleta." : error);
+    }
     auto candidate = makeEmpty();
+    candidate.duration = std::max<std::int64_t>(candidate.duration, n.start + n.duration);
     candidate.nodes = {n};
     candidate.nodes.front().parentId.clear();
     if (auto validation = validate(candidate); !validation.empty())

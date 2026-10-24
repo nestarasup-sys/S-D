@@ -20,8 +20,8 @@ O contrato de produção v1 exigia cabeçalho, kicker e fundo por cena e só ace
 
 ## Limites atuais
 
-A biblioteca v2 aceita mídias e presets simples sem grupos/keyframes. A estrutura de projeto mantém grupos, mas salvar uma árvore inteira como um item de biblioteca segue pendente. IDs são específicos da instalação; se a cópia local do catálogo muda, a importação informa que o item não existe. A receita ainda não tem eventos por palavra, documentos com regiões, vídeo, estilo configurável ou atualização parcial de projeto.
+A biblioteca agora salva grupos completos com filhos e keyframes relativos, com cópias de imagem/SVG. A instância editável remapeia todos os IDs e permite desfazer a árvore em uma operação. `kind: "library"` em receita v2 expande presets compostos, preserva animações e verifica se os keyframes cabem no intervalo de áudio medido. Persistem limites de seleção múltipla, edição de instâncias vinculadas e empacotamento portátil. IDs são específicos da instalação; se a cópia local do catálogo muda, a importação informa que o item não existe. A receita ainda não tem eventos por palavra, documentos com regiões, vídeo, estilo configurável ou atualização parcial de projeto.
 
 ## Validação de implementação
 
-O build C++ do desktop e do worker de produção precisa concluir. Esta rodada não executa a suíte automatizada. O exemplo v2 é mantido em `examples/composicao-livre-v2.production.json`; o guia de produção é gerado do código em `modules/production/src/guide.cpp`.
+O build C++ do desktop e do worker de produção precisa concluir. Casos adicionais foram escritos para presets compostos e importação por JSON; a execução da suíte, o build e os smokes ainda precisam ser confirmados no Windows com Qt 6.8. O exemplo v2 é mantido em `examples/composicao-livre-v2.production.json`; o guia de produção é gerado do código em `modules/production/src/guide.cpp`.

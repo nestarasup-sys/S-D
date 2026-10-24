@@ -26,7 +26,8 @@ QJsonObject capabilities() {
             {"projectVersion", 3},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
-                        "camera-2d-keyframes", "personal-library-assets", "optional-visual-captions"}},
+                        "camera-2d-keyframes", "personal-library-assets", "reusable-group-presets",
+                        "optional-visual-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes"}},
             {"width", 1280},
@@ -53,6 +54,16 @@ Você é o diretor audiovisual. Transforme o roteiro em uma produção editável
 O usuário escreve o roteiro fora do aplicativo, fornece este guia à IA e salva a resposta em `.production.json`. **Importar produção IA** gera voz local, mede cada fala, resolve os cues, monta o projeto e sincroniza o áudio. A pessoa pode editar cada grupo e elemento no editor e exportar o vídeo. Não invente duração nem timestamps da fala.
 
 Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v2.
+
+## Como planejar a receita
+
+- Responda **somente com JSON válido**, sem comentários, cercas Markdown nem texto de apresentação. Use exatamente `format: "studio-dark-production"`, `version: 2` e `catalogVersion: 1`.
+- Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
+- `offsetSeconds` varia de 0 a 10; não é timestamp absoluto. A duração real depende da voz pt-BR instalada e só é conhecida depois de sintetizar o WAV.
+- Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
+- Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Evite elementos ilegíveis em 1280×720; respeite o limite de oito níveis de grupo.
+- Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
+- Revise antes de responder: JSON parseável, IDs únicos, no máximo 20 cenas, de 1 a 10 falas por cena, propriedades dentro dos limites e narração coerente com os visuais.
 
 ## Receita v2
 
@@ -163,10 +174,14 @@ Biblioteca nativa disponível: car, person, house, building, document, computer,
             const auto nodes = asset["preset"].toObject()["nodes"].toArray();
             if (!nodes.isEmpty()) {
                 const auto node = nodes.at(0).toObject();
-                if (node["kind"] == "native")
+                if (nodes.size() > 1)
+                    detail = ", composição com " + QString::number(nodes.size()) + " partes";
+                else if (node["kind"] == "native")
                     detail = ", objeto " + node["nativeId"].toString();
                 else if (node["kind"] == "text" && node["text"].isString())
                     detail = ", texto: " + node["text"].toString().left(100);
+                if (!node["keyframes"].toArray().isEmpty())
+                    detail += ", raiz animada";
             }
         }
         assets.append("- `" + asset["id"].toString() + "` — " + asset["name"].toString() + " (" +
@@ -188,6 +203,14 @@ Biblioteca nativa disponível: car, person, house, building, document, computer,
     guide += R"GUIDE(
 Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":0}`. Itens apagados não aparecem. O aplicativo resolve IDs na biblioteca local e informa se o item foi removido ou não existe. Não invente IDs nem suponha que outra máquina tenha os mesmos arquivos. O manifesto descreve nomes, categorias e dimensões; ele não inspeciona visualmente a imagem. Se a descrição não bastar para decidir, pergunte ao usuário. Itens image/SVG também podem ser referenciados por `source` se o usuário fornecer um caminho.
 
+## Presets compostos na biblioteca pessoal
+
+O app agora permite salvar e reutilizar um **grupo raiz** com filhos, subgrupos, animações e mídias copiadas para a biblioteca. O guia exportado pelo aplicativo identifica esses presets; o guia do repositório não contém IDs pessoais.
+
+Em receitas v2, `{"id":"painel1","kind":"library","assetId":"ID-DO-PRESET","cue":0}` também instancia grupos inteiros. Os filhos mantêm posições locais, duração e keyframes em frames relativos ao cue escolhido (30 FPS); o importador cria novos IDs e preserva a hierarquia. A duração efetiva é limitada pela cena/trecho medido: uma chave que cair depois do fim provoca erro, não um corte silencioso. Se a animação precisa ser ajustada à narração, descreva o grupo diretamente em `children` com keyframes por cue.
+
+Propriedades visuais passadas à referência alteram a raiz; keyframes salvos continuam controlando a animação dessa raiz. Não combine keyframes explícitos com o mesmo preset animado. Se o item do manifesto for uma imagem, seu nome não confirma o conteúdo visual: solicite descrição quando necessário. IDs dependem da instalação e devem ser obtidos exportando o guia atualizado no próprio app.
+
 ## Catálogo nativo do aplicativo
 
 )GUIDE";
@@ -200,6 +223,12 @@ Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
 A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. No formato v2, campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. O projeto compilado permanece editável em schema 3.
+
+## Checklist de limites e publicação
+
+O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
+
+Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, curvas de easing ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
 
 ## Capacidades em JSON
 

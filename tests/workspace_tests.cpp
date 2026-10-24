@@ -135,6 +135,77 @@ int main(int argc, char **argv) {
         ui.setAssetSearch("Foto local");
         check(ui.assets().size() == 1, "asset search");
         ui.setAssetSearch("");
+        // A selected group is stored as a self-contained composition and restored in one undo step.
+        editor.selectNode(QString::fromStdString(editor.project().nodes[1].id));
+        editor.groupSelected();
+        check(ui.canSaveSelection(), "selected root group can be saved");
+        editor.setFrame(0);
+        editor.recordSelectedKeyframe();
+        editor.setFrame(20);
+        editor.recordSelectedKeyframe();
+        editor.setFrame(0);
+        check(ui.saveSelection("Painel com animação", "objects"), "save group and keyframes");
+        const auto groupPreset = named(ui.assets(), "Painel com animação");
+        const auto groupPresetId = groupPreset["id"].toString();
+        auto decodedGroup = studio::deserialize(
+            QJsonDocument(QJsonObject::fromVariantMap(groupPreset["preset"].toMap())).toJson());
+        check(decodedGroup.error.isEmpty() && decodedGroup.project.nodes.size() == 2 &&
+                  decodedGroup.project.nodes.front().start == 0 &&
+                  decodedGroup.project.nodes.front().keyframes.size() == 2,
+              "group preset preserves child and relative keyframes");
+        editor.setFrame(1);
+        check(!ui.useAsset(groupPresetId), "reject insert when animated composition cannot fit scene");
+        editor.setFrame(0);
+        const auto beforeInsert = editor.project().nodes.size();
+        check(ui.useAsset(groupPresetId) && editor.project().nodes.size() == beforeInsert + 2,
+              "reinsert group with children");
+        const auto insertedRoot = editor.project().nodes[beforeInsert];
+        const auto insertedChild = editor.project().nodes[beforeInsert + 1];
+        check(insertedChild.parentId == insertedRoot.id &&
+                  insertedRoot.id != decodedGroup.project.nodes.front().id &&
+                  insertedRoot.keyframes.size() == 2 &&
+                  studio::validate(editor.project()).empty(),
+              "group imported with remapped IDs, parents and valid timeline");
+        editor.undo();
+        check(editor.project().nodes.size() == beforeInsert, "one undo removes full composition");
+
+        // A child image must survive deletion of its external source in a saved group.
+        QImage groupPhoto(32, 32, QImage::Format_RGB32);
+        groupPhoto.fill(QColor("#a3be8c"));
+        const auto sourcePhoto = temp.filePath("group-photo.png");
+        check(groupPhoto.save(sourcePhoto), "create external image for group");
+        studio::Node photoRoot, photoChild;
+        photoRoot.id = "photo-root";
+        photoRoot.kind = studio::NodeKind::Group;
+        photoRoot.name = "Grupo de fotos";
+        photoRoot.start = 40;
+        photoRoot.duration = 120;
+        photoChild.id = "photo-child";
+        photoChild.kind = studio::NodeKind::Image;
+        photoChild.source = sourcePhoto.toStdString();
+        photoChild.parentId = photoRoot.id;
+        photoChild.start = 50;
+        photoChild.duration = 100;
+        studio::WorkspaceStore mediaCatalog(temp.filePath("workspace"));
+        auto storedGroup = mediaCatalog.addPreset("Grupo de imagem", "objects", {photoRoot, photoChild});
+        check(storedGroup.error.isEmpty(), "store grouped media with owned copy");
+        const auto storedJson = mediaCatalog.asset(storedGroup.id)["preset"].toObject();
+        auto storedProject = studio::deserialize(QJsonDocument(storedJson).toJson());
+        check(storedProject.error.isEmpty() && storedProject.project.nodes.size() == 2 &&
+                  storedProject.project.nodes[1].start == 10,
+              "group timing is normalized to selected root");
+        auto mediaFile = QString::fromStdString(storedProject.project.nodes[1].source);
+        check(mediaFile != sourcePhoto && QFile::exists(mediaFile), "child file copied to personal library");
+        check(QFile::remove(sourcePhoto), "delete external image fixture");
+        ui.refresh();
+        const auto beforeMedia = editor.project().nodes.size();
+        check(ui.useAsset(storedGroup.id) && editor.project().nodes.size() == beforeMedia + 2,
+              "group insertion works after original image has been removed");
+        check(editor.project().nodes.back().source == mediaFile.toStdString(),
+              "inserted group references retained library copy");
+        editor.undo();
+        check(editor.project().nodes.size() == beforeMedia, "group with media undoes atomically");
+
         studio::WorkspaceStore firstStore(temp.filePath("workspace")), staleStore(temp.filePath("workspace"));
         check(firstStore.addCategory("Concorrência A").error.isEmpty(), "first catalogue writer commits");
         check(!staleStore.addCategory("Concorrência B").error.isEmpty(), "stale catalogue writer rejected");

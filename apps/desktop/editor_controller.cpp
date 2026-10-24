@@ -11,6 +11,7 @@
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 #include <studio/core/library.hpp>
 #include <studio/media/wave.hpp>
 
@@ -438,6 +439,56 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     } else
         notify(q(error));
     return false;
+}
+bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
+    if (nodes.empty()) {
+        notify("Composição vazia.");
+        return false;
+    }
+    const auto sceneId = currentSceneId().toStdString();
+    std::int64_t remaining = duration() - frame_;
+    for (const auto &scene : project().scenes)
+        if (scene.id == sceneId)
+            remaining = scene.start + scene.duration - frame_;
+    if (nodes.front().start != 0 || nodes.front().duration > remaining) {
+        notify("A composição não cabe no intervalo restante desta cena. Posicione o cursor antes.");
+        return false;
+    }
+    std::unordered_map<std::string, std::string> ids;
+    for (const auto &n : nodes)
+        if (n.id.empty() ||
+            !ids.emplace(n.id, QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString()).second) {
+            notify("Composição possui IDs inválidos ou duplicados.");
+            return false;
+        }
+    for (auto &n : nodes) {
+        const auto oldId = n.id, parent = n.parentId;
+        n.id = ids.at(oldId);
+        if (!parent.empty()) {
+            if (!ids.contains(parent)) {
+                notify("Composição contém um pai externo.");
+                return false;
+            }
+            n.parentId = ids.at(parent);
+        }
+        n.start += frame_;
+        for (auto &key : n.keyframes)
+            key.frame += frame_;
+        n.sceneId = sceneId;
+    }
+    const auto rootId = nodes.front().id;
+    const auto error = editor_.execute([&](studio::Project &p) {
+        p.schemaVersion = 3;
+        p.nodes.insert(p.nodes.end(), nodes.begin(), nodes.end());
+    });
+    if (!error.empty()) {
+        notify(q(error));
+        return false;
+    }
+    selectedId_ = q(rootId);
+    changed();
+    notify("Composição reutilizada com filhos e keyframes; uma ação de desfazer.");
+    return true;
 }
 void EditorController::removeSelected() {
     const auto *selectedNode = studio::findNode(project(), selectedId_.toStdString());

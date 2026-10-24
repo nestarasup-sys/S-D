@@ -14,18 +14,19 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 - Projeto schema 3: grupos hierárquicos, transformações locais, keyframes lineares e câmera 2D; preview e exportação compartilham o avaliador.
 - Receita de produção v2: layout livre, grupos, keyframes por cue, câmera explícita, legendas visuais opcionais e uso de itens ativos da biblioteca pessoal por ID. Receitas v1 continuam aceitas.
 - Guia da IA exportável com capacidades reais e manifesto atualizado da biblioteca pessoal; exemplo executável em `examples/composicao-livre-v2.production.json`.
+- Biblioteca e receita v2 permitem reutilizar grupos inteiros com filhos, keyframes relativos e mídias locais; os IDs são remapeados na instância.
 - Documentação arquitetural e commits locais de cada corte.
 
 ### Em andamento
 
 - Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
-- Etapa 1: composição livre já funciona no importador; interface de grupos ainda permite agrupar um elemento por vez e a biblioteca não salva grupos inteiros.
+- Etapa 1: composição livre e presets agrupados já estão no código; o editor ainda agrupa um elemento por vez e não tem multi seleção.
 - Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
 - Etapa 5 (IA externa): guia e importação de receitas v2 estão implementados; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
 
 ### Falta
 
-- Grupos/componentes reutilizáveis na biblioteca e multi seleção.
+- Multi seleção, componentes vinculados com propriedades expostas e kits de identidade.
 - Conectores/âncoras, trajetórias e curvas de velocidade.
 - Vídeo como camada, documentos/PDF com regiões destacáveis, dados com fonte/unidade e pistas de áudio editáveis.
 - Pacote de dependências portátil, kits visuais e otimização/benchmark de produção longa.
@@ -33,7 +34,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 ### Próximos cortes
 
 1. Fechar a etapa 0 com benchmark comparativo e decisão documentada de renderização.
-2. Permitir salvar/reutilizar uma composição agrupada sem perder hierarquia e animações.
+2. Verificar os presets agrupados em produção real e então avançar para multi seleção e componentes.
 3. Adicionar conectores ancorados e transições de câmera; validar no piloto visual.
 4. Só então expandir para documentos e vídeo, que exigem estratégia de decode, seek e empacotamento de mídia.
 
@@ -116,7 +117,7 @@ Quando faltar uma mídia, a IA pode indicar o que precisa ser fornecido, propor 
 | --- | --- | --- |
 | Projetos e coleção | Tela inicial, cópias, renomeação, lixeira, categorias e biblioteca local. | Ampliar os tipos de item reutilizável. |
 | Objetos | Árvore de grupos hierárquicos com filhos editáveis. | Multi seleção, âncoras e componentes editáveis. |
-| Biblioteca | Nativos, imagens/SVG e presets simples; guia exportável lista itens pessoais ativos. | Salvar grupos/composições, materiais, movimentos e kits de identidade. |
+| Biblioteca | Nativos, imagens/SVG e presets agrupados; guia exportável lista itens pessoais ativos. | Componentes parametrizados, materiais, movimentos e kits de identidade. |
 | Composição | Receita v2 permite layout livre e cabeçalhos/cenário/legendas opcionais; v1 mantém legado. | Editar propostas em projeto existente e ampliar a linguagem de composição. |
 | Animação | Keyframes lineares de transformação e câmera. | Curvas, trajetórias, easing e animações em etapas. |
 | Câmera | Pan/zoom/rotação com keyframes explícitos. | Enquadrar alvos, transições suaves e acompanhar regiões/grupos. |
@@ -212,7 +213,7 @@ Recomendo organizar a biblioteca em camadas de complexidade:
 
 Cada item deve informar parâmetros, partes, âncoras, proporção, exemplos de uso e dependências de mídia/fontes. Uma miniatura sozinha não ensina a IA a utilizá-lo.
 
-Salvar uma seleção deverá aceitar grupos inteiros e composições, além do nó individual que já existe. As categorias e a lixeira atuais podem continuar organizando esse material.
+Salvar um grupo raiz com seus descendentes já é possível; selecionar vários grupos avulsos para uma composição segue planejado. As categorias e a lixeira atuais podem continuar organizando esse material.
 
 ## 9. O novo guia para a IA
 
@@ -337,7 +338,7 @@ Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora 
 | Etapa | Estado | Entrega concreta | Critério de passagem |
 | --- | --- | --- |
 | 0 — Prova da fundação | Parcial | Modelo de grupos, câmera e animação existe; falta comparação de renderizadores com cena de teste e métricas. | Composição salva/reaberta, enquadramentos reproduzíveis, medições registradas e caminho escolhido. |
-| 1 — Composição livre | Parcial | Grupos, transformação local, keyframes e receita v2 livre existem; faltam âncoras, multi seleção e presets compostos. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
+| 1 — Composição livre | Parcial | Grupos, keyframes, receita v2 e presets compostos existem; faltam âncoras, multi seleção e componentes parametrizados. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
 | 2 — Câmera e conexões | Parcial | Pan/zoom/rotação explícitos existem; faltam alvo, transições e conectores acompanhando objetos. | Mostrar detalhe e quadro completo sem perder relações ou identidade. |
 | 3 — Documentos e vídeo | Não iniciado | Vídeo com trecho de origem; páginas, crop, máscara e regiões destacadas. | Palestra em cartão e aproximação de frase funcionam na prévia e no MP4. |
 | 4 — Dados e som | Não iniciado | Gráficos com valores/unidades, contadores, linha do tempo e pistas de áudio. | Valores consistentes, fontes relacionadas e mix ajustável. |
@@ -392,7 +393,7 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 
 ### Limites atuais / trabalho restante
 
-- O editor agrupa um elemento por vez; multi seleção e salvar grupos inteiros na biblioteca ainda faltam. Presets com keyframes e grupos não são suportados pelo catálogo atual.
-- `kind: library` aceita mídia e presets simples. A receita usa caminhos locais para dependências; ainda não empacota mídia para outra máquina.
+- O editor agrupa um elemento por vez; multi seleção e componentes vinculados ainda faltam. Presets de grupos com keyframes já são suportados.
+- `kind: library` aceita mídia, presets simples e grupos animados; o JSON continua dependente do catálogo local e não empacota mídia.
 - Benchmark entre renderizadores, curvas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
 - O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.

@@ -31,7 +31,7 @@ class WorkspaceStore {
     WorkspaceResult deleteCategory(const QString &id);
     WorkspaceResult addAsset(const QString &name, const QString &category, const QString &source,
                              int width = 0, int height = 0);
-    WorkspaceResult addPreset(const QString &name, const QString &category, Node node);
+    WorkspaceResult addPreset(const QString &name, const QString &category, std::vector<Node> nodes);
     WorkspaceResult updateAsset(const QString &id, const QString &name, const QString &category);
     WorkspaceResult setAssetDeleted(const QString &id, bool deleted);
     QJsonObject project(const QString &id) const;

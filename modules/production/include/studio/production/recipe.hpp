@@ -24,6 +24,7 @@ struct DirectedElement {
     int cue{0};
     double offsetSeconds{0};
     bool utteranceOnly{false};
+    bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     std::vector<DirectedKeyframe> keyframes;
     std::vector<DirectedElement> children;
 };

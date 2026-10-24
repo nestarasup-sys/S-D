@@ -10,6 +10,7 @@
 #include <QStandardPaths>
 #include <QSvgRenderer>
 #include <algorithm>
+#include <unordered_set>
 #include <studio/composition/painter.hpp>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
@@ -357,46 +358,40 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
 }
 bool WorkspaceController::canSaveSelection() const {
     const auto *node = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
-    return hasDocument_ && node && node->kind != studio::NodeKind::Group && node->parentId.empty() &&
-           node->keyframes.empty();
+    return hasDocument_ && node && node->role != "background" && node->parentId.empty();
 }
 bool WorkspaceController::saveSelection(QString name, QString category) {
-    auto n = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
-    if (!hasDocument_ || !n) {
-        notify("Selecione um objeto no editor primeiro.");
+    const auto *root = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
+    if (!root || !canSaveSelection()) {
+        notify("Selecione um objeto ou grupo raiz (não um cenário de fundo).");
         return false;
     }
-    if (n->kind == studio::NodeKind::Group) {
-        notify("Salvar composições inteiras na biblioteca ainda será adicionado.");
-        return false;
+    std::vector<studio::Node> nodes{*root};
+    std::unordered_set<std::string> collected{root->id};
+    // Project storage can list children before their parent. Collect by parent link,
+    // not by row adjacency, preserving the visual order of unrelated siblings.
+    bool found = true;
+    while (found) {
+        found = false;
+        for (const auto &node : editor_->project().nodes)
+            if (!node.parentId.empty() && collected.contains(node.parentId) &&
+                collected.insert(node.id).second) {
+                nodes.push_back(node);
+                found = true;
+            }
     }
-    if (!n->parentId.empty() || !n->keyframes.empty()) {
-        notify("Presets de grupos e keyframes ainda serão adicionados à biblioteca.");
-        return false;
-    }
-    auto r = store_.addPreset(name, category, *n);
+    auto r = store_.addPreset(name, category, std::move(nodes));
     if (!r.error.isEmpty())
         return complete(r, {});
-    auto p = studio::makeEmpty();
-    auto preview = *n;
-    preview.id = "preview";
-    preview.sceneId.clear();
-    preview.start = 0;
-    preview.duration = 360;
-    preview.animated = false;
-    preview.rotation = 0;
-    preview.scale = 1;
-    preview.travelX = preview.travelY = preview.spinDegrees = 0;
-    double factor = std::min(1000. / preview.width, 550. / preview.height);
-    preview.width *= factor;
-    preview.height *= factor;
-    preview.x = (1280 - preview.width) / 2;
-    preview.y = (720 - preview.height) / 2;
-    p.nodes = {preview};
-    QDir().mkpath(store_.root() + "/cache");
-    studio::CompositionPainter painter;
-    painter.frame(p, 60).scaled(480, 270).save(thumbnailPath(r.id));
-    return complete(r, "Objeto personalizado salvo na biblioteca.");
+    const auto asset = store_.asset(r.id);
+    auto loaded = studio::deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
+    if (loaded.error.isEmpty()) {
+        QDir().mkpath(store_.root() + "/cache");
+        studio::CompositionPainter painter;
+        const auto frame = std::min<std::int64_t>(loaded.project.duration - 1, 30);
+        painter.frame(loaded.project, frame).scaled(480, 270).save(thumbnailPath(r.id));
+    }
+    return complete(r, "Composição salva na biblioteca com hierarquia, animações e mídias.");
 }
 void WorkspaceController::saveAiGuide(QUrl path) {
     if (!store_.error().isEmpty()) {
@@ -431,6 +426,7 @@ bool WorkspaceController::useAsset(QString id) {
         return false;
     }
     studio::Node n;
+    std::vector<studio::Node> presetNodes;
     auto kind = item["kind"].toString();
     if (kind == "native") {
         const auto asset = studio::libraryItem(item["nativeId"].toString().toStdString());
@@ -445,11 +441,19 @@ bool WorkspaceController::useAsset(QString id) {
         n.color = "#efb873";
     } else if (kind == "preset") {
         auto loaded = studio::deserialize(QJsonDocument(item["preset"].toObject()).toJson());
-        if (!loaded.error.isEmpty() || loaded.project.nodes.size() != 1) {
-            notify("Objeto personalizado inválido.");
+        if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
+            !loaded.project.nodes.front().parentId.empty()) {
+            notify("Composição personalizada inválida.");
             return false;
         }
-        n = loaded.project.nodes.front();
+        presetNodes = std::move(loaded.project.nodes);
+        for (const auto &part : presetNodes)
+            if ((part.kind == studio::NodeKind::Image || part.kind == studio::NodeKind::Svg) &&
+                !QFileInfo::exists(QString::fromStdString(part.source))) {
+                notify("Uma mídia da composição não está disponível.");
+                return false;
+            }
+        n = presetNodes.front();
     } else {
         n.kind = kind == "svg" ? studio::NodeKind::Svg : studio::NodeKind::Image;
         n.source = item["source"].toString().toStdString();
@@ -461,7 +465,13 @@ bool WorkspaceController::useAsset(QString id) {
         }
     }
     n.name = item["name"].toString().toStdString();
-    if (!editor_->insertLibraryNode(n)) {
+    const bool compound = kind == "preset" &&
+                          (presetNodes.size() > 1 || !presetNodes.front().keyframes.empty() ||
+                           presetNodes.front().kind == studio::NodeKind::Group);
+    if (compound)
+        presetNodes.front().name = n.name;
+    if (!(compound ? editor_->insertLibraryNodes(std::move(presetNodes))
+                   : editor_->insertLibraryNode(n))) {
         notify(editor_->message());
         return false;
     }
