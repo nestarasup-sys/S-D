@@ -47,7 +47,7 @@ Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v
          "color": "#17242c", "cue": 0,
          "keyframes": [
            {"cue": 0, "x": -40, "y": 0, "opacity": 0, "scale": 0.96},
-           {"cue": 0, "offsetSeconds": 0.5, "x": 0, "y": 0, "opacity": 1, "scale": 1}
+           {"cue": 0, "offsetSeconds": 0.5, "x": 0, "y": 0, "opacity": 1, "scale": 1, "easing": "ease-out"}
          ]},
         {"id": "titulo", "kind": "text", "text": "A história por trás do preço",
          "x": 36, "y": 40, "width": 620, "height": 110, "fontSize": 48, "cue": 0},
@@ -57,7 +57,7 @@ Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v
     }],
     "camera": [
       {"cue": 0, "x": 640, "y": 360, "zoom": 1.25, "rotation": 0},
-      {"cue": 1, "x": 640, "y": 360, "zoom": 1, "rotation": 0}
+      {"cue": 1, "x": 640, "y": 360, "zoom": 1, "rotation": 0, "easing": "ease-in-out"}
     ]
   }]
 }
@@ -73,9 +73,9 @@ Não há cabeçalho, título de cena ou cenário forçado em v2. `title`, `kicke
 
 `group` exige `children` e pode aninhar até 8 níveis. Coordenadas dos filhos são locais ao canto superior esquerdo do grupo pai. A ordem da lista determina a ordem de desenho. Um grupo pode ter `x`, `y`, `width`, `height`, `rotation`, `scale`, `opacity`, `cue`, `offsetSeconds` e `span` como outro elemento.
 
-`keyframes` em elementos são estados de `x`, `y`, `rotation`, `scale` e `opacity`. Cada chave usa `cue` e `offsetSeconds`; propriedades omitidas mantêm o valor inicial daquele elemento. A interpolação é linear. As chaves devem cair dentro do trecho de vida do elemento. Evite combinar `keyframes` com `motion`, `travelX`, `travelY` ou `spinDegrees` no mesmo item.
+`keyframes` em elementos são estados de `x`, `y`, `rotation`, `scale` e `opacity`. Cada chave usa `cue` e `offsetSeconds`; propriedades omitidas mantêm o valor inicial daquele elemento. Opcionalmente, `easing` na **chave de destino** escolhe a interpolação até ela: `linear` (padrão), `ease-in`, `ease-out` ou `ease-in-out`. A primeira chave não tem trecho anterior. As chaves devem cair dentro do trecho de vida do elemento. Evite combinar `keyframes` com `motion`, `travelX`, `travelY` ou `spinDegrees` no mesmo item.
 
-`camera` é uma lista de keyframes na cena com `cue`, `x`, `y`, `zoom` e `rotation`; `offsetSeconds` é opcional. O centro inicial é 640×360, zoom 1 e rotação 0. A câmera atravessa os limites entre cenas e mantém o último estado até a próxima chave. Zoom válido: 0.1 a 10. `cue` começa em zero em cada cena.
+`camera` é uma lista de keyframes na cena com `cue`, `x`, `y`, `zoom` e `rotation`; `offsetSeconds` e `easing` são opcionais. A curva tem a mesma semântica da chave de destino usada nos elementos. O centro inicial é 640×360, zoom 1 e rotação 0. A câmera atravessa os limites entre cenas e mantém o último estado até a próxima chave. Zoom válido: 0.1 a 10. `cue` começa em zero em cada cena.
 
 Para sincronizar, informe `cue` e opcionalmente `offsetSeconds` de 0 a 10. O compilador mede o áudio real. `span` aceita `scene` (padrão) ou `utterance`. Não use timestamps inventados.
 
@@ -273,6 +273,7 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "nested-groups",
         "transform-keyframes-linear",
         "camera-2d-keyframes",
+        "keyframe-easing-curves",
         "personal-library-assets",
         "reusable-group-presets",
         "optional-visual-captions"
@@ -281,7 +282,8 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
     "projectCapabilities": [
         "group-hierarchy",
         "transform-keyframes-linear",
-        "camera-2d-keyframes"
+        "camera-2d-keyframes",
+        "keyframe-easing-curves"
     ],
     "projectVersion": 3,
     "width": 1280

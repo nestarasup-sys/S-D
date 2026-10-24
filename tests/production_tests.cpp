@@ -174,6 +174,50 @@ int main(int argc, char **argv) {
               "reject preset keyframe beyond measured narration scene");
         check(studio::capabilities()["productionCapabilities"].toArray().contains("reusable-group-presets"),
               "capabilities advertise reusable group assets");
+        auto easedJson = QJsonObject{
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Curvas por cue"}, {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
+            {"scenes", QJsonArray{QJsonObject{
+                {"id", "curvas"}, {"narration", QJsonArray{"Uma curva suaviza a câmera."}},
+                {"elements", QJsonArray{QJsonObject{
+                    {"id", "shape-easing"}, {"kind", "shape"}, {"cue", 0},
+                    {"keyframes", QJsonArray{
+                        QJsonObject{{"cue", 0}, {"x", 0}, {"y", 30}},
+                        QJsonObject{{"cue", 0}, {"offsetSeconds", 1}, {"x", 100}, {"y", 30},
+                                    {"easing", "ease-in"}}
+                    }}
+                }}},
+                {"camera", QJsonArray{
+                    QJsonObject{{"cue", 0}, {"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}},
+                    QJsonObject{{"cue", 0}, {"offsetSeconds", 1}, {"x", 740}, {"y", 360},
+                                {"zoom", 1}, {"rotation", 0}, {"easing", "ease-out"}}
+                }}
+            }}}};
+        auto easedRecipe = studio::parseRecipe(QJsonDocument(easedJson).toJson(), directory.path());
+        check(easedRecipe.error.isEmpty(), "JSON accepts named easing curves");
+        auto invalidEasing = easedJson;
+        auto invalidScenes = invalidEasing["scenes"].toArray();
+        auto invalidScene = invalidScenes[0].toObject();
+        auto cameraKeys = invalidScene["camera"].toArray();
+        auto badKey = cameraKeys[1].toObject();
+        badKey["easing"] = "elastic-unknown";
+        cameraKeys[1] = badKey;
+        invalidScene["camera"] = cameraKeys;
+        invalidScenes[0] = invalidScene;
+        invalidEasing["scenes"] = invalidScenes;
+        check(!studio::parseRecipe(QJsonDocument(invalidEasing).toJson(), directory.path()).error.isEmpty(),
+              "unsupported easing rejected by strict JSON validator");
+        QMap<QString, studio::PcmAudio> easedVoice;
+        studio::PcmAudio enoughVoice;
+        enoughVoice.samples.resize(120000, 0);
+        easedVoice.insert(easedRecipe.recipe.scenes[0].narration[0].id, enoughVoice);
+        auto easedProject = studio::compileProduction(easedRecipe.recipe, easedVoice, "easing.wav");
+        check(easedProject.error.isEmpty() &&
+                  studio::findNode(easedProject.project, "shape-easing")->keyframes[1].easing == "ease-in" &&
+                  easedProject.project.camera[1].easing == "ease-out",
+              "compiled visual and camera easing persisted");
+        check(std::abs(studio::evaluate(*studio::findNode(easedProject.project, "shape-easing"), 15).x -
+                       12.5) < .001, "production uses easing in compositor");
         auto g = studio::aiGuide();
         for (const auto &asset : studio::nativeLibrary())
             check(g.contains("`" + QString::fromStdString(asset.id) + "`"),

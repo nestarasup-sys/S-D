@@ -6,15 +6,16 @@ Data: 24/10/2026. Referência analisada: **Gravação de Tela 2026-10-24 170027.
 
 ## Resumo executivo
 
-O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca de mídia pessoal, grupos, keyframes lineares e câmera 2D. O próximo objetivo é aproximar a direção visual da referência com itens reutilizáveis compostos, conexões e melhor sincronização, enquanto se prova o desempenho do renderizador.
+O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca de mídia pessoal, grupos, keyframes com easing opcional, câmera 2D e logs de importação. O próximo objetivo é aproximar a direção visual da referência com itens reutilizáveis compostos, conexões e melhor sincronização, enquanto se prova o desempenho do renderizador.
 
 ### Feito
 
 - Tela de projetos com criação, organização, renomeação, cópia e lixeira; biblioteca categorizada com nativos, imagens/SVG e presets simples.
-- Projeto schema 3: grupos hierárquicos, transformações locais, keyframes lineares e câmera 2D; preview e exportação compartilham o avaliador.
+- Projeto schema 3: grupos hierárquicos, transformações locais, keyframes com easing linear/cúbico e câmera 2D; preview e exportação compartilham o avaliador.
 - Receita de produção v2: layout livre, grupos, keyframes por cue, câmera explícita, legendas visuais opcionais e uso de itens ativos da biblioteca pessoal por ID. Receitas v1 continuam aceitas.
 - Guia da IA exportável com capacidades reais e manifesto atualizado da biblioteca pessoal; exemplo executável em `examples/composicao-livre-v2.production.json`.
 - Biblioteca e receita v2 permitem reutilizar grupos inteiros com filhos, keyframes relativos e mídias locais; os IDs são remapeados na instância.
+- Cada importação IA agora gera um diagnóstico local JSONL acessível pelo botão Logs; easing de objeto e câmera é aceito no JSON v2 e no editor.
 - Documentação arquitetural e commits locais de cada corte.
 
 ### Em andamento
@@ -27,7 +28,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 ### Falta
 
 - Multi seleção, componentes vinculados com propriedades expostas e kits de identidade.
-- Conectores/âncoras, trajetórias e curvas de velocidade.
+- Conectores/âncoras, trajetórias e editor de curvas Bézier personalizadas (easing básico já implementado).
 - Vídeo como camada, documentos/PDF com regiões destacáveis, dados com fonte/unidade e pistas de áudio editáveis.
 - Pacote de dependências portátil, kits visuais e otimização/benchmark de produção longa.
 
@@ -119,7 +120,7 @@ Quando faltar uma mídia, a IA pode indicar o que precisa ser fornecido, propor 
 | Objetos | Árvore de grupos hierárquicos com filhos editáveis. | Multi seleção, âncoras e componentes editáveis. |
 | Biblioteca | Nativos, imagens/SVG e presets agrupados; guia exportável lista itens pessoais ativos. | Componentes parametrizados, materiais, movimentos e kits de identidade. |
 | Composição | Receita v2 permite layout livre e cabeçalhos/cenário/legendas opcionais; v1 mantém legado. | Editar propostas em projeto existente e ampliar a linguagem de composição. |
-| Animação | Keyframes lineares de transformação e câmera. | Curvas, trajetórias, easing e animações em etapas. |
+| Animação | Keyframes lineares e curvas nomeadas de easing em objetos e câmera. | Trajetórias, curvas Bézier personalizadas e animações em etapas. |
 | Câmera | Pan/zoom/rotação com keyframes explícitos. | Enquadrar alvos, transições suaves e acompanhar regiões/grupos. |
 | Mídia | Imagem e SVG; vídeo de origem ainda não é uma camada do projeto. | Vídeo com trecho de origem, crop, escala, máscara, velocidade e áudio configurável. |
 | Documentos | Imagem importada ou objeto ilustrativo de documento. | Páginas reais, recortes, regiões destacadas, fonte e referência editorial. |

@@ -89,6 +89,20 @@ int main(int argc, char **argv) {
         c.recover();
         check(studio::findNode(c.project(), "title")->text == "recovered title" && c.dirty(),
               "recovery restores unsaved content");
+        // Easing is editable at existing timeline keyframes and retains its choice on edit.
+        c.selectNode("title");
+        c.setFrame(45);
+        c.recordSelectedKeyframe();
+        c.setSelectedKeyframeEasing("ease-in-out");
+        check(c.selected()["keyframeEasing"] == "ease-in-out", "inspector writes selected easing");
+        c.updateSelected("x", 241);
+        check(c.selected()["keyframeEasing"] == "ease-in-out",
+              "editing animated position does not erase easing");
+        c.updateCamera("x", 700);
+        c.setCameraKeyframeEasing("ease-out");
+        check(c.camera()["keyframeEasing"] == "ease-out", "inspector writes camera easing");
+        c.updateCamera("zoom", 1.25);
+        check(c.camera()["keyframeEasing"] == "ease-out", "camera update preserves easing");
         c.setFrame(c.duration() - 1);
         c.togglePlayback();
         check(c.playing() && c.frame() == 0, "play at end restarts");

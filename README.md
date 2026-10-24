@@ -40,9 +40,13 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 ## Fundação de composição livre (schema v3)
 
-O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
+O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead, escolher curvas linear/ease-in/ease-out/ease-in-out no inspetor e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
 
-Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Agora grupos inteiros podem ser salvos e reutilizados como presets, inclusive pelo JSON v2 com `kind: library` e um ID do manifesto pessoal. Ainda não há multi seleção ou easing. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Agora grupos inteiros podem ser salvos e reutilizados como presets, inclusive pelo JSON v2 com `kind: library` e um ID do manifesto pessoal. Curvas de keyframes lineares e suavizadas agora podem ser escolhidas no inspetor para a câmera e os objetos. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+
+## Diagnóstico de importação
+
+O botão **Logs** no topo abre os arquivos locais de diagnóstico de importações IA. Cada tentativa gera um arquivo `production-*.jsonl` com data, etapas, mensagens de validação e códigos de término, mesmo quando o JSON é rejeitado antes de iniciar a voz. Os 30 logs mais recentes são mantidos; não são enviados automaticamente, e o conteúdo integral do roteiro/JSON não é registrado. Para relatar uma falha, compartilhe o `.jsonl` correspondente e, se puder, o `.production.json` com dados pessoais removidos. Os logs são apenas da importação/produção IA, não de todos os eventos da interface.
 
 ## Testar pela interface
 

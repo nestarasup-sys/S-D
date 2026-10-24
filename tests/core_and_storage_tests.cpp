@@ -43,6 +43,28 @@ int main(int argc, char **argv) {
         check(!studio::active(clip, clip.start + clip.duration), "clip end exclusive");
         check(studio::evaluate(clip, clip.start).opacity == 0, "animated entrance first frame");
         check(studio::evaluate(clip, clip.start + 24).opacity == clip.opacity, "animated entrance settles");
+        // Incoming keyframe controls the segment easing; older files remain linear.
+        studio::Node animated;
+        animated.id = "curve-test";
+        animated.animated = false;
+        animated.duration = 90;
+        animated.keyframes = {{0, 0, 0, 0, 1, 1}, {60, 100, 0, 0, 1, 1, "ease-in"}};
+        p.nodes.push_back(animated);
+        p.camera = {{0, 640, 360, 1, 0}, {60, 740, 360, 2, 0, "ease-out"}};
+        check(studio::supportedEasing("ease-in-out") && !studio::supportedEasing("bounce"),
+              "known keyframe easing types only");
+        check(std::abs(studio::evaluate(animated, 30).x - 12.5) < .001,
+              "incoming ease-in uses cubic interpolation");
+        check(std::abs(studio::evaluateCamera(p, 30).x - 727.5) < .001,
+              "camera ease-out uses cubic interpolation");
+        check(studio::serialize(studio::deserialize(studio::serialize(p)).project) ==
+                  studio::serialize(p), "eased keyframes survive schema 3 roundtrip");
+        auto badCurve = p;
+        badCurve.camera[1].easing = "spring-unknown";
+        check(!studio::validate(badCurve).empty(), "reject unsupported camera curve");
+        badCurve = p;
+        badCurve.nodes.back().keyframes[1].easing = "spring-unknown";
+        check(!studio::validate(badCurve).empty(), "reject unsupported object curve");
         p.fps = {30000, 1001};
         check(studio::validate(p).empty(), "fractional fps supported");
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),

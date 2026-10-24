@@ -26,18 +26,20 @@ void upsertKeyframe(std::vector<studio::TransformKeyframe> &keys, studio::Transf
     auto it =
         std::lower_bound(keys.begin(), keys.end(), key.frame,
                          [](const auto &candidate, std::int64_t frame) { return candidate.frame < frame; });
-    if (it != keys.end() && it->frame == key.frame)
+    if (it != keys.end() && it->frame == key.frame) {
+        key.easing = it->easing; // Editing values must preserve the curve.
         *it = key;
-    else
+    } else
         keys.insert(it, key);
 }
 void upsertKeyframe(std::vector<studio::CameraKeyframe> &keys, studio::CameraKeyframe key) {
     auto it =
         std::lower_bound(keys.begin(), keys.end(), key.frame,
                          [](const auto &candidate, std::int64_t frame) { return candidate.frame < frame; });
-    if (it != keys.end() && it->frame == key.frame)
+    if (it != keys.end() && it->frame == key.frame) {
+        key.easing = it->easing; // Editing values must preserve the curve.
         *it = key;
-    else
+    } else
         keys.insert(it, key);
 }
 QVariantMap map(const studio::Node &n) {

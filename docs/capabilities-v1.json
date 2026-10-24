@@ -137,6 +137,7 @@
         "nested-groups",
         "transform-keyframes-linear",
         "camera-2d-keyframes",
+        "keyframe-easing-curves",
         "personal-library-assets",
         "reusable-group-presets",
         "optional-visual-captions"
@@ -145,7 +146,8 @@
     "projectCapabilities": [
         "group-hierarchy",
         "transform-keyframes-linear",
-        "camera-2d-keyframes"
+        "camera-2d-keyframes",
+        "keyframe-easing-curves"
     ],
     "projectVersion": 3,
     "width": 1280

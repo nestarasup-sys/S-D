@@ -10,14 +10,14 @@ A próxima direção do produto pede que a IA combine elementos e conduza o olha
 
 - O formato `studio-dark` versão 3 adiciona grupos, referências `parentId`, keyframes de transformação por nó e keyframes de câmera 2D.
 - As posições dos filhos são locais ao grupo. Grupos podem conter grupos; ciclos e referências a pais que não sejam grupos são recusados.
-- Keyframes guardam frame, posição, rotação, escala e opacidade. A avaliação atual interpola linearmente entre chaves e mantém o primeiro/último estado fora do trecho interpolado.
+- Keyframes guardam frame, posição, rotação, escala, opacidade e curva de interpolação até aquela chave. A avaliação aceita `linear`, `ease-in`, `ease-out` e `ease-in-out` (padrão linear em projetos antigos), mantendo o primeiro/último estado fora do trecho interpolado.
 - A câmera guarda centro, zoom e rotação por frame. Sem keyframes, o enquadramento permanece equivalente ao quadro atual.
 - Prévia e render worker chamam o mesmo avaliador e compositor C++ para cada instante.
 - Projetos v1/v2 continuam legíveis e sem alteração visual. O arquivo v2 mantém sua versão quando salvo; receitas antigas continuam produzindo projetos v3 novos. Uma migração explícita de projetos existentes só será adicionada junto com os controles de composição da próxima etapa.
 
 ## Limites desta primeira entrega
 
-O editor permite envolver um elemento por vez em um grupo, gravar/editar keyframes no playhead e definir keyframes de câmera pelo inspetor. Filhos são identificados na lista; arrastar o grupo na timeline desloca a hierarquia e as chaves no tempo; excluir um grupo exclui toda sua árvore. Ainda não há multi seleção, curvas de velocidade, âncoras visuais, alvos semânticos nem presets de composição inteira. A atualização do contrato da receita para IA não faz parte deste marco; receitas v1 continuam compilando seus objetos planos no mesmo projeto editável.
+O editor permite envolver um elemento por vez em um grupo, gravar/editar keyframes no playhead e definir keyframes de câmera pelo inspetor. Filhos são identificados na lista; arrastar o grupo na timeline desloca a hierarquia e as chaves no tempo; excluir um grupo exclui toda sua árvore. Ainda não há multi seleção, editor de curvas Bézier personalizadas, âncoras visuais ou alvos semânticos. Presets completos de composição foram implementados na ADR 0006. A atualização do contrato da receita para IA não faz parte deste marco; receitas v1 continuam compilando seus objetos planos no mesmo projeto editável.
 
 O renderer permanece baseado em QPainter. Esta entrega não conclui o benchmark entre QPainter, Qt Quick Scene Graph e RenderControl proposto em `FUTURO-DO-APP.md`. O compositor aplica hierarquia por quadro; desempenho deve ser medido antes de elevar limites ou adicionar efeitos custosos.
 
