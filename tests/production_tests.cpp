@@ -234,13 +234,16 @@ int main(int argc, char **argv) {
                     {"narration", QJsonArray{QJsonObject{{"text", "Primeiro trecho."},
                                                        {"targetDurationSeconds", 2.0}}}},
                     {"elements", QJsonArray{QJsonObject{
-                        {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0},
-                        {"cueProgress", 0.5},
+                        {"id", "animated-through-speech"}, {"kind", "shape"}, {"cue", 0},
+                        {"cueProgress", 0},
                         {"keyframes", QJsonArray{
                             QJsonObject{{"cue", 0}, {"cueProgress", 0}, {"x", 100}},
                             QJsonObject{{"cue", 0}, {"cueProgress", 1}, {"x", 500},
                                         {"easing", "ease-in-out"}}
                         }}
+                    }}, QJsonObject{
+                        {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0},
+                        {"cueProgress", 0.5}
                     }}},
                     {"camera", QJsonArray{
                         QJsonObject{{"cue", 0}, {"cueProgress", 0},
@@ -288,8 +291,11 @@ int main(int argc, char **argv) {
                   timedResult.project.scenes[1].duration == 63,
               "exact project, audio and scene duration at 30 fps");
         const auto *half = studio::findNode(timedResult.project, "half-speech");
-        check(half && half->start == 30 && half->keyframes.size() == 2 &&
-                  half->keyframes.front().frame == 0 && half->keyframes.back().frame == 59 &&
+        const auto *animatedSpeech = studio::findNode(timedResult.project, "animated-through-speech");
+        check(half && half->start == 30 && animatedSpeech &&
+                  animatedSpeech->keyframes.size() == 2 &&
+                  animatedSpeech->keyframes.front().frame == 0 &&
+                  animatedSpeech->keyframes.back().frame == 59 &&
                   timedResult.project.camera.back().frame == 59,
               "cueProgress resolves against adjusted speech, last frame is inclusive");
         check(timedResult.subtitles.contains("00:00:02,000 --> 00:00:04,100"),
