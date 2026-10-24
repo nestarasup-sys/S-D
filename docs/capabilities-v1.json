@@ -140,7 +140,10 @@
         "keyframe-easing-curves",
         "personal-library-assets",
         "reusable-group-presets",
-        "optional-visual-captions"
+        "optional-visual-captions",
+        "fixed-duration-timing",
+        "cue-progress-sync",
+        "pitch-preserving-atempo"
     ],
     "productionVersion": 2,
     "projectCapabilities": [
