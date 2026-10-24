@@ -75,6 +75,13 @@ Rectangle {
                 CameraField { caption: "Rotação"; propertyKey: "rotation"; currentValue: editor.camera.rotation }
             }
             Label { text: "Os valores gravam um keyframe no quadro atual."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: "Curva da câmera até este keyframe"; visible: !!editor.camera.keyframeEasing; color: "#8193a2"; font.pixelSize: 10 }
+            StudioComboBox {
+                Layout.fillWidth: true; visible: !!editor.camera.keyframeEasing
+                model: ["linear", "ease-in", "ease-out", "ease-in-out"]
+                currentIndex: Math.max(0, model.indexOf(editor.camera.keyframeEasing))
+                onActivated: editor.setCameraKeyframeEasing(currentText)
+            }
             ColumnLayout {
                 visible: !!panel.node.id
                 Layout.fillWidth: true; spacing: 12
@@ -143,6 +150,13 @@ Rectangle {
                 StudioButton { text: panel.node.kind === "group" ? "Remover grupo e seus filhos" : "Remover objeto"; Layout.fillWidth: true; quiet: true; onClicked: editor.removeSelected() }
                 StudioButton { text: "Criar grupo com este objeto"; Layout.fillWidth: true; visible: panel.node.kind !== "group"; onClicked: editor.groupSelected() }
                 StudioButton { text: "Gravar keyframe · quadro " + editor.frame + " · " + (panel.node.keyframeCount || 0); Layout.fillWidth: true; accent: true; onClicked: editor.recordSelectedKeyframe() }
+                Label { text: "Curva até este keyframe"; visible: !!panel.node.keyframeEasing; color: "#8193a2"; font.pixelSize: 10 }
+                StudioComboBox {
+                    Layout.fillWidth: true; visible: !!panel.node.keyframeEasing
+                    model: ["linear", "ease-in", "ease-out", "ease-in-out"]
+                    currentIndex: Math.max(0, model.indexOf(panel.node.keyframeEasing))
+                    onActivated: editor.setSelectedKeyframeEasing(currentText)
+                }
             }
             Item { Layout.preferredHeight: 12 }
         }

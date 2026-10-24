@@ -13,11 +13,13 @@ enum class NodeKind { Text, Shape, Image, Native, Svg, Group };
 struct TransformKeyframe {
     std::int64_t frame{0};
     double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};
+    std::string easing{"linear"}; // Curve into this keyframe from its predecessor.
     bool operator==(const TransformKeyframe &) const = default;
 };
 struct CameraKeyframe {
     std::int64_t frame{0};
     double x{0}, y{0}, zoom{1}, rotation{0};
+    std::string easing{"linear"};
     bool operator==(const CameraKeyframe &) const = default;
 };
 struct Node {
@@ -63,6 +65,7 @@ struct VisualState {
 struct CameraState {
     double x{0}, y{0}, zoom{1}, rotation{0};
 };
+bool supportedEasing(const std::string &name);
 std::string validate(const Project &project);
 Project makeDemo();
 Project makeEmpty();

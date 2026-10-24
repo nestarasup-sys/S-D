@@ -56,7 +56,7 @@ bool compileElement(const DirectedElement &directed,
             const auto frame =
                 cues[directedKey.cue].first / samplesPerFrame + std::llround(directedKey.offsetSeconds * 30);
             node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
-                                      directedKey.scale, directedKey.opacity});
+                                      directedKey.scale, directedKey.opacity, directedKey.easing});
         }
     }
     for (const auto &key : node.keyframes)
@@ -182,7 +182,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             const auto frame = cues[directedCamera.cue].first / samplesPerFrame +
                                std::llround(directedCamera.offsetSeconds * 30);
             p.camera.push_back(
-                {frame, directedCamera.x, directedCamera.y, directedCamera.zoom, directedCamera.rotation});
+                {frame, directedCamera.x, directedCamera.y, directedCamera.zoom, directedCamera.rotation,
+                 directedCamera.easing});
         }
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;

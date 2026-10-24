@@ -13,11 +13,13 @@ struct DirectedKeyframe {
     int cue{0};
     double offsetSeconds{0};
     double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};
+    std::string easing{"linear"};
 };
 struct DirectedCameraKeyframe {
     int cue{0};
     double offsetSeconds{0};
     double x{640}, y{360}, zoom{1}, rotation{0};
+    std::string easing{"linear"};
 };
 struct DirectedElement {
     Node node;

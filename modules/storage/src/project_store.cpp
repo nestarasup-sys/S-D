@@ -43,7 +43,8 @@ QByteArray serialize(const Project &p) {
                                          {"y", key.y},
                                          {"rotation", key.rotation},
                                          {"scale", key.scale},
-                                         {"opacity", key.opacity}});
+                                         {"opacity", key.opacity},
+                                         {"easing", text(key.easing)}});
         nodes.append(QJsonObject{{"id", text(n.id)},
                                  {"parentId", text(n.parentId)},
                                  {"name", text(n.name)},
@@ -93,7 +94,8 @@ QByteArray serialize(const Project &p) {
                                   {"x", key.x},
                                   {"y", key.y},
                                   {"zoom", key.zoom},
-                                  {"rotation", key.rotation}});
+                                  {"rotation", key.rotation},
+                                  {"easing", text(key.easing)}});
     return QJsonDocument(QJsonObject{{"format", "studio-dark"},
                                      {"schemaVersion", p.schemaVersion},
                                      {"id", text(p.id)},
@@ -227,9 +229,11 @@ LoadResult deserialize(const QByteArray &bytes) {
             for (auto field : {"x", "y", "rotation", "scale", "opacity"})
                 if (!key[field].isDouble())
                     return fail("Transformação de keyframe incompleta.");
+            if (key.contains("easing") && !key["easing"].isString())
+                return fail("Curva de keyframe inválida.");
             n.keyframes.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                                    key["rotation"].toDouble(), key["scale"].toDouble(),
-                                   key["opacity"].toDouble()});
+                                   key["opacity"].toDouble(), key["easing"].toString("linear").toStdString()});
         }
         p.nodes.push_back(n);
     }
@@ -244,8 +248,11 @@ LoadResult deserialize(const QByteArray &bytes) {
         for (auto field : {"x", "y", "zoom", "rotation"})
             if (!key[field].isDouble())
                 return fail("Transformação de câmera incompleta.");
+        if (key.contains("easing") && !key["easing"].isString())
+            return fail("Curva de câmera inválida.");
         p.camera.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
-                            key["zoom"].toDouble(), key["rotation"].toDouble()});
+                            key["zoom"].toDouble(), key["rotation"].toDouble(),
+                            key["easing"].toString("linear").toStdString()});
     }
     if (auto error = validate(p); !error.empty())
         return fail(text(error));

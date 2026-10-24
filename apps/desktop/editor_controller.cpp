@@ -159,6 +159,10 @@ QVariantMap EditorController::selected() const {
         return {};
     auto result = map(*n);
     if (!n->keyframes.empty()) {
+        auto key = std::find_if(n->keyframes.begin(), n->keyframes.end(),
+                                [this](const auto &k) { return k.frame == frame_; });
+        result["keyframeEasing"] = key == n->keyframes.end()
+                                       ? QString{} : QString::fromStdString(key->easing);
         const auto state = studio::evaluate(*n, frame_);
         result["x"] = state.x;
         result["y"] = state.y;
@@ -170,7 +174,12 @@ QVariantMap EditorController::selected() const {
 }
 QVariantMap EditorController::camera() const {
     const auto state = studio::evaluateCamera(project(), frame_);
-    return {{"x", state.x}, {"y", state.y}, {"zoom", state.zoom}, {"rotation", state.rotation}};
+    QString curve;
+    for (const auto &key : project().camera)
+        if (key.frame == frame_)
+            curve = QString::fromStdString(key.easing);
+    return {{"x", state.x}, {"y", state.y}, {"zoom", state.zoom},
+            {"rotation", state.rotation}, {"keyframeEasing", curve}};
 }
 QString EditorController::title() const {
     return q(project().name);
@@ -591,6 +600,49 @@ void EditorController::recordSelectedKeyframe() {
         changed();
         notify(QString("Keyframe gravado no quadro %1.").arg(frame_));
     } else
+        notify(q(error));
+}
+void EditorController::setSelectedKeyframeEasing(QString easing) {
+    if (!studio::supportedEasing(easing.toStdString()))
+        return;
+    auto n = studio::findNode(project(), selectedId_.toStdString());
+    if (!n)
+        return;
+    const auto at = std::find_if(n->keyframes.begin(), n->keyframes.end(),
+                                [this](const auto &k) { return k.frame == frame_; });
+    if (at == n->keyframes.end()) {
+        notify("Grave primeiro um keyframe neste quadro para configurar a curva.");
+        return;
+    }
+    auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &node : p.nodes)
+            if (q(node.id) == selectedId_)
+                for (auto &key : node.keyframes)
+                    if (key.frame == frame_)
+                        key.easing = easing.toStdString();
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
+void EditorController::setCameraKeyframeEasing(QString easing) {
+    if (!studio::supportedEasing(easing.toStdString()))
+        return;
+    auto at = std::find_if(project().camera.begin(), project().camera.end(),
+                           [this](const auto &k) { return k.frame == frame_; });
+    if (at == project().camera.end()) {
+        notify("Altere primeiro um valor da câmera para gravar o keyframe deste quadro.");
+        return;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &key : p.camera)
+            if (key.frame == frame_)
+                key.easing = easing.toStdString();
+    });
+    if (error.empty())
+        changed();
+    else
         notify(q(error));
 }
 void EditorController::updateCamera(QString property, double value) {

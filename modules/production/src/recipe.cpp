@@ -243,7 +243,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (!keyValue.isObject())
                 return fail("Keyframe inválido.");
             const auto key = keyValue.toObject();
-            if (!allowed(key, {"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity"}))
+            if (!allowed(key, {"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity", "easing"}))
                 return fail("Keyframe contém campo desconhecido.");
             if (key.contains("cue") &&
                 (!key["cue"].isDouble() || std::floor(key["cue"].toDouble()) != key["cue"].toDouble()))
@@ -257,7 +257,11 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                                     key["y"].toDouble(n.y),
                                     key["rotation"].toDouble(n.rotation),
                                     key["scale"].toDouble(n.scale),
-                                    key["opacity"].toDouble(n.opacity)};
+                                    key["opacity"].toDouble(n.opacity),
+                                    key["easing"].toString("linear").toStdString()};
+            if ((key.contains("easing") && !key["easing"].isString()) ||
+                !supportedEasing(parsed.easing))
+                return fail("Easing de elemento inválido.");
             if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.offsetSeconds) ||
                 parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
                 return fail("Cue de keyframe inválido.");
@@ -431,9 +435,14 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 if (!cameraValue.isObject())
                     return fail("Keyframe de câmera inválido.");
                 const auto c = cameraValue.toObject();
-                if (!allowed(c, {"cue", "offsetSeconds", "x", "y", "zoom", "rotation"}))
+                if (!allowed(c, {"cue", "offsetSeconds", "x", "y", "zoom", "rotation", "easing"}))
                     return fail("Keyframe de câmera contém campo desconhecido.");
                 DirectedCameraKeyframe key;
+                if (c.contains("easing") && !c["easing"].isString())
+                    return fail("Easing de câmera inválido.");
+                key.easing = c["easing"].toString("linear").toStdString();
+                if (!supportedEasing(key.easing))
+                    return fail("Curva de câmera não suportada.");
                 for (auto pair : {std::pair{"x", &key.x},
                                   {"y", &key.y},
                                   {"zoom", &key.zoom},

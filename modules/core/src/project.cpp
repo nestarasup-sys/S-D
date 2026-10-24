@@ -9,6 +9,21 @@ namespace studio {
 double FrameRate::value() const {
     return double(numerator) / denominator;
 }
+bool supportedEasing(const std::string &name) {
+    return name == "linear" || name == "ease-in" || name == "ease-out" ||
+           name == "ease-in-out";
+}
+namespace {
+double eased(double t, const std::string &curve) {
+    if (curve == "ease-in")
+        return t * t * t;
+    if (curve == "ease-out")
+        return 1 - std::pow(1 - t, 3);
+    if (curve == "ease-in-out")
+        return t * t * (3 - 2 * t);
+    return t; // Preserve original interpolation when easing was absent.
+}
+}
 std::string validate(const Project &p) {
     if (p.schemaVersion != 2 && p.schemaVersion != 3)
         return "Versão de projeto não suportada.";
@@ -109,7 +124,7 @@ std::string validate(const Project &p) {
                 std::abs(key.x) > 10000 || !std::isfinite(key.y) || std::abs(key.y) > 10000 ||
                 !std::isfinite(key.rotation) || std::abs(key.rotation) > 3600 || !std::isfinite(key.scale) ||
                 key.scale < 0.01 || key.scale > 10 || !std::isfinite(key.opacity) || key.opacity < 0 ||
-                key.opacity > 1)
+                key.opacity > 1 || !supportedEasing(key.easing))
                 return "Keyframes do elemento inválidos ou fora de ordem.";
             previous = key.frame;
         }
@@ -123,7 +138,8 @@ std::string validate(const Project &p) {
         if (key.frame < 0 || key.frame >= p.duration || key.frame <= previousCamera ||
             !std::isfinite(key.x) || std::abs(key.x) > 10000 || !std::isfinite(key.y) ||
             std::abs(key.y) > 10000 || !std::isfinite(key.zoom) || key.zoom < 0.1 || key.zoom > 10 ||
-            !std::isfinite(key.rotation) || std::abs(key.rotation) > 360)
+            !std::isfinite(key.rotation) || std::abs(key.rotation) > 360 ||
+            !supportedEasing(key.easing))
             return "Keyframes da câmera inválidos ou fora de ordem.";
         previousCamera = key.frame;
     }
@@ -228,7 +244,7 @@ VisualState evaluate(const Node &n, std::int64_t frame) {
     }
     const auto &a = *(upper - 1);
     const auto &b = *upper;
-    const double mixAmount = double(frame - a.frame) / double(b.frame - a.frame);
+    const double mixAmount = eased(double(frame - a.frame) / double(b.frame - a.frame), b.easing);
     const auto mix = [mixAmount](double from, double to) { return from + (to - from) * mixAmount; };
     return {mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity), mix(a.rotation, b.rotation),
             mix(a.scale, b.scale)};
@@ -250,7 +266,7 @@ CameraState evaluateCamera(const Project &p, std::int64_t frame) {
     }
     const auto &a = *(upper - 1);
     const auto &b = *upper;
-    const double t = double(frame - a.frame) / double(b.frame - a.frame);
+    const double t = eased(double(frame - a.frame) / double(b.frame - a.frame), b.easing);
     const auto mix = [t](double from, double to) { return from + (to - from) * t; };
     return {mix(a.x, b.x), mix(a.y, b.y), mix(a.zoom, b.zoom), mix(a.rotation, b.rotation)};
 }

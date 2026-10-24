@@ -121,6 +121,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void removeSelected();
     Q_INVOKABLE void groupSelected();
     Q_INVOKABLE void recordSelectedKeyframe();
+    Q_INVOKABLE void setSelectedKeyframeEasing(QString easing);
+    Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
     Q_INVOKABLE void updateCamera(QString property, double value);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
