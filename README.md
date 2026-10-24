@@ -42,7 +42,7 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
 
-Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Por enquanto, cada operação agrupa um elemento, as curvas são lineares e composições inteiras ainda não são salvas como presets. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Agora grupos inteiros podem ser salvos e reutilizados como presets, inclusive pelo JSON v2 com `kind: library` e um ID do manifesto pessoal. Ainda não há multi seleção ou easing. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
 
 ## Testar pela interface
 
@@ -94,7 +94,7 @@ Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-pro
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
 
-A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md).
+A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md). Os presets de grupos são detalhados na [ADR 0006](docs/architecture/0006-reusable-group-presets.md).
 
 A evolução proposta a partir do vídeo de referência está em [Futuro do aplicativo](FUTURO-DO-APP.md): composição livre, grupos, câmera, documentos, vídeo e direção por IA. Esse documento é planejamento, não uma lista de recursos já implementados.
 
@@ -102,6 +102,6 @@ A evolução proposta a partir do vídeo de referência está em [Futuro do apli
 
 Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, produção declarativa, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2.
 
-Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, câmera global, keyframes arbitrários, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
+Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, enquadramento de câmera por alvo, curvas não lineares, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.

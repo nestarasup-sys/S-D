@@ -10,6 +10,7 @@
 #include <studio/core/library.hpp>
 #include <studio/production/compiler.hpp>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 static int checks = 0;
 static void check(bool value, const char *reason) {
@@ -118,6 +119,57 @@ int main(int argc, char **argv) {
             check(studio::validate(p).empty() && !painter.frame(p, 60).isNull(),
                   "native library asset renders");
         }
+        studio::WorkspaceStore catalog(directory.filePath("catalog"));
+        studio::Node group, part;
+        group.id = "template-root";
+        group.name = "Painel";
+        group.kind = studio::NodeKind::Group;
+        group.start = 30;
+        group.duration = 90;
+        group.animated = false;
+        part.id = "template-part";
+        part.name = "Selo";
+        part.kind = studio::NodeKind::Shape;
+        part.parentId = group.id;
+        part.start = 40;
+        part.duration = 70;
+        part.keyframes = {{45, 15, 30, 0, 1, 1}, {65, 60, 30, 0, 1, 1}};
+        auto grouped = catalog.addPreset("Painel IA", "objects", {group, part});
+        check(grouped.error.isEmpty(), "store reusable group preset");
+        auto production = QJsonObject{
+            {"format", "studio-dark-production"},
+            {"version", 2},
+            {"catalogVersion", 1},
+            {"title", "Composição de teste"},
+            {"captions", false},
+            {"musicGain", 0},
+            {"effectsGain", 0},
+            {"scenes", QJsonArray{QJsonObject{
+                {"id", "cena"},
+                {"narration", QJsonArray{"Testando uma composição animada."}},
+                {"elements", QJsonArray{QJsonObject{
+                    {"id", "reuse"}, {"kind", "library"}, {"assetId", grouped.id}, {"cue", 0}}}}
+            }}}};
+        auto recipeWithGroup = studio::parseRecipe(QJsonDocument(production).toJson(),
+                                                   directory.path(), catalog.data());
+        check(recipeWithGroup.error.isEmpty(), "parse JSON with grouped library asset");
+        QMap<QString, studio::PcmAudio> groupVoice;
+        studio::PcmAudio voice;
+        voice.samples.resize(120000, 0);
+        groupVoice.insert(recipeWithGroup.recipe.scenes[0].narration[0].id, voice);
+        auto compiledGroup = studio::compileProduction(recipeWithGroup.recipe, groupVoice, "group.wav");
+        check(compiledGroup.error.isEmpty() && compiledGroup.project.nodes.size() == 2,
+              "compile grouped preset against measured audio");
+        const auto *rootNode = studio::findNode(compiledGroup.project, "reuse");
+        const auto *childNode = studio::findNode(compiledGroup.project, "reuse-preset-1");
+        check(rootNode && childNode && childNode->parentId == rootNode->id &&
+                  childNode->start == 10 && childNode->duration == 70 &&
+                  childNode->keyframes.size() == 2 && childNode->keyframes.front().frame == 15,
+              "group import retains parent, relative time and keyframes");
+        check(studio::aiGuide(catalog.data()).contains("composição com 2 partes"),
+              "guide includes grouped personal library item");
+        check(studio::capabilities()["productionCapabilities"].toArray().contains("reusable-group-presets"),
+              "capabilities advertise reusable group assets");
         auto g = studio::aiGuide();
         for (const auto &asset : studio::nativeLibrary())
             check(g.contains("`" + QString::fromStdString(asset.id) + "`"),
