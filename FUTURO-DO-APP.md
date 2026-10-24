@@ -2,7 +2,40 @@
 
 Data: 24/10/2026. Referência analisada: **Gravação de Tela 2026-10-24 170027.mp4**, enviada pelo usuário.
 
-**Estado deste documento: proposta de evolução.** As capacidades futuras descritas aqui ainda não estão implementadas no protótipo 0.3. Esta entrega analisa a referência e define prioridades; não modifica o funcionamento do aplicativo.
+**Estado deste documento: plano vivo de produto e implementação.** O panorama abaixo separa o que já existe no código do que continua planejado. Atualizado em 24/10/2026 após as entregas de grupos/câmera e receita de produção v2.
+
+## Resumo executivo
+
+O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca de mídia pessoal, grupos, keyframes lineares e câmera 2D. O próximo objetivo é aproximar a direção visual da referência com itens reutilizáveis compostos, conexões e melhor sincronização, enquanto se prova o desempenho do renderizador.
+
+### Feito
+
+- Tela de projetos com criação, organização, renomeação, cópia e lixeira; biblioteca categorizada com nativos, imagens/SVG e presets simples.
+- Projeto schema 3: grupos hierárquicos, transformações locais, keyframes lineares e câmera 2D; preview e exportação compartilham o avaliador.
+- Receita de produção v2: layout livre, grupos, keyframes por cue, câmera explícita, legendas visuais opcionais e uso de itens ativos da biblioteca pessoal por ID. Receitas v1 continuam aceitas.
+- Guia da IA exportável com capacidades reais e manifesto atualizado da biblioteca pessoal; exemplo executável em `examples/composicao-livre-v2.production.json`.
+- Documentação arquitetural e commits locais de cada corte.
+
+### Em andamento
+
+- Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
+- Etapa 1: composição livre já funciona no importador; interface de grupos ainda permite agrupar um elemento por vez e a biblioteca não salva grupos inteiros.
+- Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
+- Etapa 5: receita v2 e guia estão implementados; faltam edição por IA de projeto existente, propostas de mudanças e eventos por palavra com alinhamento confiável.
+
+### Falta
+
+- Grupos/componentes reutilizáveis na biblioteca e multi seleção.
+- Conectores/âncoras, trajetórias e curvas de velocidade.
+- Vídeo como camada, documentos/PDF com regiões destacáveis, dados com fonte/unidade e pistas de áudio editáveis.
+- Pacote de dependências portátil, kits visuais e otimização/benchmark de produção longa.
+
+### Próximos cortes
+
+1. Fechar a etapa 0 com benchmark comparativo e decisão documentada de renderização.
+2. Permitir salvar/reutilizar uma composição agrupada sem perder hierarquia e animações.
+3. Adicionar conectores ancorados e transições de câmera; validar no piloto visual.
+4. Só então expandir para documentos e vídeo, que exigem estratégia de decode, seek e empacotamento de mídia.
 
 ## 1. A direção que recomendo
 
@@ -14,7 +47,7 @@ O objetivo pode ser expresso assim:
 
 > Eu forneço um tema ou roteiro e o guia do aplicativo. A IA escreve ou organiza a narrativa, concebe os visuais, escolhe enquadramentos, cria animações e descreve a produção. O aplicativo transforma essa direção em um projeto audiovisual completo, no qual eu consigo alterar cada parte.
 
-Minha prioridade para a próxima etapa é **grupos + animação por propriedade + câmera 2D + documentos reais + vídeo dentro das composições**. Esse conjunto abre as possibilidades mais importantes da referência. A expansão do catálogo acompanha essa fundação.
+As próximas prioridades são **provar o desempenho da fundação**, tornar grupos e composições reutilizáveis e conectar elementos visualmente. Depois entram documentos reais e vídeo dentro das composições. A expansão do catálogo acompanha essa fundação.
 
 ## 2. Como a referência foi analisada
 
@@ -81,18 +114,18 @@ Quando faltar uma mídia, a IA pode indicar o que precisa ser fornecido, propor 
 
 | Área | Protótipo 0.3 | Evolução recomendada |
 | --- | --- | --- |
-| Projetos e coleção | Tela inicial, cópias, renomeação, lixeira, categorias e biblioteca local. | Preservar essa base e ampliar os tipos de item reutilizável. |
-| Objetos | Nós em uma lista; nativos são desenhados internamente como um objeto parametrizado. | Árvore de elementos com filhos, grupos, âncoras e componentes editáveis. |
-| Biblioteca | 14 nativos, imagens/SVG e variações de um objeto. | Elementos, grupos, composições, materiais, movimentos e kits de identidade. |
-| Composição | O compilador de produção acrescenta cenário, cabeçalho, título e legendas em posições definidas. | Layout livre; títulos, cabeçalhos e legendas opcionais e posicionáveis. |
-| Animação | Seis entradas, deslocamento e giro ao longo do intervalo. | Vários keyframes por propriedade, curvas, trajetórias e animações em etapas. |
-| Câmera | Não há câmera global de composição. | Aproximar, afastar, percorrer e enquadrar grupos ou regiões. |
+| Projetos e coleção | Tela inicial, cópias, renomeação, lixeira, categorias e biblioteca local. | Ampliar os tipos de item reutilizável. |
+| Objetos | Árvore de grupos hierárquicos com filhos editáveis. | Multi seleção, âncoras e componentes editáveis. |
+| Biblioteca | Nativos, imagens/SVG e presets simples; guia exportável lista itens pessoais ativos. | Salvar grupos/composições, materiais, movimentos e kits de identidade. |
+| Composição | Receita v2 permite layout livre e cabeçalhos/cenário/legendas opcionais; v1 mantém legado. | Editar propostas em projeto existente e ampliar a linguagem de composição. |
+| Animação | Keyframes lineares de transformação e câmera. | Curvas, trajetórias, easing e animações em etapas. |
+| Câmera | Pan/zoom/rotação com keyframes explícitos. | Enquadrar alvos, transições suaves e acompanhar regiões/grupos. |
 | Mídia | Imagem e SVG; vídeo de origem ainda não é uma camada do projeto. | Vídeo com trecho de origem, crop, escala, máscara, velocidade e áudio configurável. |
 | Documentos | Imagem importada ou objeto ilustrativo de documento. | Páginas reais, recortes, regiões destacadas, fonte e referência editorial. |
 | Dados | Barras conceituais, sem valores estatísticos. | Gráficos e contadores alimentados por dados, unidades e fontes identificáveis. |
 | Sincronização | Entrada vinculada ao trecho de voz e legendas por trecho medido. | Marcadores de frase/palavra quando houver alinhamento real e confiável. |
 | Som | Narração e mix final com música/efeitos procedurais. | Pistas separadas, envelopes, fades, efeitos pontuais e redução de música sob a voz. |
-| Guia para IA | Contrato v1 e catálogo nativo estático. | Pacote gerado com capacidades, biblioteca ativa, estilos, mídia disponível e exemplos válidos. |
+| Guia para IA | Contrato v2 exportável com capacidades e biblioteca ativa. | Estilos, dependências/mídia disponível e exemplos válidos variados. |
 
 O piloto de carros comprovou o caminho entre receita, voz, projeto e MP4. A referência passa a orientar a próxima etapa de liberdade visual e direção.
 
@@ -291,15 +324,15 @@ Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora 
 
 ## 13. Ordem de implementação recomendada
 
-| Etapa | Entrega concreta | Critério de passagem |
+| Etapa | Estado | Entrega concreta | Critério de passagem |
 | --- | --- | --- |
-| 0 — Prova da fundação | Modelo mínimo de grupos, câmera e animação; comparação de caminhos de renderização com cena curta e mídia de teste. | Composição salva/reaberta, enquadramentos reproduzíveis, medições registradas e caminho de evolução escolhido. |
-| 1 — Composição livre | Árvore de elementos, transformações locais, âncoras, seleção de grupos e keyframes básicos. Remover obrigatoriedade de cabeçalho/layout no contrato novo. | A IA constrói uma composição autoral e cada filho continua editável. |
-| 2 — Câmera e conexões | Pan, zoom, enquadramento de alvos, transições e conectores que acompanham os objetos. | Mostrar um cartão de perto e depois o quadro completo sem perder relações ou identidade. |
-| 3 — Documentos e vídeo | Vídeo com trecho de origem; páginas, crop, máscara de foco e regiões destacadas. | Palestra dentro de um cartão e aproximação de uma frase de documento funcionam na prévia e no MP4. |
-| 4 — Dados e som | Gráficos com valores/unidades, contadores, linha do tempo e pistas de áudio. | Valores consistentes, fontes relacionadas e mix ajustável sem reconstruir os visuais. |
-| 5 — Direção por IA v2 | Schema, guia gerado, biblioteca ativa, eventos de voz e propostas sobre projeto existente. | Roteiro externo vira direção variada; mudanças parciais preservam o restante do trabalho. |
-| 6 — Acabamento e escala | Kit investigativo, sombras/brilhos/texturas moderados, proxies, cache e episódio maior. | Resultado autoral consistente, legível e medido no computador de destino. |
+| 0 — Prova da fundação | Parcial | Modelo de grupos, câmera e animação existe; falta comparação de renderizadores com cena de teste e métricas. | Composição salva/reaberta, enquadramentos reproduzíveis, medições registradas e caminho escolhido. |
+| 1 — Composição livre | Parcial | Grupos, transformação local, keyframes e receita v2 livre existem; faltam âncoras, multi seleção e presets compostos. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
+| 2 — Câmera e conexões | Parcial | Pan/zoom/rotação explícitos existem; faltam alvo, transições e conectores acompanhando objetos. | Mostrar detalhe e quadro completo sem perder relações ou identidade. |
+| 3 — Documentos e vídeo | Não iniciado | Vídeo com trecho de origem; páginas, crop, máscara e regiões destacadas. | Palestra em cartão e aproximação de frase funcionam na prévia e no MP4. |
+| 4 — Dados e som | Não iniciado | Gráficos com valores/unidades, contadores, linha do tempo e pistas de áudio. | Valores consistentes, fontes relacionadas e mix ajustável. |
+| 5 — Direção por IA v2 | Parcial | Schema v2, guia dinâmico e biblioteca ativa existem; faltam edição parcial de projeto, diff/proposta e eventos alinhados por palavra. | Roteiro vira direção variada; mudanças parciais preservam o restante. |
+| 6 — Acabamento e escala | Não iniciado | Kit investigativo, efeitos, proxies, cache e episódio maior. | Resultado legível e medido no computador de destino. |
 
 A especificação e os exemplos da receita v2 começam junto da etapa 0; a etapa 5 consolida o fluxo completo. Cada etapa deve deixar uma entrega demonstrável e um commit local. Datas dependem das provas técnicas, não foram estimadas aqui.
 
@@ -337,14 +370,19 @@ Esse piloto deve ser concluído antes de expandir o catálogo de efeitos e model
 - O estilo investigativo será um kit configurável, e outras linguagens visuais poderão compartilhar o motor.
 - Os próximos investimentos principais são composição, câmera e mídia/documentos; a gestão de projetos e biblioteca da versão 0.3 continua sendo aproveitada.
 
-Próxima ação recomendada: **especificar o modelo de grupos/câmera e a receita v2 mínima, e construir a prova técnica da etapa 0**. Este documento orienta essa implementação futura; não a declara concluída.
+Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderização**, antes de acrescentar efeitos e vídeo. A receita v2 e a base de grupos/câmera já existem; seus limites atuais estão marcados na matriz e no progresso abaixo.
 
 ## 16. Progresso da implementação
 
-**Primeiro corte iniciado em 24/10/2026:** projeto schema v3 com grupos hierárquicos, keyframes lineares de transformação e câmera 2D. Prévia e render worker usam o mesmo avaliador; seleção e arraste no preview convertem as coordenadas pela câmera e pela hierarquia. O projeto de demonstração já exercita grupo e movimento de câmera. Projetos v1/v2 existentes continuam legíveis.
+### Entregas concluídas
 
-**Controles do primeiro protótipo:** o inspetor cria um grupo em torno do elemento selecionado, grava keyframes no playhead e permite animar centro/zoom/rotação da câmera. Os valores transformáveis do objeto passam a editar o keyframe atual quando há uma trilha. A lista diferencia filhos; arrastar um grupo na timeline desloca sua árvore e suas chaves, e excluir um grupo remove toda a árvore. A interface agrupa um objeto por vez, sem multi seleção, e o salvamento de grupos inteiros na biblioteca ainda não está disponível.
+- **Projeto schema 3:** grupos hierárquicos, keyframes lineares de transformação e câmera 2D. Prévia e render worker usam o mesmo avaliador; seleção e arraste no preview convertem coordenadas pela câmera e hierarquia. Projetos v1/v2 existentes continuam legíveis.
+- **Receita de produção v2 e biblioteca pessoal:** layout livre, grupos, keyframes ligados a cues de fala, câmera, legendas visuais opcionais e referências por ID a itens pessoais. Receitas v1 continuam aceitas. O guia salvo pelo app inclui o manifesto atual e a produção mantém uma cópia do guia usado.
+- **Documentação/artefatos:** guia de IA, exemplo executável e ADR `0005-production-v2-personal-library.md`.
 
-**Direção por IA e biblioteca nesta rodada:** importador v2 compila hierarquia, keyframes, câmera, layout livre e legenda visual opcional no mesmo modelo editável. `kind: library` resolve IDs ativos da biblioteca local, incluindo PNG/SVG e presets simples. O botão de guia agora salva manifesto dos itens pessoais ativos e categorias; produção salva uma cópia do guia correspondente. Presets com keyframes e grupos inteiros ainda não podem ser salvos na biblioteca; receitas v2 preservam mídia por caminho local e não empacotam dependências para outra máquina.
+### Limites atuais / trabalho restante
 
-Esse corte conclui uma parte substancial das etapas 1, 2 e 5, mas ainda não conclui o marco 0: a comparação de desempenho entre renderizadores permanece pendente. Curvas de velocidade, multi seleção, conectores, regiões de documento, vídeo e a migração explícita de projetos antigos ficam para etapas seguintes. O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.
+- O editor agrupa um elemento por vez; multi seleção e salvar grupos inteiros na biblioteca ainda faltam. Presets com keyframes e grupos não são suportados pelo catálogo atual.
+- `kind: library` aceita mídia e presets simples. A receita usa caminhos locais para dependências; ainda não empacota mídia para outra máquina.
+- Benchmark entre renderizadores, curvas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
+- O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.
