@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
+#include <QMap>
 #include <QSaveFile>
 #include <QSet>
 #include <QUuid>
@@ -379,37 +380,57 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
         return WorkspaceResult{id, {}};
     });
 }
-WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &category, Node node) {
-    auto name = input.trimmed();
+WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &category,
+                                         std::vector<Node> nodes) {
+    const auto name = input.trimmed();
     if (!validName(name))
         return {{}, "Informe um nome de até 120 caracteres."};
-    QByteArray mediaBytes;
-    QString owned;
-    if (node.kind == NodeKind::Image || node.kind == NodeKind::Svg) {
+    if (nodes.empty() || nodes.size() > 200)
+        return {{}, "Seleção vazia ou maior que 200 objetos."};
+    const auto origin = nodes.front().start;
+    const auto clipDuration = nodes.front().duration;
+    if (origin < 0 || clipDuration < 1 || clipDuration > 18000)
+        return {{}, "Intervalo do preset inválido."};
+    // Store a self-contained, frame-zero composition. Children retain local transforms,
+    // relative timing, keys and IDs; IDs are remapped when a preset is instantiated.
+    nodes.front().parentId.clear();
+    QMap<QString, QByteArray> media;
+    for (auto &node : nodes) {
+        node.start -= origin;
+        node.sceneId.clear();
+        node.role.clear();
+        for (auto &key : node.keyframes)
+            key.frame -= origin;
+        if (node.kind != NodeKind::Image && node.kind != NodeKind::Svg)
+            continue;
         QFile file(QString::fromStdString(node.source));
-        auto extension = QFileInfo(file).suffix().toLower();
+        const auto extension = QFileInfo(file).suffix().toLower();
         if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg"}.contains(extension) ||
             !file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 32 * 1024 * 1024)
-            return {{}, "Arquivo de mídia inválido ou maior que 32 MiB."};
-        mediaBytes = file.readAll();
-        owned = root_ + "/library/media/" + QString::fromLatin1(hash(mediaBytes)) + "." + extension;
+            return {{}, "Mídia de composição inválida ou maior que 32 MiB."};
+        const auto bytes = file.readAll();
+        const auto owned = root_ + "/library/media/" + QString::fromLatin1(hash(bytes)) + "." + extension;
+        media.insert(owned, bytes);
         node.source = owned.toStdString();
     }
     auto p = makeEmpty();
-    node.id = "preset";
-    node.sceneId.clear();
-    node.start = 0;
-    node.duration = p.duration;
-    p.nodes = {node};
+    p.duration = clipDuration;
+    p.nodes = std::move(nodes);
     if (auto error = validate(p); !error.empty())
         return {{}, QString::fromStdString(error)};
-    auto id = uuid();
+    if (p.nodes.size() > 1)
+        for (std::size_t i = 1; i < p.nodes.size(); ++i)
+            if (p.nodes[i].parentId.empty())
+                return {{}, "Preset deve conter apenas uma raiz e seus descendentes."};
+    const auto id = uuid();
     return mutate([&](QJsonObject &d) {
         if (!categoryExists(d, category))
             return WorkspaceResult{{}, "Categoria não encontrada."};
-        if (!owned.isEmpty() && (!QDir().mkpath(root_ + "/library/media") ||
-                                 (!QFile::exists(owned) && !write(owned, mediaBytes))))
-            return WorkspaceResult{{}, "Não foi possível guardar a mídia do objeto personalizado."};
+        if (!media.isEmpty() && !QDir().mkpath(root_ + "/library/media"))
+            return WorkspaceResult{{}, "Falha ao criar a pasta de mídia."};
+        for (auto it = media.cbegin(); it != media.cend(); ++it)
+            if (!QFile::exists(it.key()) && !write(it.key(), it.value()))
+                return WorkspaceResult{{}, "Não foi possível guardar a mídia da composição."};
         auto list = d["assets"].toArray();
         list.append(QJsonObject{{"id", id},
                                 {"name", name},

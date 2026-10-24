@@ -135,6 +135,40 @@ int main(int argc, char **argv) {
         ui.setAssetSearch("Foto local");
         check(ui.assets().size() == 1, "asset search");
         ui.setAssetSearch("");
+        // A selected group is stored as a self-contained composition and restored in one undo step.
+        editor.selectNode(QString::fromStdString(editor.project().nodes[1].id));
+        editor.groupSelected();
+        check(ui.canSaveSelection(), "selected root group can be saved");
+        editor.setFrame(0);
+        editor.recordSelectedKeyframe();
+        editor.setFrame(20);
+        editor.recordSelectedKeyframe();
+        editor.setFrame(0);
+        check(ui.saveSelection("Painel com animação", "objects"), "save group and keyframes");
+        const auto groupPreset = named(ui.assets(), "Painel com animação");
+        const auto groupPresetId = groupPreset["id"].toString();
+        auto decodedGroup = studio::deserialize(
+            QJsonDocument(QJsonObject::fromVariantMap(groupPreset["preset"].toMap())).toJson());
+        check(decodedGroup.error.isEmpty() && decodedGroup.project.nodes.size() == 2 &&
+                  decodedGroup.project.nodes.front().start == 0 &&
+                  decodedGroup.project.nodes.front().keyframes.size() == 2,
+              "group preset preserves child and relative keyframes");
+        editor.setFrame(1);
+        check(!ui.useAsset(groupPresetId), "reject insert when animated composition cannot fit scene");
+        editor.setFrame(0);
+        const auto beforeInsert = editor.project().nodes.size();
+        check(ui.useAsset(groupPresetId) && editor.project().nodes.size() == beforeInsert + 2,
+              "reinsert group with children");
+        const auto insertedRoot = editor.project().nodes[beforeInsert];
+        const auto insertedChild = editor.project().nodes[beforeInsert + 1];
+        check(insertedChild.parentId == insertedRoot.id &&
+                  insertedRoot.id != decodedGroup.project.nodes.front().id &&
+                  insertedRoot.keyframes.size() == 2 &&
+                  studio::validate(editor.project()).empty(),
+              "group imported with remapped IDs, parents and valid timeline");
+        editor.undo();
+        check(editor.project().nodes.size() == beforeInsert, "one undo removes full composition");
+
         studio::WorkspaceStore firstStore(temp.filePath("workspace")), staleStore(temp.filePath("workspace"));
         check(firstStore.addCategory("Concorrência A").error.isEmpty(), "first catalogue writer commits");
         check(!staleStore.addCategory("Concorrência B").error.isEmpty(), "stale catalogue writer rejected");

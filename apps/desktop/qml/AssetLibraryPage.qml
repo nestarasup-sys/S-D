@@ -20,7 +20,7 @@ Rectangle {
     }
     Dialog {
         id: itemDialog; anchors.centerIn: parent; width: 470; modal: true
-        title: itemAction === "edit" ? "Organizar item" : itemAction === "preset" ? "Salvar objeto personalizado" : "Adicionar à biblioteca"
+        title: itemAction === "edit" ? "Organizar item" : itemAction === "preset" ? "Salvar composição reutilizável" : "Adicionar à biblioteca"
         onOpened: {
             itemName.text = itemAction === "edit" ? selectedAsset.name : itemAction === "preset" ? (editor.selected.name || "Meu objeto") : workspace.suggestedAssetName(pendingFile)
             itemCategory.currentIndex = categoryIndex(itemAction === "edit" ? selectedAsset.categoryId : (workspace.categoryFilter || "uncategorized"))
@@ -32,7 +32,7 @@ Rectangle {
             StudioField { id: itemName; Layout.fillWidth: true; maximumLength: 120 }
             Label { text: "Categoria"; color: "#9cb0bf"; font.pixelSize: 12 }
             StudioComboBox { id: itemCategory; Layout.fillWidth: true; model: workspace.categories; textRole: "name"; valueRole: "id" }
-            Label { text: itemAction === "import" ? "Uma cópia do arquivo será guardada na biblioteca." : itemAction === "preset" ? "Cores, pose, tamanho e movimento serão reutilizáveis." : "Mudar a categoria não altera projetos já criados."; color: "#7f97a8"; wrapMode: Text.WordWrap; Layout.fillWidth: true; font.pixelSize: 11 }
+            Label { text: itemAction === "import" ? "Uma cópia do arquivo será guardada na biblioteca." : itemAction === "preset" ? "Grupos, filhos, keyframes e mídias serão preservados no preset." : "Mudar a categoria não altera projetos já criados."; color: "#7f97a8"; wrapMode: Text.WordWrap; Layout.fillWidth: true; font.pixelSize: 11 }
             RowLayout {
                 Layout.alignment: Qt.AlignRight; Layout.topMargin: 8
                 StudioButton { text: "Cancelar"; onClicked: itemDialog.close() }
@@ -126,7 +126,7 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true; spacing: 12
                 StudioField { Layout.fillWidth: true; placeholderText: "Buscar na biblioteca…"; text: workspace.assetSearch; onTextEdited: workspace.assetSearch = text }
-                StudioButton { text: "Salvar seleção do editor"; enabled: workspace.canSaveSelection; onClicked: { itemAction = "preset"; itemDialog.open() } ToolTip.text: "Selecione um objeto no editor para criar uma variação reutilizável"; ToolTip.visible: hovered }
+                StudioButton { text: "Salvar seleção do editor"; enabled: workspace.canSaveSelection; onClicked: { itemAction = "preset"; itemDialog.open() } ToolTip.text: "Selecione um objeto ou grupo raiz para salvar a composição"; ToolTip.visible: hovered }
                 StudioButton { text: "Atualizar"; quiet: true; onClicked: workspace.refresh() }
             }
             Label { visible: !workspace.hasDocument; text: "Para usar um item, crie ou abra um projeto na tela Projetos."; color: "#a4c2b1"; font.pixelSize: 12 }

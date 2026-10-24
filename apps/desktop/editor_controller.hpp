@@ -129,6 +129,7 @@ class EditorController : public QObject {
         return path_;
     }
     bool insertLibraryNode(studio::Node node);
+    bool insertLibraryNodes(std::vector<studio::Node> nodes);
     Q_INVOKABLE void newProject(bool demo = false);
     Q_INVOKABLE void recover();
     Q_INVOKABLE void exportVideo(QUrl output);
