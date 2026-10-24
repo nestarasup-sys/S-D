@@ -42,7 +42,7 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
 
-Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Por enquanto, cada operação agrupa um elemento, as curvas são lineares e composições inteiras ainda não são salvas como presets. Conectores, multi seleção e receita IA v2 continuam nas próximas etapas. Consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
+Grupos podem ser selecionados pela lista de camadas; arrastar sua faixa move o grupo, seus filhos e os keyframes juntos. Excluir um grupo remove sua árvore. Por enquanto, cada operação agrupa um elemento, as curvas são lineares e composições inteiras ainda não são salvas como presets. Conectores e multi seleção continuam pendentes. A receita IA v2 já está disponível; consulte a [decisão de arquitetura 0004](docs/architecture/0004-groups-camera-keyframes.md) e a [direção futura](FUTURO-DO-APP.md).
 
 ## Testar pela interface
 

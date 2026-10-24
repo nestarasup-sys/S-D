@@ -21,7 +21,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 - Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
 - Etapa 1: composição livre já funciona no importador; interface de grupos ainda permite agrupar um elemento por vez e a biblioteca não salva grupos inteiros.
 - Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
-- Etapa 5: receita v2 e guia estão implementados; faltam edição por IA de projeto existente, propostas de mudanças e eventos por palavra com alinhamento confiável.
+- Etapa 5 (IA externa): guia e importação de receitas v2 estão implementados; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
 
 ### Falta
 
@@ -234,6 +234,16 @@ Três modos de uso:
 - **A partir de roteiro:** a IA trabalha a direção visual, preservando o texto salvo autorização para reescrever.
 - **A partir de projeto:** a IA altera partes identificadas, com uma proposta de mudanças sobre a revisão atual.
 
+### Escopo da etapa 5 — sem chat interno
+
+Esta etapa descreve o contrato entre o Studio Dark e uma IA escolhida pelo usuário. O fluxo atual é: exportar o guia atualizado, enviar guia e roteiro à IA externa, receber uma receita JSON e importá-la no app. O Studio Dark valida a receita e executa somente capacidades implementadas.
+
+**Já entregue:** receita v2, layout livre, grupos, keyframes vinculados a trechos de fala, câmera explícita, legenda visual opcional e manifesto da biblioteca pessoal no guia exportado. A receita vira um projeto editável e segue para o fluxo de produção.
+
+**Ainda falta para concluir a etapa:** atualizar um projeto existente por IDs estáveis; apresentar uma proposta/diff antes de aplicar mudanças; preservar itens não mencionados e permitir aceitar/rejeitar alterações; melhorar a descrição de mídias e dependências no pacote do guia; alinhar eventos por palavra apenas quando a origem e a confiança do tempo forem verificáveis.
+
+Uma IA integrada ao app, com chat, credenciais ou chamadas a provedores, seria um projeto separado. Não é requisito para terminar a etapa 5 e não está implementado.
+
 O editor recebe o plano e faz a validação estrutural. A intenção narrativa e criativa continua vindo da IA e do usuário. Composição não deve ser automaticamente substituída por um layout obrigatório em toda cena.
 
 ## 10. Formato de direção mais expressivo
@@ -331,7 +341,7 @@ Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora 
 | 2 — Câmera e conexões | Parcial | Pan/zoom/rotação explícitos existem; faltam alvo, transições e conectores acompanhando objetos. | Mostrar detalhe e quadro completo sem perder relações ou identidade. |
 | 3 — Documentos e vídeo | Não iniciado | Vídeo com trecho de origem; páginas, crop, máscara e regiões destacadas. | Palestra em cartão e aproximação de frase funcionam na prévia e no MP4. |
 | 4 — Dados e som | Não iniciado | Gráficos com valores/unidades, contadores, linha do tempo e pistas de áudio. | Valores consistentes, fontes relacionadas e mix ajustável. |
-| 5 — Direção por IA v2 | Parcial | Schema v2, guia dinâmico e biblioteca ativa existem; faltam edição parcial de projeto, diff/proposta e eventos alinhados por palavra. | Roteiro vira direção variada; mudanças parciais preservam o restante. |
+| 5 — Direção por IA externa v2 | Parcial | Receita v2, guia dinâmico e biblioteca ativa existem; faltam atualização parcial, diff/proposta e eventos alinhados por palavra. Não requer chat interno. | Usuário leva guia/roteiro a uma IA externa; mudanças revisáveis preservam o restante do projeto. |
 | 6 — Acabamento e escala | Não iniciado | Kit investigativo, efeitos, proxies, cache e episódio maior. | Resultado legível e medido no computador de destino. |
 
 A especificação e os exemplos da receita v2 começam junto da etapa 0; a etapa 5 consolida o fluxo completo. Cada etapa deve deixar uma entrega demonstrável e um commit local. Datas dependem das provas técnicas, não foram estimadas aqui.
