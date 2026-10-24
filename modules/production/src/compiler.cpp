@@ -6,6 +6,16 @@
 
 namespace studio {
 namespace {
+std::int64_t cueFrame(const std::pair<std::int64_t, std::int64_t> &cue, double offsetSeconds,
+                      double progress) {
+    constexpr std::int64_t spf = ProductionSampleRate / 30;
+    if (progress >= 0) {
+        const auto first = cue.first / spf;
+        const auto last = std::max(first, (cue.second - 1) / spf);
+        return first + std::llround(progress * (last - first));
+    }
+    return cue.first / spf + std::llround(offsetSeconds * 30);
+}
 QString srtTime(std::int64_t sample) {
     auto ms = sample * 1000 / ProductionSampleRate;
     return QString("%1:%2:%3,%4")
@@ -35,7 +45,7 @@ bool compileElement(const DirectedElement &directed,
                     Project &project, QString &error) {
     auto node = directed.node;
     const auto cue = cues[directed.cue];
-    const auto anchor = cue.first / samplesPerFrame + std::llround(directed.offsetSeconds * 30);
+    const auto anchor = cueFrame(cue, directed.offsetSeconds, directed.cueProgress);
     node.start = anchor + (directed.presetTiming ? node.start : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
@@ -54,7 +64,7 @@ bool compileElement(const DirectedElement &directed,
         node.keyframes.clear();
         for (const auto &directedKey : directed.keyframes) {
             const auto frame =
-                cues[directedKey.cue].first / samplesPerFrame + std::llround(directedKey.offsetSeconds * 30);
+                cueFrame(cues[directedKey.cue], directedKey.offsetSeconds, directedKey.cueProgress);
             node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
                                       directedKey.scale, directedKey.opacity, directedKey.easing});
         }
@@ -81,7 +91,7 @@ bool compileElement(const DirectedElement &directed,
 }
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
-                                const QString &audioOutput) {
+                                const QString &audioOutput, const TimingPlan *timing) {
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
@@ -90,19 +100,40 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();
     constexpr std::int64_t samplesPerFrame = ProductionSampleRate / 30;
+    const bool fixed = recipe.timingMode == "fit-to-duration";
+    if (fixed && (!timing || !timing->error.isEmpty() ||
+                  timing->scenes.size() != recipe.scenes.size() || timing->targetFrames <= 0)) {
+        r.error = "Plano temporal ajustado ausente ou incompatível.";
+        return r;
+    }
     std::vector<std::int64_t> transitions;
     int captionIndex = 0;
-    for (const auto &scene : recipe.scenes) {
+    for (std::size_t sceneIndex = 0; sceneIndex < recipe.scenes.size(); ++sceneIndex) {
+        const auto &scene = recipe.scenes[sceneIndex];
+        const TimedScene *sceneTiming = fixed ? &timing->scenes[sceneIndex] : nullptr;
+        if (fixed && (sceneTiming->cues.size() != scene.narration.size() ||
+                      sceneTiming->durationFrames <= 0)) {
+            r.error = "Plano temporal de cena inválido.";
+            return r;
+        }
         const auto sceneSample = std::int64_t(r.voice.samples.size());
         const auto sceneStart = sceneSample / samplesPerFrame;
         transitions.push_back(sceneSample);
         std::vector<std::pair<std::int64_t, std::int64_t>> cues;
-        for (const auto &utterance : scene.narration) {
+        for (std::size_t cueIndex = 0; cueIndex < scene.narration.size(); ++cueIndex) {
+            const auto &utterance = scene.narration[cueIndex];
+            const TimedCue *cueTiming = fixed ? &sceneTiming->cues[cueIndex] : nullptr;
             if (!utterances.contains(utterance.id) || utterances[utterance.id].samples.empty()) {
                 r.error = "Narração ausente: " + utterance.id;
                 return r;
             }
             const auto &audio = utterances[utterance.id].samples;
+            if (fixed && (cueTiming->id != utterance.id || cueTiming->speechFrames <= 0 ||
+                          cueTiming->slotFrames < cueTiming->speechFrames ||
+                          audio.size() > std::size_t(cueTiming->speechFrames * samplesPerFrame))) {
+                r.error = "Voz ajustada não corresponde ao plano: " + utterance.id;
+                return r;
+            }
             if (audio.size() > ProductionSampleRate * 30) {
                 r.error = "Trecho de narração excede 30 segundos.";
                 return r;
@@ -122,9 +153,21 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             caption.motion = "none";
             if (recipe.renderCaptions)
                 p.nodes.push_back(caption);
-            r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 7, 0);
+            if (fixed) {
+                const auto desiredEnd = begin + std::int64_t(cueTiming->slotFrames) * samplesPerFrame;
+                r.voice.samples.resize(std::size_t(desiredEnd), 0);
+            } else
+                r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 7, 0);
         }
-        r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 5, 0);
+        if (fixed) {
+            const auto sceneEnd = sceneSample + std::int64_t(sceneTiming->durationFrames) * samplesPerFrame;
+            if (r.voice.samples.size() > std::size_t(sceneEnd)) {
+                r.error = "Falas planejadas ultrapassam a cena " + scene.id;
+                return r;
+            }
+            r.voice.samples.resize(std::size_t(sceneEnd), 0);
+        } else
+            r.voice.samples.resize(r.voice.samples.size() + ProductionSampleRate / 5, 0);
         auto rounded = ((r.voice.samples.size() + samplesPerFrame - 1) / samplesPerFrame) * samplesPerFrame;
         r.voice.samples.resize(rounded, 0);
         if (rounded > ProductionSampleRate * 600) {
@@ -179,14 +222,18 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                 return r;
         }
         for (const auto &directedCamera : scene.camera) {
-            const auto frame = cues[directedCamera.cue].first / samplesPerFrame +
-                               std::llround(directedCamera.offsetSeconds * 30);
+            const auto frame = cueFrame(cues[directedCamera.cue], directedCamera.offsetSeconds,
+                                        directedCamera.cueProgress);
             p.camera.push_back(
                 {frame, directedCamera.x, directedCamera.y, directedCamera.zoom, directedCamera.rotation,
                  directedCamera.easing});
         }
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;
+    if (fixed && p.duration != timing->targetFrames) {
+        r.error = "A produção não alcançou o número de quadros solicitado.";
+        return r;
+    }
     std::map<std::int64_t, CameraKeyframe> cameraByFrame;
     for (const auto &key : p.camera)
         cameraByFrame[key.frame] = key;

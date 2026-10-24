@@ -16,6 +16,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 - Guia da IA exportável com capacidades reais e manifesto atualizado da biblioteca pessoal; exemplo executável em `examples/composicao-livre-v2.production.json`.
 - Biblioteca e receita v2 permitem reutilizar grupos inteiros com filhos, keyframes relativos e mídias locais; os IDs são remapeados na instância.
 - Cada importação IA agora gera um diagnóstico local JSONL acessível pelo botão Logs; easing de objeto e câmera é aceito no JSON v2 e no editor.
+- Receita IA v2 aceita `fit-to-duration` com duração-alvo global e por cena/fala, aceleração limitada a 15% via FFmpeg `atempo`, pausas e `cueProgress` para objetos, keyframes e câmera.
 - Documentação arquitetural e commits locais de cada corte.
 
 ### Em andamento
@@ -23,7 +24,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 - Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
 - Etapa 1: composição livre e presets agrupados já estão no código; o editor ainda agrupa um elemento por vez e não tem multi seleção.
 - Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
-- Etapa 5 (IA externa): guia e importação de receitas v2 estão implementados; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
+- Etapa 5 (IA externa): guia, receitas v2, duração-alvo por quadro e referência proporcional à fala estão implementados em código; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
 
 ### Falta
 
@@ -396,5 +397,6 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 
 - O editor agrupa um elemento por vez; multi seleção e componentes vinculados ainda faltam. Presets de grupos com keyframes já são suportados.
 - `kind: library` aceita mídia, presets simples e grupos animados; o JSON continua dependente do catálogo local e não empacota mídia.
+- `timingMode: fit-to-duration` aloca frames fixos por cena e fala depois do TTS, com `cueProgress` e filtro do FFmpeg. Só acelera até 15%, preserva o tom e adiciona pausas; alvo inviável é rejeitado.
 - Benchmark entre renderizadores, curvas Bézier personalizadas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
 - O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.

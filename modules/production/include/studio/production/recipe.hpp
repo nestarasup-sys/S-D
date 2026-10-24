@@ -9,6 +9,7 @@
 namespace studio {
 struct Utterance {
     QString id, text;
+    double targetDurationSeconds{0}; // Optional speech slot including pause in fit mode.
 };
 struct DirectedTime {
     int cue{0};
@@ -19,6 +20,7 @@ struct DirectedKeyframe {
     int cue{0};
     double progress{0};
     double offsetSeconds{0};
+    double cueProgress{-1}; // 0..1 follows the adjusted speech duration.
     double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};
     std::string easing{"linear"};
 };
@@ -26,6 +28,7 @@ struct DirectedCameraKeyframe {
     int cue{0};
     double progress{0};
     double offsetSeconds{0};
+    double cueProgress{-1};
     double x{640}, y{360}, zoom{1}, rotation{0};
     std::string easing{"linear"};
 };
@@ -34,6 +37,7 @@ struct DirectedElement {
     int cue{0};
     double progress{0};
     double offsetSeconds{0};
+    double cueProgress{-1};
     bool utteranceOnly{false};
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     std::vector<DirectedKeyframe> keyframes;
@@ -54,6 +58,7 @@ struct DirectedShot {
 };
 struct DirectedScene {
     QString id, title, kicker, background;
+    double targetDurationSeconds{0};
     std::vector<Utterance> narration;
     std::vector<DirectedElement> elements;
     std::vector<DirectedCameraKeyframe> camera;
@@ -64,6 +69,9 @@ struct ProductionRecipe {
     QString title, voice{"auto"};
     int speechRate{0};
     bool renderCaptions{true};
+    QString timingMode{"natural"};
+    double targetDurationSeconds{0};
+    bool preserveVoicePitch{true};
     double musicGain{.025}, effectsGain{.035};
     std::vector<DirectedScene> scenes;
     QJsonObject original;

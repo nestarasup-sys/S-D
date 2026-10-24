@@ -222,6 +222,130 @@ int main(int argc, char **argv) {
               "compiled visual and camera easing persisted");
         check(std::abs(studio::evaluate(*studio::findNode(easedProject.project, "shape-easing"), 15).x -
                        12.5) < .001, "production uses easing in compositor");
+        // Fit-to-duration: two exact scene budgets, one utterance requiring <15% acceleration.
+        QJsonObject timed = {
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Tempo fixo"}, {"timingMode", "fit-to-duration"},
+            {"targetDurationSeconds", 4.1}, {"preserveVoicePitch", true},
+            {"musicGain", 0}, {"effectsGain", 0}, {"captions", true},
+            {"scenes", QJsonArray{
+                QJsonObject{
+                    {"id", "intro"}, {"targetDurationSeconds", 2.0},
+                    {"narration", QJsonArray{QJsonObject{{"text", "Primeiro trecho."},
+                                                       {"targetDurationSeconds", 2.0}}}},
+                    {"elements", QJsonArray{QJsonObject{
+                        {"id", "animated-through-speech"}, {"kind", "shape"}, {"cue", 0},
+                        {"cueProgress", 0},
+                        {"keyframes", QJsonArray{
+                            QJsonObject{{"cue", 0}, {"cueProgress", 0}, {"x", 100}},
+                            QJsonObject{{"cue", 0}, {"cueProgress", 1}, {"x", 500},
+                                        {"easing", "ease-in-out"}}
+                        }}
+                    }, QJsonObject{
+                        {"id", "half-speech"}, {"kind", "shape"}, {"cue", 0},
+                        {"cueProgress", 0.5}
+                    }}},
+                    {"camera", QJsonArray{
+                        QJsonObject{{"cue", 0}, {"cueProgress", 0},
+                                    {"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}},
+                        QJsonObject{{"cue", 0}, {"cueProgress", 1},
+                                    {"x", 690}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}
+                    }}
+                },
+                QJsonObject{
+                    {"id", "fim"}, {"targetDurationSeconds", 2.1},
+                    {"narration", QJsonArray{QJsonObject{{"text", "Segundo trecho."},
+                                                       {"targetDurationSeconds", 2.1}}}},
+                    {"elements", QJsonArray{}}
+                }
+            }}
+        };
+        auto timedRecipe = studio::parseRecipe(QJsonDocument(timed).toJson(), directory.path());
+        check(timedRecipe.error.isEmpty() && timedRecipe.recipe.timingMode == "fit-to-duration",
+              "parse v2 fixed target, scene/cue slots and proportional keyframes");
+        QMap<QString, studio::PcmAudio> timedRaw;
+        studio::PcmAudio firstSpeech, secondSpeech;
+        firstSpeech.samples.resize(48000, .1f);  // exactly 2 seconds
+        secondSpeech.samples.resize(57600, .1f); // 2.4 seconds; atempo about 1.143x
+        timedRaw.insert(timedRecipe.recipe.scenes[0].narration[0].id, firstSpeech);
+        timedRaw.insert(timedRecipe.recipe.scenes[1].narration[0].id, secondSpeech);
+        auto timingPlan = studio::planNarrationTiming(timedRecipe.recipe, timedRaw);
+        check(timingPlan.error.isEmpty() && timingPlan.targetFrames == 123 &&
+                  timingPlan.scenes.size() == 2 && timingPlan.scenes[0].durationFrames == 60 &&
+                  timingPlan.scenes[1].durationFrames == 63 &&
+                  timingPlan.scenes[1].cues[0].speechFrames == 63,
+              "speech planner creates exact 30-fps budgets within 15% speed cap");
+        check(!studio::compileProduction(timedRecipe.recipe, timedRaw, "no-plan.wav").error.isEmpty(),
+              "fixed production requires a verified timing plan");
+        check(!studio::compileProduction(timedRecipe.recipe, timedRaw, "unadjusted.wav",
+                                         &timingPlan).error.isEmpty(),
+              "unadjusted audio cannot overflow the planned speech slot");
+        auto simulatedRetimed = timedRaw;
+        // The real worker uses FFmpeg atempo. Unit test supplies already adjusted sample count.
+        simulatedRetimed[timedRecipe.recipe.scenes[1].narration[0].id].samples.resize(63 * 800);
+        auto timedResult = studio::compileProduction(timedRecipe.recipe, simulatedRetimed,
+                                                     "timed.wav", &timingPlan);
+        check(timedResult.error.isEmpty() && timedResult.project.duration == 123 &&
+                  timedResult.voice.samples.size() == 123 * 800 &&
+                  timedResult.project.scenes[0].duration == 60 &&
+                  timedResult.project.scenes[1].duration == 63,
+              "exact project, audio and scene duration at 30 fps");
+        const auto *half = studio::findNode(timedResult.project, "half-speech");
+        const auto *animatedSpeech = studio::findNode(timedResult.project, "animated-through-speech");
+        check(half && half->start == 30 && animatedSpeech &&
+                  animatedSpeech->keyframes.size() == 2 &&
+                  animatedSpeech->keyframes.front().frame == 0 &&
+                  animatedSpeech->keyframes.back().frame == 59 &&
+                  timedResult.project.camera.back().frame == 59,
+              "cueProgress resolves against adjusted speech, last frame is inclusive");
+        check(timedResult.subtitles.contains("00:00:02,000 --> 00:00:04,100"),
+              "subtitle timestamps follow the adjusted speech and exact scene starts");
+        auto tooShort = timed;
+        tooShort["targetDurationSeconds"] = 3.0;
+        auto tooShortScenes = tooShort["scenes"].toArray();
+        auto tooShortFirst = tooShortScenes[0].toObject();
+        auto tooShortSecond = tooShortScenes[1].toObject();
+        tooShortFirst.remove("targetDurationSeconds");
+        tooShortSecond.remove("targetDurationSeconds");
+        auto shortNarration = tooShortSecond["narration"].toArray()[0].toObject();
+        shortNarration.remove("targetDurationSeconds");
+        tooShortSecond["narration"] = QJsonArray{shortNarration};
+        tooShortFirst["narration"] = QJsonArray{"Primeiro trecho."};
+        tooShortScenes[0] = tooShortFirst;
+        tooShortScenes[1] = tooShortSecond;
+        tooShort["scenes"] = tooShortScenes;
+        auto shortRecipe = studio::parseRecipe(QJsonDocument(tooShort).toJson(), directory.path());
+        check(shortRecipe.error.isEmpty() &&
+                  !studio::planNarrationTiming(shortRecipe.recipe, timedRaw).error.isEmpty(),
+              "unattainable target produces an actionable error, not artificial voice");
+        auto longPlanRecipe = timedRecipe.recipe;
+        longPlanRecipe.targetDurationSeconds = 30;
+        for (auto &scene : longPlanRecipe.scenes) {
+            scene.targetDurationSeconds = 0;
+            for (auto &cue : scene.narration)
+                cue.targetDurationSeconds = 0;
+        }
+        const auto longPlan = studio::planNarrationTiming(longPlanRecipe, timedRaw);
+        check(longPlan.error.isEmpty() && !longPlan.warnings.isEmpty(),
+              "very long silent gaps trigger explicit pacing warnings");
+        auto invalidTiming = timed;
+        invalidTiming["preserveVoicePitch"] = false;
+        check(!studio::parseRecipe(QJsonDocument(invalidTiming).toJson(), directory.path()).error.isEmpty(),
+              "reject pitch shifting that was not implemented");
+        invalidTiming = timed;
+        auto conflictingScenes = invalidTiming["scenes"].toArray();
+        auto conflicting = conflictingScenes[0].toObject();
+        auto elements = conflicting["elements"].toArray();
+        auto invalidElement = elements[0].toObject();
+        invalidElement["offsetSeconds"] = 1;
+        elements[0] = invalidElement;
+        conflicting["elements"] = elements;
+        conflictingScenes[0] = conflicting;
+        invalidTiming["scenes"] = conflictingScenes;
+        check(!studio::parseRecipe(QJsonDocument(invalidTiming).toJson(), directory.path()).error.isEmpty(),
+              "reject ambiguous cueProgress plus offsetSeconds");
+        check(studio::capabilities()["productionCapabilities"].toArray().contains("keyframe-easing-curves"),
+              "easing remains advertised");
         auto g = studio::aiGuide();
         for (const auto &asset : studio::nativeLibrary())
             check(g.contains("`" + QString::fromStdString(asset.id) + "`"),

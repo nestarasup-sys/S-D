@@ -14,7 +14,7 @@ Receitas v1 continuam aceitas por compatibilidade. Para novas produções, use v
 
 - Responda **somente com JSON válido**, sem comentários, cercas Markdown nem texto de apresentação. Use exatamente `format: "studio-dark-production"`, `version: 2` e `catalogVersion: 1`.
 - Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
-- `offsetSeconds` varia de 0 a 10; não é timestamp absoluto. A duração real depende da voz pt-BR instalada e só é conhecida depois de sintetizar o WAV.
+- `offsetSeconds` varia de 0 a 10; `cueProgress` usa de 0 a 1 para acompanhar a fala final. Sem duração fixa, a duração natural depende da voz pt-BR e só é conhecida depois de sintetizar o WAV.
 - Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
 - Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Evite elementos ilegíveis em 1280×720; respeite o limite de oito níveis de grupo.
 - Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
@@ -67,6 +67,43 @@ Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 car
 
 `captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`.
 
+## Plano temporal: voz sincronizada e duração fixa
+
+A receita v2 permite dois modos. **Natural** (padrão para projetos antigos): sintetiza os trechos, mede o áudio e monta as cenas com pausas automáticas. **Duração fixa**: planeja o número exato de quadros solicitado depois de medir a voz. Use estes campos na raiz:
+
+```json
+{
+  "format": "studio-dark-production", "version": 2, "catalogVersion": 1,
+  "title": "Explicação em 8 segundos",
+  "timingMode": "fit-to-duration", "targetDurationSeconds": 8,
+  "preserveVoicePitch": true,
+  "scenes": [{
+    "id": "explicacao", "targetDurationSeconds": 8,
+    "narration": [
+      {"text": "Vamos entender o conceito.", "targetDurationSeconds": 3.5},
+      {"text": "Veja a resposta na tela.", "targetDurationSeconds": 4.5}
+    ],
+    "elements": [
+      {"id": "cartao", "kind": "shape", "cue": 0, "cueProgress": 0.25,
+       "x": 180, "y": 120, "width": 900, "height": 420}
+    ],
+    "camera": [
+      {"cue": 0, "cueProgress": 0, "x": 640, "y": 360, "zoom": 1, "rotation": 0},
+      {"cue": 1, "cueProgress": 0.5, "x": 760, "y": 360, "zoom": 1.2,
+       "rotation": 0, "easing": "ease-in-out"}
+    ]
+  }]
+}
+```
+
+**Campos:** `timingMode` aceita `natural` ou `fit-to-duration`; para o segundo, `targetDurationSeconds` é obrigatório (1–600 s), e `preserveVoicePitch` só aceita `true` nesta versão. Em cada cena, `targetDurationSeconds` é opcional; em cada entrada de `narration`, um objeto `{"text":"...","targetDurationSeconds":2.5}` reserva um intervalo **incluindo voz e pausa**. Strings antigas continuam funcionando. Se todas as cenas tiverem alvo, a soma arredondada a 30 FPS deve igualar o total. As cenas sem alvo recebem o tempo restante. Alvos de fala devem caber na cena.
+
+O Studio Dark sintetiza cada áudio primeiro, mede amostras a 24 kHz e depois planeja intervalos inteiros de quadros (30 FPS). O `atempo` do FFmpeg acelera apenas a fala que não cabe, buscando preservar seu tom, com limite rígido de **1,15×**. Quando sobra tempo, insere silêncio como pausa; não estica a voz para preencher. Se a fala precisar acelerar mais de 15%, o app **rejeita o plano** e apresenta ID e duração mínima. Requer FFmpeg e voz pt-BR local no Windows.
+
+Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. Isso não é alinhamento palavra por palavra.
+
+**Planejamento:** para 90 s, 2700 quadros a 30 FPS. A IA pode planejar mas não conhece a duração de uma voz local ainda não gerada. Evite silêncios excessivos; se o plano não couber, ajuste a narração ou os tempos. O aplicativo não inventa áudio para satisfazer qualquer número.
+
 ## Composição, grupos e câmera
 
 Não há cabeçalho, título de cena ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior.
@@ -83,7 +120,7 @@ Para sincronizar, informe `cue` e opcionalmente `offsetSeconds` de 0 a 10. O com
 
 `kind`: `group`, `library`, `native`, `text`, `shape`, `image` ou `svg`. `native` usa o campo `asset`; texto usa `text`; mídia direta usa `source`, caminho local absoluto ou relativo ao JSON. Arquivos remotos e URLs não são baixados. PNG com transparência e SVG compatível com Qt são aceitos. Elementos nativos atuais são objetos vetoriais parametrizados.
 
-Propriedades: `x`, `y`, `width`, `height`, `color` (#RRGGBB), `secondaryColor`, `fontSize` (8–300), `opacity` (0–1), `rotation`, `scale` (0.01–10), `travelX`, `travelY`, `spinDegrees`, `motion`, `motionFrames` (1–300), `exitFrames` (0–300), `pose`, `cue`, `offsetSeconds`, `span`, `keyframes`, `children`, `assetId`.
+Propriedades: `x`, `y`, `width`, `height`, `cueProgress` (alternativo a `offsetSeconds`), `color` (#RRGGBB), `secondaryColor`, `fontSize` (8–300), `opacity` (0–1), `rotation`, `scale` (0.01–10), `travelX`, `travelY`, `spinDegrees`, `motion`, `motionFrames` (1–300), `exitFrames` (0–300), `pose`, `cue`, `offsetSeconds`, `span`, `keyframes`, `children`, `assetId`.
 
 Movimentos: `none`, `fade`, `rise`, `slide-left`, `slide-right`, `pop`. Poses: `neutral`, `point`, `wave`, `worried`. Roupas/personagem usam `color`; `secondaryColor` controla a pele. Partes de personagem ainda não são objetos articulados.
 
@@ -276,7 +313,10 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "keyframe-easing-curves",
         "personal-library-assets",
         "reusable-group-presets",
-        "optional-visual-captions"
+        "optional-visual-captions",
+        "fixed-duration-timing",
+        "cue-progress-sync",
+        "pitch-preserving-atempo"
     ],
     "productionVersion": 2,
     "projectCapabilities": [
