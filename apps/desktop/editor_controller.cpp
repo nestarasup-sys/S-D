@@ -1,7 +1,5 @@
 #include "editor_controller.hpp"
 #include <QCoreApplication>
-#include <QDateTime>
-#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
