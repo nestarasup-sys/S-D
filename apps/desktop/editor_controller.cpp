@@ -629,6 +629,7 @@ void EditorController::groupSelected() {
     group.width = childSnapshot.width;
     group.height = childSnapshot.height;
     group.sceneId = childSnapshot.sceneId;
+    group.shotId = childSnapshot.shotId;
     auto error = editor_.execute([&](studio::Project &p) {
         auto child = std::find_if(p.nodes.begin(), p.nodes.end(),
                                   [&](const auto &node) { return node.id == childSnapshot.id; });

@@ -138,12 +138,19 @@ int main(int argc, char **argv) {
         check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
                   c.open(shotPath),
               "open a schema 4 project with independent shots");
+        c.selectNode("detail-node");
+        c.groupSelected();
+        const auto groupedShotNode = studio::findNode(c.project(), c.selectedId().toStdString());
+        check(groupedShotNode && groupedShotNode->shotId == "detail",
+              "grouping an element preserves its shot ownership");
+        const auto groupedId = c.selectedId();
         c.beginGesture();
         c.moveShotBoundary("detail", 70);
         c.endGesture();
         check(c.project().shots[0].duration == 70 && c.project().shots[1].start == 70 &&
                   c.project().shots[1].duration == 50 &&
                   studio::findNode(c.project(), "detail-node")->start == 70 &&
+                  studio::findNode(c.project(), groupedId.toStdString())->start == 70 &&
                   c.project().visualBeats.front().frame == 85 && c.project().camera[1].frame == 70,
               "dragging a shot cut moves its duration, contents, beats and camera together");
         c.undo();
