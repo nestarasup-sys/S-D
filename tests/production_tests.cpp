@@ -168,6 +168,10 @@ int main(int argc, char **argv) {
               "group import retains parent, relative time and keyframes");
         check(studio::aiGuide(catalog.data()).contains("composição com 2 partes"),
               "guide includes grouped personal library item");
+        auto shortened = groupVoice;
+        shortened.begin().value().samples.resize(2400);
+        check(!studio::compileProduction(recipeWithGroup.recipe, shortened, "short.wav").error.isEmpty(),
+              "reject preset keyframe beyond measured narration scene");
         check(studio::capabilities()["productionCapabilities"].toArray().contains("reusable-group-presets"),
               "capabilities advertise reusable group assets");
         auto g = studio::aiGuide();
