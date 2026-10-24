@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,7 @@ struct CameraKeyframe {
 struct Node {
     std::string id;
     std::string parentId; // Empty for composition roots; children use parent-local coordinates.
+    std::string shotId; // Empty for legacy/scene-wide elements; otherwise belongs to one visual shot.
     std::string name;
     NodeKind kind{NodeKind::Text};
     std::string text;
@@ -47,6 +49,15 @@ struct SceneMarker {
     std::string id, name, narration;
     std::int64_t start{0}, duration{1};
 };
+struct ShotMarker {
+    std::string id, sceneId, name, transitionIn{"cut"};
+    std::int64_t start{0}, duration{1};
+};
+struct VisualBeat {
+    std::string id, shotId, targetId, action;
+    std::int64_t frame{0}, durationFrames{0};
+    std::optional<double> x, y, rotation, scale, opacity, zoom;
+};
 struct Project {
     std::string id;
     std::string name{"Sem título"};
@@ -56,6 +67,8 @@ struct Project {
     std::int64_t duration{360};
     std::vector<Node> nodes;
     std::vector<SceneMarker> scenes;
+    std::vector<ShotMarker> shots;
+    std::vector<VisualBeat> visualBeats;
     std::vector<CameraKeyframe> camera;
     std::string audioSource;
 };

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <studio/core/library.hpp>
 #include <studio/core/project.hpp>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace studio {
@@ -25,7 +26,7 @@ double eased(double t, const std::string &curve) {
 }
 }
 std::string validate(const Project &p) {
-    if (p.schemaVersion != 2 && p.schemaVersion != 3)
+    if (p.schemaVersion != 2 && p.schemaVersion != 3 && p.schemaVersion != 4)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -34,11 +35,14 @@ std::string validate(const Project &p) {
     if (p.fps.numerator <= 0 || p.fps.numerator > 120000 || p.fps.denominator <= 0 ||
         p.fps.denominator > 10000 || p.fps.value() < 1 || p.fps.value() > 120)
         return "Taxa de quadros inválida.";
-    if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200)
+    if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200 || p.shots.size() > 256 ||
+        p.visualBeats.size() > 4096)
         return "Projeto excede os limites deste protótipo.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
+    std::unordered_set<std::string> shotIds;
+    std::unordered_set<std::string> beatIds;
     std::int64_t sceneEnd = 0;
     for (const auto &scene : p.scenes) {
         if (scene.id.empty() || !sceneIds.insert(scene.id).second || scene.start < sceneEnd ||
@@ -53,6 +57,8 @@ std::string validate(const Project &p) {
             parentIds.insert(n.id);
         if (p.schemaVersion < 3 && (n.kind == NodeKind::Group || !n.parentId.empty() || !n.keyframes.empty()))
             return "Grupos e keyframes exigem a versão 3 do projeto.";
+        if (p.schemaVersion < 4 && !n.shotId.empty())
+            return "Vínculos de shot exigem a versão 4 do projeto.";
         if (n.start < 0 || n.duration < 1 || n.start >= p.duration || n.duration > p.duration - n.start)
             return "Objeto fora da duração da sequência.";
         if (!std::isfinite(n.x) || !std::isfinite(n.y) || std::abs(n.x) > 10000 || std::abs(n.y) > 10000 ||
@@ -93,6 +99,79 @@ std::string validate(const Project &p) {
             return "Cor secundária inválida.";
         if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header")
             return "Papel visual desconhecido.";
+    }
+    std::unordered_map<std::string, const ShotMarker *> shotsById;
+    std::unordered_map<std::string, std::vector<const ShotMarker *>> shotsByScene;
+    for (const auto &shot : p.shots) {
+        if (shot.id.empty() || !shotIds.insert(shot.id).second || !sceneIds.contains(shot.sceneId) ||
+            shot.start < 0 || shot.duration < 1 || shot.start >= p.duration ||
+            shot.duration > p.duration - shot.start || shot.name.size() > 120 ||
+            shot.transitionIn != "cut")
+            return "Plano visual inválido; esta versão exige cortes secos.";
+        const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
+            return candidate.id == shot.sceneId;
+        });
+        if (scene == p.scenes.end() || shot.start < scene->start ||
+            shot.start + shot.duration > scene->start + scene->duration)
+            return "Plano visual fica fora da cena narrativa.";
+        shotsById.emplace(shot.id, &shot);
+        shotsByScene[shot.sceneId].push_back(&shot);
+    }
+    for (auto &[sceneId, sceneShots] : shotsByScene) {
+        std::sort(sceneShots.begin(), sceneShots.end(), [](const auto *a, const auto *b) {
+            return a->start < b->start;
+        });
+        const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
+            return candidate.id == sceneId;
+        });
+        if (sceneShots.front()->start != scene->start ||
+            sceneShots.back()->start + sceneShots.back()->duration != scene->start + scene->duration)
+            return "Planos visuais precisam cobrir toda a cena narrativa.";
+        for (std::size_t i = 1; i < sceneShots.size(); ++i)
+            if (sceneShots[i - 1]->start + sceneShots[i - 1]->duration != sceneShots[i]->start)
+                return "Planos visuais da mesma cena têm lacuna ou sobreposição.";
+    }
+    for (const auto &node : p.nodes)
+        if (!node.shotId.empty()) {
+            const auto shot = shotsById.find(node.shotId);
+            if (shot == shotsById.end() || shot->second->sceneId != node.sceneId ||
+                node.start < shot->second->start ||
+                node.start + node.duration > shot->second->start + shot->second->duration)
+                return "Elemento aponta para um shot inexistente ou excede seu intervalo.";
+        }
+    for (const auto &beat : p.visualBeats) {
+        const auto shot = shotsById.find(beat.shotId);
+        if (beat.id.empty() || !beatIds.insert(beat.id).second || shot == shotsById.end() || beat.frame < 0 ||
+            beat.frame >= p.duration || beat.durationFrames < 0 ||
+            beat.frame < shot->second->start ||
+            beat.durationFrames > shot->second->start + shot->second->duration - beat.frame - 1 ||
+            (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
+             beat.action != "camera"))
+            return "Visual Beat inválido ou fora do shot.";
+        const bool cameraBeat = beat.action == "camera";
+        if (cameraBeat != beat.targetId.empty())
+            return "Visual Beat precisa de alvo visual, exceto quando controla a câmera.";
+        if (!cameraBeat) {
+            const auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
+                return candidate.id == beat.targetId;
+            });
+            if (node == p.nodes.end() || node->shotId != beat.shotId ||
+                beat.action == "camera")
+                return "Visual Beat aponta para um elemento inexistente ou de outro shot.";
+        }
+        auto validNumber = [](const std::optional<double> &value, double minimum, double maximum) {
+            return !value || (std::isfinite(*value) && *value >= minimum && *value <= maximum);
+        };
+        if (!validNumber(beat.x, -10000, 10000) || !validNumber(beat.y, -10000, 10000) ||
+            !validNumber(beat.rotation, -3600, 3600) || !validNumber(beat.scale, .01, 10) ||
+            !validNumber(beat.opacity, 0, 1) || !validNumber(beat.zoom, .1, 10) ||
+            (cameraBeat && (beat.scale || beat.opacity)) || (!cameraBeat && beat.zoom) ||
+            ((beat.action == "show" || beat.action == "hide") &&
+             (beat.x || beat.y || beat.rotation || beat.scale || beat.opacity || beat.zoom)) ||
+            (beat.action == "transform" &&
+             !(beat.x || beat.y || beat.rotation || beat.scale || beat.opacity)) ||
+            (cameraBeat && !(beat.x || beat.y || beat.rotation || beat.zoom)))
+            return "Propriedades do Visual Beat inválidas.";
     }
     for (const auto &n : p.nodes) {
         if (!n.parentId.empty() && (n.parentId == n.id || !parentIds.contains(n.parentId)))

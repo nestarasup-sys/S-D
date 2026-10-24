@@ -47,6 +47,7 @@ QByteArray serialize(const Project &p) {
                                          {"easing", text(key.easing)}});
         nodes.append(QJsonObject{{"id", text(n.id)},
                                  {"parentId", text(n.parentId)},
+                                 {"shotId", text(n.shotId)},
                                  {"name", text(n.name)},
                                  {"kind", n.kind == NodeKind::Group    ? "group"
                                           : n.kind == NodeKind::Text   ? "text"
@@ -96,20 +97,49 @@ QByteArray serialize(const Project &p) {
                                   {"zoom", key.zoom},
                                   {"rotation", key.rotation},
                                   {"easing", text(key.easing)}});
-    return QJsonDocument(QJsonObject{{"format", "studio-dark"},
-                                     {"schemaVersion", p.schemaVersion},
-                                     {"id", text(p.id)},
-                                     {"name", text(p.name)},
-                                     {"width", p.width},
-                                     {"height", p.height},
-                                     {"fps", QJsonObject{{"numerator", p.fps.numerator},
-                                                         {"denominator", p.fps.denominator}}},
-                                     {"duration", double(p.duration)},
-                                     {"nodes", nodes},
-                                     {"camera", camera},
-                                     {"scenes", scenes},
-                                     {"audioSource", text(p.audioSource)}})
-        .toJson();
+    QJsonObject shots;
+    QJsonArray shotArray;
+    for (const auto &shot : p.shots)
+        shotArray.append(QJsonObject{{"id", text(shot.id)},
+                                     {"sceneId", text(shot.sceneId)},
+                                     {"name", text(shot.name)},
+                                     {"transitionIn", text(shot.transitionIn)},
+                                     {"start", double(shot.start)},
+                                     {"duration", double(shot.duration)}});
+    QJsonArray beats;
+    for (const auto &beat : p.visualBeats) {
+        QJsonObject value{{"id", text(beat.id)},
+                          {"shotId", text(beat.shotId)},
+                          {"targetId", text(beat.targetId)},
+                          {"action", text(beat.action)},
+                          {"frame", double(beat.frame)},
+                          {"durationFrames", double(beat.durationFrames)}};
+        if (beat.x) value["x"] = *beat.x;
+        if (beat.y) value["y"] = *beat.y;
+        if (beat.rotation) value["rotation"] = *beat.rotation;
+        if (beat.scale) value["scale"] = *beat.scale;
+        if (beat.opacity) value["opacity"] = *beat.opacity;
+        if (beat.zoom) value["zoom"] = *beat.zoom;
+        beats.append(value);
+    }
+    QJsonObject document{{"format", "studio-dark"},
+                         {"schemaVersion", p.schemaVersion},
+                         {"id", text(p.id)},
+                         {"name", text(p.name)},
+                         {"width", p.width},
+                         {"height", p.height},
+                         {"fps", QJsonObject{{"numerator", p.fps.numerator},
+                                             {"denominator", p.fps.denominator}}},
+                         {"duration", double(p.duration)},
+                         {"nodes", nodes},
+                         {"camera", camera},
+                         {"scenes", scenes},
+                         {"audioSource", text(p.audioSource)}};
+    if (p.schemaVersion >= 4) {
+        document["shots"] = shotArray;
+        document["visualBeats"] = beats;
+    }
+    return QJsonDocument(document).toJson();
 }
 LoadResult deserialize(const QByteArray &bytes) {
     LoadResult result;
@@ -123,7 +153,8 @@ LoadResult deserialize(const QByteArray &bytes) {
         return fail("Arquivo de projeto inválido.");
     auto o = document.object();
     if (o["format"] != "studio-dark" ||
-        (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 && o["schemaVersion"] != 3))
+        (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 && o["schemaVersion"] != 3 &&
+         o["schemaVersion"] != 4))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -180,6 +211,9 @@ LoadResult deserialize(const QByteArray &bytes) {
         if (v.contains("parentId") && !v["parentId"].isString())
             return fail("Grupo pai inválido.");
         n.parentId = str(v, "parentId");
+        if (v.contains("shotId") && !v["shotId"].isString())
+            return fail("Referência de shot inválida.");
+        n.shotId = str(v, "shotId");
         n.name = str(v, "name");
         n.text = str(v, "text");
         n.color = str(v, "color");
@@ -253,6 +287,46 @@ LoadResult deserialize(const QByteArray &bytes) {
         p.camera.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                             key["zoom"].toDouble(), key["rotation"].toDouble(),
                             key["easing"].toString("linear").toStdString()});
+    }
+    if (o.contains("shots") && !o["shots"].isArray())
+        return fail("Lista de shots inválida.");
+    for (const auto value : o["shots"].toArray()) {
+        if (!value.isObject())
+            return fail("Shot inválido.");
+        const auto shot = value.toObject();
+        if (!integer(shot["start"]) || !integer(shot["duration"]))
+            return fail("Tempo de shot inválido.");
+        p.shots.push_back({str(shot, "id"), str(shot, "sceneId"), str(shot, "name"),
+                           str(shot, "transitionIn"), shot["start"].toInteger(),
+                           shot["duration"].toInteger()});
+    }
+    if (o.contains("visualBeats") && !o["visualBeats"].isArray())
+        return fail("Lista de Visual Beats inválida.");
+    for (const auto value : o["visualBeats"].toArray()) {
+        if (!value.isObject())
+            return fail("Visual Beat inválido.");
+        const auto beatObject = value.toObject();
+        if (!integer(beatObject["frame"]) || !integer(beatObject["durationFrames"]))
+            return fail("Tempo de Visual Beat inválido.");
+        for (const auto *key : {"id", "shotId", "targetId", "action"})
+            if (!beatObject[key].isString())
+                return fail("Identificação de Visual Beat inválida.");
+        VisualBeat beat;
+        beat.id = str(beatObject, "id");
+        beat.shotId = str(beatObject, "shotId");
+        beat.targetId = str(beatObject, "targetId");
+        beat.action = str(beatObject, "action");
+        beat.frame = beatObject["frame"].toInteger();
+        beat.durationFrames = beatObject["durationFrames"].toInteger();
+        for (auto [key, target] : {std::pair{"x", &beat.x}, {"y", &beat.y},
+                                   {"rotation", &beat.rotation}, {"scale", &beat.scale},
+                                   {"opacity", &beat.opacity}, {"zoom", &beat.zoom}}) {
+            if (beatObject.contains(key) && !beatObject[key].isDouble())
+                return fail("Propriedade de Visual Beat inválida.");
+            if (beatObject.contains(key))
+                *target = beatObject[key].toDouble();
+        }
+        p.visualBeats.push_back(std::move(beat));
     }
     if (auto error = validate(p); !error.empty())
         return fail(text(error));

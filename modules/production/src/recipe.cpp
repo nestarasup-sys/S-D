@@ -30,6 +30,32 @@ bool number(const QJsonObject &o, const QString &key, double &target) {
     target = o[key].toDouble();
     return true;
 }
+bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
+                  const QString &label) {
+    if (!allowed(o, {"cue", "progress", "offsetSeconds"}) || !o["cue"].isDouble() ||
+        std::floor(o["cue"].toDouble()) != o["cue"].toDouble()) {
+        error = label + " precisa de cue inteiro e campos temporais conhecidos.";
+        return false;
+    }
+    time.cue = o["cue"].toInt();
+    if (o.contains("progress") && !o["progress"].isDouble()) {
+        error = label + " progress precisa ser numérico.";
+        return false;
+    }
+    if (o.contains("offsetSeconds") && !o["offsetSeconds"].isDouble()) {
+        error = label + " offsetSeconds precisa ser numérico.";
+        return false;
+    }
+    time.progress = o["progress"].toDouble(0);
+    time.offsetSeconds = o["offsetSeconds"].toDouble(0);
+    if (time.cue < 0 || time.cue >= cueCount || !std::isfinite(time.progress) ||
+        time.progress < 0 || time.progress > 1 || !std::isfinite(time.offsetSeconds) ||
+        time.offsetSeconds < 0 || time.offsetSeconds > 10) {
+        error = label + " está fora dos limites de cue, progress ou offsetSeconds.";
+        return false;
+    }
+    return true;
+}
 QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
     for (const auto &value : library["assets"].toArray()) {
         const auto asset = value.toObject();
@@ -40,7 +66,7 @@ QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
 }
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
-                  QString &error, int depth = 0) {
+                  QString &error, int depth = 0, DirectedTime defaultStart = {}) {
     auto fail = [&](QString message) {
         error = std::move(message);
         return false;
@@ -74,6 +100,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                      "span"};
     if (version >= 2)
         keys << "assetId" << "children" << "keyframes";
+    if (version >= 3)
+        keys << "progress";
     if (!allowed(e, keys))
         return fail("Elemento contém campo desconhecido.");
     if (!e["id"].isString() || !e["kind"].isString())
@@ -216,13 +244,17 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     for (auto key : {"cue", "motionFrames", "exitFrames"})
         if (e.contains(key) && (!e[key].isDouble() || std::floor(e[key].toDouble()) != e[key].toDouble()))
             return fail("Cue e durações de movimento devem ser inteiros.");
-    element.cue = e["cue"].toInt(0);
-    element.offsetSeconds = e["offsetSeconds"].toDouble(0);
+    if (e.contains("progress") && !e["progress"].isDouble())
+        return fail("progress de elemento precisa ser numérico.");
+    element.cue = e["cue"].toInt(defaultStart.cue);
+    element.progress = e["progress"].toDouble(e.contains("cue") ? 0 : defaultStart.progress);
+    element.offsetSeconds = e["offsetSeconds"].toDouble(e.contains("cue") ? 0 : defaultStart.offsetSeconds);
     n.motionFrames = e["motionFrames"].toInt(24);
     n.exitFrames = e["exitFrames"].toInt(8);
     element.utteranceOnly = e["span"].toString("scene") == "utterance";
     if (!number(e, "offsetSeconds", element.offsetSeconds) || element.offsetSeconds < 0 ||
-        element.offsetSeconds > 10 || element.cue < 0 || element.cue >= cueCount)
+        element.offsetSeconds > 10 || element.cue < 0 || element.cue >= cueCount ||
+        !std::isfinite(element.progress) || element.progress < 0 || element.progress > 1)
         return fail("Cue ou deslocamento de elemento inválido.");
     if (e.contains("span") && e["span"] != "scene" && e["span"] != "utterance")
         return fail("Span deve ser scene ou utterance.");
@@ -243,15 +275,19 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (!keyValue.isObject())
                 return fail("Keyframe inválido.");
             const auto key = keyValue.toObject();
-            if (!allowed(key, {"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity", "easing"}))
+            QStringList keyFields{"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity", "easing"};
+            if (version >= 3)
+                keyFields << "progress";
+            if (!allowed(key, keyFields))
                 return fail("Keyframe contém campo desconhecido.");
             if (key.contains("cue") &&
                 (!key["cue"].isDouble() || std::floor(key["cue"].toDouble()) != key["cue"].toDouble()))
                 return fail("Cue de keyframe deve ser inteiro.");
-            for (auto field : {"cue", "offsetSeconds"})
+            for (auto field : {"cue", "offsetSeconds", "progress"})
                 if (key.contains(field) && !key[field].isDouble())
                     return fail("Referência temporal de keyframe inválida.");
             DirectedKeyframe parsed{key["cue"].toInt(element.cue),
+                                    key["progress"].toDouble(key.contains("cue") ? 0 : element.progress),
                                     key["offsetSeconds"].toDouble(0),
                                     key["x"].toDouble(n.x),
                                     key["y"].toDouble(n.y),
@@ -262,7 +298,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if ((key.contains("easing") && !key["easing"].isString()) ||
                 !supportedEasing(parsed.easing))
                 return fail("Easing de elemento inválido.");
-            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.offsetSeconds) ||
+            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.progress) ||
+                parsed.progress < 0 || parsed.progress > 1 || !std::isfinite(parsed.offsetSeconds) ||
                 parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
                 return fail("Cue de keyframe inválido.");
             for (auto field : {"x", "y", "rotation", "scale", "opacity"})
@@ -277,7 +314,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                 return fail("Filho de grupo inválido.");
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
-                              parsedChild, error, depth + 1))
+                              parsedChild, error, depth + 1,
+                              {element.cue, element.progress, element.offsetSeconds}))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -304,6 +342,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     child.node.id = childId.toStdString();
                     child.node.parentId = parent.node.id;
                     child.cue = element.cue;
+                    child.progress = element.progress;
                     child.offsetSeconds = element.offsetSeconds;
                     child.utteranceOnly = element.utteranceOnly;
                     child.presetTiming = true;
@@ -349,7 +388,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (!o["version"].isDouble() || std::floor(o["version"].toDouble()) != o["version"].toDouble())
         return fail("Versão da receita deve ser inteira.");
     const int version = o["version"].toInt();
-    if (o["format"] != "studio-dark-production" || (version != 1 && version != 2) || o["catalogVersion"] != 1)
+    if (o["format"] != "studio-dark-production" || (version < 1 || version > 3) ||
+        o["catalogVersion"] != 1)
         return fail("Formato, versão ou catálogo da receita não suportado.");
     QStringList rootKeys{"format",     "version",   "catalogVersion", "title",  "voice",
                          "speechRate", "musicGain", "effectsGain",    "scenes", "sources"};
@@ -385,20 +425,25 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (!o["scenes"].isArray() || o["scenes"].toArray().isEmpty() || o["scenes"].toArray().size() > 20)
         return fail("Use de 1 a 20 cenas.");
     QSet<QString> ids;
-    int totalText = 0, totalNodes = 0, totalCameraKeys = 0;
+    int totalText = 0, totalNodes = 0, totalCameraKeys = 0, totalShots = 0, totalBeats = 0;
     QString elementError;
     for (const auto sceneValue : o["scenes"].toArray()) {
         if (!sceneValue.isObject())
             return fail("Cena inválida.");
         const auto s = sceneValue.toObject();
-        QStringList sceneKeys{"id", "title", "kicker", "background", "narration", "elements"};
-        if (version >= 2)
+        QStringList sceneKeys{"id", "narration"};
+        if (version < 3)
+            sceneKeys << "title" << "kicker" << "background" << "elements";
+        else
+            sceneKeys << "shots";
+        if (version == 2)
             sceneKeys << "camera";
         if (!allowed(s, sceneKeys))
             return fail("Campo de cena desconhecido.");
-        if (!s["id"].isString() || (s.contains("title") && !s["title"].isString()) ||
-            (s.contains("kicker") && !s["kicker"].isString()) ||
-            (s.contains("background") && !s["background"].isString()))
+        if (!s["id"].isString() ||
+            (version < 3 && ((s.contains("title") && !s["title"].isString()) ||
+                             (s.contains("kicker") && !s["kicker"].isString()) ||
+                             (s.contains("background") && !s["background"].isString()))))
             return fail("Identificação, título, kicker ou cenário da cena inválidos.");
         DirectedScene scene;
         scene.id = s["id"].toString();
@@ -424,9 +469,123 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             totalText += line.toString().size();
             scene.narration.push_back({scene.id + "-u" + QString::number(++cue), line.toString()});
         }
+        int elementCount = 0;
+        if (version == 3) {
+            if (!s["shots"].isArray() || s["shots"].toArray().isEmpty() ||
+                s["shots"].toArray().size() > 64)
+                return fail("Cada cena v3 precisa de 1 a 64 shots visuais.");
+            for (const auto shotValue : s["shots"].toArray()) {
+                if (!shotValue.isObject())
+                    return fail("Shot visual inválido.");
+                const auto shotObject = shotValue.toObject();
+                if (!allowed(shotObject, {"id", "name", "start", "transitionIn", "camera", "elements", "beats"}))
+                    return fail("Shot contém campo desconhecido.");
+                if (!shotObject["id"].isString() || !shotObject["start"].isObject() ||
+                    !shotObject["elements"].isArray())
+                    return fail("Shot precisa de id, start e elements válidos.");
+                DirectedShot shot;
+                shot.id = shotObject["id"].toString();
+                shot.name = shotObject["name"].toString(shot.id);
+                shot.transitionIn = shotObject["transitionIn"].toString("cut");
+                if (shot.id.isEmpty() || shot.id.size() > 80 || ids.contains(shot.id) ||
+                    shot.name.size() > 120)
+                    return fail("ID ou nome de shot inválido ou duplicado.");
+                ids.insert(shot.id);
+                if (shot.transitionIn != "cut")
+                    return fail("Receita v3 suporta cortes secos; transições animadas virão em uma etapa posterior.");
+                QString timeError;
+                if (!parseTimeRef(shotObject["start"].toObject(), int(scene.narration.size()), shot.start,
+                                  timeError, "start do shot"))
+                    return fail(timeError);
+                if (shotObject["camera"].isObject()) {
+                    const auto camera = shotObject["camera"].toObject();
+                    if (!allowed(camera, {"x", "y", "zoom", "rotation"}) ||
+                        !number(camera, "x", shot.cameraX) || !number(camera, "y", shot.cameraY) ||
+                        !number(camera, "zoom", shot.cameraZoom) ||
+                        !number(camera, "rotation", shot.cameraRotation) || shot.cameraZoom < .1 ||
+                        shot.cameraZoom > 10 || std::abs(shot.cameraX) > 10000 ||
+                        std::abs(shot.cameraY) > 10000 || std::abs(shot.cameraRotation) > 360)
+                        return fail("Câmera inicial do shot inválida.");
+                } else
+                    return fail("Cada shot precisa declarar sua câmera inicial.");
+                for (const auto elementValue : shotObject["elements"].toArray()) {
+                    if (!elementValue.isObject())
+                        return fail("Elemento de shot inválido.");
+                    DirectedElement element;
+                    if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
+                                      int(scene.narration.size()), ids, elementCount, element, elementError,
+                                      0, shot.start))
+                        return fail(elementError);
+                    shot.elements.push_back(std::move(element));
+                }
+                if (shotObject.contains("beats")) {
+                    if (!shotObject["beats"].isArray() || shotObject["beats"].toArray().size() > 512)
+                        return fail("Visual Beats devem ser uma lista de até 512 eventos por shot.");
+                    for (const auto beatValue : shotObject["beats"].toArray()) {
+                        if (!beatValue.isObject())
+                            return fail("Visual Beat inválido.");
+                        const auto beatObject = beatValue.toObject();
+                        if (!allowed(beatObject, {"id", "at", "action", "target", "durationFrames", "x", "y",
+                                                  "rotation", "scale", "opacity", "zoom"}))
+                            return fail("Visual Beat contém campo desconhecido.");
+                        DirectedBeat beat;
+                        beat.id = beatObject["id"].toString();
+                        beat.action = beatObject["action"].toString();
+                        beat.targetId = beatObject["target"].toString();
+                        if (beat.id.isEmpty() || beat.id.size() > 80 || ids.contains(beat.id) ||
+                            !beatObject["at"].isObject() ||
+                            !parseTimeRef(beatObject["at"].toObject(), int(scene.narration.size()), beat.at,
+                                          timeError, "at do Visual Beat"))
+                            return fail(timeError.isEmpty() ? "Visual Beat sem id único ou referência at." : timeError);
+                        ids.insert(beat.id);
+                        if (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
+                            beat.action != "camera")
+                            return fail("Visual Beat aceita action show, hide, transform ou camera.");
+                        if ((beat.action == "camera") != beat.targetId.isEmpty())
+                            return fail("Visual Beat precisa de target, exceto quando action é camera.");
+                        if (beatObject.contains("durationFrames") &&
+                            (!beatObject["durationFrames"].isDouble() ||
+                             std::floor(beatObject["durationFrames"].toDouble()) !=
+                                 beatObject["durationFrames"].toDouble()))
+                            return fail("durationFrames do Visual Beat deve ser inteiro.");
+                        beat.durationFrames = beatObject["durationFrames"].toInt(0);
+                        if (beat.durationFrames < 0 || beat.durationFrames > 300 ||
+                            ((beat.action == "show" || beat.action == "hide") && beat.durationFrames != 0))
+                            return fail("Duração do Visual Beat fora dos limites.");
+                        for (auto [key, target] : {std::pair{"x", &beat.x}, {"y", &beat.y},
+                                                   {"rotation", &beat.rotation}, {"scale", &beat.scale},
+                                                   {"opacity", &beat.opacity}, {"zoom", &beat.zoom}}) {
+                            if (beatObject.contains(key)) {
+                                if (!beatObject[key].isDouble() || !std::isfinite(beatObject[key].toDouble()))
+                                    return fail("Propriedade numérica do Visual Beat inválida.");
+                                *target = beatObject[key].toDouble();
+                            }
+                        }
+                        if ((beat.action == "show" || beat.action == "hide") &&
+                            (beat.x || beat.y || beat.rotation || beat.scale || beat.opacity || beat.zoom))
+                            return fail("show/hide não aceita propriedades; use action transform.");
+                        if (beat.action == "transform" &&
+                            !(beat.x || beat.y || beat.rotation || beat.scale || beat.opacity))
+                            return fail("transform precisa de ao menos uma propriedade visual.");
+                        if (beat.action == "camera" &&
+                            (!(beat.x || beat.y || beat.rotation || beat.zoom) || beat.scale || beat.opacity))
+                            return fail("camera precisa de x/y/rotation/zoom e não aceita scale/opacity.");
+                        if (beat.action != "camera" && beat.zoom)
+                            return fail("zoom só pode ser usado em Visual Beat de câmera.");
+                        ++totalBeats;
+                        shot.beats.push_back(std::move(beat));
+                    }
+                }
+                scene.shots.push_back(std::move(shot));
+                if (++totalShots > 256 || totalBeats > 4096)
+                    return fail("Produção excede 256 shots ou 4096 Visual Beats.");
+            }
+            totalNodes += elementCount + (r.renderCaptions ? int(scene.narration.size()) : 0);
+            r.scenes.push_back(std::move(scene));
+            continue;
+        }
         if (!s["elements"].isArray())
             return fail("Lista de elementos ausente.");
-        int elementCount = 0;
         for (const auto elementValue : s["elements"].toArray()) {
             if (!elementValue.isObject())
                 return fail("Elemento inválido.");
