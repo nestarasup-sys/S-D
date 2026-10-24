@@ -1,6 +1,7 @@
 #pragma once
 #include "recipe.hpp"
 #include <QMap>
+#include <QStringList>
 #include <studio/media/wave.hpp>
 
 namespace studio {

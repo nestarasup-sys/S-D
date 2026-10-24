@@ -101,6 +101,8 @@ timed_project = json.loads((timed_output / "project.studio.json").read_text(enco
 timed_report = json.loads((timed_output / "production-report.json").read_text(encoding="utf-8"))
 assert timed_project["duration"] == 240 and [s["duration"] for s in timed_project["scenes"]] == [120, 120]
 assert timed_report["timingMode"] == "fit-to-duration" and timed_report["frameCount"] == 240
+assert [v["durationFrames"] for v in timed_report["timingPlan"]] == [120, 120]
+assert all(v["voiceSpeed"] <= 1.15 for scene in timed_report["timingPlan"] for v in scene["cues"])
 with wave.open(str(timed_output / "media/master.wav"), "rb") as timed_audio:
     assert timed_audio.getnframes() == 240 * 800 and timed_audio.getframerate() == 24000
 assert any(k["frame"] > 0 and k["frame"] < 120 for n in timed_project["nodes"]

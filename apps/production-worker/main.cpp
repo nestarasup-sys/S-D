@@ -114,6 +114,7 @@ int main(int argc, char **argv) {
     auto manifest = QJsonDocument::fromJson(manifestFile.readAll()).object();
     QMap<QString, studio::PcmAudio> utterances;
     QMap<QString, QString> wavPaths;
+    QMap<QString, std::int64_t> measuredSamples;
     for (auto value : manifest["utterances"].toArray()) {
         auto line = value.toObject();
         auto audio = studio::readWave(line["path"].toString());
@@ -121,6 +122,8 @@ int main(int argc, char **argv) {
             return fail(audio.error);
         utterances.insert(line["id"].toString(), std::move(audio.audio));
         wavPaths.insert(line["id"].toString(), line["path"].toString());
+        measuredSamples.insert(line["id"].toString(),
+                               std::int64_t(utterances[line["id"].toString()].samples.size()));
     }
     if (!parser.value("cancel-file").isEmpty() && QFile::exists(parser.value("cancel-file")))
         return fail("Produção cancelada; projeto anterior preservado.");
@@ -193,6 +196,28 @@ int main(int argc, char **argv) {
         !write(output + "/AI-GUIDE.md",
                studio::aiGuide(workspace ? workspace->data() : QJsonObject{}).toUtf8()))
         return fail("Falha ao registrar artefatos de produção.");
+    QJsonArray plannedCues;
+    if (parsed.recipe.timingMode == "fit-to-duration") {
+        std::int64_t sceneFrame = 0;
+        for (const auto &scene : plan.scenes) {
+            QJsonArray cues;
+            std::int64_t cursor = sceneFrame;
+            for (const auto &cue : scene.cues) {
+                const double speed = std::max(1., double(measuredSamples.value(cue.id)) /
+                                                 (cue.speechFrames * (studio::ProductionSampleRate / 30)));
+                cues.append(QJsonObject{{"id", cue.id},
+                                        {"startFrame", double(cursor)},
+                                        {"speechBudgetFrames", cue.speechFrames},
+                                        {"slotFrames", cue.slotFrames},
+                                        {"voiceSpeed", speed}});
+                cursor += cue.slotFrames;
+            }
+            plannedCues.append(QJsonObject{{"startFrame", double(sceneFrame)},
+                                           {"durationFrames", scene.durationFrames},
+                                           {"cues", cues}});
+            sceneFrame += scene.durationFrames;
+        }
+    }
     QJsonArray timings;
     for (const auto &s : compiled.project.scenes)
         timings.append(QJsonObject{{"id", QString::fromStdString(s.id)},
@@ -209,6 +234,7 @@ int main(int argc, char **argv) {
                                     {"targetDurationSeconds", parsed.recipe.targetDurationSeconds},
                                     {"maxVoiceAcceleration", 1.15},
                                     {"timingWarnings", QJsonArray::fromStringList(plan.warnings)},
+                                    {"timingPlan", plannedCues},
                                     {"preserveVoicePitch", parsed.recipe.preserveVoicePitch},
                                     {"scenes", timings},
                                     {"alignment", parsed.recipe.timingMode == "fit-to-duration"
