@@ -35,25 +35,35 @@ bool compileElement(const DirectedElement &directed,
                     Project &project, QString &error) {
     auto node = directed.node;
     const auto cue = cues[directed.cue];
-    node.start = cue.first / samplesPerFrame + std::llround(directed.offsetSeconds * 30);
-    const auto end = directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
+    const auto anchor = cue.first / samplesPerFrame + std::llround(directed.offsetSeconds * 30);
+    node.start = anchor + (directed.presetTiming ? node.start : 0);
+    const auto availableEnd =
+        directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
+    const auto end = directed.presetTiming ? std::min(availableEnd, node.start + node.duration)
+                                           : availableEnd;
     if (node.start >= end) {
         error = "Elemento começa depois do intervalo disponível: " + QString::fromStdString(node.id);
         return false;
     }
     node.duration = end - node.start;
     node.sceneId = sceneId;
-    node.keyframes.clear();
-    for (const auto &directedKey : directed.keyframes) {
-        const auto frame =
-            cues[directedKey.cue].first / samplesPerFrame + std::llround(directedKey.offsetSeconds * 30);
-        if (frame < node.start || frame >= node.start + node.duration) {
+    if (directed.presetTiming) {
+        for (auto &key : node.keyframes)
+            key.frame += anchor;
+    } else {
+        node.keyframes.clear();
+        for (const auto &directedKey : directed.keyframes) {
+            const auto frame =
+                cues[directedKey.cue].first / samplesPerFrame + std::llround(directedKey.offsetSeconds * 30);
+            node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
+                                      directedKey.scale, directedKey.opacity});
+        }
+    }
+    for (const auto &key : node.keyframes)
+        if (key.frame < node.start || key.frame >= node.start + node.duration) {
             error = "Keyframe fica fora do intervalo do elemento: " + QString::fromStdString(node.id);
             return false;
         }
-        node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
-                                  directedKey.scale, directedKey.opacity});
-    }
     std::sort(node.keyframes.begin(), node.keyframes.end(),
               [](const auto &left, const auto &right) { return left.frame < right.frame; });
     for (std::size_t i = 1; i < node.keyframes.size(); ++i)
