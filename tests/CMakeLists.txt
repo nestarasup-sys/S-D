@@ -12,3 +12,8 @@ target_link_libraries(studio_production_tests PRIVATE studio_production studio_s
 target_compile_definitions(studio_production_tests PRIVATE STUDIO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME production_recipe_audio_library COMMAND studio_production_tests)
 set_tests_properties(production_recipe_audio_library PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+add_executable(studio_workspace_tests workspace_tests.cpp ../apps/desktop/workspace_controller.cpp ../apps/desktop/workspace_controller.hpp ../apps/desktop/editor_controller.cpp ../apps/desktop/production_actions.cpp ../apps/desktop/editor_controller.hpp)
+target_include_directories(studio_workspace_tests PRIVATE ../apps/desktop)
+target_link_libraries(studio_workspace_tests PRIVATE studio_storage studio_production studio_composition Qt6::Gui Qt6::Svg Qt6::Multimedia)
+add_test(NAME workspace_projects_library COMMAND studio_workspace_tests)
+set_tests_properties(workspace_projects_library PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

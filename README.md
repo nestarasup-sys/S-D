@@ -1,6 +1,6 @@
 # Studio Dark · Native Lab
 
-Protótipo 0.2 em C++20 e Qt Quick/QML: roteiro externo → direção por JSON → voz local → projeto editável → MP4 com áudio.
+Protótipo 0.3 em C++20 e Qt Quick/QML: projetos e biblioteca organizados, roteiro externo → direção por JSON → voz local → projeto editável → MP4 com áudio.
 
 ## Abrir
 
@@ -9,6 +9,24 @@ Clique em **ABRIR-STUDIO.bat**. As ferramentas locais ficam em `.tools/` e os bi
 Em outra máquina Windows x64 com Python 3.12 e internet, use **PREPARAR-E-COMPILAR.bat**. Downloads não exigem instalação global de Qt ou C++ e ficam na pasta do projeto.
 
 Para gerar o primeiro episódio completo, clique em **CRIAR-VIDEO-CARROS.bat**. Ele cria uma pasta nova em `artifacts/carros-AAAAMMDD-HHMMSS`, gera voz/legendas/cenas, exporta o vídeo e abre o projeto no editor. É necessária uma voz pt-BR instalada no Windows.
+
+## Tela inicial de projetos
+
+O aplicativo abre em **Projetos**, com cartões, prévias, busca e atalhos para a biblioteca. **Novo projeto** pede um nome, cria uma composição vazia e já salva o arquivo na pasta de dados do aplicativo. **Importar projeto** adiciona um arquivo existente à coleção, preservando sua localização.
+
+Cada cartão oferece **Abrir**, **Duplicar**, **Renomear** e **Excluir**. A exclusão move o registro para a **Lixeira**, de onde pode ser restaurado; os arquivos do projeto e suas mídias são mantidos. Projetos gerados anteriormente na pasta de produções do app são reconhecidos na primeira inicialização da coleção.
+
+## Biblioteca completa
+
+O botão **Biblioteca completa** está sempre no topo e também no painel do editor. A tela reúne objetos nativos, cenários, personagens, dados, imagens e variações personalizadas.
+
+- **Adicionar arquivo** importa PNG/JPEG/WebP/BMP ou SVG, com nome e categoria. O app guarda uma cópia própria da mídia.
+- **Salvar seleção do editor** transforma o objeto selecionado em um item reutilizável, preservando estilo, pose, tamanho e movimento. Imagens/SVG também têm sua mídia copiada.
+- **Organizar** renomeia ou muda a categoria de um item. **Usar** adiciona uma nova instância ao projeto aberto, com identidade independente.
+- Categorias podem ser criadas, renomeadas e excluídas. Ao excluir uma categoria, seus itens vão para **Sem categoria**.
+- **Excluir** remove o item da coleção; ele pode ser restaurado em **Excluídos / restaurar**. Nativos continuam disponíveis ao motor de renderização e as mídias importadas são retidas, preservando projetos já criados.
+
+As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há purga permanente neste corte. A organização da biblioteca é local e não altera o catálogo de capacidades nativas do guia de produção.
 
 ## Seu roteiro com uma IA externa
 
@@ -61,11 +79,14 @@ Comandos PowerShell para desenvolvimento:
 .\scripts\build.ps1 -Test
 .\scripts\smoke.ps1
 .\scripts\smoke-production.ps1
+.\scripts\smoke-workspace.ps1
 .\scripts\update-ai-guide.ps1
 .\scripts\run.ps1
 ```
 
 Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano inicial](PLANO-INICIAL.md) mantém a visão de produto.
+
+A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
 
 ## Estado deste corte
 

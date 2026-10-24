@@ -318,6 +318,25 @@ void EditorController::addNode(QString kind, QUrl source) {
         }
     } else
         return;
+    insertLibraryNode(std::move(n));
+}
+bool EditorController::insertLibraryNode(studio::Node n) {
+    n.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
+    n.start = frame_;
+    n.duration = duration() - frame_;
+    n.sceneId = currentSceneId().toStdString();
+    for (const auto &scene : project().scenes)
+        if (scene.id == n.sceneId)
+            n.duration = scene.start + scene.duration - frame_;
+    if (const auto item = studio::libraryItem(n.nativeId);
+        n.kind == studio::NodeKind::Native && item && item->category == "cenários") {
+        n.role = "background";
+        n.x = 0;
+        n.y = 0;
+        n.width = canvasWidth();
+        n.height = canvasHeight();
+        n.animated = false;
+    }
     auto error = editor_.execute([&](studio::Project &p) {
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
@@ -328,8 +347,10 @@ void EditorController::addNode(QString kind, QUrl source) {
         selectedId_ = q(n.id);
         changed();
         notify("Objeto adicionado. Edite no inspetor ou arraste na prévia.");
+        return true;
     } else
         notify(q(error));
+    return false;
 }
 void EditorController::removeSelected() {
     if (selected().isEmpty())
@@ -407,6 +428,7 @@ bool EditorController::save(QUrl url) {
     savedDocument_ = studio::serialize(project());
     notify("Projeto salvo: " + QFileInfo(path_).fileName());
     emit documentChanged();
+    emit projectAvailable(path_);
     return true;
 }
 void EditorController::reset(studio::Project p, QString path, QByteArray revision) {
@@ -436,14 +458,16 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     emit frameChanged();
     emit documentChanged();
 }
-void EditorController::open(QUrl url) {
+bool EditorController::open(QUrl url) {
     auto loaded = studio::loadProject(url.toLocalFile());
     if (!loaded.error.isEmpty()) {
         notify(loaded.error);
-        return;
+        return false;
     }
     reset(std::move(loaded.project), url.toLocalFile(), loaded.revision);
     notify("Projeto aberto.");
+    emit projectAvailable(path_);
+    return true;
 }
 void EditorController::newProject(bool demo) {
     auto p = demo ? studio::makeDemo() : studio::makeEmpty();

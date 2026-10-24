@@ -120,7 +120,11 @@ class EditorController : public QObject {
     Q_INVOKABLE void setFrame(int frame);
     Q_INVOKABLE void togglePlayback();
     Q_INVOKABLE bool save(QUrl path = {});
-    Q_INVOKABLE void open(QUrl path);
+    Q_INVOKABLE bool open(QUrl path);
+    QString projectPath() const {
+        return path_;
+    }
+    bool insertLibraryNode(studio::Node node);
     Q_INVOKABLE void newProject(bool demo = false);
     Q_INVOKABLE void recover();
     Q_INVOKABLE void exportVideo(QUrl output);
@@ -139,6 +143,7 @@ class EditorController : public QObject {
     void messageChanged();
     void exportChanged();
     void productionChanged();
+    void projectAvailable(QString path);
 
   private:
     void changed();

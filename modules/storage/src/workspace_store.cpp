@@ -1,0 +1,458 @@
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QLockFile>
+#include <QSaveFile>
+#include <QSet>
+#include <QUuid>
+#include <studio/core/library.hpp>
+#include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
+
+namespace studio {
+namespace {
+QString uuid() {
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
+}
+QString now() {
+    return QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+}
+QByteArray hash(const QByteArray &b) {
+    return QCryptographicHash::hash(b, QCryptographicHash::Sha256).toHex();
+}
+bool write(const QString &path, const QByteArray &b) {
+    QSaveFile f(path);
+    return f.open(QIODevice::WriteOnly) && f.write(b) == b.size() && f.commit();
+}
+QString nativeCategory(const std::string &s) {
+    return s == "personagens" ? "characters" : s == "cenários" ? "scenes" : s == "dados" ? "data" : "objects";
+}
+bool validName(const QString &s) {
+    return !s.trimmed().isEmpty() && s.trimmed().size() <= 120 && !s.contains('\n') && !s.contains('\r');
+}
+bool categoryExists(const QJsonObject &data, const QString &id) {
+    for (auto v : data["categories"].toArray())
+        if (v.toObject()["id"] == id)
+            return true;
+    return false;
+}
+QJsonObject find(const QJsonObject &data, const char *key, const QString &id) {
+    for (auto v : data[key].toArray())
+        if (v.toObject()["id"] == id)
+            return v.toObject();
+    return {};
+}
+QString validateCatalogue(const QJsonObject &data) {
+    if (data["format"] != "studio-dark-workspace" || data["version"] != 1)
+        return "Catálogo de outra versão ou inválido; arquivo preservado.";
+    for (auto key : {"projects", "assets", "categories"})
+        if (!data[key].isArray() || data[key].toArray().size() > 10000)
+            return "Lista do catálogo inválida ou grande demais.";
+    QSet<QString> categories;
+    for (auto v : data["categories"].toArray()) {
+        auto o = v.toObject();
+        auto id = o["id"].toString();
+        if (id.isEmpty() || categories.contains(id) || !validName(o["name"].toString()))
+            return "Categoria inválida no catálogo.";
+        categories.insert(id);
+    }
+    if (!categories.contains("uncategorized"))
+        return "Categoria de destino padrão ausente.";
+    for (auto key : {"projects", "assets"}) {
+        QSet<QString> ids;
+        for (auto v : data[key].toArray()) {
+            auto o = v.toObject();
+            auto id = o["id"].toString();
+            if (id.isEmpty() || ids.contains(id) || !validName(o["name"].toString()) ||
+                !o["deleted"].isBool())
+                return "Registro inválido no catálogo.";
+            ids.insert(id);
+            if (QString(key) == "assets" &&
+                (!categories.contains(o["categoryId"].toString()) || !o["kind"].isString()))
+                return "Categoria ou tipo de item inválido.";
+            if (QString(key) == "projects" &&
+                (!o["path"].isString() || !QFileInfo(o["path"].toString()).isAbsolute()))
+                return "Caminho de projeto inválido.";
+        }
+    }
+    return {};
+}
+QJsonObject defaults() {
+    QJsonArray categories;
+    for (auto pair : {std::pair{"objects", "Objetos"},
+                      {"characters", "Personagens"},
+                      {"scenes", "Cenários"},
+                      {"data", "Dados"},
+                      {"uncategorized", "Sem categoria"}})
+        categories.append(QJsonObject{{"id", pair.first}, {"name", pair.second}});
+    QJsonArray assets;
+    for (const auto &a : nativeLibrary())
+        assets.append(QJsonObject{{"id", "native:" + QString::fromStdString(a.id)},
+                                  {"nativeId", QString::fromStdString(a.id)},
+                                  {"name", QString::fromStdString(a.name)},
+                                  {"kind", "native"},
+                                  {"categoryId", nativeCategory(a.category)},
+                                  {"deleted", false},
+                                  {"builtin", true},
+                                  {"createdAt", now()}});
+    return {{"format", "studio-dark-workspace"},
+            {"version", 1},
+            {"projects", QJsonArray{}},
+            {"categories", categories},
+            {"assets", assets}};
+}
+} // namespace
+WorkspaceStore::WorkspaceStore(QString directory) : root_(QDir(directory).absolutePath()) {
+    QDir().mkpath(root_);
+    reload();
+}
+bool WorkspaceStore::reload() {
+    auto path = root_ + "/catalogue.json";
+    if (!QFile::exists(path)) {
+        data_ = defaults();
+        revision_.clear();
+        error_.clear();
+        return true;
+    }
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly) || f.size() > 8 * 1024 * 1024) {
+        error_ = "Não foi possível ler o catálogo local; original preservado.";
+        return false;
+    }
+    auto bytes = f.readAll();
+    QJsonParseError parse;
+    auto doc = QJsonDocument::fromJson(bytes, &parse);
+    if (parse.error != QJsonParseError::NoError || !doc.isObject()) {
+        error_ = "Catálogo local corrompido. A cópia .previous foi preservada.";
+        return false;
+    }
+    if (auto error = validateCatalogue(doc.object()); !error.isEmpty()) {
+        error_ = error;
+        return false;
+    }
+    data_ = doc.object();
+    revision_ = hash(bytes);
+    error_.clear();
+    return true;
+}
+WorkspaceResult WorkspaceStore::mutate(const std::function<WorkspaceResult(QJsonObject &)> &action) {
+    if (!error_.isEmpty())
+        return {{}, error_};
+    QLockFile lock(root_ + "/catalogue.lock");
+    if (!lock.tryLock(0))
+        return {{}, "O catálogo está sendo alterado em outra janela."};
+    auto path = root_ + "/catalogue.json";
+    QByteArray old;
+    if (QFile::exists(path)) {
+        QFile f(path);
+        if (!f.open(QIODevice::ReadOnly) || f.size() > 8 * 1024 * 1024)
+            return {{}, "Falha ao ler o catálogo atual."};
+        old = f.readAll();
+        if (revision_.isEmpty() || hash(old) != revision_)
+            return {{}, "O catálogo mudou em outra janela. Clique em Atualizar e tente novamente."};
+    } else if (!revision_.isEmpty())
+        return {{}, "O catálogo foi removido no disco. Clique em Atualizar."};
+    auto candidate = data_;
+    auto result = action(candidate);
+    if (!result.error.isEmpty())
+        return result;
+    if (auto error = validateCatalogue(candidate); !error.isEmpty())
+        return {{}, error};
+    auto bytes = QJsonDocument(candidate).toJson();
+    if (!old.isEmpty() && !write(path + ".previous", old))
+        return {{}, "Não foi possível preservar a versão anterior do catálogo."};
+    if (!write(path, bytes))
+        return {{}, "Não foi possível salvar o catálogo local."};
+    data_ = std::move(candidate);
+    revision_ = hash(bytes);
+    return result;
+}
+QJsonObject WorkspaceStore::project(const QString &id) const {
+    return find(data_, "projects", id);
+}
+QJsonObject WorkspaceStore::asset(const QString &id) const {
+    return find(data_, "assets", id);
+}
+WorkspaceResult WorkspaceStore::registerProject(const QString &input) {
+    auto path = QFileInfo(input).absoluteFilePath();
+    auto loaded = loadProject(path);
+    if (!loaded.error.isEmpty())
+        return {{}, loaded.error};
+    auto displayName =
+        QString::fromStdString(loaded.project.name).replace('\n', ' ').replace('\r', ' ').trimmed().left(120);
+    if (displayName.isEmpty())
+        displayName = "Projeto importado";
+    return mutate([&](QJsonObject &d) {
+        auto list = d["projects"].toArray();
+        QString id;
+        bool exists = false;
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["path"].toString().compare(path, Qt::CaseInsensitive) == 0) {
+                id = o["id"].toString();
+                o["name"] = displayName;
+                o["updatedAt"] = now();
+                list[i] = o;
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            id = uuid();
+            list.append(QJsonObject{{"id", id},
+                                    {"name", displayName},
+                                    {"path", path},
+                                    {"createdAt", now()},
+                                    {"updatedAt", now()},
+                                    {"deleted", false}});
+        }
+        d["projects"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::createProject(Project p) {
+    if (!validName(QString::fromStdString(p.name)))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    p.id = uuid().toStdString();
+    QString id = uuid();
+    auto directory = root_ + "/projects/" + id;
+    auto path = directory + "/project.studio.json";
+    return mutate([&](QJsonObject &d) {
+        if (!QDir().mkpath(directory))
+            return WorkspaceResult{{}, "Não foi possível criar a pasta do projeto."};
+        auto saved = saveProject(path, p, {});
+        if (!saved.error.isEmpty())
+            return WorkspaceResult{{}, saved.error};
+        auto list = d["projects"].toArray();
+        list.append(QJsonObject{{"id", id},
+                                {"name", QString::fromStdString(p.name)},
+                                {"path", path},
+                                {"createdAt", now()},
+                                {"updatedAt", now()},
+                                {"deleted", false}});
+        d["projects"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::renameProject(const QString &id, const QString &input) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    return mutate([&](QJsonObject &d) {
+        auto list = d["projects"].toArray();
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["id"] != id)
+                continue;
+            auto path = o["path"].toString();
+            auto loaded = loadProject(path);
+            if (!loaded.error.isEmpty())
+                return WorkspaceResult{{}, loaded.error};
+            loaded.project.name = name.toStdString();
+            auto saved = saveProject(path, loaded.project, loaded.revision);
+            if (!saved.error.isEmpty())
+                return WorkspaceResult{{}, saved.error};
+            o["name"] = name;
+            o["updatedAt"] = now();
+            list[i] = o;
+            d["projects"] = list;
+            return WorkspaceResult{id, {}};
+        }
+        return WorkspaceResult{{}, "Projeto não encontrado."};
+    });
+}
+WorkspaceResult WorkspaceStore::setProjectDeleted(const QString &id, bool deleted) {
+    return mutate([&](QJsonObject &d) {
+        auto list = d["projects"].toArray();
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["id"] != id)
+                continue;
+            o["deleted"] = deleted;
+            o["updatedAt"] = now();
+            list[i] = o;
+            d["projects"] = list;
+            return WorkspaceResult{id, {}};
+        }
+        return WorkspaceResult{{}, "Projeto não encontrado."};
+    });
+}
+WorkspaceResult WorkspaceStore::addCategory(const QString &input) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    return mutate([&](QJsonObject &d) {
+        auto list = d["categories"].toArray();
+        for (auto v : list)
+            if (v.toObject()["name"].toString().compare(name, Qt::CaseInsensitive) == 0)
+                return WorkspaceResult{{}, "Já existe uma categoria com esse nome."};
+        auto id = uuid();
+        list.append(QJsonObject{{"id", id}, {"name", name}});
+        d["categories"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::renameCategory(const QString &id, const QString &input) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    return mutate([&](QJsonObject &d) {
+        auto list = d["categories"].toArray();
+        for (auto v : list)
+            if (v.toObject()["id"] != id &&
+                v.toObject()["name"].toString().compare(name, Qt::CaseInsensitive) == 0)
+                return WorkspaceResult{{}, "Já existe uma categoria com esse nome."};
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["id"] == id) {
+                o["name"] = name;
+                list[i] = o;
+                d["categories"] = list;
+                return WorkspaceResult{id, {}};
+            }
+        }
+        return WorkspaceResult{{}, "Categoria não encontrada."};
+    });
+}
+WorkspaceResult WorkspaceStore::deleteCategory(const QString &id) {
+    if (id == "uncategorized")
+        return {{}, "A categoria padrão é necessária para receber itens sem categoria."};
+    return mutate([&](QJsonObject &d) {
+        if (!categoryExists(d, id))
+            return WorkspaceResult{{}, "Categoria não encontrada."};
+        QJsonArray categories;
+        for (auto v : d["categories"].toArray())
+            if (v.toObject()["id"] != id)
+                categories.append(v);
+        d["categories"] = categories;
+        auto assets = d["assets"].toArray();
+        for (int i = 0; i < assets.size(); ++i) {
+            auto o = assets[i].toObject();
+            if (o["categoryId"] == id) {
+                o["categoryId"] = "uncategorized";
+                assets[i] = o;
+            }
+        }
+        d["assets"] = assets;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &category,
+                                         const QString &source) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    QFile f(source);
+    auto extension = QFileInfo(source).suffix().toLower();
+    if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg"}.contains(extension) ||
+        !f.open(QIODevice::ReadOnly) || f.size() < 1 || f.size() > 32 * 1024 * 1024)
+        return {{}, "Use imagem PNG/JPG/WebP/BMP ou SVG, até 32 MiB."};
+    auto bytes = f.readAll();
+    auto owned = root_ + "/library/media/" + QString::fromLatin1(hash(bytes)) + "." + extension;
+    auto id = uuid();
+    return mutate([&](QJsonObject &d) {
+        if (!categoryExists(d, category))
+            return WorkspaceResult{{}, "Categoria não encontrada."};
+        if (!QDir().mkpath(root_ + "/library/media"))
+            return WorkspaceResult{{}, "Falha ao criar a biblioteca."};
+        if (!QFile::exists(owned) && !write(owned, bytes))
+            return WorkspaceResult{{}, "Não foi possível copiar a mídia para a biblioteca."};
+        auto list = d["assets"].toArray();
+        list.append(QJsonObject{{"id", id},
+                                {"name", name},
+                                {"kind", extension == "svg" ? "svg" : "image"},
+                                {"source", owned},
+                                {"categoryId", category},
+                                {"deleted", false},
+                                {"builtin", false},
+                                {"createdAt", now()}});
+        d["assets"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &category, Node node) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    QByteArray mediaBytes;
+    QString owned;
+    if (node.kind == NodeKind::Image || node.kind == NodeKind::Svg) {
+        QFile file(QString::fromStdString(node.source));
+        auto extension = QFileInfo(file).suffix().toLower();
+        if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg"}.contains(extension) ||
+            !file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 32 * 1024 * 1024)
+            return {{}, "Arquivo de mídia inválido ou maior que 32 MiB."};
+        mediaBytes = file.readAll();
+        owned = root_ + "/library/media/" + QString::fromLatin1(hash(mediaBytes)) + "." + extension;
+        node.source = owned.toStdString();
+    }
+    auto p = makeEmpty();
+    node.id = "preset";
+    node.sceneId.clear();
+    node.start = 0;
+    node.duration = p.duration;
+    p.nodes = {node};
+    if (auto error = validate(p); !error.empty())
+        return {{}, QString::fromStdString(error)};
+    auto id = uuid();
+    return mutate([&](QJsonObject &d) {
+        if (!categoryExists(d, category))
+            return WorkspaceResult{{}, "Categoria não encontrada."};
+        if (!owned.isEmpty() && (!QDir().mkpath(root_ + "/library/media") ||
+                                 (!QFile::exists(owned) && !write(owned, mediaBytes))))
+            return WorkspaceResult{{}, "Não foi possível guardar a mídia do objeto personalizado."};
+        auto list = d["assets"].toArray();
+        list.append(QJsonObject{{"id", id},
+                                {"name", name},
+                                {"kind", "preset"},
+                                {"preset", QJsonDocument::fromJson(serialize(p)).object()},
+                                {"categoryId", category},
+                                {"deleted", false},
+                                {"builtin", false},
+                                {"createdAt", now()}});
+        d["assets"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::updateAsset(const QString &id, const QString &input,
+                                            const QString &category) {
+    auto name = input.trimmed();
+    if (!validName(name))
+        return {{}, "Informe um nome de até 120 caracteres."};
+    return mutate([&](QJsonObject &d) {
+        if (!categoryExists(d, category))
+            return WorkspaceResult{{}, "Categoria não encontrada."};
+        auto list = d["assets"].toArray();
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["id"] == id) {
+                o["name"] = name;
+                o["categoryId"] = category;
+                list[i] = o;
+                d["assets"] = list;
+                return WorkspaceResult{id, {}};
+            }
+        }
+        return WorkspaceResult{{}, "Item não encontrado."};
+    });
+}
+WorkspaceResult WorkspaceStore::setAssetDeleted(const QString &id, bool deleted) {
+    return mutate([&](QJsonObject &d) {
+        auto list = d["assets"].toArray();
+        for (int i = 0; i < list.size(); ++i) {
+            auto o = list[i].toObject();
+            if (o["id"] == id) {
+                o["deleted"] = deleted;
+                list[i] = o;
+                d["assets"] = list;
+                return WorkspaceResult{id, {}};
+            }
+        }
+        return WorkspaceResult{{}, "Item não encontrado."};
+    });
+}
+} // namespace studio

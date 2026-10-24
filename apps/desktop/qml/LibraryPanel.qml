@@ -19,8 +19,9 @@ Rectangle {
             StudioButton { text: "T   Texto"; Layout.fillWidth: true; onClicked: editor.addNode("text") }
             StudioButton { text: "▰   Forma"; Layout.fillWidth: true; onClicked: editor.addNode("shape") }
         }
-        StudioComboBox { id: nativePicker; Layout.fillWidth: true; model: editor.library; textRole: "name"; valueRole: "id" }
-        StudioButton { text: "+   Adicionar objeto nativo"; Layout.fillWidth: true; onClicked: editor.addNode(nativePicker.currentValue) }
+        StudioComboBox { id: nativePicker; Layout.fillWidth: true; model: workspace.assetChoices; textRole: "name"; valueRole: "id" }
+        StudioButton { text: "+   Usar item da biblioteca"; Layout.fillWidth: true; onClicked: workspace.useAsset(nativePicker.currentValue) }
+        StudioButton { text: "Abrir biblioteca completa  ↗"; Layout.fillWidth: true; quiet: true; onClicked: workspace.navigate("library") }
         Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540"; Layout.topMargin: 8; Layout.bottomMargin: 6 }
         Label { text: "OBJETOS DA CENA ATUAL"; color: "#83919e"; font.pixelSize: 10; font.letterSpacing: 1 }
         ListView {

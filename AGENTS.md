@@ -12,3 +12,5 @@
 - Update `README.md` and the relevant architecture decision when behavior or limitations change. Do not describe planned capabilities as implemented.
 - Native assets/motions/poses must be registered in `core/library`; keep unknown recipe fields rejected. Regenerate AI guide/catalogue with `scripts/update-ai-guide.ps1` after capability changes.
 - After recipe, audio, library or production changes, run `scripts/smoke-production.ps1` (requires a real installed pt-BR Windows voice). Never infer spoken-word timings from text alone.
+- Project/library catalogue mutations go through `WorkspaceStore`; preserve revisions, tombstones and referenced files. Never physically remove native implementations or media to hide a library item.
+- For workspace/navigation changes run `scripts/smoke-workspace.ps1` and the `workspace_projects_library` test. Keep verification profiles isolated from real user data.
