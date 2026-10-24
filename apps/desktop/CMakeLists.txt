@@ -1,0 +1,4 @@
+qt_add_executable(studio_dark WIN32 main.cpp editor_controller.cpp editor_controller.hpp preview_item.cpp preview_item.hpp)
+qt_add_qml_module(studio_dark URI Studio.Dark VERSION 1.0
+    QML_FILES qml/Main.qml qml/StudioButton.qml qml/LibraryPanel.qml qml/PreviewPanel.qml qml/InspectorPanel.qml qml/TimelinePanel.qml)
+target_link_libraries(studio_dark PRIVATE studio_core studio_storage studio_composition Qt6::Quick Qt6::QuickControls2)

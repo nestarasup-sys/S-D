@@ -1,0 +1,12 @@
+$ErrorActionPreference = 'Stop'
+$StudioRoot = Split-Path -Parent $PSScriptRoot
+$StudioQt = Join-Path $StudioRoot '.tools/Qt/6.8.3/mingw_64'
+$StudioMingw = Join-Path $StudioRoot '.tools/Qt/Tools/mingw1310_64/bin'
+$StudioCmake = Join-Path $StudioRoot '.tools/python/cmake/data/bin/cmake.exe'
+$StudioCtest = Join-Path $StudioRoot '.tools/python/cmake/data/bin/ctest.exe'
+$StudioNinja = Join-Path $StudioRoot '.tools/python/bin/ninja.exe'
+$env:PATH = "$StudioQt/bin;$StudioMingw;$env:PATH"
+$env:QT_PLUGIN_PATH = Join-Path $StudioQt 'plugins'
+$env:QML_IMPORT_PATH = Join-Path $StudioQt 'qml'
+$StudioEncoder = Get-ChildItem -LiteralPath (Join-Path $StudioRoot '.tools/python/imageio_ffmpeg/binaries') -Filter 'ffmpeg*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($StudioEncoder) { $env:STUDIO_FFMPEG = $StudioEncoder.FullName }

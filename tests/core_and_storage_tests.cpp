@@ -1,0 +1,88 @@
+#include <QFile>
+#include <QGuiApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTemporaryDir>
+#include <iostream>
+#include <stdexcept>
+#include <studio/composition/painter.hpp>
+#include <studio/core/editor.hpp>
+#include <studio/storage/project_store.hpp>
+
+static int checks = 0;
+static void check(bool condition, const char *message) {
+    ++checks;
+    if (!condition)
+        throw std::runtime_error(message);
+}
+int main(int argc, char **argv) {
+    QGuiApplication app(argc, argv);
+    try {
+        auto p = studio::makeDemo();
+        studio::Editor editor(p);
+        check(studio::validate(p).empty(), "demo must validate");
+        auto baseline = studio::serialize(editor.project());
+        check(!editor.execute([](auto &c) { c.nodes[0].start = -1; }).empty(), "reject negative start");
+        check(studio::serialize(editor.project()) == baseline && !editor.canUndo(),
+              "invalid command must not mutate history");
+        check(!editor.execute([](auto &c) { c.nodes[1].id = c.nodes[0].id; }).empty(), "reject duplicate ID");
+        check(!editor.execute([](auto &c) { c.nodes[0].opacity = 2; }).empty(), "reject opacity overflow");
+        editor.beginGesture();
+        for (int i = 0; i < 20; ++i)
+            editor.execute([i](auto &c) { c.nodes[0].x = 200 + i; });
+        editor.endGesture();
+        check(editor.undo(), "gesture undo");
+        check(studio::serialize(editor.project()) == baseline, "one undo restores entire drag");
+        check(editor.redo() && editor.project().nodes[0].x == 219, "redo entire drag");
+        editor.undo();
+        editor.execute([](auto &c) { c.nodes[0].y = 90; });
+        check(!editor.canRedo(), "new edit invalidates redo");
+        auto clip = p.nodes[1];
+        check(!studio::active(clip, clip.start - 1), "clip start exclusive outside");
+        check(studio::active(clip, clip.start), "clip starts at first frame");
+        check(!studio::active(clip, clip.start + clip.duration), "clip end exclusive");
+        check(studio::evaluate(clip, clip.start).opacity == 0, "animated entrance first frame");
+        check(studio::evaluate(clip, clip.start + 24).opacity == clip.opacity, "animated entrance settles");
+        p.fps = {30000, 1001};
+        check(studio::validate(p).empty(), "fractional fps supported");
+        check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
+              "round trip rational fps and document");
+        auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
+        malformed["schemaVersion"] = 2;
+        check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
+              "reject future schema");
+        check(!studio::deserialize("{broken").error.isEmpty(), "reject broken JSON");
+        QTemporaryDir directory;
+        auto path = directory.filePath("project.studio.json");
+        auto save = studio::saveProject(path, p, {});
+        check(save.error.isEmpty(), "initial atomic save");
+        check(!studio::saveProject(path, p, {}).error.isEmpty(), "new file save never silently overwrites");
+        auto loaded = studio::loadProject(path);
+        check(loaded.error.isEmpty() && loaded.revision == save.revision, "load revision");
+        auto modified = p;
+        modified.name = "Changed";
+        auto updated = studio::saveProject(path, modified, save.revision);
+        check(updated.error.isEmpty(), "save known revision");
+        check(studio::loadProject(path + ".previous").project.name == p.name, "previous snapshot preserved");
+        check(!studio::saveProject(path, p, save.revision).error.isEmpty(), "reject stale revision");
+        check(studio::loadProject(path).project.name == "Changed", "stale save preserves current bytes");
+        studio::CompositionPainter painter;
+        auto first = painter.frame(p, 0), later = painter.frame(p, 90);
+        check(first.size() == QSize(p.width, p.height) && first != later, "animated frames differ");
+        auto same = painter.frame(p, 90);
+        check(same == later, "frame evaluation deterministic");
+        auto missing = p;
+        studio::Node image;
+        image.id = "missing";
+        image.kind = studio::NodeKind::Image;
+        image.source = "missing.png";
+        missing.nodes.push_back(image);
+        check(!painter.frame(missing, 90).isNull(), "missing image preview does not crash");
+        std::cout << "PASS: " << checks
+                  << " checks (commands, timing, persistence, conflicts, composition)\n";
+        return 0;
+    } catch (const std::exception &error) {
+        std::cerr << "FAIL after " << checks << " checks: " << error.what() << '\n';
+        return 1;
+    }
+}

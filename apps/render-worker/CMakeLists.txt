@@ -1,0 +1,2 @@
+qt_add_executable(studio_render main.cpp)
+target_link_libraries(studio_render PRIVATE studio_storage studio_composition)

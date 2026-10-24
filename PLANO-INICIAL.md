@@ -1,6 +1,8 @@
 # Studio Dark — plano inicial do novo editor
 
-Data: 24/10/2026. Estado: proposta de produto e arquitetura; implementação ainda não iniciada.
+Data: 24/10/2026. Estado: visão inicial de produto; protótipo nativo iniciado.
+
+> Atualização: após discussão com o usuário, a implementação experimental passou para C++20 + Qt Quick/QML. As tecnologias web citadas abaixo são o registro da proposta inicial. A decisão vigente, a estrutura real e os limites estão em [ADR 0001](docs/architecture/0001-native-prototype.md) e [README](README.md). O primeiro protótipo é de composição 2D; não conclui todas as etapas deste plano.
 
 ## 1. Direção do projeto
 
