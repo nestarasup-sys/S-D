@@ -38,6 +38,12 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 
 Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyframes ligados às falas, câmera e referências por ID a itens pessoais ativos. Receitas v1 antigas continuam funcionando. Exemplos: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md), [receita v1 de carros](examples/carros-caros.production.json) e [composição livre v2](examples/composicao-livre-v2.production.json).
 
+## Duração fixa e sincronização proporcional à fala
+
+A receita IA v2 pode controlar a duração final usando `"timingMode":"fit-to-duration"`, `"targetDurationSeconds":90` e `"preserveVoicePitch":true`. O aplicativo sintetiza a voz e depois calcula os quadros a 30 FPS. Aceita alvos opcionais por cena e por fala e combina aceleração limitada a 15% (FFmpeg `atempo`, preservando aproximadamente o tom) com pausas. Quando a narração não cabe, recusa a produção e explica o problema em vez de alterar o texto.
+
+Objetos, keyframes e câmera podem usar `cueProgress` de 0 a 1 para acompanhar proporcionalmente a duração da fala final. `cueProgress` e `offsetSeconds` são alternativos; não há sincronização por palavra. O projeto tem duração exata em quadros, por exemplo 90 s = 2700 quadros; metadados do MP4/AAC podem refletir atraso de codificação. Consulte o [guia da IA](docs/GUIA-PARA-IA.md) e a ADR 0008.
+
 ## Fundação de composição livre (schema v3)
 
 O editor já permite envolver o elemento selecionado em um grupo, gravar keyframes no playhead, escolher curvas linear/ease-in/ease-out/ease-in-out no inspetor e animar centro, zoom e rotação da câmera. Prévia e render usam o mesmo cálculo por frame; projetos v1/v2 continuam abrindo. O projeto de demonstração usa um grupo e movimentos de câmera para servir como prova visual.
