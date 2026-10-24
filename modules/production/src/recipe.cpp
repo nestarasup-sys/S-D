@@ -73,7 +73,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                      "offsetSeconds",
                      "span"};
     if (version >= 2)
-        keys << "assetId" << "children" << "keyframes";
+        keys << "assetId" << "children" << "keyframes" << "cueProgress";
     if (!allowed(e, keys))
         return fail("Elemento contém campo desconhecido.");
     if (!e["id"].isString() || !e["kind"].isString())
@@ -218,6 +218,11 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             return fail("Cue e durações de movimento devem ser inteiros.");
     element.cue = e["cue"].toInt(0);
     element.offsetSeconds = e["offsetSeconds"].toDouble(0);
+    if (e.contains("cueProgress")) {
+        if (!number(e, "cueProgress", element.cueProgress) || element.cueProgress < 0 ||
+            element.cueProgress > 1 || e.contains("offsetSeconds"))
+            return fail("cueProgress deve ser 0..1 e não pode ser combinado com offsetSeconds.");
+    }
     n.motionFrames = e["motionFrames"].toInt(24);
     n.exitFrames = e["exitFrames"].toInt(8);
     element.utteranceOnly = e["span"].toString("scene") == "utterance";
@@ -243,7 +248,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (!keyValue.isObject())
                 return fail("Keyframe inválido.");
             const auto key = keyValue.toObject();
-            if (!allowed(key, {"cue", "offsetSeconds", "x", "y", "rotation", "scale", "opacity", "easing"}))
+            if (!allowed(key, {"cue", "offsetSeconds", "cueProgress", "x", "y", "rotation", "scale", "opacity", "easing"}))
                 return fail("Keyframe contém campo desconhecido.");
             if (key.contains("cue") &&
                 (!key["cue"].isDouble() || std::floor(key["cue"].toDouble()) != key["cue"].toDouble()))
@@ -253,6 +258,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     return fail("Referência temporal de keyframe inválida.");
             DirectedKeyframe parsed{key["cue"].toInt(element.cue),
                                     key["offsetSeconds"].toDouble(0),
+                                    key["cueProgress"].toDouble(-1),
                                     key["x"].toDouble(n.x),
                                     key["y"].toDouble(n.y),
                                     key["rotation"].toDouble(n.rotation),
@@ -262,6 +268,10 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if ((key.contains("easing") && !key["easing"].isString()) ||
                 !supportedEasing(parsed.easing))
                 return fail("Easing de elemento inválido.");
+            if (key.contains("cueProgress") &&
+                (!number(key, "cueProgress", parsed.cueProgress) || parsed.cueProgress < 0 ||
+                 parsed.cueProgress > 1 || key.contains("offsetSeconds")))
+                return fail("cueProgress de keyframe inválido ou combinado com offsetSeconds.");
             if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.offsetSeconds) ||
                 parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
                 return fail("Cue de keyframe inválido.");
@@ -305,6 +315,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     child.node.parentId = parent.node.id;
                     child.cue = element.cue;
                     child.offsetSeconds = element.offsetSeconds;
+                    child.cueProgress = element.cueProgress;
                     child.utteranceOnly = element.utteranceOnly;
                     child.presetTiming = true;
                     if (!expand(child, part.id, level + 1))
@@ -354,12 +365,32 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     QStringList rootKeys{"format",     "version",   "catalogVersion", "title",  "voice",
                          "speechRate", "musicGain", "effectsGain",    "scenes", "sources"};
     if (version >= 2)
-        rootKeys << "captions";
+        rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
     r.version = version;
     r.original = o;
+    if (o.contains("timingMode") && !o["timingMode"].isString())
+        return fail("timingMode deve ser natural ou fit-to-duration.");
+    r.timingMode = o["timingMode"].toString("natural");
+    if (r.timingMode != "natural" && r.timingMode != "fit-to-duration")
+        return fail("timingMode não suportado.");
+    if (o.contains("targetDurationSeconds") &&
+        (!number(o, "targetDurationSeconds", r.targetDurationSeconds) ||
+         r.targetDurationSeconds < 1 || r.targetDurationSeconds > 600))
+        return fail("targetDurationSeconds precisa estar entre 1 e 600 segundos.");
+    if (o.contains("preserveVoicePitch")) {
+        if (!o["preserveVoicePitch"].isBool())
+            return fail("preserveVoicePitch deve ser true ou false.");
+        r.preserveVoicePitch = o["preserveVoicePitch"].toBool();
+    }
+    if (!r.preserveVoicePitch)
+        return fail("Somente preserveVoicePitch: true é suportado nesta versão.");
+    if (r.timingMode == "fit-to-duration" && r.targetDurationSeconds == 0)
+        return fail("fit-to-duration exige targetDurationSeconds.");
+    if (r.timingMode == "natural" && r.targetDurationSeconds > 0)
+        return fail("targetDurationSeconds exige timingMode: fit-to-duration.");
     r.title = o["title"].toString().trimmed();
     if (r.title.isEmpty() || r.title.size() > 120)
         return fail("Título inválido.");
@@ -393,7 +424,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         const auto s = sceneValue.toObject();
         QStringList sceneKeys{"id", "title", "kicker", "background", "narration", "elements"};
         if (version >= 2)
-            sceneKeys << "camera";
+            sceneKeys << "camera" << "targetDurationSeconds";
         if (!allowed(s, sceneKeys))
             return fail("Campo de cena desconhecido.");
         if (!s["id"].isString() || (s.contains("title") && !s["title"].isString()) ||
@@ -405,6 +436,12 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         scene.title = s["title"].toString();
         scene.kicker = s["kicker"].toString();
         scene.background = s["background"].toString(version == 1 ? "studio" : "");
+        if (s.contains("targetDurationSeconds") &&
+            (!number(s, "targetDurationSeconds", scene.targetDurationSeconds) ||
+             scene.targetDurationSeconds < 0.1 || scene.targetDurationSeconds > 600))
+            return fail("Duração-alvo de cena inválida.");
+        if (scene.targetDurationSeconds > 0 && r.timingMode != "fit-to-duration")
+            return fail("Tempo por cena requer fit-to-duration.");
         if (scene.id.isEmpty() || scene.id.size() > 80 || ids.contains(scene.id) || scene.title.size() > 70 ||
             scene.kicker.size() > 70)
             return fail("Identificação ou texto de cena inválido.");
@@ -419,10 +456,26 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             return fail("Cada cena precisa de 1 a 10 trechos de narração.");
         int cue = 0;
         for (auto line : s["narration"].toArray()) {
-            if (!line.isString() || line.toString().trimmed().isEmpty() || line.toString().size() > 150)
+            QString text;
+            double target = 0;
+            if (line.isString())
+                text = line.toString();
+            else if (version >= 2 && line.isObject()) {
+                const auto u = line.toObject();
+                if (!allowed(u, {"text", "targetDurationSeconds"}) || !u["text"].isString())
+                    return fail("Trecho de narração deve conter somente text e targetDurationSeconds.");
+                text = u["text"].toString();
+                if (u.contains("targetDurationSeconds") &&
+                    (!number(u, "targetDurationSeconds", target) || target < .1 || target > 60))
+                    return fail("Duração-alvo de fala precisa estar entre 0,1 e 60 segundos.");
+                if (target > 0 && r.timingMode != "fit-to-duration")
+                    return fail("Duração por fala exige fit-to-duration.");
+            } else
+                return fail("Narração deve ser texto ou objeto com text.");
+            if (text.trimmed().isEmpty() || text.size() > 150)
                 return fail("Narração: use trechos com até 150 caracteres.");
-            totalText += line.toString().size();
-            scene.narration.push_back({scene.id + "-u" + QString::number(++cue), line.toString()});
+            totalText += text.size();
+            scene.narration.push_back({scene.id + "-u" + QString::number(++cue), text, target});
         }
         if (!s["elements"].isArray())
             return fail("Lista de elementos ausente.");
@@ -443,7 +496,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 if (!cameraValue.isObject())
                     return fail("Keyframe de câmera inválido.");
                 const auto c = cameraValue.toObject();
-                if (!allowed(c, {"cue", "offsetSeconds", "x", "y", "zoom", "rotation", "easing"}))
+                if (!allowed(c, {"cue", "offsetSeconds", "cueProgress", "x", "y", "zoom", "rotation", "easing"}))
                     return fail("Keyframe de câmera contém campo desconhecido.");
                 DirectedCameraKeyframe key;
                 if (c.contains("easing") && !c["easing"].isString())
@@ -462,6 +515,10 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     return fail("Cue de câmera deve ser um inteiro.");
                 key.cue = c["cue"].toInt(0);
                 key.offsetSeconds = c["offsetSeconds"].toDouble(0);
+                if (c.contains("cueProgress") &&
+                    (!number(c, "cueProgress", key.cueProgress) || key.cueProgress < 0 ||
+                     key.cueProgress > 1 || c.contains("offsetSeconds")))
+                    return fail("cueProgress de câmera inválido ou combinado com offsetSeconds.");
                 if (!number(c, "offsetSeconds", key.offsetSeconds) || key.cue < 0 ||
                     key.cue >= int(scene.narration.size()) || key.offsetSeconds < 0 || key.offsetSeconds > 10)
                     return fail("Cue ou deslocamento de câmera inválido.");
