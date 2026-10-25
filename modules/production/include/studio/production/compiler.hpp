@@ -31,5 +31,6 @@ struct CompileResult {
 };
 CompileResult compileProduction(const ProductionRecipe &, const QMap<QString, PcmAudio> &utterances,
                                 const QString &audioOutput, const TimingPlan *timing = nullptr,
-                                const WordTimingMap *wordTimings = nullptr);
+                                const WordTimingMap *wordTimings = nullptr,
+                                const QString &voiceDuckingSource = {});
 } // namespace studio

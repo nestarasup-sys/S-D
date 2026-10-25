@@ -50,6 +50,13 @@ struct DirectedBeat {
     int durationFrames{0};
     std::optional<double> x, y, rotation, scale, opacity, zoom;
 };
+struct DirectedAudioTrack {
+    QString id, name;
+    QString source;
+    DirectedTime start;
+    double gain{1}, duckAmount{0.65};
+    bool duckUnderVoice{false};
+};
 struct DirectedShot {
     QString id, name, transitionIn{"cut"};
     QString transitionDirection{"left"};
@@ -69,6 +76,7 @@ struct DirectedScene {
     std::vector<DirectedElement> elements;
     std::vector<DirectedCameraKeyframe> camera;
     std::vector<DirectedShot> shots;
+    std::vector<DirectedAudioTrack> audioTracks;
 };
 struct ProductionRecipe {
     int version{1};

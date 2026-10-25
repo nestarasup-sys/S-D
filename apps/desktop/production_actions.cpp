@@ -119,6 +119,135 @@ QVariantList EditorController::visualBeats() const {
                                 {"durationFrames", int(beat.durationFrames)}});
     return list;
 }
+QVariantList EditorController::audioTracks() const {
+    QVariantList list;
+    for (const auto &track : project().audioTracks)
+        list.append(QVariantMap{{"id", QString::fromStdString(track.id)},
+                                {"name", QString::fromStdString(track.name)},
+                                {"source", QFileInfo(QString::fromStdString(track.source)).fileName()},
+                                {"start", int(track.start)},
+                                {"duration", int(track.duration)},
+                                {"gain", track.gain},
+                                {"muted", track.muted},
+                                {"duckUnderVoice", track.duckUnderVoice},
+                                {"duckAmount", track.duckAmount}});
+    return list;
+}
+void EditorController::addAudioTrack(QUrl source) {
+    const auto path = source.toLocalFile();
+    const QFileInfo file(path);
+    const auto extension = file.suffix().toLower();
+    if (!file.isFile() || !QFile::exists(path) ||
+        !QStringList{"wav", "mp3", "m4a", "aac", "ogg", "flac", "wma"}.contains(extension)) {
+        notify("Escolha um arquivo de áudio local WAV, MP3, M4A, AAC, OGG, FLAC ou WMA.");
+        return;
+    }
+    if (project().audioTracks.size() >= 32) {
+        notify("O projeto aceita até 32 pistas de áudio.");
+        return;
+    }
+    stop();
+    studio::AudioTrack track;
+    track.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
+    track.name = file.completeBaseName().toStdString();
+    track.source = file.absoluteFilePath().toStdString();
+    track.start = frame_;
+    track.duration = duration() - frame_;
+    track.duckUnderVoice = hasMainAudio();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        p.schemaVersion = 4;
+        p.audioTracks.push_back(track);
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
+    notify("Pista adicionada: " + file.fileName());
+}
+void EditorController::removeAudioTrack(QString id) {
+    stop();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        std::erase_if(p.audioTracks, [&](const auto &track) { return track.id == id.toStdString(); });
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    for (std::size_t i = 0; i < project().audioTracks.size() && i < audioTrackOutputs_.size(); ++i)
+        if (QString::fromStdString(project().audioTracks[i].id) == id)
+            audioTrackOutputs_[i]->setVolume(project().audioTracks[i].muted
+                                                 ? 0
+                                                 : std::clamp(project().audioTracks[i].gain * .9, 0.0, 1.0));
+    changed();
+}
+void EditorController::setAudioTrackGain(QString id, double gain) {
+    if (!std::isfinite(gain) || gain < 0 || gain > 4) {
+        notify("O ganho da pista precisa ficar entre 0 e 4.");
+        return;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString())
+                track.gain = gain;
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
+}
+void EditorController::setAudioTrackDucking(QString id, bool enabled) {
+    if (enabled && !hasMainAudio() && project().voiceDuckingSource.empty()) {
+        notify("Ducking precisa de uma faixa de voz no projeto.");
+        return;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString())
+                track.duckUnderVoice = enabled;
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    changed();
+}
+void EditorController::setAudioTrackMuted(QString id, bool muted) {
+    stop();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString())
+                track.muted = muted;
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
+}
+void EditorController::setAudioTrackTiming(QString id, int start, int length) {
+    if (duration() < 1) return;
+    start = std::clamp(start, 0, duration() - 1);
+    length = std::clamp(length, 1, duration() - start);
+    stop();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString()) {
+                track.start = start;
+                track.duration = length;
+            }
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
+}
 void EditorController::setupProduction() {
     connect(&production_, &QProcess::readyReadStandardOutput, this, [this] {
         productionBuffer_ += production_.readAllStandardOutput();

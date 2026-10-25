@@ -70,6 +70,10 @@ ApplicationWindow {
         onAccepted: editor.addNode(selectedFile.toString().toLowerCase().endsWith(".svg") ? "svg" : "image", selectedFile)
     }
     FileDialog {
+        id: audioDialog; title: "Adicionar pista de áudio"; nameFilters: ["Áudio (*.wav *.mp3 *.m4a *.aac *.ogg *.flac *.wma)"]
+        onAccepted: editor.addAudioTrack(selectedFile)
+    }
+    FileDialog {
         id: exportDialog; title: "Exportar MP4 — escolha um nome novo"; fileMode: FileDialog.SaveFile
         defaultSuffix: "mp4"; nameFilters: ["Vídeo MP4 (*.mp4)"]
         onAccepted: editor.exportVideo(selectedFile)
@@ -163,7 +167,7 @@ ApplicationWindow {
                     PreviewPanel { Layout.fillWidth: true; Layout.fillHeight: true }
                     InspectorPanel { Layout.preferredWidth: 268; Layout.fillHeight: true }
                 }
-                TimelinePanel { Layout.fillWidth: true; Layout.preferredHeight: 235 }
+                TimelinePanel { Layout.fillWidth: true; Layout.preferredHeight: 235; onAddAudioRequested: audioDialog.open() }
             }
         }
         Rectangle {

@@ -108,6 +108,8 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
+Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como sidechain e reduz a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource` como referência. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking e remover. O preview toca as pistas sincronizadas; o sidechain é aplicado na exportação.
+
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
 Exemplos de transição: `{"type":"fade","durationFrames":18}`, `{"type":"dissolve","durationFrames":12}`, `{"type":"slide","direction":"left","durationFrames":16}` ou `{"type":"zoom","durationFrames":12}`. `durationFrames` aceita de 2 a 300 quadros e precisa caber no shot de entrada. `slide` aceita direção `left`, `right`, `up` ou `down`. `fade` atravessa preto; `dissolve` mistura as imagens; `slide` move o novo shot; `zoom` aproxima o novo shot ao entrar. Prévia e exportação usam o mesmo compositor. A timeline destaca a faixa de transição.
@@ -246,12 +248,15 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "windows-pt-BR-tts",
         "windows-sapi-word-boundaries",
         "procedural-bed",
-        "scene-chime"
+        "scene-chime",
+        "multi-track-wav-mp3-aac-ogg-flac-wma",
+        "voice-sidechain-ducking"
     ],
     "catalogVersion": 1,
     "format": "studio-dark-capabilities",
     "fps": 30,
     "height": 720,
+    "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": 200,
     "maxScenes": 20,
@@ -400,7 +405,9 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "continuous-shot-focus-follow",
         "intensity-driven-default-motion",
         "global-art-direction",
-        "word-aligned-visual-beats"
+        "word-aligned-visual-beats",
+        "multi-track-audio",
+        "voice-sidechain-ducking"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -409,7 +416,8 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "camera-2d-keyframes",
         "keyframe-easing-curves",
         "shot-ownership",
-        "visual-beat-markers"
+        "visual-beat-markers",
+        "audio-tracks"
     ],
     "projectVersion": 4,
     "shotTransitionTypes": [

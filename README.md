@@ -44,6 +44,8 @@ Uma cena pode ter vários shots sem quebrar a narração. O início de cada plan
 
 Receitas v3 também aceitam `artDirection` para definir paleta, fonte instalada, tamanhos tipográficos, posição das legendas e margem segura como estilo global. Esses valores funcionam como padrões para elementos, títulos gerados e legendas; propriedades de elemento explicitamente definidas continuam prevalecendo. Estilos de arte por cena e arquivos de fonte próprios ainda estão pendentes.
 
+Projetos schema 4 e receitas v3 aceitam até 32 pistas de áudio independentes. Na timeline, importe áudio local, ajuste início/duração/ganho, silencie, remova ou ative ducking durante a voz. A prévia toca as pistas sincronizadas e o exportador mistura todas usando FFmpeg; receitas de produção podem apontar para WAVs locais relativos ao JSON e sincronizar o início com fala/progresso/palavra. Veja o guia da IA e a [decisão de arquitetura 0013](docs/architecture/0013-multitrack-audio.md).
+
 Receitas v3 aceitam `editing.intensity` de 0 a 100 para escolher entradas e saídas padrão apenas quando a IA não especificou movimento ou duração. Sem esse parâmetro, o padrão antigo é mantido.
 
 Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. O `at` aceita progresso da fala ou `wordIndex` com timestamp real emitido pelo sintetizador pt-BR local. Os eventos são convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.

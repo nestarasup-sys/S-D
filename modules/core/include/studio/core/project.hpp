@@ -69,6 +69,13 @@ struct VisualBeat {
     std::int64_t frame{0}, durationFrames{0};
     std::optional<double> x, y, rotation, scale, opacity, zoom;
 };
+struct AudioTrack {
+    std::string id, name, source;
+    std::int64_t start{0}, duration{360};
+    double gain{1};
+    bool muted{false}, duckUnderVoice{false};
+    double duckAmount{0.65};
+};
 struct Project {
     std::string id;
     std::string name{"Sem título"};
@@ -81,8 +88,9 @@ struct Project {
     std::vector<SceneMarker> scenes;
     std::vector<ShotMarker> shots;
     std::vector<VisualBeat> visualBeats;
+    std::vector<AudioTrack> audioTracks;
     std::vector<CameraKeyframe> camera;
-    std::string audioSource;
+    std::string audioSource, voiceDuckingSource;
 };
 struct VisualState {
     double x, y, opacity, rotation{0}, scale{1};

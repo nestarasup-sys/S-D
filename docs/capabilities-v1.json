@@ -3,12 +3,15 @@
         "windows-pt-BR-tts",
         "windows-sapi-word-boundaries",
         "procedural-bed",
-        "scene-chime"
+        "scene-chime",
+        "multi-track-wav-mp3-aac-ogg-flac-wma",
+        "voice-sidechain-ducking"
     ],
     "catalogVersion": 1,
     "format": "studio-dark-capabilities",
     "fps": 30,
     "height": 720,
+    "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": 200,
     "maxScenes": 20,
@@ -157,7 +160,9 @@
         "continuous-shot-focus-follow",
         "intensity-driven-default-motion",
         "global-art-direction",
-        "word-aligned-visual-beats"
+        "word-aligned-visual-beats",
+        "multi-track-audio",
+        "voice-sidechain-ducking"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -166,7 +171,8 @@
         "camera-2d-keyframes",
         "keyframe-easing-curves",
         "shot-ownership",
-        "visual-beat-markers"
+        "visual-beat-markers",
+        "audio-tracks"
     ],
     "projectVersion": 4,
     "shotTransitionTypes": [

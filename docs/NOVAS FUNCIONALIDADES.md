@@ -41,13 +41,21 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Os eventos SAPI podem ficar ligeiramente fora do tamanho final do WAV devido à diferença entre o relógio reportado e o arquivo; o worker calibra a sequência para o intervalo audível real, preservando a ordem e deixando espaço para o fim da última palavra.
 - Os testes cobrem receita, timestamp e resolução de beat. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
 
+### Áudio em múltiplas pistas implementado parcialmente
+
+- Projetos schema 4 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute e ducking configurável. Os arquivos antigos continuam carregando sem migração destrutiva.
+- A timeline importa, remove, silencia, reposiciona, altera duração/ganho e liga ducking. Na prévia, cada pista toca sincronizada com o playhead.
+- A exportação usa FFmpeg para misturar as faixas com o áudio base. Quando há stem isolado da narração, `duckUnderVoice` usa a voz como sidechain; arquivos editados sem stem usam `audioSource` como referência.
+- Receitas v3 podem declarar pistas por cena com fonte local e sincronizar início por cue/progresso/wordIndex. Os elementos são copiados para o projeto como caminhos absolutos, mantendo as referências das fontes externas.
+- O smoke compara mix sem/ com ducking: RMS durante a voz caiu de 0,0414 para 0,0349, e após a fala os dois voltaram a 0,0324. Falta uma política avançada de fades/automação de volume e monitoramento sidechain da prévia.
+
 ### Situação por fase
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e transições fade/dissolve/slide/zoom implementados. Falta controle global de intensidade no editor, decisões de ritmo guiadas pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global na receita e persistência/renderização implementadas. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e trilhas importadas com mixagem/ducking. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas de áudio com ducking implementadas na receita/projeto/exportação. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
 | 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat. Falta vídeo/B-roll como camada, timeline avançada e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
@@ -56,13 +64,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Shot e Visual Beat podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Elementos/keyframes ainda usam `cueProgress`/`offsetSeconds`; não há alinhamento fonético reutilizável após a importação.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
-- Vídeo como camada, mídia remota automática e áudio em múltiplas pistas ainda não existem. Direção de arte global e intensidade básica existem na receita; controle de intensidade e tema dentro do editor ainda não existem.
+- Vídeo como camada e mídia remota automática ainda não existem. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. Não gera cortes ou efeitos a partir do significado da fala e ainda não pode ser ajustado por um controle global do editor.
 
 ### Próxima entrega recomendada
 
-Repetir o smoke de produção usando o exemplo com `wordIndex` para validar eventos SAPI→WAV→compilador. Em seguida, adicionar no editor controles para intensidade e direção de arte do projeto, iniciar áudio em múltiplas pistas com ducking e construir o decodificador de vídeo como camada. Depois ampliar alinhamento de palavra para objetos/keyframes e acrescentar mais cenários de corte perto dos limites.
+Adicionar controles de intensidade e direção de arte no editor; integrar ducking com fades/automação manual e testar projetos com muitas pistas. Depois construir o decodificador de vídeo como camada e ampliar alinhamento de palavra a objetos/keyframes. A validação de SAPI→WAV→compilador, a edição/exportação multifaixa e os cortes/transições precisam continuar cobertos pelos smokes automatizados.
 
 ---
 

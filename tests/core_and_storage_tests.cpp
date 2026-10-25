@@ -90,12 +90,24 @@ int main(int argc, char **argv) {
         shotNode.duration = 60;
         shotProject.nodes = {shotNode};
         shotProject.visualBeats = {{"reveal", "detail", "price", "show", 72, 0}};
+        shotProject.audioSource = "C:/media/voice.wav";
+        shotProject.voiceDuckingSource = "C:/media/voice-stem.wav";
+        shotProject.audioTracks = {{"bed", "Trilha de teste", "C:/media/bed.wav", 0, 120,
+                                    .45, false, true, .7}};
         check(studio::validate(shotProject).empty(), "valid independent shots and beat");
         auto persistedShots = studio::deserialize(studio::serialize(shotProject));
         check(persistedShots.error.isEmpty() && persistedShots.project.shots.size() == 2 &&
                   persistedShots.project.visualBeats.size() == 1 &&
-                  persistedShots.project.nodes.front().shotId == "detail",
-              "shots, beat and node ownership survive schema 4 roundtrip");
+                  persistedShots.project.nodes.front().shotId == "detail" &&
+                  persistedShots.project.audioTracks.size() == 1 &&
+                  persistedShots.project.audioTracks.front().duckUnderVoice &&
+                  persistedShots.project.audioTracks.front().gain == .45 &&
+                  persistedShots.project.voiceDuckingSource == "C:/media/voice-stem.wav",
+              "shots, beats and independent audio tracks survive schema 4 roundtrip");
+        auto noVoiceDucking = shotProject;
+        noVoiceDucking.audioSource.clear();
+        noVoiceDucking.voiceDuckingSource.clear();
+        check(!studio::validate(noVoiceDucking).empty(), "ducking requires a voice sidechain source");
         auto brokenShots = shotProject;
         brokenShots.shots[1].start = 59;
         check(!studio::validate(brokenShots).empty(), "reject overlapping visual shots");

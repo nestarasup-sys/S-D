@@ -50,8 +50,10 @@ std::string validate(const Project &p) {
         p.fps.denominator > 10000 || p.fps.value() < 1 || p.fps.value() > 120)
         return "Taxa de quadros inválida.";
     if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200 || p.shots.size() > 256 ||
-        p.visualBeats.size() > 4096)
+        p.visualBeats.size() > 4096 || p.audioTracks.size() > 32)
         return "Projeto excede os limites deste protótipo.";
+    if (p.schemaVersion < 4 && !p.audioTracks.empty())
+        return "Pistas de áudio exigem a versão 4 do projeto.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
@@ -250,8 +252,23 @@ std::string validate(const Project &p) {
         }
         previousCamera = key.frame;
     }
+    std::unordered_set<std::string> audioTrackIds;
+    for (const auto &track : p.audioTracks) {
+        if (track.id.empty() || !audioTrackIds.insert(track.id).second || track.name.empty() ||
+            track.name.size() > 120 || track.source.empty() || track.source.size() > 4096 || track.start < 0 ||
+            track.duration < 1 || track.start >= p.duration || track.duration > p.duration - track.start ||
+            !std::isfinite(track.gain) || track.gain < 0 || track.gain > 4 ||
+            !std::isfinite(track.duckAmount) || track.duckAmount < 0 || track.duckAmount > 1)
+            return "Pista de áudio inválida ou fora dos limites.";
+    }
+    if (std::any_of(p.audioTracks.begin(), p.audioTracks.end(), [](const auto &track) {
+            return !track.muted && track.duckUnderVoice;
+        }) && p.audioSource.empty() && p.voiceDuckingSource.empty())
+        return "Ducking de áudio exige uma faixa de voz para referência.";
     if (p.audioSource.size() > 4096)
         return "Caminho de áudio inválido.";
+    if (p.voiceDuckingSource.size() > 4096)
+        return "Caminho da voz para ducking inválido.";
     return {};
 }
 Project makeEmpty() {

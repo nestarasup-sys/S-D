@@ -146,6 +146,17 @@ QByteArray serialize(const Project &p) {
             value["zoom"] = *beat.zoom;
         beats.append(value);
     }
+    QJsonArray audioTracks;
+    for (const auto &track : p.audioTracks)
+        audioTracks.append(QJsonObject{{"id", text(track.id)},
+                                       {"name", text(track.name)},
+                                       {"source", text(track.source)},
+                                       {"start", double(track.start)},
+                                       {"duration", double(track.duration)},
+                                       {"gain", track.gain},
+                                       {"muted", track.muted},
+                                       {"duckUnderVoice", track.duckUnderVoice},
+                                       {"duckAmount", track.duckAmount}});
     QJsonObject document{
         {"format", "studio-dark"},
         {"schemaVersion", p.schemaVersion},
@@ -159,7 +170,9 @@ QByteArray serialize(const Project &p) {
         {"nodes", nodes},
         {"camera", camera},
         {"scenes", scenes},
-        {"audioSource", text(p.audioSource)}};
+        {"audioSource", text(p.audioSource)},
+        {"voiceDuckingSource", text(p.voiceDuckingSource)},
+        {"audioTracks", audioTracks}};
     if (p.schemaVersion >= 4) {
         document["shots"] = shotArray;
         document["visualBeats"] = beats;
@@ -230,6 +243,32 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (o.contains("audioSource") && !o["audioSource"].isString())
         return fail("Referência de áudio inválida.");
     p.audioSource = str(o, "audioSource");
+    if (o.contains("voiceDuckingSource") && !o["voiceDuckingSource"].isString())
+        return fail("Referência de áudio de ducking inválida.");
+    p.voiceDuckingSource = str(o, "voiceDuckingSource");
+    if (o.contains("audioTracks")) {
+        if (!o["audioTracks"].isArray() || o["audioTracks"].toArray().size() > 32)
+            return fail("Lista de pistas de áudio inválida.");
+        for (const auto &value : o["audioTracks"].toArray()) {
+            if (!value.isObject())
+                return fail("Pista de áudio inválida.");
+            const auto track = value.toObject();
+            for (const auto *field : {"start", "duration"})
+                if (!integer(track[field]))
+                    return fail("Tempo da pista de áudio inválido.");
+            for (const auto *field : {"gain", "duckAmount"})
+                if (!track[field].isDouble())
+                    return fail("Volume de pista de áudio inválido.");
+            if (!track["id"].isString() || !track["name"].isString() || !track["source"].isString() ||
+                (track.contains("muted") && !track["muted"].isBool()) ||
+                (track.contains("duckUnderVoice") && !track["duckUnderVoice"].isBool()))
+                return fail("Metadados da pista de áudio inválidos.");
+            p.audioTracks.push_back({str(track, "id"), str(track, "name"), str(track, "source"),
+                                     track["start"].toInteger(), track["duration"].toInteger(),
+                                     track["gain"].toDouble(), track["muted"].toBool(),
+                                     track["duckUnderVoice"].toBool(), track["duckAmount"].toDouble(.65)});
+        }
+    }
     if (o.contains("scenes") && !o["scenes"].isArray())
         return fail("Lista de cenas inválida.");
     for (auto value : o["scenes"].toArray()) {

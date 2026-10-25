@@ -188,6 +188,17 @@ int main(int argc, char **argv) {
                                                         {"captionPosition", "top"},
                                                         {"safeMargin", 40}};
         auto styledScene = styledRecipeJson["scenes"].toArray().at(0).toObject();
+        QFile trackFixture(directory.filePath("music-track.wav"));
+        check(trackFixture.open(QIODevice::WriteOnly) && trackFixture.write("fixture") == 7,
+              "audio track fixture is available");
+        trackFixture.close();
+        styledScene["audioTracks"] = QJsonArray{QJsonObject{{"id", "music-bed"},
+                                                            {"name", "Trilha"},
+                                                            {"source", "music-track.wav"},
+                                                            {"start", QJsonObject{{"cue", 0}, {"progress", 0.1}}},
+                                                            {"gain", 0.4},
+                                                            {"duckUnderVoice", true},
+                                                            {"duckAmount", 0.8}}};
         auto styledShots = styledScene["shots"].toArray();
         auto styledSecondShot = styledShots[1].toObject();
         auto styledElements = styledSecondShot["elements"].toArray();
@@ -207,8 +218,10 @@ int main(int argc, char **argv) {
                   styledRecipe.recipe.scenes.front().shots.back().elements.back().node.color == "#24323b" &&
                   styledRecipe.recipe.scenes.front().shots.back().elements.front().children.front().node.color ==
                       "#fff3d6" &&
-                  styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078",
-              "v3 global art direction parses, supplies defaults, and preserves element styles");
+                  styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078" &&
+                  styledRecipe.recipe.scenes.front().audioTracks.size() == 1 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice,
+              "v3 parses global art direction and independent, voice-ducked audio tracks");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
         auto wordShots = wordScene["shots"].toArray();
@@ -301,16 +314,24 @@ int main(int argc, char **argv) {
                   persistedShots.project.shots.back().transitionDurationFrames == 3,
               "shot transition settings survive project save and load");
         const auto styledAudio =
-            studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav");
+            studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
+                                      "voice-stem.wav");
         check(styledAudio.error.isEmpty() && styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
-                  studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078",
-              "global art direction reaches compilation and keeps explicit element styling");
+                  studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078" &&
+                  styledAudio.project.audioTracks.size() == 1 &&
+                  styledAudio.project.audioTracks.front().duckUnderVoice &&
+                  styledAudio.project.audioTracks.front().gain == .4 &&
+                  styledAudio.project.voiceDuckingSource == "voice-stem.wav",
+              "global art direction and audio track settings reach the compiled project");
         const auto persistedStyle = studio::deserialize(studio::serialize(styledAudio.project));
         check(persistedStyle.error.isEmpty() &&
                   persistedStyle.project.artDirection.backgroundColor == "#101820" &&
-                  persistedStyle.project.artDirection.captionPosition == "top",
-              "global art direction survives project save and load");
+                  persistedStyle.project.artDirection.captionPosition == "top" &&
+                  persistedStyle.project.audioTracks.size() == 1 &&
+                  persistedStyle.project.audioTracks.front().duckUnderVoice &&
+                  persistedStyle.project.voiceDuckingSource == "voice-stem.wav",
+              "global art direction and audio tracks survive project save and load");
         check(studio::validate(compiledShots.project).empty() &&
                   studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
                   studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,

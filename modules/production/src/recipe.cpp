@@ -632,7 +632,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (!o["scenes"].isArray() || o["scenes"].toArray().isEmpty() || o["scenes"].toArray().size() > 20)
         return fail("Use de 1 a 20 cenas.");
     QSet<QString> ids;
-    int totalText = 0, totalNodes = 0, totalCameraKeys = 0, totalShots = 0, totalBeats = 0;
+    int totalText = 0, totalNodes = 0, totalCameraKeys = 0, totalShots = 0, totalBeats = 0,
+        totalAudioTracks = 0;
     QString elementError;
     for (const auto sceneValue : o["scenes"].toArray()) {
         if (!sceneValue.isObject())
@@ -643,6 +644,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             sceneKeys << "title" << "kicker" << "background" << "elements";
         else
             sceneKeys << "shots";
+        if (version >= 3)
+            sceneKeys << "audioTracks";
         if (version == 2)
             sceneKeys << "camera";
         if (version >= 2)
@@ -861,6 +864,48 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 scene.shots.push_back(std::move(shot));
                 if (++totalShots > 256 || totalBeats > 4096)
                     return fail("Produção excede 256 shots ou 4096 Visual Beats.");
+            }
+            if (s.contains("audioTracks")) {
+                if (!s["audioTracks"].isArray() || s["audioTracks"].toArray().size() > 32)
+                    return fail("Cada cena pode declarar até 32 pistas de áudio.");
+                for (const auto trackValue : s["audioTracks"].toArray()) {
+                    if (++totalAudioTracks > 32)
+                        return fail("Produção aceita até 32 pistas de áudio.");
+                    if (!trackValue.isObject())
+                        return fail("Pista de áudio inválida.");
+                    const auto trackObject = trackValue.toObject();
+                    if (!allowed(trackObject, {"id", "name", "source", "start", "gain", "duckUnderVoice",
+                                               "duckAmount"}) ||
+                        !trackObject["id"].isString() || !trackObject["source"].isString() ||
+                        !trackObject["start"].isObject() ||
+                        (trackObject.contains("name") && !trackObject["name"].isString()) ||
+                        (trackObject.contains("duckUnderVoice") && !trackObject["duckUnderVoice"].isBool()))
+                        return fail("Pista de áudio exige id, source local e referência start.");
+                    DirectedAudioTrack track;
+                    track.id = trackObject["id"].toString();
+                    const auto relativeSource = trackObject["source"].toString();
+                    if (track.id.isEmpty() || track.id.size() > 80 || ids.contains(track.id) ||
+                        relativeSource.isEmpty() || relativeSource.contains("://") ||
+                        relativeSource.startsWith("//") || relativeSource.startsWith("\\\\"))
+                        return fail("ID ou caminho local de pista de áudio inválido.");
+                    ids.insert(track.id);
+                    track.source = QDir(baseDirectory).absoluteFilePath(relativeSource);
+                    if (!QFileInfo::exists(track.source))
+                        return fail("Arquivo da pista de áudio ausente: " + relativeSource);
+                    track.name = trackObject["name"].toString(QFileInfo(track.source).completeBaseName());
+                    QString timeError;
+                    if (!parseTimeRef(trackObject["start"].toObject(), int(scene.narration.size()), track.start,
+                                      timeError, "start da pista de áudio"))
+                        return fail(timeError);
+                    track.gain = trackObject["gain"].toDouble(1);
+                    track.duckUnderVoice = trackObject["duckUnderVoice"].toBool(false);
+                    track.duckAmount = trackObject["duckAmount"].toDouble(.65);
+                    if ((trackObject.contains("gain") && !trackObject["gain"].isDouble()) ||
+                        (trackObject.contains("duckAmount") && !trackObject["duckAmount"].isDouble()) ||
+                        track.gain < 0 || track.gain > 4 || track.duckAmount < 0 || track.duckAmount > 1)
+                        return fail("Ganho aceita 0–4 e duckAmount 0–1.");
+                    scene.audioTracks.push_back(std::move(track));
+                }
             }
             totalNodes += elementCount + (r.renderCaptions ? int(scene.narration.size()) : 0);
             r.scenes.push_back(std::move(scene));

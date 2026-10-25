@@ -8,6 +8,8 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
+#include <memory>
+#include <vector>
 #include <studio/core/editor.hpp>
 #include <studio/storage/project_store.hpp>
 
@@ -35,6 +37,7 @@ class EditorController : public QObject {
     Q_PROPERTY(QVariantList scenes READ scenes NOTIFY documentChanged)
     Q_PROPERTY(QVariantList shots READ shots NOTIFY documentChanged)
     Q_PROPERTY(QVariantList visualBeats READ visualBeats NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList audioTracks READ audioTracks NOTIFY documentChanged)
     Q_PROPERTY(QVariantList waveform READ waveform NOTIFY documentChanged)
     Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY documentChanged)
     Q_PROPERTY(bool producing READ producing NOTIFY productionChanged)
@@ -51,11 +54,12 @@ class EditorController : public QObject {
     QVariantList scenes() const;
     QVariantList shots() const;
     QVariantList visualBeats() const;
+    QVariantList audioTracks() const;
     QVariantList waveform() const {
         return waveform_;
     }
     bool hasAudio() const {
-        return !project().audioSource.empty();
+        return !project().audioSource.empty() || !project().audioTracks.empty();
     }
     bool producing() const {
         return production_.state() != QProcess::NotRunning;
@@ -128,6 +132,12 @@ class EditorController : public QObject {
     Q_INVOKABLE void removeSelected();
     Q_INVOKABLE void groupSelected();
     Q_INVOKABLE void recordSelectedKeyframe();
+    Q_INVOKABLE void addAudioTrack(QUrl source);
+    Q_INVOKABLE void removeAudioTrack(QString id);
+    Q_INVOKABLE void setAudioTrackGain(QString id, double gain);
+    Q_INVOKABLE void setAudioTrackDucking(QString id, bool enabled);
+    Q_INVOKABLE void setAudioTrackMuted(QString id, bool muted);
+    Q_INVOKABLE void setAudioTrackTiming(QString id, int start, int length);
     Q_INVOKABLE void setSelectedKeyframeEasing(QString easing);
     Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
     Q_INVOKABLE void updateCamera(QString property, double value);
@@ -172,6 +182,11 @@ class EditorController : public QObject {
     void autosave();
     void reset(studio::Project p, QString path = {}, QByteArray revision = {});
     void setupProduction();
+    void refreshAudioTracks();
+    void syncAudioTrackPlayback(int frame);
+    bool hasMainAudio() const {
+        return !project().audioSource.empty();
+    }
     void startProductionLog(const QString &recipeFileName);
     void logProductionEvent(const QString &event, const QString &message = {}, int progress = -1);
     QString currentSceneId() const;
@@ -188,6 +203,9 @@ class EditorController : public QObject {
     NodeListModel nodeModel_{this};
     QMediaPlayer audioPlayer_;
     QAudioOutput audioOutput_;
+    std::vector<std::unique_ptr<QMediaPlayer>> audioTrackPlayers_;
+    std::vector<std::unique_ptr<QAudioOutput>> audioTrackOutputs_;
+    std::vector<bool> audioTrackPlaybackActive_;
     QVariantList waveform_;
     QProcess production_;
     QByteArray productionBuffer_, productionBaseline_;

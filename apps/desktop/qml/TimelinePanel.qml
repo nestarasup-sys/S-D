@@ -3,6 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
+    id: root
+    signal addAudioRequested()
     color: "#141c24"
     Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#2f3c48" }
     ColumnLayout {
@@ -13,6 +15,7 @@ Rectangle {
             Label { text: " /   SEQUÊNCIA 01"; color: "#5e7485"; font.pixelSize: 10 }
             Item { Layout.fillWidth: true }
             Label { text: "Arraste um clipe para mover  ·  Clique na régua para navegar"; color: "#7b91a1"; font.pixelSize: 10 }
+            StudioButton { text: "+ Áudio"; onClicked: root.addAudioRequested() }
             Label { text: (editor.duration / editor.fps).toFixed(1) + " s"; color: "#b4f078"; font.pixelSize: 12; Layout.leftMargin: 15 }
         }
         RowLayout {
@@ -181,8 +184,53 @@ Rectangle {
                 }
             }
         }
+        ListView {
+            visible: editor.audioTracks.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(96, editor.audioTracks.length * 32)
+            Layout.minimumHeight: Layout.preferredHeight
+            Layout.maximumHeight: Layout.preferredHeight
+            clip: true
+            model: editor.audioTracks
+            delegate: RowLayout {
+                required property var modelData
+                width: ListView.view.width; height: 30; spacing: 8
+                Label { text: modelData.name; color: "#91b4c2"; Layout.preferredWidth: 135; elide: Text.ElideRight; font.pixelSize: 10 }
+                Label { text: "in"; color: "#718d9e"; font.pixelSize: 9 }
+                SpinBox {
+                    from: 0; to: Math.max(0, editor.duration - modelData.duration); value: modelData.start
+                    editable: true; Layout.preferredWidth: 92
+                    onValueModified: editor.setAudioTrackTiming(modelData.id, value, modelData.duration)
+                    ToolTip.visible: hovered; ToolTip.text: "Início da faixa em frames"
+                }
+                Label { text: "duração"; color: "#718d9e"; font.pixelSize: 9 }
+                SpinBox {
+                    from: 1; to: Math.max(1, editor.duration - modelData.start); value: modelData.duration
+                    editable: true; Layout.preferredWidth: 92
+                    onValueModified: editor.setAudioTrackTiming(modelData.id, modelData.start, value)
+                    ToolTip.visible: hovered; ToolTip.text: "Duração da faixa em frames"
+                }
+                Slider {
+                    Layout.preferredWidth: 160; from: 0; to: 2; value: modelData.gain
+                    onMoved: editor.setAudioTrackGain(modelData.id, value)
+                    ToolTip.visible: hovered; ToolTip.text: "Ganho da pista"
+                }
+                Label { text: Math.round(modelData.gain * 100) + "%"; color: "#9baebb"; Layout.preferredWidth: 40; font.pixelSize: 9 }
+                CheckBox {
+                    text: "duck na voz"; checked: modelData.duckUnderVoice
+                    onToggled: editor.setAudioTrackDucking(modelData.id, checked)
+                    ToolTip.text: "Reduz esta pista durante a narração na exportação"; ToolTip.visible: hovered
+                }
+                CheckBox {
+                    text: "mudo"; checked: modelData.muted
+                    onToggled: editor.setAudioTrackMuted(modelData.id, checked)
+                }
+                Item { Layout.fillWidth: true }
+                StudioButton { text: "Remover"; onClicked: editor.removeAudioTrack(modelData.id) }
+            }
+        }
         RowLayout {
-            visible: editor.hasAudio; Layout.fillWidth: true; Layout.preferredHeight: 28; Layout.minimumHeight: 28; Layout.maximumHeight: 28; spacing: 12
+            visible: editor.hasAudio && editor.waveform.length > 0; Layout.fillWidth: true; Layout.preferredHeight: 28; Layout.minimumHeight: 28; Layout.maximumHeight: 28; spacing: 12
             Label { text: "VOZ + TRILHA"; Layout.preferredWidth: 175; color: "#82bebd"; font.pixelSize: 10 }
             Rectangle {
                 Layout.fillWidth: true; Layout.fillHeight: true; color: "#1a333b"; radius: 4; clip: true

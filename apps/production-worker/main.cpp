@@ -210,7 +210,8 @@ int main(int argc, char **argv) {
     report("Montando cenas e sincronizando", 75);
     auto compiled = studio::compileProduction(
         parsed.recipe, utterances, output + "/media/master.wav",
-        parsed.recipe.timingMode == "fit-to-duration" ? &plan : nullptr, &wordTimings);
+        parsed.recipe.timingMode == "fit-to-duration" ? &plan : nullptr, &wordTimings,
+        output + "/media/narration.wav");
     if (!compiled.error.isEmpty())
         return fail(compiled.error);
     for (auto pair : {std::pair{output + "/media/narration.wav", &compiled.voice},

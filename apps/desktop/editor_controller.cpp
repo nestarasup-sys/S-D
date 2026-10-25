@@ -102,13 +102,14 @@ EditorController::EditorController(QObject *parent, QString recoveryDirectory) :
     }
     playback_.setInterval(8);
     connect(&playback_, &QTimer::timeout, this, [this] {
-        const auto next = hasAudio() ? int(audioPlayer_.position() * fps() / 1000.)
-                                     : playStart_ + int(clock_.elapsed() * fps() / 1000.);
-        if (hasAudio() && audioPlayer_.mediaStatus() == QMediaPlayer::EndOfMedia) {
+        const auto next = hasMainAudio() ? int(audioPlayer_.position() * fps() / 1000.)
+                                         : playStart_ + int(clock_.elapsed() * fps() / 1000.);
+        if (hasMainAudio() && audioPlayer_.mediaStatus() == QMediaPlayer::EndOfMedia) {
             presentFrame(duration() - 1);
             stop();
             return;
         }
+        syncAudioTrackPlayback(next);
         if (next >= duration()) {
             presentFrame(duration() - 1);
             stop();
@@ -787,6 +788,9 @@ void EditorController::stop() {
     playing_ = false;
     playback_.stop();
     audioPlayer_.pause();
+    for (auto &player : audioTrackPlayers_)
+        player->pause();
+    std::fill(audioTrackPlaybackActive_.begin(), audioTrackPlaybackActive_.end(), false);
     emit playingChanged();
 }
 void EditorController::togglePlayback() {
@@ -799,7 +803,7 @@ void EditorController::togglePlayback() {
     playStart_ = frame_;
     clock_.restart();
     playing_ = true;
-    if (hasAudio()) {
+    if (hasMainAudio()) {
         if (!QFile::exists(q(project().audioSource))) {
             playing_ = false;
             notify("Arquivo de áudio ausente.");
@@ -808,6 +812,7 @@ void EditorController::togglePlayback() {
         audioPlayer_.setPosition(qRound64(frame_ * 1000. / fps()));
         audioPlayer_.play();
     }
+    syncAudioTrackPlayback(frame_);
     playback_.start();
     emit playingChanged();
 }
@@ -838,6 +843,7 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     frame_ = 0;
     audioPlayer_.setSource(project().audioSource.empty() ? QUrl{}
                                                          : QUrl::fromLocalFile(q(project().audioSource)));
+    refreshAudioTracks();
     waveform_.clear();
     if (hasAudio()) {
         auto wave = studio::readWave(q(project().audioSource));
@@ -856,6 +862,42 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     emit documentChanged();
     emit selectedChanged();
     emit cameraChanged();
+}
+void EditorController::refreshAudioTracks() {
+    for (auto &player : audioTrackPlayers_)
+        player->stop();
+    audioTrackPlayers_.clear();
+    audioTrackOutputs_.clear();
+    audioTrackPlaybackActive_.clear();
+    for (const auto &track : project().audioTracks) {
+        auto output = std::make_unique<QAudioOutput>(this);
+        output->setVolume(track.muted ? 0 : std::clamp(track.gain * .9, 0.0, 1.0));
+        auto player = std::make_unique<QMediaPlayer>(this);
+        player->setAudioOutput(output.get());
+        player->setSource(QUrl::fromLocalFile(q(track.source)));
+        connect(player.get(), &QMediaPlayer::errorOccurred, this,
+                [this, name = q(track.name)](QMediaPlayer::Error, const QString &error) {
+                    notify("Pista '" + name + "': " + error);
+                });
+        audioTrackOutputs_.push_back(std::move(output));
+        audioTrackPlayers_.push_back(std::move(player));
+        audioTrackPlaybackActive_.push_back(false);
+    }
+}
+void EditorController::syncAudioTrackPlayback(int frame) {
+    for (std::size_t i = 0; i < project().audioTracks.size() && i < audioTrackPlayers_.size(); ++i) {
+        const auto &track = project().audioTracks[i];
+        const bool shouldPlay = !track.muted && frame >= track.start && frame < track.start + track.duration;
+        if (shouldPlay && !audioTrackPlaybackActive_[i]) {
+            const auto offset = std::max<std::int64_t>(0, frame - track.start);
+            audioTrackPlayers_[i]->setPosition(qRound64(double(offset) * 1000. / fps()));
+            audioTrackPlayers_[i]->play();
+            audioTrackPlaybackActive_[i] = true;
+        } else if (!shouldPlay && audioTrackPlaybackActive_[i]) {
+            audioTrackPlayers_[i]->pause();
+            audioTrackPlaybackActive_[i] = false;
+        }
+    }
 }
 bool EditorController::open(QUrl url) {
     auto loaded = studio::loadProject(url.toLocalFile());

@@ -62,6 +62,18 @@ int main(int argc, char **argv) {
     if (!loaded.project.audioSource.empty() &&
         !QFile::exists(QString::fromStdString(loaded.project.audioSource)))
         return fail("Arquivo de áudio ausente.");
+    for (const auto &track : loaded.project.audioTracks)
+        if (!track.muted && !QFile::exists(QString::fromStdString(track.source)))
+            return fail("Arquivo ausente na pista de áudio '" + QString::fromStdString(track.name) + "'.");
+    const bool hasUnmutedDuckingTrack = std::any_of(
+        loaded.project.audioTracks.begin(), loaded.project.audioTracks.end(),
+        [](const auto &track) { return !track.muted && track.duckUnderVoice; });
+    if (hasUnmutedDuckingTrack && loaded.project.audioSource.empty() &&
+        loaded.project.voiceDuckingSource.empty())
+        return fail("Ducking exige uma faixa de voz de referência.");
+    if (hasUnmutedDuckingTrack && !loaded.project.voiceDuckingSource.empty() &&
+        !QFile::exists(QString::fromStdString(loaded.project.voiceDuckingSource)))
+        return fail("Arquivo de voz usado para ducking está ausente.");
     QTemporaryDir temp(QFileInfo(output).absolutePath() + "/.studio-XXXXXX");
     if (!temp.isValid())
         return fail("Não foi possível criar a pasta temporária.");
@@ -77,10 +89,58 @@ int main(int argc, char **argv) {
         "-s",        QString::number(p.width) + "x" + QString::number(p.height),
         "-r",        QString::number(p.fps.numerator) + "/" + QString::number(p.fps.denominator),
         "-i",        "pipe:0"};
-    if (!p.audioSource.empty())
-        encoderArgs << "-i" << QString::fromStdString(p.audioSource) << "-map" << "0:v:0" << "-map" << "1:a:0"
-                    << "-c:a" << "aac" << "-b:a" << "160k" << "-af" << "apad";
-    else
+    const bool hasMainAudio = !p.audioSource.empty();
+    if (hasMainAudio)
+        encoderArgs << "-i" << QString::fromStdString(p.audioSource);
+    std::vector<const studio::AudioTrack *> activeTracks;
+    for (const auto &track : p.audioTracks)
+        if (!track.muted)
+            activeTracks.push_back(&track);
+    const bool needsDucking = std::any_of(activeTracks.begin(), activeTracks.end(),
+                                          [](const auto *track) { return track->duckUnderVoice; });
+    const bool separateVoiceStem = needsDucking && !p.voiceDuckingSource.empty() &&
+                                   p.voiceDuckingSource != p.audioSource;
+    if (separateVoiceStem)
+        encoderArgs << "-i" << QString::fromStdString(p.voiceDuckingSource);
+    const int voiceInput = separateVoiceStem ? (hasMainAudio ? 2 : 1) : (hasMainAudio ? 1 : -1);
+    int nextInput = 1 + int(hasMainAudio) + int(separateVoiceStem);
+    for (const auto *track : activeTracks)
+        encoderArgs << "-i" << QString::fromStdString(track->source);
+    if (hasMainAudio || !activeTracks.empty()) {
+        const double sequenceSeconds = double(p.duration) / p.fps.value();
+        const auto seconds = [](double value) { return QString::number(value, 'f', 6); };
+        QStringList filters, inputs;
+        const bool needsSidechain = needsDucking && voiceInput >= 0;
+        if (hasMainAudio) {
+            filters << "[1:a:0]atrim=duration=" + seconds(sequenceSeconds) + ",asetpts=PTS-STARTPTS[main]";
+            inputs << "[main]";
+        }
+        if (needsSidechain)
+            filters << QString("[%1:a:0]apad,atrim=duration=%2,asetpts=PTS-STARTPTS[sidechain]")
+                           .arg(voiceInput).arg(seconds(sequenceSeconds));
+        for (std::size_t i = 0; i < activeTracks.size(); ++i) {
+            const auto &track = *activeTracks[i];
+            const int input = nextInput++;
+            const auto delay = qRound64(double(track.start) * 1000. / p.fps.value());
+            const auto length = double(track.duration) / p.fps.value();
+            const auto gain = QString::number(track.gain, 'f', 6);
+            const auto pre = QString("pre%1").arg(i);
+            const auto out = QString("track%1").arg(i);
+            filters << QString("[%1:a:0]atrim=duration=%2,asetpts=PTS-STARTPTS,volume=%3,adelay=delays=%4|%4:all=1[%5]")
+                           .arg(input).arg(seconds(length), gain).arg(delay).arg(pre);
+            if (track.duckUnderVoice && needsSidechain) {
+                const auto ratio = QString::number(1.0 + track.duckAmount * 19.0, 'f', 4);
+                filters << QString("[%1][sidechain]sidechaincompress=threshold=0.025:ratio=%2:attack=20:release=280[%3]")
+                               .arg(pre, ratio, out);
+            } else
+                filters << QString("[%1]anull[%2]").arg(pre, out);
+            inputs << "[" + out + "]";
+        }
+        filters << inputs.join("") + QString("amix=inputs=%1:duration=longest:normalize=0,alimiter=limit=0.98[aout]")
+                                            .arg(inputs.size());
+        encoderArgs << "-filter_complex" << filters.join(";") << "-map" << "0:v:0" << "-map" << "[aout]"
+                    << "-c:a" << "aac" << "-b:a" << "160k";
+    } else
         encoderArgs << "-an";
     encoderArgs << QStringList{
         "-c:v",      "libx264",    "-preset",  "veryfast",

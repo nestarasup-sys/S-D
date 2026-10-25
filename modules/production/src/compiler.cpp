@@ -184,7 +184,7 @@ bool frameCameraOnTarget(const Project &project, const Node &target, std::int64_
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
                                 const QString &audioOutput, const TimingPlan *timing,
-                                const WordTimingMap *wordTimings) {
+                                const WordTimingMap *wordTimings, const QString &voiceDuckingSource) {
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
@@ -193,6 +193,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();
+    p.voiceDuckingSource = voiceDuckingSource.toStdString();
     constexpr std::int64_t samplesPerFrame = ProductionSampleRate / 30;
     const bool fixed = recipe.timingMode == "fit-to-duration";
     if (fixed && (!timing || !timing->error.isEmpty() || timing->scenes.size() != recipe.scenes.size() ||
@@ -289,6 +290,18 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         }
         p.scenes.push_back(
             {scene.id.toStdString(), scene.title.toStdString(), narration, sceneStart, sceneDuration});
+        for (const auto &directedTrack : scene.audioTracks) {
+            const auto trackStart = resolveTime(directedTrack.start, cues, wordStarts);
+            const auto sceneEnd = sceneStart + sceneDuration;
+            if (trackStart < sceneStart || trackStart >= sceneEnd) {
+                r.error = "Início da pista de áudio fora da cena: " + directedTrack.id;
+                return r;
+            }
+            p.audioTracks.push_back({directedTrack.id.toStdString(), directedTrack.name.toStdString(),
+                                     directedTrack.source.toStdString(), trackStart, sceneEnd - trackStart,
+                                     directedTrack.gain, false, directedTrack.duckUnderVoice,
+                                     directedTrack.duckAmount});
+        }
         if (!scene.background.isEmpty()) {
             Node bg;
             bg.id = "background-" + scene.id.toStdString();
