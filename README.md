@@ -40,7 +40,7 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 ## Shots e Visual Beats (receita v3)
 
-Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; o foco é calculado no início do plano. Nesta versão, `transitionIn` aceita somente cortes secos.
+Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; `follow: true` acompanha o alvo quadro a quadro. Nesta versão, `transitionIn` aceita somente cortes secos.
 
 Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. São convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.
 
@@ -120,6 +120,6 @@ A evolução proposta a partir do vídeo de referência está em [Futuro do apli
 
 Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG, rotação/escala/deslocamento, receitas v1/v2/v3, shots secos e Visual Beats, narração pt-BR local, legendas por trecho medido, trilha/efeitos procedurais, forma de onda e reprodução audiovisual. Permanecem histórico, salvamento por revisão, cópia anterior, recuperação e render em processo separado. Projetos v1 são migrados em memória para v2; v1–v3 continuam abrindo, e a produção v3 usa schema 4.
 
-Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, foco automático contínuo, curvas Bézier personalizadas/trajetórias, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
+Ainda não há clipes de vídeo, importação livre de áudio na interface, mixagem em pistas independentes, curvas Bézier personalizadas/trajetórias, gráficos estatísticos ou chat de IA interno. A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas.
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.

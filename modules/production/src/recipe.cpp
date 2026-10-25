@@ -601,12 +601,13 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         if (!camera["focus"].isObject())
                             return fail("focus da câmera deve indicar target e padding.");
                         const auto focus = camera["focus"].toObject();
-                        if (!allowed(focus, {"target", "padding"}) || !focus["target"].isString() ||
+                        if (!allowed(focus, {"target", "padding", "follow"}) || !focus["target"].isString() ||
                             focus["target"].toString().isEmpty() ||
                             !number(focus, "padding", shot.focusPadding) || shot.focusPadding < 1 ||
-                            shot.focusPadding > 4)
+                            shot.focusPadding > 4 || (focus.contains("follow") && !focus["follow"].isBool()))
                             return fail("focus da câmera exige um target do shot e padding entre 1 e 4.");
                         shot.focusTargetId = focus["target"].toString();
+                        shot.focusFollow = focus["follow"].toBool(false);
                     }
                 } else
                     return fail("Cada shot precisa declarar sua câmera inicial.");

@@ -104,7 +104,11 @@ int main(int argc, char **argv) {
             {"id", "wide"},
             {"name", "Plano aberto"},
             {"start", QJsonObject{{"cue", 0}, {"progress", 0}}},
-            {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}},
+            {"camera", QJsonObject{{"x", 640},
+                                   {"y", 360},
+                                   {"zoom", 1},
+                                   {"rotation", 0},
+                                   {"focus", QJsonObject{{"target", "car-shape"}, {"follow", true}}}}},
             {"elements", QJsonArray{QJsonObject{{"id", "car-shape"},
                                                 {"kind", "shape"},
                                                 {"x", 140},
@@ -168,6 +172,12 @@ int main(int argc, char **argv) {
                   studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
                   studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,
               "beat transforms compile into shot-owned editable keyframes");
+        check(std::abs(studio::evaluateCamera(compiledShots.project, 2).y -
+                       studio::evaluateCamera(compiledShots.project, 0).y) > 1,
+              "continuous shot focus follows animated target across frames");
+        check(std::any_of(compiledShots.project.camera.begin(), compiledShots.project.camera.end(),
+                          [](const auto &key) { return key.frame == 2; }),
+              "continuous shot focus records the final frame of its span");
         const auto priceShot =
             std::find_if(compiledShots.project.shots.begin(), compiledShots.project.shots.end(),
                          [](const auto &shot) { return shot.id == "price-cut"; });

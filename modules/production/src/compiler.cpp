@@ -346,6 +346,13 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                         r.error = "Não foi possível enquadrar o alvo da câmera no shot: " + directedShot.id;
                         return r;
                     }
+                    if (directedShot.focusFollow &&
+                        std::any_of(directedShot.beats.begin(), directedShot.beats.end(),
+                                    [](const auto &beat) { return beat.action == "camera"; })) {
+                        r.error = "focus.follow não pode ser combinado com Visual Beats de câmera no shot: " +
+                                  directedShot.id;
+                        return r;
+                    }
                 }
                 if (shotStart > 0)
                     p.camera.push_back({shotStart - 1, previousShotCamera.x, previousShotCamera.y,
@@ -419,6 +426,33 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     }
                 }
                 previousShotCamera = shotCamera;
+                if (directedShot.focusFollow) {
+                    auto focusTarget = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const auto &node) {
+                        return node.id == directedShot.focusTargetId.toStdString() &&
+                               node.shotId == directedShot.id.toStdString();
+                    });
+                    if (focusTarget == p.nodes.end() ||
+                        !frameCameraOnTarget(p, *focusTarget, shotEnd - 1, directedShot.focusPadding,
+                                             previousShotCamera)) {
+                        r.error =
+                            "Não foi possível determinar o enquadramento final do shot: " + directedShot.id;
+                        return r;
+                    }
+                    for (auto frame = shotStart + 1; frame < shotEnd - 1; ++frame) {
+                        auto trackedCamera = previousShotCamera;
+                        if (!frameCameraOnTarget(p, *focusTarget, frame, directedShot.focusPadding,
+                                                 trackedCamera)) {
+                            r.error =
+                                "Não foi possível acompanhar o alvo da câmera no shot: " + directedShot.id;
+                            return r;
+                        }
+                        p.camera.push_back({frame, trackedCamera.x, trackedCamera.y, trackedCamera.zoom,
+                                            trackedCamera.rotation, "linear", directedShot.id.toStdString()});
+                    }
+                    p.camera.push_back({shotEnd - 1, previousShotCamera.x, previousShotCamera.y,
+                                        previousShotCamera.zoom, previousShotCamera.rotation, "linear",
+                                        directedShot.id.toStdString()});
+                }
             }
         } else {
             for (const auto &directed : scene.elements) {

@@ -205,8 +205,8 @@ std::string validate(const Project &p) {
     }
     if (p.schemaVersion < 3 && !p.camera.empty())
         return "Câmera animada exige a versão 3 do projeto.";
-    if (p.camera.size() > 256)
-        return "A câmera pode ter no máximo 256 keyframes.";
+    if (p.camera.size() > 20000)
+        return "A câmera pode ter no máximo 20000 keyframes.";
     std::int64_t previousCamera = -1;
     for (const auto &key : p.camera) {
         if (key.frame < 0 || key.frame >= p.duration || key.frame <= previousCamera ||

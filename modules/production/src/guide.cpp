@@ -30,7 +30,7 @@ QJsonObject capabilities() {
                         "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
                         "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
                         "visual-beats-show-hide-transform-camera", "shot-cut-camera",
-                        "auto-reframe-by-shot-target"}},
+                        "auto-reframe-by-shot-target", "continuous-shot-focus-follow"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
@@ -162,7 +162,7 @@ Uma cena narrativa pode conter vários shots sem repetir nem interromper a narra
 
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` atualmente aceita somente `cut`, que troca composição e câmera em um corte seco. `camera` aceita `x`, `y`, `zoom` e `rotation`; quando omitidos, o centro é 640×360, o zoom é 1 e a rotação é 0.
 
-Para enquadrar automaticamente um elemento ou grupo, adicione `"focus":{"target":"ID-DO-ELEMENTO","padding":1.25}` dentro de `camera`. O alvo deve pertencer ao mesmo shot. O aplicativo transforma os limites locais através de todos os grupos ancestrais, centraliza a câmera nesse retângulo e calcula o zoom para mantê-lo dentro do quadro com a margem solicitada. `padding` aceita 1–4 e assume 1.25. Quando `focus` está presente, ele substitui o centro e o zoom explícitos; a rotação continua sendo usada.
+Para enquadrar automaticamente um elemento ou grupo, adicione `"focus":{"target":"ID-DO-ELEMENTO","padding":1.25}` dentro de `camera`. O alvo deve pertencer ao mesmo shot. O aplicativo transforma os limites locais através de todos os grupos ancestrais, centraliza a câmera nesse retângulo e calcula o zoom para mantê-lo dentro do quadro com a margem solicitada. `padding` aceita 1–4 e assume 1.25. Quando `focus` está presente, ele substitui o centro e o zoom explícitos; a rotação continua sendo usada. Com `"follow":true`, o aplicativo recalcula o enquadramento para cada quadro do shot e grava a trajetória como keyframes editáveis. `follow` assume false. Não combine esse modo com Visual Beats de ação `camera` no mesmo shot.
 
 Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuais editáveis no projeto. Sem referência temporal explícita, começam no início do shot. Os elementos e grupos continuam usando os tipos e propriedades documentados abaixo.
 
@@ -326,7 +326,7 @@ A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. 
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, foco de câmera por ID, eventos por palavra, trajetórias/curvas Bézier personalizadas, transições além de corte seco, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, eventos por palavra, trajetórias/curvas Bézier personalizadas, transições além de corte seco, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
 
 ## Capacidades em JSON
 

@@ -55,6 +55,7 @@ struct DirectedShot {
     double cameraX{640}, cameraY{360}, cameraZoom{1}, cameraRotation{0};
     QString focusTargetId;
     double focusPadding{1.25};
+    bool focusFollow{false};
     std::vector<DirectedElement> elements;
     std::vector<DirectedBeat> beats;
 };

@@ -17,6 +17,7 @@ Uma cena narrativa precisava aceitar vários cortes sem duplicar nem interromper
 - Arrastar uma alça de corte ajusta as durações adjacentes, desloca os elementos, beats e keyframes de câmera do shot seguinte e agrupa o gesto como uma ação de undo. O corte não atravessa elementos, beats ou keyframes do plano anterior.
 - Os controles de câmera existentes no inspetor passam a gravar keyframes com o ID do shot ativo; esses estados acompanham o plano ao mover o corte.
 - A receita v3 pode declarar `camera.focus` com um ID de elemento do mesmo shot e uma margem. Na compilação, os limites locais passam pelas transformações do elemento e de seus grupos ancestrais; o centro e o zoom resultantes definem a câmera no primeiro quadro do shot, mantendo sua rotação.
+- `camera.focus.follow: true` recalcula os limites em cada quadro e emite keyframes de câmera comuns e editáveis. O modo de acompanhamento não aceita Visual Beats de câmera no mesmo shot para evitar duas fontes concorrentes de direção.
 
 ## Consequências
 
@@ -24,7 +25,7 @@ Uma cena narrativa precisava aceitar vários cortes sem duplicar nem interromper
 - A duração dos planos se adapta à fala realmente sintetizada, inclusive em receitas de duração fixa já suportadas.
 - O editor pode modificar o corte sem destruir IDs; a movimentação do plano seguinte preserva seus offsets temporais.
 - Elementos da v3 ainda não viram faixas de áudio ou vídeo, e não há efeitos por beat, transições com sobreposição ou eventos por palavra.
-- `camera.focus` é um cálculo inicial de enquadramento, não rastreamento contínuo. Movimentos de foco durante a fala usam beats/câmera explícitos; presets de movimento reutilizáveis ainda estão pendentes.
+- O acompanhamento contínuo é convertido em keyframes para compatibilidade com avaliação comum da prévia/exportação e edição manual; pode aumentar o número de keyframes em takes longos. Presets reutilizáveis e trajetórias Bézier ainda estão pendentes.
 
 ## Verificação
 

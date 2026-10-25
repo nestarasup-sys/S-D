@@ -20,7 +20,7 @@
           "name": "Apresentação do carro",
           "start": { "cue": 0, "cueProgress": 0 },
           "transitionIn": "cut",
-          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "carro", "padding": 2.4 } },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "carro", "padding": 2.4, "follow": true } },
           "elements": [
             { "id": "carro", "kind": "native", "asset": "car", "x": 360, "y": 290, "width": 460, "height": 210, "cue": 0 }
           ]
