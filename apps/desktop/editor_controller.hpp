@@ -145,6 +145,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void updateCamera(QString property, double value);
     Q_INVOKABLE void updateArtDirection(QString property, QVariant value);
     Q_INVOKABLE void applyEditingIntensity(int intensity);
+    Q_INVOKABLE void updateShotTransition(QString shotId, QString type, int durationFrames,
+                                          QString direction);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
     Q_INVOKABLE void setFrame(int frame);

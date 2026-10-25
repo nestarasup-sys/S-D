@@ -160,6 +160,11 @@ int main(int argc, char **argv) {
         check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
                   c.open(shotPath),
               "open a schema 4 project with independent shots");
+        c.setFrame(80);
+        c.updateShotTransition("detail", "dissolve", 15, "left");
+        check(c.project().shots[1].transitionIn == "dissolve" &&
+                  c.project().shots[1].transitionDurationFrames == 15,
+              "shot inspector updates a validated incoming transition");
         c.selectNode("detail-node");
         c.groupSelected();
         const auto groupedShotNode = studio::findNode(c.project(), c.selectedId().toStdString());

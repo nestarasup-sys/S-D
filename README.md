@@ -40,7 +40,7 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 ## Shots e Visual Beats (receita v3)
 
-Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; `follow: true` acompanha o alvo quadro a quadro. `transitionIn` aceita corte seco, fade, dissolve, slide horizontal/vertical e zoom com duração configurável em quadros.
+Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; `follow: true` acompanha o alvo quadro a quadro. `transitionIn` aceita corte seco, fade, dissolve, slide horizontal/vertical e zoom com duração configurável em quadros. No editor, selecione um quadro dentro do shot e ajuste tipo, duração e direção da transição de entrada no inspetor; o primeiro shot da cena permanece sem transição.
 
 Receitas v3 também aceitam `artDirection` para definir paleta, fonte instalada, tamanhos tipográficos, posição das legendas e margem segura como estilo global. Esses valores funcionam como padrões para elementos, títulos gerados e legendas; propriedades de elemento explicitamente definidas continuam prevalecendo. Estilos de arte por cena e arquivos de fonte próprios ainda estão pendentes.
 

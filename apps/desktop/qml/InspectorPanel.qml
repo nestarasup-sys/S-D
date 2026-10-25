@@ -6,6 +6,12 @@ Rectangle {
     id: panel
     color: "#151c23"
     property var node: editor.selected
+    function activeShot() {
+        for (let i = 0; i < editor.shots.length; ++i)
+            if (editor.shots[i].id === editor.camera.shotId)
+                return editor.shots[i]
+        return ({})
+    }
     component Field: ColumnLayout {
         id: field
         property string caption
@@ -133,6 +139,42 @@ Rectangle {
                 onClicked: editor.applyEditingIntensity(Math.round(intensitySlider.value))
             }
             Label { text: "Esta ação ajusta os movimentos de entrada e saída da cena atual em uma única edição reversível."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: "TRANSIÇÃO DO SHOT ATUAL"; visible: !!panel.activeShot().id; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            Label { text: "Shot: " + (panel.activeShot().name || ""); visible: !!panel.activeShot().id; color: "#c5d0d8"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+            StudioComboBox {
+                id: transitionPicker
+                visible: !!panel.activeShot().id
+                enabled: panel.activeShot().hasPrevious
+                Layout.fillWidth: true
+                model: ["cut", "fade", "dissolve", "slide", "zoom"]
+                currentIndex: Math.max(0, model.indexOf(panel.activeShot().transitionIn || "cut"))
+                onActivated: editor.updateShotTransition(panel.activeShot().id, currentText, panel.activeShot().transitionDurationFrames || 0, panel.activeShot().transitionDirection || "left")
+            }
+            Label { text: panel.activeShot().hasPrevious ? "Tipo de transição de entrada deste shot." : "O primeiro shot da cena começa sem transição."; visible: !!panel.activeShot().id; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            RowLayout {
+                visible: !!panel.activeShot().id && panel.activeShot().transitionIn !== "cut"
+                Layout.fillWidth: true
+                Label { text: "Duração · quadros"; color: "#8193a2"; font.pixelSize: 10 }
+                TextField {
+                    id: transitionDuration
+                    Layout.preferredWidth: 82
+                    text: String(panel.activeShot().transitionDurationFrames || 12)
+                    validator: IntValidator { bottom: 2; top: 300 }
+                    color: "#dce6ee"; font.pixelSize: 12; selectByMouse: true
+                    background: Rectangle { color: "#10171e"; radius: 5; border.color: transitionDuration.activeFocus ? "#b4f078" : "#303e49" }
+                    onEditingFinished: {
+                        editor.updateShotTransition(panel.activeShot().id, panel.activeShot().transitionIn, Number(text), panel.activeShot().transitionDirection || "left")
+                        text = String(panel.activeShot().transitionDurationFrames || 12)
+                    }
+                }
+            }
+            StudioComboBox {
+                visible: !!panel.activeShot().id && panel.activeShot().transitionIn === "slide"
+                Layout.fillWidth: true
+                model: ["left", "right", "up", "down"]
+                currentIndex: Math.max(0, model.indexOf(panel.activeShot().transitionDirection || "left"))
+                onActivated: editor.updateShotTransition(panel.activeShot().id, panel.activeShot().transitionIn, panel.activeShot().transitionDurationFrames, currentText)
+            }
             Label { text: editor.camera.shotId ? "CÂMERA 2D · SHOT " + editor.camera.shotId : "CÂMERA 2D"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8; elide: Text.ElideRight; Layout.fillWidth: true }
             RowLayout {
                 CameraField { caption: "Centro X"; propertyKey: "x"; currentValue: editor.camera.x }

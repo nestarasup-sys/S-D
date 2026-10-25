@@ -855,6 +855,28 @@ void EditorController::applyEditingIntensity(int intensity) {
     else
         notify(q(error));
 }
+void EditorController::updateShotTransition(QString shotId, QString type, int durationFrames,
+                                            QString direction) {
+    const auto id = shotId.toStdString();
+    if (type == "cut") {
+        durationFrames = 0;
+        direction = "left";
+    } else if (durationFrames == 0) {
+        durationFrames = 12;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &shot : p.shots)
+            if (shot.id == id) {
+                shot.transitionIn = type.toStdString();
+                shot.transitionDurationFrames = durationFrames;
+                shot.transitionDirection = direction.toStdString();
+            }
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
 void EditorController::undo() {
     if (editor_.undo())
         changed();

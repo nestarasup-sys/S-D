@@ -27,7 +27,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Câmera de um shot pode enquadrar automaticamente um elemento ou grupo usando `camera.focus.target` e uma margem `padding` configurável. Os limites do elemento são transformados através dos grupos ancestrais para calcular centro e zoom.
 - Com `camera.focus.follow: true`, o compilador recalcula o enquadramento em todos os quadros do shot e grava os estados como keyframes editáveis. O modo não pode ser combinado com Visual Beats de câmera.
 - Receitas v3 podem definir `editing.intensity` de 0 a 100. O valor determina movimento/timing de entrada e saída apenas para propriedades não informadas; instruções explícitas da IA e receitas sem esse campo preservam o comportamento anterior.
-- Shots v3 aceitam `cut` ou transições `fade`, `dissolve`, `slide` e `zoom`, com duração de 2 a 300 quadros e direção para slide. O compositor sobrepõe as imagens na prévia e na exportação, e a timeline marca a faixa entrante.
+- Shots v3 aceitam `cut` ou transições `fade`, `dissolve`, `slide` e `zoom`, com duração de 2 a 300 quadros e direção para slide. O compositor sobrepõe as imagens na prévia e na exportação, a timeline marca a faixa entrante e o inspetor edita tipo/duração/direção do shot atual.
 - Tipo, direção e duração de transição são salvos no projeto schema 4; projetos anteriores continuam assumindo `cut` sem duração.
 - O foco é validado durante a importação: o alvo precisa existir dentro do mesmo shot; a margem aceita valores de 1 a 4. O foco define centro e zoom, preservando a rotação informada.
 - O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
@@ -69,16 +69,16 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e editor, e transições fade/dissolve/slide/zoom implementados. Falta decisão de ritmo guiada pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e editor, e transições fade/dissolve/slide/zoom editáveis no inspetor implementados. Falta decisão de ritmo guiada pelo conteúdo, presets de câmera e uma edição de sobreposição/duração total de sequência mais avançada. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas de áudio com ducking implementadas na receita/projeto/exportação. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
 | 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat; vídeo/B-roll local já entra na composição e no render. Falta levar timestamps de palavra até keyframes/legendas destacadas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
-- `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
+- `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. O inspetor permite ajustar tipo, duração e direção no shot atual. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Shot e Visual Beat podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Elementos/keyframes ainda usam `cueProgress`/`offsetSeconds`; não há alinhamento fonético reutilizável após a importação.
-- A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
+- A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
