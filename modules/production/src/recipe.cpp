@@ -1035,12 +1035,14 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 }
                 if (shotObject["camera"].isObject()) {
                     const auto camera = shotObject["camera"].toObject();
-                    if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus"}) ||
+                    if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus", "follow"}) ||
                         !number(camera, "x", shot.cameraX) || !number(camera, "y", shot.cameraY) ||
                         !number(camera, "zoom", shot.cameraZoom) ||
                         !number(camera, "rotation", shot.cameraRotation) || shot.cameraZoom < .1 ||
                         shot.cameraZoom > 10 || std::abs(shot.cameraX) > 10000 ||
-                        std::abs(shot.cameraY) > 10000 || std::abs(shot.cameraRotation) > 360)
+                        std::abs(shot.cameraY) > 10000 || std::abs(shot.cameraRotation) > 360 ||
+                        (camera.contains("follow") &&
+                         (!camera["follow"].isBool() || !camera["focus"].isObject())))
                         return fail("Câmera inicial do shot inválida.");
                     if (camera.contains("focus")) {
                         if (!camera["focus"].isObject())
@@ -1052,7 +1054,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                             shot.focusPadding > 4 || (focus.contains("follow") && !focus["follow"].isBool()))
                             return fail("focus da câmera exige um target do shot e padding entre 1 e 4.");
                         shot.focusTargetId = focus["target"].toString();
-                        shot.focusFollow = focus["follow"].toBool(false);
+                        shot.focusFollow = focus["follow"].toBool(camera["follow"].toBool(false));
                     }
                 } else
                     return fail("Cada shot precisa declarar sua câmera inicial.");

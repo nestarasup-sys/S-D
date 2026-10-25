@@ -1201,9 +1201,10 @@ int main(int argc, char **argv) {
         tooShortScenes[1] = tooShortSecond;
         tooShort["scenes"] = tooShortScenes;
         auto shortRecipe = studio::parseRecipe(QJsonDocument(tooShort).toJson(), directory.path());
-        check(shortRecipe.error.isEmpty() &&
-                  !studio::planNarrationTiming(shortRecipe.recipe, timedRaw).error.isEmpty(),
-              "unattainable target produces an actionable error, not artificial voice");
+        const auto expandedShortPlan = studio::planNarrationTiming(shortRecipe.recipe, timedRaw);
+        check(shortRecipe.error.isEmpty() && expandedShortPlan.error.isEmpty() &&
+                  expandedShortPlan.targetFrames > 3 * 30 && !expandedShortPlan.warnings.isEmpty(),
+              "unattainable target expands to measured speech duration and reports a warning");
         auto longPlanRecipe = timedRecipe.recipe;
         longPlanRecipe.targetDurationSeconds = 30;
         for (auto &scene : longPlanRecipe.scenes) {

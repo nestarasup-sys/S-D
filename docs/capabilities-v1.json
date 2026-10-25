@@ -156,6 +156,7 @@
         "reusable-group-presets",
         "optional-visual-captions",
         "fixed-duration-timing",
+        "automatic-duration-extension",
         "cue-progress-sync",
         "pitch-preserving-atempo",
         "independent-shots",

@@ -70,16 +70,27 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
         const int fixed =
             scene.targetDurationSeconds > 0 ? int(std::llround(scene.targetDurationSeconds * 30)) : 0;
         if (fixed > 0 && fixed < minimumScene) {
-            plan.error = QString("Cena %1 requer no mínimo %2 frames.").arg(scene.id).arg(minimumScene);
-            return plan;
+            plan.warnings.push_back(
+                QString("A cena %1 precisa de pelo menos %2 quadros; sua duração foi ampliada.")
+                    .arg(scene.id)
+                    .arg(minimumScene));
         }
-        sceneFrames.push_back(fixed > 0 ? fixed : minimumScene);
+        sceneFrames.push_back(std::max(fixed, minimumScene));
         sceneWeights.push_back(std::max(1, preferredScene - minimumScene));
         if (fixed == 0)
             openScenes.push_back(int(si));
     }
+    const int requestedTargetFrames = plan.targetFrames;
     const int allocatedScenes = std::accumulate(sceneFrames.begin(), sceneFrames.end(), 0);
-    if (allocatedScenes > plan.targetFrames || (openScenes.empty() && allocatedScenes != plan.targetFrames)) {
+    if (allocatedScenes > plan.targetFrames) {
+        plan.targetFrames = allocatedScenes;
+        plan.warnings.push_back(
+            QString("A duração solicitada de %1 s não comporta as falas no limite de 15%; "
+                    "a produção foi ampliada para %2 s.")
+                .arg(double(requestedTargetFrames) / 30., 0, 'f', 1)
+                .arg(double(plan.targetFrames) / 30., 0, 'f', 1));
+    }
+    if (openScenes.empty() && allocatedScenes != plan.targetFrames) {
         plan.error = "As durações das cenas não cabem no total planejado.";
         return plan;
     }
