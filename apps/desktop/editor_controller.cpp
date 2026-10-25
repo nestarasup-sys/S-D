@@ -1014,7 +1014,8 @@ void EditorController::refreshAudioTracks() {
     audioTrackPlaybackActive_.clear();
     for (const auto &track : project().audioTracks) {
         auto output = std::make_unique<QAudioOutput>(this);
-        output->setVolume(track.muted ? 0 : std::clamp(track.gain * .9, 0.0, 1.0));
+        output->setVolume(track.muted ? 0 : std::clamp(
+            track.gain * .9 * studio::evaluateGainAutomation(track, 0), 0.0, 1.0));
         auto player = std::make_unique<QMediaPlayer>(this);
         player->setAudioOutput(output.get());
         player->setSource(QUrl::fromLocalFile(q(track.source)));
@@ -1047,7 +1048,11 @@ void EditorController::syncAudioTrackPlayback(int frame) {
         double duckGain = 1.0;
         if (track.duckUnderVoice && !sidechainEnvelope_.empty())
             duckGain = 1.0 - track.duckAmount * smoothedSidechainLevel_;
-        audioTrackOutputs_[i]->setVolume(shouldPlay ? std::clamp(track.gain * .9 * fade * duckGain, 0.0, 1.0) : 0);
+        const auto automationGain = studio::evaluateGainAutomation(track, localFrame);
+        audioTrackOutputs_[i]->setVolume(shouldPlay
+                                             ? std::clamp(track.gain * .9 * fade * duckGain * automationGain,
+                                                          0.0, 1.0)
+                                             : 0);
         if (shouldPlay && !audioTrackPlaybackActive_[i]) {
             const auto offset = std::max<std::int64_t>(0, frame - track.start);
             audioTrackPlayers_[i]->setPosition(qRound64(double(offset) * 1000. / fps()));

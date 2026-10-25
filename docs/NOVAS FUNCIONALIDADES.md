@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Rodada atual: ducking estável, carga temporal e Director's Cut de 90 s
+
+- A exportação para WAV PCM mono a 24 kHz calcula a mesma envoltória RMS suavizada por quadro usada na prévia. O smoke confirma redução durante a fala e retorno ao volume após o stem; também cobre pista estéreo, fades e automação por pontos/easing.
+- A suíte de receitas compila um plano sintético de 60 segundos com 20 cenas, 120 shots contíguos, 240 beats, eventos simultâneos, transições de dois quadros e beats próximos ao começo/fim dos shots.
+- `examples/carros-caros-directors-cut-90s.production.json` foi sintetizado com Microsoft Maria Desktop e exportado com exatamente 2700 quadros, 18 shots e 19 beats. A comparação dos quadros de cortes/beats entre prévia e MP4 marcou 42,61 dB; o projeto também abriu no editor.
+- O gerador agora incorpora a receita profissional completa e testada no `GUIA-PARA-IA.md`, a partir do mesmo JSON usado pelo smoke. O guia identifica projeto schema 8.
+- Evidência de exportação: `artifacts/production-smoke-20261024-232057/directors-cut-90s/directors-cut-90s.mp4` (artefato local, não versionado).
+
 ### Sincronização visual por palavra concluída nesta rodada
 
 - Legendas geradas a partir da narração agora guardam intervalos de palavra resolvidos pelos eventos reais do sintetizador pt-BR. A palavra ativa usa a cor primária da direção de arte e o mesmo compositor desenha prévia e exportação.
@@ -66,19 +74,19 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Áudio em múltiplas pistas implementado parcialmente
 
-- Projetos schema 4–7 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute e ducking configurável. Fades não zerados exigem schema 6 ou superior; os arquivos antigos continuam carregando sem migração destrutiva.
+- Projetos schema 4–8 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute, ducking e automação configurável. Fades exigem schema 6 ou superior; automação de ganho exige schema 8. Os arquivos antigos continuam carregando sem migração destrutiva.
 - A timeline importa, remove, silencia, reposiciona, altera duração/ganho, liga ducking e permite definir fades lineares de entrada/saída. Na prévia, cada pista toca sincronizada com o playhead e segue os fades.
-- A prévia calcula ducking suavizado a partir do RMS do stem WAV de voz por frame; a exportação usa sidechaincompress do FFmpeg. Arquivos sem stem dedicado usam `audioSource` como referência.
+- A prévia e a exportação calculam a mesma envoltória RMS suavizada por quadro quando a referência é WAV PCM mono a 24 kHz; a exportação aplica o envelope determinístico na pista. Referências em outros formatos usam sidechaincompress do FFmpeg como fallback.
 - Receitas v3 podem declarar pistas por cena com fonte local, sincronizar início por cue/progresso/wordIndex e definir `fadeInFrames`/`fadeOutFrames` até 1800 quadros cada, limitados ao intervalo da pista. Projetos com fades usam schema 6; os fades também são aplicados no render por FFmpeg.
-- O smoke compara mix sem/ com ducking: RMS durante a voz caiu de 0,0414 para 0,0349, e após a fala os dois voltaram a 0,0324. O teste de fades mediu 0,0064 no começo e 0,0071 no fim, contra 0,0324 no trecho estável. Ainda faltam curvas de automação com pontos/easing; a prévia usa análise RMS do WAV, enquanto a exportação aplica a compressão real do FFmpeg.
+- O smoke compara mix sem/com ducking: RMS durante a voz caiu de 0,0414 para 0,0380, e após a fala os dois ficaram em 0,0324 e 0,0321. Na última verificação estéreo, os fades mediram 0,0045 no começo e 0,0050 no fim contra 0,0229 no trecho estável; automação por pontos/easing mediu 0,0025 no início e 0,0226 após a rampa.
 
 ### Situação por fase
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
-| 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
+| 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas com ducking/fades estão implementadas. Faltam estilos por cena/shot, fontes externas, presets visuais, tipografia animada, efeitos acionados por beat e automação de ganho por pontos/easing. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global, pistas com ducking/fades e automação por pontos/easing estão implementadas. Faltam estilos por cena/shot, fontes externas, presets visuais, tipografia animada e efeitos acionados por beat. |
 | 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
@@ -93,7 +101,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Adicionar automação de ganho por pontos com easing, depois edição de entrada/velocidade/recorte para vídeo e estilos de direção de arte por cena/shot. Aumentar a bateria de testes para sequências longas, manter SAPI→WAV→compilador coberto pelo smoke de produção e comparar prévia/exportação para cada novo caminho visual.
+Adicionar edição de entrada/velocidade/recorte para vídeo e estilos de direção de arte por cena/shot. Aumentar a bateria de testes para sequências longas, manter SAPI→WAV→compilador coberto pelo smoke de produção e comparar prévia/exportação para cada novo caminho visual.
 
 ---
 
@@ -824,7 +832,7 @@ Prioridade máxima:
 5. [x] Implementar cortes entre shots.
 6. [x] Integrar shots/beats à timeline, inspetor e histórico de desfazer.
 7. [x] Preservar a leitura de receitas e projetos anteriores.
-8. [ ] Ampliar testes para produções longas com muitos shots, cortes no limite e eventos concorrentes.
+8. [x] Ampliar testes para produções longas com muitos shots, cortes no limite e eventos concorrentes.
 
 Resultado esperado: conseguir criar várias composições e cortes dentro de uma mesma cena narrativa.
 
@@ -851,7 +859,7 @@ Implementar:
 4. [x] Trilhas importadas em múltiplas pistas, com fades e ducking.
 5. [x] Direção de arte global com paleta, fonte instalada e parâmetros de legenda.
 6. [ ] Estilos/presets por cena e shot, carregamento de fontes externas e presets visuais avançados.
-7. [ ] Automação de ganho por pontos com easing.
+7. [x] Automação de ganho por pontos com easing na receita, projeto, prévia, exportação e editor.
 
 Resultado esperado: produções com identidade visual e sonora consistente.
 
@@ -910,7 +918,7 @@ Use um roteiro que tenha mudanças de composição suficientes para demonstrar o
 - As legendas acompanham o áudio.
 - A timeline continua editável.
 - O resultado exportado corresponde à prévia.
-- A produção demonstrativa atual cobre 50,6 segundos e a receita v3 cobre 10,7 segundos; o roteiro audiovisual de aproximadamente 90 segundos com efeitos sonoros ainda não foi produzido.
+- A receita `examples/carros-caros-directors-cut-90s.production.json` gerou uma montagem de 90 segundos com narração pt-BR, seis cenas, 18 shots, 19 Visual Beats, câmera, transições e legendas. A exportação contém 2700 quadros; 36 quadros de cortes/beats foram comparados à prévia (PSNR médio 42,61 dB), e o projeto abriu na interface. O smoke demonstra os recursos existentes; efeitos sonoros disparados especificamente por Visual Beat seguem pendentes.
 
 Adicione testes automatizados sempre que possível, além da validação visual.
 

@@ -10,7 +10,11 @@
 #include <QSvgRenderer>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <algorithm>
+#include <cmath>
+#include <vector>
 #include <studio/composition/painter.hpp>
+#include <studio/media/wave.hpp>
 #include <studio/storage/project_store.hpp>
 
 static void report(int progress, QString error = {}) {
@@ -103,7 +107,12 @@ int main(int argc, char **argv) {
             activeTracks.push_back(&track);
     const bool needsDucking = std::any_of(activeTracks.begin(), activeTracks.end(),
                                           [](const auto *track) { return track->duckUnderVoice; });
-    const bool separateVoiceStem = needsDucking && !p.voiceDuckingSource.empty() &&
+    const auto sidechainPath = !p.voiceDuckingSource.empty() ? QString::fromStdString(p.voiceDuckingSource)
+                                                              : QString::fromStdString(p.audioSource);
+    const auto sidechain = needsDucking && !sidechainPath.isEmpty() ? studio::readWave(sidechainPath)
+                                                                    : studio::WaveResult{};
+    const bool hasDuckingEnvelope = needsDucking && sidechain.error.isEmpty();
+    const bool separateVoiceStem = needsDucking && !hasDuckingEnvelope && !p.voiceDuckingSource.empty() &&
                                    p.voiceDuckingSource != p.audioSource;
     if (separateVoiceStem)
         encoderArgs << "-i" << QString::fromStdString(p.voiceDuckingSource);
@@ -114,6 +123,47 @@ int main(int argc, char **argv) {
     if (hasMainAudio || !activeTracks.empty()) {
         const double sequenceSeconds = double(p.duration) / p.fps.value();
         const auto seconds = [](double value) { return QString::number(value, 'f', 6); };
+        std::vector<int> duckEnvelopeInputs(activeTracks.size(), -1);
+        if (hasDuckingEnvelope) {
+            std::vector<float> duckLevels(std::size_t(p.duration), 0.f);
+            double smoothed = 0;
+            for (std::int64_t frame = 0; frame < p.duration; ++frame) {
+                const auto begin = std::min<std::size_t>(sidechain.audio.samples.size(),
+                    std::size_t(qRound64(double(frame) * studio::ProductionSampleRate / p.fps.value())));
+                const auto end = std::min<std::size_t>(sidechain.audio.samples.size(),
+                    std::size_t(qRound64(double(frame + 1) * studio::ProductionSampleRate / p.fps.value())));
+                double sum = 0;
+                for (auto at = begin; at < end; ++at)
+                    sum += double(sidechain.audio.samples[at]) * sidechain.audio.samples[at];
+                const auto rms = end > begin ? std::sqrt(sum / double(end - begin)) : 0.;
+                const auto target = std::clamp((rms - .012) / .09, 0., 1.);
+                smoothed += (target - smoothed) * (target > smoothed ? .65 : .18);
+                duckLevels[std::size_t(frame)] = float(smoothed);
+            }
+            for (std::size_t i = 0; i < activeTracks.size(); ++i) {
+                const auto &track = *activeTracks[i];
+                if (!track.duckUnderVoice)
+                    continue;
+                studio::PcmAudio envelope;
+                const auto sampleCount = qRound64(sequenceSeconds * studio::ProductionSampleRate);
+                envelope.samples.resize(std::size_t(sampleCount), 1.f);
+                for (std::int64_t frame = 0; frame < p.duration; ++frame) {
+                    const auto gain = float(1. - track.duckAmount * duckLevels[std::size_t(frame)]);
+                    const auto begin = std::min<std::size_t>(envelope.samples.size(),
+                        std::size_t(qRound64(double(frame) * studio::ProductionSampleRate / p.fps.value())));
+                    const auto end = std::min<std::size_t>(envelope.samples.size(),
+                        std::size_t(qRound64(double(frame + 1) * studio::ProductionSampleRate / p.fps.value())));
+                    std::fill(envelope.samples.begin() + std::ptrdiff_t(begin),
+                              envelope.samples.begin() + std::ptrdiff_t(end), gain);
+                }
+                const auto envelopePath = temp.filePath(QString("duck-%1.wav").arg(i));
+                if (const auto error = studio::writeWave(envelopePath, envelope); !error.isEmpty())
+                    return fail(error);
+                duckEnvelopeInputs[i] = nextInput;
+                encoderArgs << "-i" << envelopePath;
+                ++nextInput;
+            }
+        }
         const auto gainExpression = [&](const studio::AudioTrack &track) {
             const auto &points = track.gainAutomation;
             QString expression = seconds(points.back().value);
@@ -137,12 +187,11 @@ int main(int argc, char **argv) {
             return "if(lt(t," + firstTime + ")," + seconds(points.front().value) + "," + expression + ")";
         };
         QStringList filters, inputs;
-        const bool needsSidechain = needsDucking && voiceInput >= 0;
         if (hasMainAudio) {
             filters << "[1:a:0]atrim=duration=" + seconds(sequenceSeconds) + ",asetpts=PTS-STARTPTS[main]";
             inputs << "[main]";
         }
-        if (needsSidechain)
+        if (needsDucking && !hasDuckingEnvelope && voiceInput >= 0)
             filters << QString("[%1:a:0]apad,atrim=duration=%2,asetpts=PTS-STARTPTS[sidechain]")
                            .arg(voiceInput).arg(seconds(sequenceSeconds));
         for (std::size_t i = 0; i < activeTracks.size(); ++i) {
@@ -161,13 +210,16 @@ int main(int argc, char **argv) {
                 trackFilter += ",afade=t=out:st=" +
                                seconds(length - double(track.fadeOutFrames) / p.fps.value()) +
                                ":d=" + seconds(double(track.fadeOutFrames) / p.fps.value());
-            trackFilter += ",volume=" + gain + ",adelay=delays=" + QString::number(delay) + "|" +
-                           QString::number(delay) + ":all=1";
+            trackFilter += ",volume=" + gain;
             if (!track.gainAutomation.empty())
                 trackFilter += ",volume='" + gainExpression(track) + "':eval=frame";
+            trackFilter += ",adelay=delays=" + QString::number(delay) + "|" + QString::number(delay) + ":all=1";
             trackFilter += "[" + pre + "]";
             filters << trackFilter;
-            if (track.duckUnderVoice && needsSidechain) {
+            if (duckEnvelopeInputs[i] >= 0) {
+                filters << QString("[%1][%2:a:0]amultiply[%3]")
+                               .arg(pre).arg(duckEnvelopeInputs[i]).arg(out);
+            } else if (track.duckUnderVoice && needsDucking && voiceInput >= 0) {
                 const auto ratio = QString::number(1.0 + track.duckAmount * 19.0, 'f', 4);
                 filters << QString("[%1][sidechain]sidechaincompress=threshold=0.025:ratio=%2:attack=20:release=280[%3]")
                                .arg(pre, ratio, out);

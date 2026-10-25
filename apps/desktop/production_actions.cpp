@@ -121,7 +121,11 @@ QVariantList EditorController::visualBeats() const {
 }
 QVariantList EditorController::audioTracks() const {
     QVariantList list;
-    for (const auto &track : project().audioTracks)
+    for (const auto &track : project().audioTracks) {
+        QVariantList automation;
+        for (const auto &point : track.gainAutomation)
+            automation.append(QVariantMap{{"frame", int(point.frame)}, {"value", point.value},
+                                          {"easing", QString::fromStdString(point.easing)}});
         list.append(QVariantMap{{"id", QString::fromStdString(track.id)},
                                 {"name", QString::fromStdString(track.name)},
                                 {"source", QFileInfo(QString::fromStdString(track.source)).fileName()},
@@ -132,7 +136,9 @@ QVariantList EditorController::audioTracks() const {
                                 {"duckUnderVoice", track.duckUnderVoice},
                                 {"duckAmount", track.duckAmount},
                                 {"fadeInFrames", int(track.fadeInFrames)},
-                                {"fadeOutFrames", int(track.fadeOutFrames)}});
+                                {"fadeOutFrames", int(track.fadeOutFrames)},
+                                {"gainAutomation", automation}});
+    }
     return list;
 }
 void EditorController::addAudioTrack(QUrl source) {
@@ -181,7 +187,10 @@ void EditorController::removeAudioTrack(QString id) {
         if (QString::fromStdString(project().audioTracks[i].id) == id)
             audioTrackOutputs_[i]->setVolume(project().audioTracks[i].muted
                                                  ? 0
-                                                 : std::clamp(project().audioTracks[i].gain * .9, 0.0, 1.0));
+                                                 : std::clamp(project().audioTracks[i].gain * .9 *
+                                                                  studio::evaluateGainAutomation(
+                                                                      project().audioTracks[i], 0),
+                                                              0.0, 1.0));
     changed();
 }
 void EditorController::setAudioTrackGain(QString id, double gain) {
@@ -241,6 +250,8 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
             if (track.id == id.toStdString()) {
                 track.start = start;
                 track.duration = length;
+                std::erase_if(track.gainAutomation,
+                              [&](const auto &point) { return point.frame >= track.duration; });
                 if (track.fadeInFrames + track.fadeOutFrames > length)
                     track.fadeOutFrames = std::max<std::int64_t>(0, length - track.fadeInFrames);
                 if (track.fadeInFrames > length) {
@@ -279,6 +290,61 @@ void EditorController::setAudioTrackFades(QString id, int fadeInFrames, int fade
         notify(QString::fromStdString(error));
         return;
     }
+    changed();
+}
+void EditorController::setAudioTrackGainPoint(QString id, double value, QString easing) {
+    const auto found = std::find_if(project().audioTracks.begin(), project().audioTracks.end(),
+                                    [&](const auto &track) { return track.id == id.toStdString(); });
+    if (found == project().audioTracks.end())
+        return;
+    const auto localFrame = std::int64_t(frame_) - found->start;
+    if (localFrame < 0 || localFrame >= found->duration || !std::isfinite(value) || value < 0 || value > 4 ||
+        !studio::supportedEasing(easing.toStdString())) {
+        notify("Posicione o playhead dentro da pista e use um nível de 0 a 4 e uma curva válida.");
+        return;
+    }
+    const auto existingPoint = std::find_if(found->gainAutomation.begin(), found->gainAutomation.end(),
+                                             [&](const auto &point) { return point.frame == localFrame; });
+    if (found->gainAutomation.size() >= 128 && existingPoint == found->gainAutomation.end()) {
+        notify("Cada pista aceita até 128 pontos de automação.");
+        return;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks) {
+            if (track.id != id.toStdString())
+                continue;
+            auto point = studio::AudioTrack::GainPoint{localFrame, value, easing.toStdString()};
+            auto at = std::lower_bound(track.gainAutomation.begin(), track.gainAutomation.end(), localFrame,
+                                       [](const auto &candidate, std::int64_t frame) {
+                                           return candidate.frame < frame;
+                                       });
+            if (at != track.gainAutomation.end() && at->frame == localFrame)
+                *at = std::move(point);
+            else if (track.gainAutomation.size() < 128)
+                track.gainAutomation.insert(at, std::move(point));
+            else
+                return;
+            p.schemaVersion = std::max(p.schemaVersion, 8);
+        }
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    syncAudioTrackPlayback(frame_);
+    changed();
+}
+void EditorController::clearAudioTrackGainAutomation(QString id) {
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString())
+                track.gainAutomation.clear();
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    syncAudioTrackPlayback(frame_);
     changed();
 }
 void EditorController::setupProduction() {

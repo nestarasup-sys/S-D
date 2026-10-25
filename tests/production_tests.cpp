@@ -214,6 +214,10 @@ int main(int argc, char **argv) {
                                                             {"gain", 0.4},
                                                             {"fadeInFrames", 2},
                                                             {"fadeOutFrames", 3},
+                                                            {"gainAutomation", QJsonArray{
+                                                                                  QJsonObject{{"frame", 0}, {"value", 0.25}},
+                                                                                  QJsonObject{{"frame", 2}, {"value", 1.0},
+                                                                                              {"easing", "ease-in-out"}}}},
                                                             {"duckUnderVoice", true},
                                                             {"duckAmount", 0.8}}};
         auto styledShots = styledScene["shots"].toArray();
@@ -239,7 +243,10 @@ int main(int argc, char **argv) {
                   styledRecipe.recipe.scenes.front().audioTracks.size() == 1 &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().fadeInFrames == 2 &&
-                  styledRecipe.recipe.scenes.front().audioTracks.front().fadeOutFrames == 3,
+                  styledRecipe.recipe.scenes.front().audioTracks.front().fadeOutFrames == 3 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().gainAutomation.size() == 2 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().gainAutomation.back().easing ==
+                      "ease-in-out",
               "v3 parses global art direction and independent, voice-ducked audio tracks");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
@@ -319,6 +326,99 @@ int main(int argc, char **argv) {
         check(fileRecipe.error.isEmpty() && fileRecipe.recipe.version == 3 &&
                   fileRecipe.recipe.scenes.front().shots.size() == 3,
               "documented multi-shot v3 fixture is importable");
+        QJsonArray stressScenes;
+        for (int sceneIndex = 0; sceneIndex < 20; ++sceneIndex) {
+            QJsonArray stressShots;
+            for (int shotIndex = 0; shotIndex < 6; ++shotIndex) {
+                const auto shotId = QString("stress-%1-%2").arg(sceneIndex).arg(shotIndex);
+                const auto elementId = shotId + "-element";
+                const double shotStart = double(shotIndex) / 6.;
+                const double beatProgress = shotIndex == 0 ? .02 : shotIndex == 5 ? .95
+                                                                                   : (shotIndex + .5) / 6.;
+                QJsonObject shot{{"id", shotId},
+                                 {"start", QJsonObject{{"cue", 0}, {"cueProgress", shotStart}}},
+                                 {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}}},
+                                 {"elements", QJsonArray{QJsonObject{{"id", elementId},
+                                                                    {"kind", "shape"},
+                                                                    {"x", 100 + shotIndex * 20},
+                                                                    {"y", 200},
+                                                                    {"width", 180},
+                                                                    {"height", 100},
+                                                                    {"color", "#55e2c4"}}}}};
+                if (shotIndex > 0)
+                    shot["transitionIn"] = QJsonObject{{"type", "dissolve"}, {"durationFrames", 2}};
+                shot["beats"] = QJsonArray{
+                    QJsonObject{{"id", shotId + "-move"},
+                                 {"at", QJsonObject{{"cue", 0}, {"cueProgress", beatProgress}}},
+                                 {"action", "transform"},
+                                 {"target", elementId},
+                                 {"durationFrames", 2},
+                                 {"x", 250 + shotIndex * 20},
+                                 {"scale", 1.08}},
+                    QJsonObject{{"id", shotId + "-camera"},
+                                 {"at", QJsonObject{{"cue", 0}, {"cueProgress", beatProgress}}},
+                                 {"action", "camera"},
+                                 {"durationFrames", 2},
+                                 {"zoom", 1.05}}};
+                stressShots.append(shot);
+            }
+            stressScenes.append(QJsonObject{{"id", QString("stress-scene-%1").arg(sceneIndex)},
+                                            {"narration", QJsonArray{"Uma narração de teste para conferir muitos cortes."}},
+                                            {"shots", stressShots}});
+        }
+        const QJsonObject stressJson{{"format", "studio-dark-production"},
+                                     {"version", 3},
+                                     {"catalogVersion", 1},
+                                     {"title", "Teste temporal de sessenta segundos"},
+                                     {"scenes", stressScenes}};
+        const auto stressRecipe = studio::parseRecipe(QJsonDocument(stressJson).toJson(), directory.path());
+        QMap<QString, studio::PcmAudio> stressAudio;
+        if (stressRecipe.error.isEmpty())
+            for (const auto &scene : stressRecipe.recipe.scenes)
+                for (const auto &utterance : scene.narration)
+                    stressAudio[utterance.id].samples.resize(72000, .08f);
+        const auto stressCompiled = stressRecipe.error.isEmpty()
+                                        ? studio::compileProduction(stressRecipe.recipe, stressAudio,
+                                                                    directory.filePath("stress.wav"))
+                                        : studio::CompileResult{};
+        bool stressBoundariesValid = stressRecipe.error.isEmpty() && stressCompiled.error.isEmpty() &&
+                                     stressCompiled.project.scenes.size() == 20 &&
+                                     stressCompiled.project.shots.size() == 120 &&
+                                     stressCompiled.project.visualBeats.size() == 240 &&
+                                     stressCompiled.project.nodes.size() == 140 &&
+                                     stressCompiled.project.duration >= 1800;
+        for (const auto &scene : stressCompiled.project.scenes) {
+            std::vector<studio::ShotMarker> sceneShots;
+            for (const auto &shot : stressCompiled.project.shots)
+                if (shot.sceneId == scene.id)
+                    sceneShots.push_back(shot);
+            std::sort(sceneShots.begin(), sceneShots.end(),
+                      [](const auto &left, const auto &right) { return left.start < right.start; });
+            stressBoundariesValid = stressBoundariesValid && sceneShots.size() == 6 &&
+                                    sceneShots.front().start == scene.start &&
+                                    sceneShots.back().start + sceneShots.back().duration ==
+                                        scene.start + scene.duration;
+            for (std::size_t i = 1; i < sceneShots.size(); ++i)
+                stressBoundariesValid = stressBoundariesValid &&
+                                        sceneShots[i - 1].start + sceneShots[i - 1].duration ==
+                                            sceneShots[i].start &&
+                                        sceneShots[i].transitionDurationFrames == 2;
+        }
+        for (std::size_t i = 0; i + 1 < stressCompiled.project.visualBeats.size(); i += 2)
+            stressBoundariesValid = stressBoundariesValid &&
+                                    stressCompiled.project.visualBeats[i].frame ==
+                                        stressCompiled.project.visualBeats[i + 1].frame;
+        if (!stressBoundariesValid)
+            std::cerr << "stress parse='" << stressRecipe.error.toStdString() << "' compile='"
+                      << stressCompiled.error.toStdString() << "' scenes="
+                      << stressCompiled.project.scenes.size() << " shots="
+                      << stressCompiled.project.shots.size() << " beats="
+                      << stressCompiled.project.visualBeats.size() << " nodes="
+                      << stressCompiled.project.nodes.size() << " duration="
+                      << stressCompiled.project.duration << " validation='"
+                      << studio::validate(stressCompiled.project) << "'\n";
+        check(stressBoundariesValid && studio::validate(stressCompiled.project).empty(),
+              "long v3 production compiles 120 contiguous shots, near-edge cuts, and concurrent beats");
         QMap<QString, studio::PcmAudio> shotAudio;
         studio::PcmAudio shortSpeech;
         shortSpeech.samples.resize(4800, .1f);
@@ -393,7 +493,7 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 7 &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 8 &&
                   styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
                   studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078" &&
@@ -401,6 +501,7 @@ int main(int argc, char **argv) {
                   styledAudio.project.audioTracks.front().duckUnderVoice &&
                   styledAudio.project.audioTracks.front().fadeInFrames == 2 &&
                   styledAudio.project.audioTracks.front().fadeOutFrames == 3 &&
+                  styledAudio.project.audioTracks.front().gainAutomation.size() == 2 &&
                   styledAudio.project.audioTracks.front().gain == .4 &&
                   styledAudio.project.voiceDuckingSource == "voice-stem.wav",
               "global art direction and audio track settings reach the compiled project");
@@ -410,6 +511,7 @@ int main(int argc, char **argv) {
                   persistedStyle.project.artDirection.captionPosition == "top" &&
                   persistedStyle.project.audioTracks.size() == 1 &&
                   persistedStyle.project.audioTracks.front().duckUnderVoice &&
+                  persistedStyle.project.audioTracks.front().gainAutomation.size() == 2 &&
                   persistedStyle.project.voiceDuckingSource == "voice-stem.wav",
               "global art direction and audio tracks survive project save and load");
         check(studio::validate(compiledShots.project).empty() &&

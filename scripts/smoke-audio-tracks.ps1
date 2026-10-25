@@ -8,7 +8,8 @@ foreach ($StudioPair in @(
     @{ Path = $StudioVoice; Freq = 880; Duration = 1; Gain = 0.30 },
     @{ Path = $StudioBed; Freq = 220; Duration = 2; Gain = 0.45 }
 )) {
-    & $StudioEncoder -nostdin -y -hide_banner -loglevel error -f lavfi -i "sine=frequency=$($StudioPair.Freq):duration=$($StudioPair.Duration)" -af "volume=$($StudioPair.Gain)" -ar 24000 -ac 1 -c:a pcm_s16le $StudioPair.Path
+    $StudioChannels = if ($StudioPair.Path -eq $StudioBed) { 2 } else { 1 }
+    & $StudioEncoder -nostdin -y -hide_banner -loglevel error -f lavfi -i "sine=frequency=$($StudioPair.Freq):duration=$($StudioPair.Duration)" -af "volume=$($StudioPair.Gain)" -ar 24000 -ac $StudioChannels -c:a pcm_s16le $StudioPair.Path
     if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar as fontes do teste de áudio.' }
 }
 $StudioVoiceSource = Join-Path $StudioSmokeDir 'voice-padded.wav'
@@ -73,10 +74,30 @@ $StudioFadeStart = Get-StudioRms $StudioFadeWave 0.05 0.15
 $StudioFadeMiddle = Get-StudioRms $StudioFadeWave 0.8 1.2
 $StudioFadeEnd = Get-StudioRms $StudioFadeWave 1.85 1.95
 if ($StudioFadeStart -ge $StudioFadeMiddle * 0.6 -or $StudioFadeEnd -ge $StudioFadeMiddle * 0.6) { throw 'Fade de entrada/saída não reduziu o volume nos extremos da pista.' }
+$StudioBase.schemaVersion = 8
+$StudioBase.audioTracks[0].fadeInFrames = 0
+$StudioBase.audioTracks[0].fadeOutFrames = 0
+$StudioBase.audioTracks[0].gainAutomation = @(
+    @{ frame = 0; value = 0.1; easing = 'linear' },
+    @{ frame = 30; value = 1.0; easing = 'ease-in-out' }
+)
+$StudioAutomationProject = Join-Path $StudioSmokeDir 'project-automation.json'
+$StudioAutomationMovie = Join-Path $StudioSmokeDir 'mix-automation.mp4'
+$StudioAutomationWave = Join-Path $StudioSmokeDir 'mix-automation.wav'
+[System.IO.File]::WriteAllText($StudioAutomationProject, ($StudioBase | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+$StudioAutomationLog = & (Join-Path $StudioBin 'studio_render.exe') --project $StudioAutomationProject --output $StudioAutomationMovie --ffmpeg $StudioEncoder 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Exportação com automação de ganho falhou: $($StudioAutomationLog -join "`n")" }
+& $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioAutomationMovie -vn -ar 24000 -ac 1 -c:a pcm_s16le $StudioAutomationWave
+if ($LASTEXITCODE -ne 0) { throw 'Não foi possível decodificar a automação de ganho.' }
+$StudioAutomationLow = Get-StudioRms $StudioAutomationWave 0.05 0.15
+$StudioAutomationHigh = Get-StudioRms $StudioAutomationWave 0.9 1.1
+if ($StudioAutomationLow -ge $StudioAutomationHigh * 0.35) { throw 'A automação de ganho não alterou o nível do áudio conforme os pontos/easing.' }
 [pscustomobject]@{
     status = 'passed'; artifacts = $StudioSmokeDir
     plainActiveRms = [Math]::Round($StudioPlainActive, 4); duckedActiveRms = [Math]::Round($StudioDuckedActive, 4)
     plainTailRms = [Math]::Round($StudioPlainTail, 4); duckedTailRms = [Math]::Round($StudioDuckedTail, 4)
     fadeStartRms = [Math]::Round($StudioFadeStart, 4); fadeMiddleRms = [Math]::Round($StudioFadeMiddle, 4)
     fadeEndRms = [Math]::Round($StudioFadeEnd, 4)
+    automationLowRms = [Math]::Round($StudioAutomationLow, 4)
+    automationHighRms = [Math]::Round($StudioAutomationHigh, 4)
 } | ConvertTo-Json

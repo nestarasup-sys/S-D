@@ -117,6 +117,25 @@ int main(int argc, char **argv) {
         auto overlappingFades = fadedProject;
         overlappingFades.audioTracks.front().fadeOutFrames = 109;
         check(!studio::validate(overlappingFades).empty(), "audio fades cannot exceed the track duration");
+        auto automatedProject = shotProject;
+        automatedProject.schemaVersion = 8;
+        automatedProject.audioTracks.front().gainAutomation = {
+            {0, .2, "linear"}, {30, 1.0, "ease-in-out"}, {60, .4, "ease-out"}};
+        check(studio::validate(automatedProject).empty() &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 0) - .2) < 1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 15) - .6) < 1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 30) - 1.0) < 1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 90) - .4) < 1e-9,
+              "audio gain automation evaluates linear segments and easing curves");
+        const auto persistedAutomation = studio::deserialize(studio::serialize(automatedProject));
+        check(persistedAutomation.error.isEmpty() && persistedAutomation.project.schemaVersion == 8 &&
+                  persistedAutomation.project.audioTracks.front().gainAutomation ==
+                      automatedProject.audioTracks.front().gainAutomation,
+              "audio gain automation survives schema 8 save and load");
+        auto unsortedAutomation = automatedProject;
+        std::swap(unsortedAutomation.audioTracks.front().gainAutomation[0],
+                 unsortedAutomation.audioTracks.front().gainAutomation[1]);
+        check(!studio::validate(unsortedAutomation).empty(), "gain automation points must be ordered");
         auto noVoiceDucking = shotProject;
         noVoiceDucking.audioSource.clear();
         noVoiceDucking.voiceDuckingSource.clear();

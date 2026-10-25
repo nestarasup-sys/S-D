@@ -187,14 +187,18 @@ Rectangle {
         ListView {
             visible: editor.audioTracks.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(162, editor.audioTracks.length * 54)
+            Layout.preferredHeight: Math.min(234, editor.audioTracks.length * 78)
             Layout.minimumHeight: Layout.preferredHeight
             Layout.maximumHeight: Layout.preferredHeight
             clip: true
             model: editor.audioTracks
-            delegate: RowLayout {
+            delegate: ColumnLayout {
                 required property var modelData
-                width: ListView.view.width; height: 52; spacing: 6
+                property real automationValue: 1
+                property string automationEasing: "linear"
+                width: ListView.view.width; height: 76; spacing: 0
+                RowLayout {
+                    Layout.fillWidth: true; Layout.preferredHeight: 48; spacing: 6
                 Label { text: modelData.name; color: "#91b4c2"; Layout.preferredWidth: 135; elide: Text.ElideRight; font.pixelSize: 10 }
                 Label { text: "in"; color: "#718d9e"; font.pixelSize: 9 }
                 SpinBox {
@@ -241,6 +245,39 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 StudioButton { text: "Remover"; onClicked: editor.removeAudioTrack(modelData.id) }
+                }
+                RowLayout {
+                    Layout.fillWidth: true; Layout.preferredHeight: 28; spacing: 8
+                    Label {
+                        text: "Automação · " + modelData.gainAutomation.length + " pontos"
+                        color: "#82bebd"; font.pixelSize: 9; Layout.preferredWidth: 135
+                    }
+                    Slider {
+                        from: 0; to: 2; value: parent.parent.automationValue
+                        Layout.preferredWidth: 120
+                        onMoved: parent.parent.automationValue = value
+                    }
+                    Label { text: Math.round(parent.parent.automationValue * 100) + "%"; color: "#9baebb"; Layout.preferredWidth: 34; font.pixelSize: 9 }
+                    ComboBox {
+                        model: ["linear", "ease-in", "ease-out", "ease-in-out"]
+                        currentIndex: Math.max(0, model.indexOf(parent.parent.automationEasing))
+                        Layout.preferredWidth: 116
+                        onActivated: parent.parent.automationEasing = currentText
+                    }
+                    StudioButton {
+                        text: "+ ponto no playhead"
+                        enabled: editor.frame >= modelData.start && editor.frame < modelData.start + modelData.duration
+                        onClicked: editor.setAudioTrackGainPoint(modelData.id, parent.parent.automationValue,
+                                                                 parent.parent.automationEasing)
+                        ToolTip.visible: hovered; ToolTip.text: "Adiciona ou atualiza um ponto na posição atual da sequência"
+                    }
+                    StudioButton {
+                        text: "Limpar automação"; quiet: true
+                        enabled: modelData.gainAutomation.length > 0
+                        onClicked: editor.clearAudioTrackGainAutomation(modelData.id)
+                    }
+                    Item { Layout.fillWidth: true }
+                }
             }
         }
         RowLayout {

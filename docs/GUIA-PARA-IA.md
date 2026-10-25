@@ -1,6 +1,6 @@
 # Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 6 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 8 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -108,7 +108,7 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como referência para reduzir a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource`. A prévia calcula uma redução suavizada a partir do RMS dessa referência quando ela é WAV; a exportação aplica sidechaincompress de FFmpeg. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking, configurar fades e remover.
+Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. `gainAutomation` é opcional e aceita até 128 pontos `{"frame":0,"value":0.5,"easing":"linear"}`; o quadro é relativo ao início da pista, `value` multiplica o ganho base (0–4), e `easing` aceita `linear`, `ease-in`, `ease-out` ou `ease-in-out`. Os pontos devem estar em ordem crescente. Antes do primeiro e depois do último ponto, mantém-se o nível mais próximo. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como referência para reduzir a pista durante a fala; sem stem dedicado, usa `audioSource`. Quando a referência é WAV PCM mono a 24 kHz, prévia e exportação usam a mesma envoltória RMS por quadro. Outros formatos usam o sidechain FFmpeg na exportação; para sincronização idêntica à prévia, forneça um WAV compatível. Pistas ficam editáveis no projeto; a timeline permite adicionar pontos com easing no playhead, substituir um ponto na mesma posição e limpar a automação.
 
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut`, um objeto `{"type":"cut"}` ou um objeto de transição animada. Um `durationFrames` opcional junto a `type:"cut"` é aceito por compatibilidade e normalizado para corte imediato. O primeiro shot da cena sempre começa sem transição. Transições animadas sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
@@ -176,6 +176,1069 @@ Exemplo curto, válido e coberto por teste automatizado:
 
 Uma demonstração com dois trechos de fala, três planos e beats de transformação está em `examples/shots-visual-beats-v3.production.json`.
 
+## Exemplo profissional completo validado no aplicativo
+
+A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots, dezenove Visual Beats e timestamps resolvidos pela voz pt-BR. O smoke de produção sintetiza a narração, renderiza 2700 quadros e compara os quadros de shots/beats da exportação com a prévia. O atualizador do guia insere aqui o arquivo de exemplo real, sem reconstruir ou inventar seus campos.
+
+<!-- STUDIO-DARK-VALIDATED-EXAMPLE-BEGIN -->
+```json
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "O carro barato que quase virou um erro | Director's Cut 90s",
+  "voice": "auto",
+  "speechRate": 0,
+  "captions": true,
+  "timingMode": "fit-to-duration",
+  "targetDurationSeconds": 90,
+  "preserveVoicePitch": true,
+  "editing": {
+    "intensity": 52
+  },
+  "artDirection": {
+    "backgroundColor": "#0B1420",
+    "glowColor": "#1E4052",
+    "primaryColor": "#55E2C4",
+    "secondaryColor": "#FFCB69",
+    "textColor": "#F4F7FA",
+    "cardColor": "#172838",
+    "captionBackgroundColor": "#0B1420",
+    "fontFamily": "Segoe UI",
+    "titleSize": 68,
+    "bodySize": 40,
+    "captionSize": 28,
+    "captionPosition": "bottom",
+    "safeMargin": 36
+  },
+  "musicGain": 0.02,
+  "effectsGain": 0.025,
+  "scenes": [
+    {
+      "id": "oferta-perfeita",
+      "narration": [
+        "A oferta parecia perfeita: um carro bonito, pouco rodado, e uma parcela que cabia no orçamento.",
+        "Só que o valor anunciado era a entrada de uma história financeira que ainda não tinha sido contada."
+      ],
+      "shots": [
+        {
+          "id": "oferta-aberta",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "focus": {
+              "target": "carro-anuncio",
+              "padding": 1.8
+            }
+          },
+          "elements": [
+            {
+              "id": "carro-anuncio",
+              "kind": "native",
+              "asset": "car",
+              "x": 350,
+              "y": 350,
+              "width": 560,
+              "height": 255,
+              "color": "#55E2C4",
+              "motion": "slide-right",
+              "travelX": 24
+            },
+            {
+              "id": "comprador-anuncio",
+              "kind": "native",
+              "asset": "person",
+              "x": 980,
+              "y": 260,
+              "width": 145,
+              "height": 290,
+              "pose": "worried",
+              "color": "#FFCB69"
+            },
+            {
+              "id": "titulo-oferta",
+              "kind": "text",
+              "text": "PARECIA PERFEITO",
+              "x": 100,
+              "y": 115,
+              "width": 1080,
+              "height": 90,
+              "fontSize": 54,
+              "color": "#F4F7FA"
+            }
+          ],
+          "beats": [
+            {
+              "id": "oferta-titulo-revela",
+              "at": {
+                "cue": 0,
+                "wordIndex": 4
+              },
+              "action": "show",
+              "target": "titulo-oferta"
+            },
+            {
+              "id": "oferta-camera-abre",
+              "at": {
+                "cue": 0,
+                "wordIndex": 4
+              },
+              "action": "camera",
+              "durationFrames": 12,
+              "zoom": 1.08
+            }
+          ]
+        },
+        {
+          "id": "oferta-etiqueta",
+          "start": {
+            "cue": 0,
+            "wordIndex": 6
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.12,
+            "focus": {
+              "target": "preco-anuncio",
+              "padding": 1.3
+            }
+          },
+          "elements": [
+            {
+              "id": "preco-anuncio",
+              "kind": "native",
+              "asset": "price-tag",
+              "x": 410,
+              "y": 245,
+              "width": 250,
+              "height": 150,
+              "color": "#FFCB69",
+              "rotation": -5
+            },
+            {
+              "id": "parcela-baixa",
+              "kind": "text",
+              "text": "PARCELA QUE CABE?",
+              "x": 250,
+              "y": 475,
+              "width": 780,
+              "height": 80,
+              "fontSize": 40,
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "preco-escala",
+              "at": {
+                "cue": 0,
+                "wordIndex": 10
+              },
+              "action": "transform",
+              "target": "preco-anuncio",
+              "durationFrames": 10,
+              "scale": 1.14,
+              "rotation": 3
+            }
+          ]
+        },
+        {
+          "id": "oferta-detalhe",
+          "start": {
+            "cue": 1,
+            "wordIndex": 4
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "focus": {
+              "target": "contrato-oferta",
+              "padding": 1.5
+            }
+          },
+          "elements": [
+            {
+              "id": "contrato-oferta",
+              "kind": "native",
+              "asset": "document",
+              "x": 500,
+              "y": 235,
+              "width": 220,
+              "height": 275,
+              "color": "#FFCB69"
+            },
+            {
+              "id": "surpresa-oferta",
+              "kind": "text",
+              "text": "A CONTA COMPLETA AINDA NÃO APARECEU",
+              "x": 210,
+              "y": 555,
+              "width": 860,
+              "height": 52,
+              "fontSize": 27,
+              "color": "#F4F7FA"
+            }
+          ],
+          "beats": [
+            {
+              "id": "oferta-documento-camera",
+              "at": {
+                "cue": 1,
+                "wordIndex": 7
+              },
+              "action": "camera",
+              "durationFrames": 18,
+              "x": 610,
+              "y": 340,
+              "zoom": 1.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "financiamento",
+      "narration": [
+        "Quando existe financiamento, a parcela esconde juros, tarifas e seguros incluídos no contrato.",
+        "Compare o custo efetivo total e some tudo que será pago até a última prestação."
+      ],
+      "shots": [
+        {
+          "id": "financiamento-papel",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "contrato-financiamento",
+              "kind": "native",
+              "asset": "document",
+              "x": 360,
+              "y": 225,
+              "width": 230,
+              "height": 285,
+              "color": "#FFCB69",
+              "rotation": -4
+            },
+            {
+              "id": "moedas-financiamento",
+              "kind": "native",
+              "asset": "coins",
+              "x": 700,
+              "y": 360,
+              "width": 240,
+              "height": 190,
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "financiamento-papel-aparece",
+              "at": {
+                "cue": 0,
+                "wordIndex": 3
+              },
+              "action": "transform",
+              "target": "contrato-financiamento",
+              "durationFrames": 12,
+              "rotation": 3,
+              "scale": 1.06
+            }
+          ]
+        },
+        {
+          "id": "financiamento-cet",
+          "start": {
+            "cue": 0,
+            "wordIndex": 6
+          },
+          "transitionIn": {
+            "type": "slide",
+            "direction": "left",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.08,
+            "focus": {
+              "target": "cet-texto",
+              "padding": 1.4
+            }
+          },
+          "elements": [
+            {
+              "id": "cet-texto",
+              "kind": "text",
+              "text": "CET",
+              "x": 410,
+              "y": 220,
+              "width": 460,
+              "height": 110,
+              "fontSize": 78,
+              "color": "#55E2C4",
+              "motion": "pop"
+            },
+            {
+              "id": "cet-explicado",
+              "kind": "text",
+              "text": "CUSTO EFETIVO TOTAL",
+              "x": 310,
+              "y": 360,
+              "width": 660,
+              "height": 70,
+              "fontSize": 34,
+              "color": "#F4F7FA"
+            }
+          ],
+          "beats": [
+            {
+              "id": "cet-destaque",
+              "at": {
+                "cue": 0,
+                "wordIndex": 8
+              },
+              "action": "transform",
+              "target": "cet-texto",
+              "durationFrames": 8,
+              "scale": 1.15
+            }
+          ]
+        },
+        {
+          "id": "financiamento-total",
+          "start": {
+            "cue": 1,
+            "wordIndex": 3
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 10
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "barras-financiamento",
+              "kind": "native",
+              "asset": "bars",
+              "x": 445,
+              "y": 245,
+              "width": 390,
+              "height": 285,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "total-financiamento",
+              "kind": "text",
+              "text": "ENTRADA + JUROS + TARIFAS",
+              "x": 210,
+              "y": 565,
+              "width": 860,
+              "height": 50,
+              "fontSize": 27,
+              "color": "#FFCB69"
+            }
+          ],
+          "beats": [
+            {
+              "id": "total-camera",
+              "at": {
+                "cue": 1,
+                "wordIndex": 7
+              },
+              "action": "camera",
+              "durationFrames": 14,
+              "zoom": 1.14
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "custo-de-uso",
+      "narration": [
+        "Depois de comprar, o carro continua cobrando: combustível, seguro, impostos, estacionamento e revisões periódicas.",
+        "Uma manutenção atrasada ou uma peça inesperada também pode transformar economia em dívida."
+      ],
+      "shots": [
+        {
+          "id": "uso-carro",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "focus": {
+              "target": "carro-em-uso",
+              "padding": 1.8
+            }
+          },
+          "elements": [
+            {
+              "id": "carro-em-uso",
+              "kind": "native",
+              "asset": "car",
+              "x": 355,
+              "y": 350,
+              "width": 560,
+              "height": 255,
+              "color": "#FFCB69",
+              "motion": "slide-right",
+              "travelX": 40
+            },
+            {
+              "id": "personagem-uso",
+              "kind": "native",
+              "asset": "person",
+              "x": 930,
+              "y": 260,
+              "width": 140,
+              "height": 280,
+              "pose": "worried",
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "uso-camera",
+              "at": {
+                "cue": 0,
+                "wordIndex": 4
+              },
+              "action": "camera",
+              "durationFrames": 12,
+              "x": 670,
+              "y": 355,
+              "zoom": 1.12
+            }
+          ]
+        },
+        {
+          "id": "uso-lista",
+          "start": {
+            "cue": 0,
+            "wordIndex": 7
+          },
+          "transitionIn": {
+            "type": "zoom",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.05
+          },
+          "elements": [
+            {
+              "id": "lista-custos",
+              "kind": "text",
+              "text": "COMBUSTÍVEL · SEGURO\nIMPOSTOS · REVISÕES",
+              "x": 190,
+              "y": 250,
+              "width": 900,
+              "height": 180,
+              "fontSize": 39,
+              "color": "#F4F7FA",
+              "motion": "rise"
+            },
+            {
+              "id": "moedas-custos",
+              "kind": "native",
+              "asset": "coins",
+              "x": 520,
+              "y": 455,
+              "width": 170,
+              "height": 135,
+              "color": "#FFCB69"
+            }
+          ],
+          "beats": [
+            {
+              "id": "lista-custos-muda",
+              "at": {
+                "cue": 0,
+                "wordIndex": 9
+              },
+              "action": "transform",
+              "target": "lista-custos",
+              "durationFrames": 10,
+              "y": 215,
+              "scale": 1.06
+            }
+          ]
+        },
+        {
+          "id": "uso-manutencao",
+          "start": {
+            "cue": 1,
+            "wordIndex": 3
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "documento-manutencao",
+              "kind": "native",
+              "asset": "document",
+              "x": 505,
+              "y": 245,
+              "width": 210,
+              "height": 270,
+              "color": "#FFCB69"
+            },
+            {
+              "id": "aviso-manutencao",
+              "kind": "text",
+              "text": "IMPREVISTO TAMBÉM ENTRA NA CONTA",
+              "x": 250,
+              "y": 555,
+              "width": 780,
+              "height": 50,
+              "fontSize": 28,
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "aviso-manutencao-revela",
+              "at": {
+                "cue": 1,
+                "wordIndex": 6
+              },
+              "action": "show",
+              "target": "aviso-manutencao"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "carro-usado",
+      "narration": [
+        "Carro usado exige mais do que olhar a lataria; histórico, quilometragem e inspeção mecânica contam.",
+        "Antes de fechar negócio, peça documentos, compare avaliações e reserve dinheiro para reparos."
+      ],
+      "shots": [
+        {
+          "id": "usado-inspecao",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "carro-inspecao",
+              "kind": "native",
+              "asset": "car",
+              "x": 345,
+              "y": 355,
+              "width": 550,
+              "height": 250,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "inspector-usado",
+              "kind": "native",
+              "asset": "person",
+              "x": 880,
+              "y": 265,
+              "width": 145,
+              "height": 290,
+              "pose": "point",
+              "color": "#FFCB69"
+            }
+          ],
+          "beats": [
+            {
+              "id": "inspecao-aponta",
+              "at": {
+                "cue": 0,
+                "wordIndex": 3
+              },
+              "action": "transform",
+              "target": "inspector-usado",
+              "durationFrames": 8,
+              "rotation": -4
+            }
+          ]
+        },
+        {
+          "id": "usado-historico",
+          "start": {
+            "cue": 0,
+            "wordIndex": 7
+          },
+          "transitionIn": {
+            "type": "slide",
+            "direction": "right",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.1,
+            "focus": {
+              "target": "historico-carro",
+              "padding": 1.5
+            }
+          },
+          "elements": [
+            {
+              "id": "historico-carro",
+              "kind": "native",
+              "asset": "document",
+              "x": 465,
+              "y": 235,
+              "width": 220,
+              "height": 275,
+              "color": "#FFCB69"
+            },
+            {
+              "id": "historico-titulo",
+              "kind": "text",
+              "text": "HISTÓRICO · KM · MECÂNICA",
+              "x": 220,
+              "y": 545,
+              "width": 840,
+              "height": 55,
+              "fontSize": 29,
+              "color": "#F4F7FA"
+            }
+          ],
+          "beats": [
+            {
+              "id": "historico-camera",
+              "at": {
+                "cue": 0,
+                "wordIndex": 10
+              },
+              "action": "camera",
+              "durationFrames": 14,
+              "zoom": 1.22
+            }
+          ]
+        },
+        {
+          "id": "usado-reserva",
+          "start": {
+            "cue": 1,
+            "wordIndex": 3
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "moedas-reparo",
+              "kind": "native",
+              "asset": "coins",
+              "x": 490,
+              "y": 300,
+              "width": 240,
+              "height": 190,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "reserva-reparo",
+              "kind": "text",
+              "text": "RESERVE PARA REPAROS",
+              "x": 300,
+              "y": 545,
+              "width": 680,
+              "height": 55,
+              "fontSize": 32,
+              "color": "#FFCB69"
+            }
+          ],
+          "beats": [
+            {
+              "id": "reserva-revela",
+              "at": {
+                "cue": 1,
+                "wordIndex": 7
+              },
+              "action": "show",
+              "target": "reserva-reparo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orcamento-real",
+      "narration": [
+        "Faça uma conta mensal realista, incluindo despesas fixas, viagens e uma margem para emergências.",
+        "Se a conta só fecha ignorando custos, talvez o carro esteja acima do seu orçamento."
+      ],
+      "shots": [
+        {
+          "id": "orcamento-planilha",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "planilha-orcamento",
+              "kind": "native",
+              "asset": "document",
+              "x": 500,
+              "y": 225,
+              "width": 220,
+              "height": 280,
+              "color": "#F4F7FA"
+            },
+            {
+              "id": "titulo-orcamento",
+              "kind": "text",
+              "text": "A CONTA DO MÊS",
+              "x": 250,
+              "y": 125,
+              "width": 780,
+              "height": 80,
+              "fontSize": 49,
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "orcamento-titulo-revela",
+              "at": {
+                "cue": 0,
+                "wordIndex": 4
+              },
+              "action": "show",
+              "target": "titulo-orcamento"
+            }
+          ]
+        },
+        {
+          "id": "orcamento-barras",
+          "start": {
+            "cue": 0,
+            "wordIndex": 7
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.08,
+            "focus": {
+              "target": "barras-orcamento",
+              "padding": 1.2
+            }
+          },
+          "elements": [
+            {
+              "id": "barras-orcamento",
+              "kind": "native",
+              "asset": "bars",
+              "x": 420,
+              "y": 240,
+              "width": 420,
+              "height": 300,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "reserva-margem",
+              "kind": "text",
+              "text": "+ MARGEM PARA IMPREVISTOS",
+              "x": 260,
+              "y": 560,
+              "width": 760,
+              "height": 48,
+              "fontSize": 25,
+              "color": "#FFCB69"
+            }
+          ],
+          "beats": [
+            {
+              "id": "barras-crescem",
+              "at": {
+                "cue": 0,
+                "wordIndex": 10
+              },
+              "action": "transform",
+              "target": "barras-orcamento",
+              "durationFrames": 12,
+              "scale": 1.08
+            }
+          ]
+        },
+        {
+          "id": "orcamento-alerta",
+          "start": {
+            "cue": 1,
+            "wordIndex": 4
+          },
+          "transitionIn": {
+            "type": "zoom",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "alerta-orcamento",
+              "kind": "text",
+              "text": "SE A CONTA NÃO FECHA, PARE E REAVALIE",
+              "x": 180,
+              "y": 280,
+              "width": 920,
+              "height": 120,
+              "fontSize": 39,
+              "color": "#FFCB69",
+              "motion": "pop"
+            },
+            {
+              "id": "personagem-orcamento",
+              "kind": "native",
+              "asset": "person",
+              "x": 550,
+              "y": 430,
+              "width": 135,
+              "height": 260,
+              "pose": "worried",
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "orcamento-alerta-camera",
+              "at": {
+                "cue": 1,
+                "wordIndex": 8
+              },
+              "action": "camera",
+              "durationFrames": 14,
+              "zoom": 1.12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "decisao-consciente",
+      "narration": [
+        "Um bom negócio não é simplesmente pagar menos no anúncio ou escolher a menor parcela.",
+        "É escolher com informação, entender o custo completo e manter espaço para outros objetivos."
+      ],
+      "shots": [
+        {
+          "id": "decisao-anuncio",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "carro-decisao",
+              "kind": "native",
+              "asset": "car",
+              "x": 360,
+              "y": 355,
+              "width": 540,
+              "height": 245,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "preco-decisao",
+              "kind": "native",
+              "asset": "price-tag",
+              "x": 750,
+              "y": 245,
+              "width": 210,
+              "height": 125,
+              "color": "#FFCB69",
+              "rotation": 5
+            }
+          ],
+          "beats": [
+            {
+              "id": "decisao-preco-esconde",
+              "at": {
+                "cue": 0,
+                "wordIndex": 5
+              },
+              "action": "hide",
+              "target": "preco-decisao"
+            }
+          ]
+        },
+        {
+          "id": "decisao-clareza",
+          "start": {
+            "cue": 0,
+            "wordIndex": 7
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.08
+          },
+          "elements": [
+            {
+              "id": "decisao-documento",
+              "kind": "native",
+              "asset": "document",
+              "x": 480,
+              "y": 230,
+              "width": 220,
+              "height": 275,
+              "color": "#F4F7FA"
+            },
+            {
+              "id": "decisao-clara",
+              "kind": "text",
+              "text": "COMPARE O CUSTO TOTAL",
+              "x": 260,
+              "y": 540,
+              "width": 760,
+              "height": 60,
+              "fontSize": 34,
+              "color": "#55E2C4"
+            }
+          ],
+          "beats": [
+            {
+              "id": "decisao-texto",
+              "at": {
+                "cue": 0,
+                "wordIndex": 10
+              },
+              "action": "transform",
+              "target": "decisao-clara",
+              "durationFrames": 10,
+              "scale": 1.08
+            }
+          ]
+        },
+        {
+          "id": "decisao-final",
+          "start": {
+            "cue": 1,
+            "wordIndex": 3
+          },
+          "transitionIn": {
+            "type": "fade",
+            "durationFrames": 18
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "focus": {
+              "target": "personagem-final",
+              "padding": 1.5
+            }
+          },
+          "elements": [
+            {
+              "id": "personagem-final",
+              "kind": "native",
+              "asset": "person",
+              "x": 520,
+              "y": 230,
+              "width": 165,
+              "height": 320,
+              "pose": "wave",
+              "color": "#55E2C4"
+            },
+            {
+              "id": "mensagem-final",
+              "kind": "text",
+              "text": "ANTES DA CHAVE, FAÇA A CONTA INTEIRA",
+              "x": 155,
+              "y": 100,
+              "width": 970,
+              "height": 80,
+              "fontSize": 42,
+              "color": "#F4F7FA"
+            }
+          ],
+          "beats": [
+            {
+              "id": "final-camera",
+              "at": {
+                "cue": 1,
+                "wordIndex": 8
+              },
+              "action": "camera",
+              "durationFrames": 18,
+              "zoom": 1.14
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+<!-- STUDIO-DARK-VALIDATED-EXAMPLE-END -->
+
 ## Composição, grupos e câmera
 
 Não há cabeçalho, título de cena ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior.
@@ -232,13 +1295,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v7 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6 e legendas com destaque sincronizado por palavra usam schema 7.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v8 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7 e automação de ganho usa schema 8.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial e áudio em várias pistas estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, efeitos sonoros disparados por beat e edição gráfica de automação de ganho. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas e automação de ganho por pontos estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes, efeitos sonoros disparados por beat e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 
@@ -416,6 +1479,7 @@ Vídeo local como camada, sincronização por palavra em shots/beats/elementos/k
         "multi-track-audio",
         "voice-sidechain-ducking",
         "audio-track-fades",
+        "audio-gain-automation-easing",
         "video-layer-broll",
         "word-timed-karaoke-captions"
     ],
@@ -430,9 +1494,10 @@ Vídeo local como camada, sincronização por palavra em shots/beats/elementos/k
         "audio-tracks",
         "video-layers",
         "audio-track-fades",
+        "audio-gain-automation",
         "word-timed-caption-highlights"
     ],
-    "projectVersion": 7,
+    "projectVersion": 8,
     "shotTransitionTypes": [
         "cut",
         "fade",

@@ -954,6 +954,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                             if (!pointValue.isObject())
                                 return fail("Ponto de gainAutomation inválido.");
                             const auto point = pointValue.toObject();
+                            if (!allowed(point, {"frame", "value", "easing"}))
+                                return fail("Ponto de gainAutomation contém campo desconhecido.");
                             const auto frame = point["frame"].toInteger(-1);
                             const auto value = point["value"].toDouble(-1);
                             const auto easing = point["easing"].toString("linear").toStdString();

@@ -23,7 +23,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 7},
+            {"projectVersion", 8},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -34,12 +34,14 @@ QJsonObject capabilities() {
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
                         "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
                         "multi-track-audio",
-                        "voice-sidechain-ducking", "audio-track-fades", "video-layer-broll",
+                        "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
+                        "video-layer-broll",
                         "word-timed-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
-                        "video-layers", "audio-track-fades", "word-timed-caption-highlights"}},
+                        "video-layers", "audio-track-fades", "audio-gain-automation",
+                        "word-timed-caption-highlights"}},
             {"width", 1280},
             {"height", 720},
             {"fps", 30},
@@ -64,7 +66,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 6 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 8 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -172,7 +174,7 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como referência para reduzir a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource`. A prévia calcula uma redução suavizada a partir do RMS dessa referência quando ela é WAV; a exportação aplica sidechaincompress de FFmpeg. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking, configurar fades e remover.
+Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. `gainAutomation` é opcional e aceita até 128 pontos `{"frame":0,"value":0.5,"easing":"linear"}`; o quadro é relativo ao início da pista, `value` multiplica o ganho base (0–4), e `easing` aceita `linear`, `ease-in`, `ease-out` ou `ease-in-out`. Os pontos devem estar em ordem crescente. Antes do primeiro e depois do último ponto, mantém-se o nível mais próximo. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como referência para reduzir a pista durante a fala; sem stem dedicado, usa `audioSource`. Quando a referência é WAV PCM mono a 24 kHz, prévia e exportação usam a mesma envoltória RMS por quadro. Outros formatos usam o sidechain FFmpeg na exportação; para sincronização idêntica à prévia, forneça um WAV compatível. Pistas ficam editáveis no projeto; a timeline permite adicionar pontos com easing no playhead, substituir um ponto na mesma posição e limpar a automação.
 
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut`, um objeto `{"type":"cut"}` ou um objeto de transição animada. Um `durationFrames` opcional junto a `type:"cut"` é aceito por compatibilidade e normalizado para corte imediato. O primeiro shot da cena sempre começa sem transição. Transições animadas sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
@@ -239,6 +241,13 @@ Exemplo curto, válido e coberto por teste automatizado:
 ```
 
 Uma demonstração com dois trechos de fala, três planos e beats de transformação está em `examples/shots-visual-beats-v3.production.json`.
+
+## Exemplo profissional completo validado no aplicativo
+
+A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots, dezenove Visual Beats e timestamps resolvidos pela voz pt-BR. O smoke de produção sintetiza a narração, renderiza 2700 quadros e compara os quadros de shots/beats da exportação com a prévia. O atualizador do guia insere aqui o arquivo de exemplo real, sem reconstruir ou inventar seus campos.
+
+<!-- STUDIO-DARK-VALIDATED-EXAMPLE-BEGIN -->
+<!-- STUDIO-DARK-VALIDATED-EXAMPLE-END -->
 
 ## Composição, grupos e câmera
 
@@ -350,13 +359,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v7 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6 e legendas com destaque sincronizado por palavra usam schema 7.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v8 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7 e automação de ganho usa schema 8.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial e áudio em várias pistas estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, efeitos sonoros disparados por beat e edição gráfica de automação de ganho. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas e automação de ganho por pontos estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes, efeitos sonoros disparados por beat e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 
