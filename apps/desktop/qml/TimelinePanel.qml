@@ -6,6 +6,20 @@ Rectangle {
     id: root
     signal addAudioRequested()
     color: "#141c24"
+    property real timelineZoom: 1
+    property real timelineOffset: 0
+    function visibleFrames() { return Math.max(1, (editor.duration - 1) / timelineZoom) }
+    function maxStartFrame() { return Math.max(0, (editor.duration - 1) - visibleFrames()) }
+    function viewStartFrame() { return timelineOffset * maxStartFrame() }
+    function frameToX(frame, width) { return (frame - viewStartFrame()) / visibleFrames() * width }
+    function xToFrame(x, width) { return viewStartFrame() + x / Math.max(1, width) * visibleFrames() }
+    function setZoomAt(value, x, width) {
+        const ratio = Math.max(0, Math.min(1, x / Math.max(1, width)))
+        const anchorFrame = viewStartFrame() + ratio * visibleFrames()
+        timelineZoom = Math.max(1, Math.min(8, value))
+        const nextStart = Math.max(0, Math.min(maxStartFrame(), anchorFrame - ratio * visibleFrames()))
+        timelineOffset = maxStartFrame() > 0 ? nextStart / maxStartFrame() : 0
+    }
     Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#2f3c48" }
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 16; spacing: 10
@@ -16,9 +30,28 @@ Rectangle {
             Item { Layout.fillWidth: true }
             Label {
                 text: editor.selectedIds.length > 1
-                      ? editor.selectedIds.length + " selecionados · Arraste para mover juntos · Ctrl+clique para alterar seleção"
-                      : "Ctrl+clique para selecionar vários clipes · Arraste para mover · Clique na régua para navegar"
+                      ? editor.selectedIds.length + " selecionados · Arraste move juntos · Ctrl+clique altera"
+                      : "Ctrl+clique seleciona · Arraste move · Régua navega · Ctrl+roda aproxima"
                 color: "#7b91a1"; font.pixelSize: 10
+                Layout.maximumWidth: 380
+                elide: Text.ElideRight
+            }
+            Label { text: "Zoom"; color: "#7b91a1"; font.pixelSize: 9 }
+            Slider {
+                id: zoomSlider
+                Layout.preferredWidth: 110
+                from: 1; to: 8; stepSize: 0.25; value: root.timelineZoom
+                onMoved: root.setZoomAt(value, width / 2, width)
+                ToolTip.visible: hovered; ToolTip.text: "Ampliação temporal da timeline"
+            }
+            Label { text: root.timelineZoom.toFixed(1) + "×"; color: "#b4f078"; font.pixelSize: 10; Layout.preferredWidth: 30 }
+            Label { text: "Pan"; color: "#7b91a1"; font.pixelSize: 9 }
+            Slider {
+                id: scrollSlider
+                Layout.preferredWidth: 100
+                from: 0; to: 1; value: root.timelineOffset; enabled: root.timelineZoom > 1.001
+                onMoved: root.timelineOffset = value
+                ToolTip.visible: hovered; ToolTip.text: "Navegação horizontal: início → fim"
             }
             StudioButton { text: "+ Áudio"; onClicked: root.addAudioRequested() }
             Label { text: (editor.duration / editor.fps).toFixed(1) + " s"; color: "#b4f078"; font.pixelSize: 12; Layout.leftMargin: 15 }
@@ -48,11 +81,26 @@ Rectangle {
                         delegate: Label {
                             required property int index
                             x: index * (parent.width - 28) / 12
-                            text: ((editor.duration / editor.fps) * index / 12).toFixed(0) + "s"
+                            text: ((root.viewStartFrame() + root.visibleFrames() * index / 12) / editor.fps).toFixed(1) + "s"
                             color: "#758d9e"; font.pixelSize: 10
                         }
                     }
-                    MouseArea { anchors.fill: parent; onPressed: function(mouse) { editor.frame = Math.round(mouse.x / width * (editor.duration - 1)) }; onPositionChanged: function(mouse) { if (pressed) editor.frame = Math.round(mouse.x / width * (editor.duration - 1)) } }
+                    MouseArea {
+                        anchors.fill: parent
+                        onPressed: function(mouse) { editor.frame = Math.round(root.xToFrame(mouse.x, width)) }
+                        onPositionChanged: function(mouse) { if (pressed) editor.frame = Math.round(root.xToFrame(mouse.x, width)) }
+                        onWheel: function(wheel) {
+                            if (wheel.modifiers & Qt.ControlModifier) {
+                                const factor = wheel.angleDelta.y > 0 ? 1.25 : 0.8
+                                root.setZoomAt(root.timelineZoom * factor, wheel.x, width)
+                                wheel.accepted = true
+                            } else if (wheel.modifiers & Qt.ShiftModifier && root.timelineZoom > 1.001) {
+                                root.timelineOffset = Math.max(0, Math.min(1,
+                                    root.timelineOffset + (wheel.angleDelta.y < 0 ? 0.08 : -0.08)))
+                                wheel.accepted = true
+                            }
+                        }
+                    }
                 }
                 Item {
                     id: shotTrackArea
@@ -71,8 +119,8 @@ Rectangle {
                             width: ListView.view.width; height: 35
                             Rectangle {
                                 id: clip
-                                x: track.modelData.start / editor.duration * track.width
-                                width: Math.max(4, track.modelData.duration / editor.duration * track.width); height: 35; radius: 5
+                                x: root.frameToX(track.modelData.start, track.width)
+                                width: Math.max(4, track.modelData.duration / root.visibleFrames() * track.width); height: 35; radius: 5
                                 color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#4c673b" : track.modelData.kind === "text" ? "#2f4956" : "#384440"
                                 border.width: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? 2 : 1
                                 border.color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#b4f078" : "#526874"
@@ -100,7 +148,7 @@ Rectangle {
                                         if (pressed && !selectionClick) {
                                             const currentX = mapToItem(track, mouse.x, mouse.y).x
                                             editor.moveSelectedClips(track.modelData.id, startFrame,
-                                                startFrame + Math.round((currentX - originX) / track.width * editor.duration))
+                                                startFrame + Math.round((currentX - originX) / track.width * root.visibleFrames()))
                                         }
                                     }
                                     onReleased: { if (!selectionClick) editor.endGesture(); selectionClick = false }
@@ -114,9 +162,9 @@ Rectangle {
                         delegate: Rectangle {
                             required property var modelData
                             required property int index
-                            x: modelData.start / editor.duration * parent.width
+                            x: root.frameToX(modelData.start, parent.width)
                             y: 1
-                            width: Math.max(6, modelData.duration / editor.duration * parent.width)
+                            width: Math.max(6, modelData.duration / root.visibleFrames() * parent.width)
                             height: 22
                             radius: 4
                             color: "#304c46"
@@ -134,7 +182,7 @@ Rectangle {
                             Rectangle {
                                 visible: modelData.transitionIn !== "cut"
                                 x: 0; y: 0
-                                width: Math.min(parent.width, modelData.transitionDurationFrames / editor.duration * shotTrackArea.width)
+                                width: Math.min(parent.width, modelData.transitionDurationFrames / root.visibleFrames() * shotTrackArea.width)
                                 height: parent.height
                                 color: "#d8b46b"
                                 opacity: 0.35
@@ -166,7 +214,7 @@ Rectangle {
                                     onPositionChanged: function(mouse) {
                                         if (pressed) {
                                             const currentX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
-                                            const nextFrame = boundaryStart + Math.round((currentX - originX) / shotTrackArea.width * editor.duration)
+                                            const nextFrame = boundaryStart + Math.round((currentX - originX) / shotTrackArea.width * root.visibleFrames())
                                             editor.moveShotBoundary(modelData.id, nextFrame)
                                         }
                                     }
@@ -180,7 +228,7 @@ Rectangle {
                         model: editor.visualBeats
                         delegate: Rectangle {
                             required property var modelData
-                            x: modelData.frame / editor.duration * parent.width - 3
+                            x: root.frameToX(modelData.frame, parent.width) - 3
                             y: 20
                             width: 7; height: 7; radius: 2
                             color: modelData.action === "sound" ? "#e97868"
@@ -193,7 +241,7 @@ Rectangle {
                         }
                     }
                     Rectangle {
-                        x: editor.frame / editor.duration * (parent.width - 1); y: 0; width: 1; height: parent.height; color: "#b4f078"
+                        x: root.frameToX(editor.frame, parent.width - 1); y: 0; width: 1; height: parent.height; color: "#b4f078"
                         Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 7; height: 7; radius: 2; color: "#b4f078" }
                     }
                 }
@@ -265,11 +313,11 @@ Rectangle {
                 }
                 Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 30
+                    clip: true
                     Rectangle {
                         id: envelopeLane
-                        x: modelData.start / editor.duration * parent.width
-                        width: Math.min(Math.max(1, parent.width - x),
-                                        Math.max(24, modelData.duration / editor.duration * parent.width))
+                        x: root.frameToX(modelData.start, parent.width)
+                        width: Math.max(24, modelData.duration / root.visibleFrames() * parent.width)
                         height: parent.height; radius: 3; color: "#102129"; clip: true
                         Canvas {
                             id: envelopeCanvas

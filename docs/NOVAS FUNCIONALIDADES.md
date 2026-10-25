@@ -11,12 +11,18 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Uma operação de movimento usa um único passo de desfazer/refazer. Os limites são calculados sobre a posição original do gesto para evitar deriva enquanto o ponteiro se move.
 - Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-workspace.ps1` passou, com a tela do editor aberta e sem erros QML. O teste do controlador cobre seleção aditiva, preservação de espaçamento, limite no início da sequência e undo/redo do conjunto. `scripts/update-ai-guide.ps1` regenerou o guia sem adicionar campos fictícios ao JSON.
 
-### Rodada atual: envelopes gráficos de áudio
+### Entrega implementada: envelopes gráficos de áudio
 
 - A timeline desenha a curva da automação de cada faixa sobre o intervalo temporal correspondente. Clique para adicionar um ponto; arraste pontos para alterar tempo e ganho com precisão por frame.
 - Os pontos existentes continuam limitados a 128 por pista e aceitam os easings já validados pelo projeto. Um gesto inteiro é uma única ação de desfazer/refazer; a prévia aplica o valor editado enquanto o projeto permanece editável e serializado no schema 8.
 - A receita IA mantém o mesmo contrato JSON. O guia explica que edição gráfica é uma capacidade manual do editor, não um campo novo.
 - Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-workspace.ps1` passou sem erros QML; `scripts/smoke-production.ps1` passou com a voz Microsoft Maria Desktop. Prévia/exportação marcou 40,41 dB no exemplo principal e 42,46 dB no Director's Cut; o projeto de 90 s abriu no editor. `scripts/update-ai-guide.ps1` regenerou o guia e o catálogo sem alterar o contrato da receita.
+
+### Rodada atual: zoom temporal e navegação da timeline
+
+- A timeline oferece zoom contínuo de 1× a 8×, aproximação centrada sob o ponteiro com Ctrl+roda e deslocamento horizontal com Shift+roda/barra.
+- Régua, playhead, shots, beats, camadas e envelopes usam o mesmo intervalo visível. Scrubbing e arrastes convertem pixels para frames conforme o zoom atual.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4) e `scripts/smoke-workspace.ps1` passou sem erros QML. A captura confirma os controles de Zoom/Pan e os rótulos da régua. `scripts/update-ai-guide.ps1` gerou a documentação manual; a suíte ainda não simula gestos de Ctrl+roda nem movimento do slider.
 
 ### Entrega anterior: tipografia animada por palavra
 
@@ -121,7 +127,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico e edição gráfica dos envelopes. Faltam edição posterior de alinhamento, áudio embutido nos vídeos, outros formatos de tela e refinamentos de precisão/seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis e zoom/navegação sincronizados. Faltam edição posterior de alinhamento, ajuste frame a frame mais detalhado, áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
 
 ### Limites confirmados nesta versão
 
@@ -135,7 +141,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Avançar para precisão de edição na timeline (zoom temporal, navegação e posicionamento detalhados) e edição manual de alinhamento palavra/áudio. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
+Avançar para edição manual de alinhamento palavra/áudio e ajuste frame a frame com controles numéricos/snap. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
 
 ---
 
@@ -908,10 +914,11 @@ Implementar:
 4. [x] Duração-alvo com aceleração segura e preservação aproximada de tom.
 5. [x] Seleção múltipla e movimento conjunto de clipes na timeline com undo/redo atômico.
 6. [x] Envelopes gráficos de áudio editáveis diretamente na timeline.
-7. [ ] Edição mais precisa na timeline, incluindo navegação e posicionamento detalhados.
-8. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
-9. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
-10. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
+7. [x] Zoom temporal de 1× a 8× e navegação horizontal sincronizados com régua, shots, beats, camadas e áudio.
+8. [ ] Ajuste frame a frame mais detalhado e snapping/alinhamento manual na timeline.
+9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
+10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
+11. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 
