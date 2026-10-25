@@ -32,7 +32,8 @@ QJsonObject capabilities() {
                         "visual-beats-show-hide-transform-camera", "shot-cut-camera",
                         "shot-transitions-fade-dissolve-slide-zoom", "auto-reframe-by-shot-target",
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
-                        "global-art-direction", "word-aligned-visual-beats", "multi-track-audio",
+                        "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
+                        "multi-track-audio",
                         "voice-sidechain-ducking", "video-layer-broll"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
@@ -190,7 +191,7 @@ Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores 
 
 Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
 
-Exemplo de sincronização por palavra: `{"cue":0,"wordIndex":7}`. A posição é medida pelo evento de progresso do sintetizador Windows depois da geração da voz (e ajustada junto com a fala quando há aceleração de duração fixa). Se o sintetizador não emitir timestamps ou o índice não existir, a produção é interrompida com erro; não há estimativa por duração média da palavra. Essa versão aplica a palavra a início de shot e Visual Beat; elementos e keyframes ainda usam `cueProgress`/`offsetSeconds`.
+Exemplo de sincronização por palavra: `{"cue":0,"wordIndex":7}`. A posição é medida pelo evento de progresso do sintetizador Windows depois da geração da voz (e ajustada junto com a fala quando há aceleração de duração fixa). Em shots v3, `wordIndex` também pode iniciar um elemento ou marcar um keyframe; beats seguem usando `at`. O índice é zero-based dentro do trecho `cue` e não pode ser combinado com `progress`, `cueProgress` ou `offsetSeconds`. Se o sintetizador não emitir timestamps ou o índice não existir, a produção é interrompida com erro; não há estimativa por duração média da palavra. Projetos já compilados guardam os eventos como quadros, sem exigir timestamps depois da importação.
 
 Exemplo curto, válido e coberto por teste automatizado:
 

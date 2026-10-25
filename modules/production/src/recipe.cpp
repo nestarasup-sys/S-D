@@ -193,7 +193,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (version >= 2)
         keys << "assetId" << "children" << "keyframes" << "cueProgress";
     if (version >= 3)
-        keys << "progress";
+        keys << "progress" << "wordIndex";
     if (!allowed(e, keys))
         return fail("Elemento contém campo desconhecido.");
     if (!e["id"].isString() || !e["kind"].isString())
@@ -369,6 +369,14 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     element.offsetSeconds = e["offsetSeconds"].toDouble(e.contains("cue") ? 0 : defaultStart.offsetSeconds);
     element.cueProgress = e["cueProgress"].toDouble(
         e.contains("progress") ? element.progress : (e.contains("cue") ? -1 : defaultStart.progress));
+    element.wordIndex = e["wordIndex"].toInt(defaultStart.wordIndex);
+    if (e.contains("wordIndex") &&
+        (!e["wordIndex"].isDouble() || std::floor(e["wordIndex"].toDouble()) != e["wordIndex"].toDouble()))
+        return fail("wordIndex de elemento precisa ser inteiro.");
+    if (element.wordIndex >= 0 &&
+        (element.wordIndex >= 150 || e.contains("progress") || e.contains("cueProgress") ||
+         e.contains("offsetSeconds")))
+        return fail("wordIndex de elemento deve ser 0..149 e não pode usar outro deslocamento.");
     if ((e.contains("cueProgress") || e.contains("progress")) && e.contains("offsetSeconds"))
         return fail("Use cueProgress/progress ou offsetSeconds no elemento, não ambos.");
     if (e.contains("cueProgress")) {
@@ -413,7 +421,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     element.utteranceOnly = e["span"].toString("scene") == "utterance";
     if (!number(e, "offsetSeconds", element.offsetSeconds) || element.offsetSeconds < 0 ||
         element.offsetSeconds > 10 || element.cue < 0 || element.cue >= cueCount ||
-        !std::isfinite(element.progress) || element.progress < 0 || element.progress > 1)
+        (element.wordIndex < 0 &&
+         (!std::isfinite(element.progress) || element.progress < 0 || element.progress > 1)))
         return fail("Cue ou deslocamento de elemento inválido.");
     if (e.contains("span") && e["span"] != "scene" && e["span"] != "utterance")
         return fail("Span deve ser scene ou utterance.");
@@ -437,7 +446,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             QStringList keyFields{"cue", "offsetSeconds", "cueProgress", "progress", "x",
                                   "y",   "rotation",      "scale",       "opacity",  "easing"};
             if (version >= 3)
-                keyFields << "progress";
+                keyFields << "progress" << "wordIndex";
             if (!allowed(key, keyFields))
                 return fail("Keyframe contém campo desconhecido.");
             if (key.contains("cue") &&
@@ -462,6 +471,15 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                                     key["scale"].toDouble(n.scale),
                                     key["opacity"].toDouble(n.opacity),
                                     key["easing"].toString("linear").toStdString()};
+            if (key.contains("wordIndex") &&
+                (!key["wordIndex"].isDouble() ||
+                 std::floor(key["wordIndex"].toDouble()) != key["wordIndex"].toDouble()))
+                return fail("wordIndex de keyframe precisa ser inteiro.");
+            parsed.wordIndex = key["wordIndex"].toInt(-1);
+            if (parsed.wordIndex >= 0 &&
+                (version < 3 || parsed.wordIndex >= 150 || key.contains("progress") ||
+                 key.contains("cueProgress") || key.contains("offsetSeconds")))
+                return fail("wordIndex de keyframe deve ser 0..149 e não pode usar outro deslocamento.");
             if ((key.contains("easing") && !key["easing"].isString()) || !supportedEasing(parsed.easing))
                 return fail("Easing de elemento inválido.");
             if ((key.contains("cueProgress") || key.contains("progress")) && key.contains("offsetSeconds"))
@@ -473,8 +491,9 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (key.contains("progress") && (!number(key, "progress", parsed.cueProgress) ||
                                              parsed.cueProgress < 0 || parsed.cueProgress > 1))
                 return fail("progress de keyframe deve estar entre 0 e 1.");
-            if (parsed.cue < 0 || parsed.cue >= cueCount || !std::isfinite(parsed.progress) ||
-                parsed.progress < 0 || parsed.progress > 1 || !std::isfinite(parsed.offsetSeconds) ||
+            if (parsed.cue < 0 || parsed.cue >= cueCount ||
+                (parsed.wordIndex < 0 && (!std::isfinite(parsed.progress) || parsed.progress < 0 ||
+                                          parsed.progress > 1)) || !std::isfinite(parsed.offsetSeconds) ||
                 parsed.offsetSeconds < 0 || parsed.offsetSeconds > 10)
                 return fail("Cue de keyframe inválido.");
             for (auto field : {"x", "y", "rotation", "scale", "opacity"})
@@ -490,7 +509,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
-                              {element.cue, element.cueProgress, element.offsetSeconds}, editingIntensity,
+                              {element.cue, element.cueProgress, element.offsetSeconds, element.wordIndex}, editingIntensity,
                               artDirection))
                 return false;
             parsedChild.node.parentId = n.id;
@@ -521,6 +540,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     child.progress = element.progress;
                     child.offsetSeconds = element.offsetSeconds;
                     child.cueProgress = element.cueProgress;
+                    child.wordIndex = element.wordIndex;
                     child.utteranceOnly = element.utteranceOnly;
                     child.presetTiming = true;
                     if (!expand(child, part.id, level + 1))

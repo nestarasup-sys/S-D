@@ -226,6 +226,17 @@ int main(int argc, char **argv) {
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
         auto wordShots = wordScene["shots"].toArray();
         auto wordShot = wordShots.at(1).toObject();
+        auto wordElements = wordShot["elements"].toArray();
+        auto wordGroup = wordElements.at(0).toObject();
+        auto wordChildren = wordGroup["children"].toArray();
+        auto wordPrice = wordChildren.at(0).toObject();
+        wordPrice["wordIndex"] = 2;
+        wordPrice["keyframes"] = QJsonArray{
+            QJsonObject{{"wordIndex", 3}, {"x", 180}}, QJsonObject{{"wordIndex", 4}, {"x", 260}}};
+        wordChildren[0] = wordPrice;
+        wordGroup["children"] = wordChildren;
+        wordElements[0] = wordGroup;
+        wordShot["elements"] = wordElements;
         auto wordBeats = wordShot["beats"].toArray();
         auto wordBeat = wordBeats.at(0).toObject();
         wordBeat["at"] = QJsonObject{{"cue", 0}, {"wordIndex", 3}};
@@ -238,8 +249,10 @@ int main(int argc, char **argv) {
         wordRecipeJson["scenes"] = wordScenes;
         const auto wordRecipe = studio::parseRecipe(QJsonDocument(wordRecipeJson).toJson(), directory.path());
         check(wordRecipe.error.isEmpty() &&
-                  wordRecipe.recipe.scenes.front().shots.back().beats.front().at.wordIndex == 3,
-              "v3 parses word-index timing references for Visual Beats");
+                  wordRecipe.recipe.scenes.front().shots.back().beats.front().at.wordIndex == 3 &&
+                  wordRecipe.recipe.scenes.front().shots.back().elements.front().children.front().wordIndex == 2 &&
+                  wordRecipe.recipe.scenes.front().shots.back().elements.front().children.front().keyframes[0].wordIndex == 3,
+              "v3 parses word-index timing for Visual Beats, elements and keyframes");
         auto highIntensityJson = shotRecipeJson;
         highIntensityJson["editing"] = QJsonObject{{"intensity", 90}};
         const auto highIntensity =
@@ -308,6 +321,13 @@ int main(int argc, char **argv) {
                                   return beat.id == "reveal-price" && beat.frame == 6;
                               }),
               "word-index beats require real alignment and resolve to measured word timing");
+        auto alignedWordElement = studio::compileProduction(wordRecipe.recipe, shotAudio, "word-elements.wav",
+                                                            nullptr, &wordMap);
+        const auto *wordTimedPrice = studio::findNode(alignedWordElement.project, "price");
+        check(alignedWordElement.error.isEmpty() && wordTimedPrice && wordTimedPrice->start == 3 &&
+                  wordTimedPrice->keyframes.size() == 3 && wordTimedPrice->keyframes[1].frame == 6 &&
+                  wordTimedPrice->keyframes[2].frame == 8,
+              "word alignment resolves element entry and editable transform keyframes");
         const auto persistedShots = studio::deserialize(studio::serialize(compiledShots.project));
         check(persistedShots.error.isEmpty() &&
                   persistedShots.project.shots.back().transitionIn == "dissolve" &&

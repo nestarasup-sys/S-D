@@ -49,12 +49,19 @@ Node textNode(std::string id, std::string text, double x, double y, double width
     return n;
 }
 bool compileElement(const DirectedElement &directed,
-                    const std::vector<std::pair<std::int64_t, std::int64_t>> &cues, std::int64_t sceneStart,
+                    const std::vector<std::pair<std::int64_t, std::int64_t>> &cues,
+                    const std::vector<std::vector<std::int64_t>> &wordStarts, std::int64_t sceneStart,
                     std::int64_t sceneEnd, const std::string &sceneId, const std::string &shotId,
                     std::int64_t samplesPerFrame, Project &project, QString &error) {
     auto node = directed.node;
     const auto cue = cues[directed.cue];
-    const auto anchor = cueFrame(cue, directed.offsetSeconds, directed.cueProgress);
+    const auto *words = directed.cue < int(wordStarts.size()) ? &wordStarts[std::size_t(directed.cue)] : nullptr;
+    if (directed.wordIndex >= 0 && (!words || std::size_t(directed.wordIndex) >= words->size())) {
+        error = "wordIndex sem timestamp de alinhamento disponível no elemento: " +
+                QString::fromStdString(node.id);
+        return false;
+    }
+    const auto anchor = cueFrame(cue, directed.offsetSeconds, directed.cueProgress, directed.wordIndex, words);
     node.start = anchor + (directed.presetTiming ? node.start : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
@@ -73,8 +80,17 @@ bool compileElement(const DirectedElement &directed,
     } else {
         node.keyframes.clear();
         for (const auto &directedKey : directed.keyframes) {
-            const auto frame =
-                cueFrame(cues[directedKey.cue], directedKey.offsetSeconds, directedKey.cueProgress);
+            const auto *keyWords = directedKey.cue < int(wordStarts.size())
+                                       ? &wordStarts[std::size_t(directedKey.cue)]
+                                       : nullptr;
+            if (directedKey.wordIndex >= 0 &&
+                (!keyWords || std::size_t(directedKey.wordIndex) >= keyWords->size())) {
+                error = "wordIndex sem timestamp de alinhamento disponível no keyframe de elemento: " +
+                        QString::fromStdString(node.id);
+                return false;
+            }
+            const auto frame = cueFrame(cues[directedKey.cue], directedKey.offsetSeconds,
+                                        directedKey.cueProgress, directedKey.wordIndex, keyWords);
             node.keyframes.push_back({frame, directedKey.x, directedKey.y, directedKey.rotation,
                                       directedKey.scale, directedKey.opacity, directedKey.easing});
         }
@@ -94,7 +110,7 @@ bool compileElement(const DirectedElement &directed,
         }
     project.nodes.push_back(node);
     for (const auto &child : directed.children)
-        if (!compileElement(child, cues, sceneStart, sceneEnd, sceneId, shotId, samplesPerFrame, project,
+        if (!compileElement(child, cues, wordStarts, sceneStart, sceneEnd, sceneId, shotId, samplesPerFrame, project,
                             error))
             return false;
     Q_UNUSED(sceneStart);
@@ -384,7 +400,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                    shotStart, shotEnd - shotStart, directedShot.transitionDurationFrames,
                                    directedShot.transitionDirection.toStdString()});
                 for (const auto &element : directedShot.elements)
-                    if (!compileElement(element, cues, shotStart, shotEnd, scene.id.toStdString(),
+                    if (!compileElement(element, cues, wordStarts, shotStart, shotEnd, scene.id.toStdString(),
                                         directedShot.id.toStdString(), samplesPerFrame, p, r.error))
                         return r;
 
@@ -517,7 +533,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             }
         } else {
             for (const auto &directed : scene.elements) {
-                if (!compileElement(directed, cues, sceneStart, sceneStart + sceneDuration,
+                if (!compileElement(directed, cues, wordStarts, sceneStart, sceneStart + sceneDuration,
                                     scene.id.toStdString(), {}, samplesPerFrame, p, r.error))
                     return r;
             }

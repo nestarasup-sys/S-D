@@ -167,6 +167,7 @@
         "intensity-driven-default-motion",
         "global-art-direction",
         "word-aligned-visual-beats",
+        "word-aligned-elements-keyframes",
         "multi-track-audio",
         "voice-sidechain-ducking",
         "video-layer-broll"

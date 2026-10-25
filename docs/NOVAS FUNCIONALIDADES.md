@@ -45,10 +45,10 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 ### Sincronização por palavra implementada parcialmente
 
 - A síntese Windows pt-BR recolhe eventos `SpeakProgress` com palavra, posição no texto e tempo do fluxo de áudio; o worker registra esses dados junto aos arquivos WAV.
-- Receita v3 aceita `wordIndex` no início de shot e no tempo de Visual Beat, em base zero e ligado ao `cue` da mesma cena. O compilador resolve o evento em quadros e grava o shot/beat no projeto editável.
+- Receita v3 aceita `wordIndex` no início de shot, no início de elemento, em keyframes e no tempo de Visual Beat, em base zero e ligado ao `cue` da mesma cena. O compilador resolve o evento em quadros e grava os estados no projeto editável.
 - Índices sem alinhamento real são rejeitados. Quando o plano de duração fixa acelera uma fala, as posições acompanham o mesmo fator temporal.
 - Os eventos SAPI podem ficar ligeiramente fora do tamanho final do WAV devido à diferença entre o relógio reportado e o arquivo; o worker calibra a sequência para o intervalo audível real, preservando a ordem e deixando espaço para o fim da última palavra.
-- Os testes cobrem receita, timestamp e resolução de beat. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
+- Os testes cobrem receita, timestamp e resolução em shot, beat, elemento e keyframe. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
 
 ### Controle de intensidade no editor
 
@@ -70,14 +70,14 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e editor, e transições fade/dissolve/slide/zoom editáveis no inspetor implementados. Falta decisão de ritmo guiada pelo conteúdo, presets de câmera e uma edição de sobreposição/duração total de sequência mais avançada. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas de áudio com ducking implementadas na receita/projeto/exportação. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
-| 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat; vídeo/B-roll local já entra na composição e no render. Falta levar timestamps de palavra até keyframes/legendas destacadas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global tem controles no inspetor; pistas de áudio com ducking funcionam na receita/projeto/exportação. Faltam estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
+| 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR em shot, Visual Beat, início de elemento e keyframe; vídeo/B-roll local já entra na composição e no render. Falta destaque de palavra sincronizado nas legendas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
 - `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. O inspetor permite ajustar tipo, duração e direção no shot atual. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
-- Shot e Visual Beat podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Elementos/keyframes ainda usam `cueProgress`/`offsetSeconds`; não há alinhamento fonético reutilizável após a importação.
+- Shot, Visual Beat, início de elemento e keyframe podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Ainda não há alinhamento fonético reutilizável após a importação nem destaque de palavra nas legendas.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.

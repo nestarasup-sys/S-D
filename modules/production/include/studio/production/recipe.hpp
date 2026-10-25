@@ -24,6 +24,7 @@ struct DirectedKeyframe {
     double cueProgress{-1}; // 0..1 follows the adjusted speech duration.
     double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};
     std::string easing{"linear"};
+    int wordIndex{-1};
 };
 struct DirectedCameraKeyframe {
     int cue{0};
@@ -39,6 +40,7 @@ struct DirectedElement {
     double progress{0};
     double offsetSeconds{0};
     double cueProgress{-1};
+    int wordIndex{-1};
     bool utteranceOnly{false};
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     std::vector<DirectedKeyframe> keyframes;
