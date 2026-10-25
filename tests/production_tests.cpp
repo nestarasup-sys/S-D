@@ -328,6 +328,8 @@ int main(int argc, char **argv) {
                                                             {"gain", 0.4},
                                                             {"fadeInFrames", 2},
                                                             {"fadeOutFrames", 3},
+                                                            {"sourceInSeconds", 1.25},
+                                                            {"playbackRate", 1.5},
                                                             {"gainAutomation", QJsonArray{
                                                                                   QJsonObject{{"frame", 0}, {"value", 0.25}},
                                                                                   QJsonObject{{"frame", 2}, {"value", 1.0},
@@ -374,6 +376,8 @@ int main(int argc, char **argv) {
                   styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().fadeInFrames == 2 &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().fadeOutFrames == 3 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().sourceInSeconds == 1.25 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().playbackRate == 1.5 &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().gainAutomation.size() == 2 &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().gainAutomation.back().easing ==
                       "ease-in-out",
@@ -676,7 +680,7 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 11 &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 13 &&
                   styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   styledAudio.project.scenes.front().artDirection->backgroundColor == "#14202d" &&
                   styledAudio.project.shots.back().artDirection->backgroundColor == "#070a0c" &&
@@ -686,6 +690,8 @@ int main(int argc, char **argv) {
                   styledAudio.project.audioTracks.front().duckUnderVoice &&
                   styledAudio.project.audioTracks.front().fadeInFrames == 2 &&
                   styledAudio.project.audioTracks.front().fadeOutFrames == 3 &&
+                  styledAudio.project.audioTracks.front().sourceInSeconds == 1.25 &&
+                  styledAudio.project.audioTracks.front().playbackRate == 1.5 &&
                   styledAudio.project.audioTracks.front().gainAutomation.size() == 2 &&
                   styledAudio.project.audioTracks.front().gain == .4 &&
                   styledAudio.project.voiceDuckingSource == "voice-stem.wav",

@@ -1473,6 +1473,7 @@ void EditorController::refreshAudioTracks() {
         auto player = std::make_unique<QMediaPlayer>(this);
         player->setAudioOutput(output.get());
         player->setSource(QUrl::fromLocalFile(q(track.source)));
+        player->setPlaybackRate(track.playbackRate);
         connect(player.get(), &QMediaPlayer::errorOccurred, this,
                 [this, name = q(track.name)](QMediaPlayer::Error, const QString &error) {
                     notify("Pista '" + name + "': " + error);
@@ -1509,7 +1510,8 @@ void EditorController::syncAudioTrackPlayback(int frame) {
                                              : 0);
         if (shouldPlay && !audioTrackPlaybackActive_[i]) {
             const auto offset = std::max<std::int64_t>(0, frame - track.start);
-            audioTrackPlayers_[i]->setPosition(qRound64(double(offset) * 1000. / fps()));
+            const auto sourceSeconds = track.sourceInSeconds + double(offset) / fps() * track.playbackRate;
+            audioTrackPlayers_[i]->setPosition(qRound64(sourceSeconds * 1000.));
             audioTrackPlayers_[i]->play();
             audioTrackPlaybackActive_[i] = true;
         } else if (!shouldPlay && audioTrackPlaybackActive_[i]) {

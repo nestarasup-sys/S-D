@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 13;
+        malformed["schemaVersion"] = 14;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -153,6 +153,60 @@ int main(int argc, char **argv) {
                   persistedWordAnimation.project.nodes.front().wordAnimationStartScale == .72 &&
                   persistedWordAnimation.project.nodes.front().wordAnimationTravelY == 18,
               "word-animation settings survive the schema 12 roundtrip");
+        auto timedAudioProject = shotProject;
+        timedAudioProject.schemaVersion = 13;
+        timedAudioProject.audioTracks.front().sourceInSeconds = 1.25;
+        timedAudioProject.audioTracks.front().playbackRate = 1.5;
+        const auto persistedTimedAudio = studio::deserialize(studio::serialize(timedAudioProject));
+        check(studio::validate(timedAudioProject).empty() && persistedTimedAudio.error.isEmpty() &&
+                  persistedTimedAudio.project.schemaVersion == 13 &&
+                  persistedTimedAudio.project.audioTracks.front().sourceInSeconds == 1.25 &&
+                  persistedTimedAudio.project.audioTracks.front().playbackRate == 1.5,
+              "audio source trim and speed survive the schema 13 roundtrip");
+        timedAudioProject.schemaVersion = 12;
+        check(!studio::validate(timedAudioProject).empty(), "audio source trim and speed require schema 13");
+        auto linkedAudioProject = studio::makeEmpty();
+        linkedAudioProject.schemaVersion = 13;
+        linkedAudioProject.duration = 120;
+        studio::Node linkedVideo;
+        linkedVideo.id = "linked-video";
+        linkedVideo.kind = studio::NodeKind::Video;
+        linkedVideo.name = "Vídeo com áudio";
+        linkedVideo.source = "C:/media/clip.mp4";
+        linkedVideo.start = 10;
+        linkedVideo.duration = 60;
+        linkedVideo.videoSourceInSeconds = .5;
+        linkedVideo.videoPlaybackRate = 1.5;
+        linkedAudioProject.nodes.push_back(linkedVideo);
+        studio::AudioTrack linkedTrack;
+        linkedTrack.id = "linked-audio";
+        linkedTrack.name = "Áudio do vídeo";
+        linkedTrack.source = linkedVideo.source;
+        linkedTrack.start = linkedVideo.start;
+        linkedTrack.duration = linkedVideo.duration;
+        linkedTrack.sourceInSeconds = linkedVideo.videoSourceInSeconds;
+        linkedTrack.playbackRate = linkedVideo.videoPlaybackRate;
+        linkedTrack.linkedVideoNodeId = linkedVideo.id;
+        linkedAudioProject.audioTracks.push_back(linkedTrack);
+        studio::Editor linkedAudioEditor(linkedAudioProject);
+        check(linkedAudioEditor.execute([](auto &project) {
+                  project.nodes.front().start = 20;
+                  project.nodes.front().duration = 45;
+                  project.nodes.front().videoSourceInSeconds = 1.25;
+                  project.nodes.front().videoPlaybackRate = 2;
+              }).empty() &&
+                  linkedAudioEditor.project().audioTracks.front().start == 20 &&
+                  linkedAudioEditor.project().audioTracks.front().duration == 45 &&
+                  linkedAudioEditor.project().audioTracks.front().sourceInSeconds == 1.25 &&
+                  linkedAudioEditor.project().audioTracks.front().playbackRate == 2,
+              "linked video audio follows layer movement, duration, trim and speed in one edit");
+        const auto persistedLinkedAudio = studio::deserialize(studio::serialize(linkedAudioEditor.project()));
+        check(persistedLinkedAudio.error.isEmpty() &&
+                  persistedLinkedAudio.project.audioTracks.front().linkedVideoNodeId == "linked-video",
+              "video audio linkage survives schema 13 project roundtrip");
+        check(linkedAudioEditor.execute([](auto &project) { project.nodes.clear(); }).empty() &&
+                  linkedAudioEditor.project().audioTracks.front().linkedVideoNodeId.empty(),
+              "removing a video detaches its audio track without deleting the audio");
         animatedCaptionProject.schemaVersion = 11;
         check(!studio::validate(animatedCaptionProject).empty(),
               "word-animation settings require schema 12 and retain older project compatibility");

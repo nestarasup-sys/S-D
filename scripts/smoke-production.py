@@ -82,10 +82,11 @@ run([sys.executable, root / "scripts/embed-ai-production-example.py", "--guide",
      "--example", root / "examples/carros-caros-directors-cut-90s.production.json"])
 guide_text = guide.read_text(encoding="utf-8")
 assert all(f"`{item['id']}`" in guide_text for item in catalog["nativeAssets"])
-assert "Catálogo 1 · Receita 3 · Projeto 12" in guide_text
-assert catalog["projectVersion"] == 12
+assert "Catálogo 1 · Receita 3 · Projeto 13" in guide_text
+assert catalog["projectVersion"] == 13
 assert {"video-source-trim", "video-speed-control", "video-normalized-crop"}.issubset(
     set(catalog["productionCapabilities"]))
+assert "embedded-video-audio-with-source-trim-and-speed" in catalog["productionCapabilities"]
 assert '"sourceInSeconds"' in guide_text and '"durationFrames"' in guide_text
 assert "scene-shot-art-direction" in catalog["productionCapabilities"]
 assert "word-animated-karaoke-captions" in catalog["productionCapabilities"]
@@ -245,9 +246,11 @@ assert director_runtime["selectedCaptionTrackAvailable"] and director_runtime["s
 # Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
 video_source = folder / "video-controls-source.mp4"
 run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-     "testsrc2=size=320x180:rate=30:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", video_source])
+     "testsrc2=size=320x180:rate=30:duration=2", "-f", "lavfi", "-i",
+     "sine=frequency=440:sample_rate=24000:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+     "-c:a", "aac", "-b:a", "96k", "-shortest", video_source])
 video_controls_project = {
-    "format": "studio-dark", "schemaVersion": 10, "id": "video-controls-smoke",
+    "format": "studio-dark", "schemaVersion": 13, "id": "video-controls-smoke",
     "name": "Video trim speed crop smoke", "width": 320, "height": 180, "duration": 30,
     "fps": {"numerator": 30, "denominator": 1}, "nodes": [{
         "id": "broll", "name": "B-roll", "kind": "video", "source": str(video_source),
@@ -256,6 +259,11 @@ video_controls_project = {
         "opacity": 1, "fontSize": 64, "animated": False, "motion": "none",
         "video": {"sourceInSeconds": 0.25, "speed": 1.5,
                   "crop": {"x": 0.125, "y": 0.125, "width": 0.75, "height": 0.75}},
+    }], "audioTracks": [{
+        "id": "broll-audio", "name": "Áudio embutido", "source": str(video_source),
+        "start": 0, "duration": 30, "sourceInSeconds": 0.25, "playbackRate": 1.5,
+        "gain": 1.0, "muted": False, "duckUnderVoice": False, "duckAmount": 0.65,
+        "fadeInFrames": 0, "fadeOutFrames": 0, "gainAutomation": [],
     }]
 }
 video_controls_path = output / "video-controls.studio.json"
@@ -267,7 +275,14 @@ run([bin_dir / "studio_render.exe", "--project", video_controls_path, "--still",
 run([bin_dir / "studio_render.exe", "--project", video_controls_path,
      "--output", video_controls_export, "--ffmpeg", ffmpeg], timeout=180)
 video_controls_decode = run([ffmpeg, "-hide_banner", "-i", video_controls_export, "-f", "null", "-"])
-assert re.search(r"frame=\s*30\b", video_controls_decode.stderr)
+assert re.search(r"frame=\s*30\b", video_controls_decode.stderr) and "Audio: aac" in video_controls_decode.stderr
+embedded_audio = run([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", video_controls_export,
+                      "-map", "0:a:0", "-f", "s16le", "-ac", "1", "-ar", "24000", "pipe:1"], binary=True)
+embedded_samples = array.array("h", embedded_audio.stdout)
+embedded_rms = math.sqrt(sum((sample / 32768) ** 2 for sample in embedded_samples) /
+                         max(1, len(embedded_samples)))
+assert 23000 <= len(embedded_samples) <= 25000 and embedded_rms > 0.01, (
+    len(embedded_samples), embedded_rms)
 video_controls_decoded_frame = output / "video-controls-decoded.png"
 run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", video_controls_export,
      "-vf", "select=eq(n\\,15)", "-frames:v", "1", video_controls_decoded_frame])
@@ -275,6 +290,20 @@ video_controls_match = run([ffmpeg, "-hide_banner", "-i", video_controls_preview
                             "-i", video_controls_decoded_frame, "-lavfi", "psnr", "-f", "null", "-"])
 video_controls_psnr = re.search(r"average:([0-9.]+|inf)", video_controls_match.stderr)
 assert video_controls_psnr and float(video_controls_psnr.group(1)) > 30
+
+video_audio_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-video-audio",
+                      "--project", video_controls_path, "--frame", 15, "--select", "broll",
+                      "--extract-video-audio-smoke"], timeout=30)
+(folder / "video-audio-desktop.log").write_text(video_audio_ui.stderr, encoding="utf-8")
+for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign", "Binding loop"):
+    assert marker not in video_audio_ui.stderr, video_audio_ui.stderr
+video_audio_runtime = json.loads((output / "interface-video-audio/runtime.json").read_text(encoding="utf-8"))
+video_audio_project = json.loads((output / "interface-video-audio/demo.studio.json").read_text(encoding="utf-8"))
+assert video_audio_runtime["page"] == "editor" and video_audio_runtime["videoAudioActionVisible"]
+assert video_audio_runtime["audioTrackCount"] == 2 and video_audio_project["schemaVersion"] == 13
+extracted_track = next(track for track in video_audio_project["audioTracks"] if track["name"] == "Áudio: B-roll")
+assert extracted_track["sourceInSeconds"] == 0.25 and extracted_track["playbackRate"] == 1.5
+assert extracted_track["linkedVideoNodeId"] == "broll"
 
 summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "shotsV3Frames": shots_project["duration"], "shotsV3Count": len(ordered_shots), "visualBeatsV3Count": len(shots_project["visualBeats"]), "shotsV3PreviewExportPsnrDb": float(v3_psnr.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "v3 project opens in editor", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4", "v3 independent shots and Visual Beats", "shot coverage and no gaps", "v3 preview/export frame comparison"]}
 summary.update({"director90Frames": director_project["duration"], "director90Shots": len(director_project["shots"]),
@@ -287,6 +316,9 @@ summary["checks"].extend(["90-second 2700-frame director cut", "18 independent s
                           "90-second project opens in editor", "word timing controls open for a generated caption",
                           "selected caption track is revealed in the timeline"])
 summary["videoControlsPreviewExportPsnrDb"] = float(video_controls_psnr.group(1))
-summary["checks"].append("video source trim, speed and normalized crop match between preview and MP4")
+summary["embeddedVideoAudioTrack"] = extracted_track["source"]
+summary["checks"].extend(["video source trim, speed and normalized crop match between preview and MP4",
+                          "embedded video audio appears as an editable schema 13 track",
+                          "video audio action is visible for a selected video layer"])
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(folder), **summary}, indent=2))

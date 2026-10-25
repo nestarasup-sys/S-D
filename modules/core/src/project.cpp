@@ -40,7 +40,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 12)
+    if (p.schemaVersion < 2 || p.schemaVersion > 13)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -67,6 +67,10 @@ std::string validate(const Project &p) {
             return !track.gainAutomation.empty();
         }))
         return "Automação de ganho exige a versão 8 do projeto.";
+    if (p.schemaVersion < 13 && std::any_of(p.audioTracks.begin(), p.audioTracks.end(), [](const auto &track) {
+            return track.sourceInSeconds != 0 || track.playbackRate != 1 || !track.linkedVideoNodeId.empty();
+        }))
+        return "Trim, velocidade ou vínculo de áudio com vídeo exige a versão 13 do projeto.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
@@ -335,12 +339,22 @@ std::string validate(const Project &p) {
         if (track.id.empty() || !audioTrackIds.insert(track.id).second || track.name.empty() ||
             track.name.size() > 120 || track.source.empty() || track.source.size() > 4096 || track.start < 0 ||
             track.duration < 1 || track.start >= p.duration || track.duration > p.duration - track.start ||
+            !std::isfinite(track.sourceInSeconds) || track.sourceInSeconds < 0 || track.sourceInSeconds > 3600 ||
+            !std::isfinite(track.playbackRate) || track.playbackRate < .25 || track.playbackRate > 4 ||
             track.fadeInFrames < 0 || track.fadeOutFrames < 0 ||
             track.fadeInFrames + track.fadeOutFrames > track.duration || track.fadeInFrames > 1800 ||
             track.fadeOutFrames > 1800 ||
             !std::isfinite(track.gain) || track.gain < 0 || track.gain > 4 ||
             !std::isfinite(track.duckAmount) || track.duckAmount < 0 || track.duckAmount > 1)
             return "Pista de áudio inválida ou fora dos limites.";
+        if (!track.linkedVideoNodeId.empty()) {
+            const auto *linkedNode = findNode(p, track.linkedVideoNodeId);
+            if (!linkedNode || linkedNode->kind != NodeKind::Video || linkedNode->source != track.source ||
+                linkedNode->start != track.start || linkedNode->duration != track.duration ||
+                linkedNode->videoSourceInSeconds != track.sourceInSeconds ||
+                linkedNode->videoPlaybackRate != track.playbackRate)
+                return "Pista de áudio vinculada deve acompanhar a camada de vídeo.";
+        }
         if (track.gainAutomation.size() > 128)
             return "Automação de ganho excede 128 pontos por pista.";
         std::int64_t previousPointFrame = -1;

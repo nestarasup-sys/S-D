@@ -161,6 +161,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void groupSelected();
     Q_INVOKABLE void recordSelectedKeyframe();
     Q_INVOKABLE void addAudioTrack(QUrl source);
+    Q_INVOKABLE void addAudioFromSelectedVideo();
+    Q_INVOKABLE void setAudioTrackSourceTiming(QString id, double sourceInSeconds, double playbackRate);
     Q_INVOKABLE void removeAudioTrack(QString id);
     Q_INVOKABLE void setAudioTrackGain(QString id, double gain);
     Q_INVOKABLE void setAudioTrackDucking(QString id, bool enabled);

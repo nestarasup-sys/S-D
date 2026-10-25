@@ -1048,7 +1048,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         return fail("Pista de áudio inválida.");
                     const auto trackObject = trackValue.toObject();
                     if (!allowed(trackObject, {"id", "name", "source", "start", "gain", "duckUnderVoice",
-                                               "duckAmount", "fadeInFrames", "fadeOutFrames", "gainAutomation"}) ||
+                                               "duckAmount", "fadeInFrames", "fadeOutFrames", "gainAutomation",
+                                               "sourceInSeconds", "playbackRate"}) ||
                         !trackObject["id"].isString() || !trackObject["source"].isString() ||
                         !trackObject["start"].isObject() ||
                         (trackObject.contains("name") && !trackObject["name"].isString()) ||
@@ -1066,6 +1067,14 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     if (!QFileInfo::exists(track.source))
                         return fail("Arquivo da pista de áudio ausente: " + relativeSource);
                     track.name = trackObject["name"].toString(QFileInfo(track.source).completeBaseName());
+                    if ((trackObject.contains("sourceInSeconds") &&
+                         !number(trackObject, "sourceInSeconds", track.sourceInSeconds)) ||
+                        (trackObject.contains("playbackRate") &&
+                         !number(trackObject, "playbackRate", track.playbackRate)))
+                        return fail("sourceInSeconds e playbackRate da pista devem ser numéricos.");
+                    if (track.sourceInSeconds < 0 || track.sourceInSeconds > 3600 ||
+                        track.playbackRate < .25 || track.playbackRate > 4)
+                        return fail("Trim da fonte aceita 0–3600 s e velocidade 0,25–4×.");
                     QString timeError;
                     if (!parseTimeRef(trackObject["start"].toObject(), int(scene.narration.size()), track.start,
                                       timeError, "start da pista de áudio"))

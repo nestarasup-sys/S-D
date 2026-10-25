@@ -395,7 +395,7 @@ Rectangle {
         ListView {
             visible: editor.audioTracks.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(108, editor.audioTracks.length * 108)
+            Layout.preferredHeight: Math.min(138, editor.audioTracks.length * 138)
             Layout.minimumHeight: Layout.preferredHeight
             Layout.maximumHeight: Layout.preferredHeight
             clip: true
@@ -406,7 +406,7 @@ Rectangle {
                 required property var modelData
                 property real automationValue: 1
                 property string automationEasing: "linear"
-                width: ListView.view.width; height: 106; spacing: 1
+                width: ListView.view.width; height: 136; spacing: 1
                 onModelDataChanged: envelopeCanvas.requestPaint()
                 RowLayout {
                     Layout.fillWidth: true; Layout.preferredHeight: 48; spacing: 6
@@ -456,6 +456,28 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 StudioButton { text: "Remover"; onClicked: editor.removeAudioTrack(modelData.id) }
+                }
+                RowLayout {
+                    Layout.fillWidth: true; Layout.preferredHeight: 26; spacing: 6
+                    Label { text: "Fonte · s"; color: "#718d9e"; font.pixelSize: 9 }
+                    TextField {
+                        Layout.preferredWidth: 98
+                        text: Number(audioTrackRow.modelData.sourceInSeconds).toFixed(2)
+                        validator: DoubleValidator { locale: Qt.locale("en_US"); bottom: 0; top: 3600; decimals: 2; notation: DoubleValidator.StandardNotation }
+                        onEditingFinished: editor.setAudioTrackSourceTiming(audioTrackRow.modelData.id,
+                            Number(text), audioTrackRow.modelData.playbackRate)
+                        ToolTip.visible: hovered; ToolTip.text: "Trim de entrada na fonte de áudio, em segundos"
+                    }
+                    Label { text: "Velocidade · ×"; color: "#718d9e"; font.pixelSize: 9 }
+                    TextField {
+                        Layout.preferredWidth: 82
+                        text: Number(audioTrackRow.modelData.playbackRate).toFixed(2)
+                        validator: DoubleValidator { locale: Qt.locale("en_US"); bottom: 0.25; top: 4; decimals: 2; notation: DoubleValidator.StandardNotation }
+                        onEditingFinished: editor.setAudioTrackSourceTiming(audioTrackRow.modelData.id,
+                            audioTrackRow.modelData.sourceInSeconds, Number(text))
+                        ToolTip.visible: hovered; ToolTip.text: "Velocidade da fonte, entre 0,25× e 4×"
+                    }
+                    Item { Layout.fillWidth: true }
                 }
                 Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 30

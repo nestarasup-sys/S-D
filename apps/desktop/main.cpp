@@ -34,6 +34,8 @@ int main(int argc, char **argv) {
     int selectionArgument = args.indexOf("--select");
     if (selectionArgument >= 0 && selectionArgument + 1 < args.size())
         controller.selectNode(args[selectionArgument + 1]);
+    if (args.contains("--extract-video-audio-smoke"))
+        controller.addAudioFromSelectedVideo();
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("editor", &controller);
     engine.rootContext()->setContextProperty("workspace", &workspace);
@@ -59,6 +61,8 @@ int main(int argc, char **argv) {
             auto rootObject = engine.rootObjects().value(0);
             auto captionList = rootObject ? rootObject->findChild<QObject *>("captionWordAlignmentList") : nullptr;
             auto timelinePanel = rootObject ? rootObject->findChild<QObject *>("timelinePanelRoot") : nullptr;
+            auto videoAudioButton = rootObject ? rootObject->findChild<QObject *>("addVideoAudioButton") : nullptr;
+            const auto audioTracks = controller.audioTracks();
             QFile project(directory + "/demo.studio.json");
             ok = ok && project.open(QIODevice::WriteOnly);
             if (ok)
@@ -80,6 +84,9 @@ int main(int argc, char **argv) {
                                                          timelinePanel && timelinePanel->property("selectedCaptionTrackAvailable").toBool()},
                                                         {"selectedTrackIndex",
                                                          timelinePanel ? timelinePanel->property("selectedTrackIndex").toInt() : -1},
+                                                        {"videoAudioActionVisible",
+                                                         videoAudioButton && videoAudioButton->property("visible").toBool()},
+                                                        {"audioTrackCount", audioTracks.size()},
                                                         {"projects", workspace.projectCount()},
                                                         {"assets", workspace.assetCount()},
                                                         {"categories", workspace.categories().size()}})

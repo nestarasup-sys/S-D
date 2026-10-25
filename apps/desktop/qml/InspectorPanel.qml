@@ -318,6 +318,15 @@ Rectangle {
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540" }
                 Label { text: "TEMPO E MOVIMENTO"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1 }
                 Label { text: "FONTE DE VÍDEO"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.kind === "video" }
+                StudioButton {
+                    objectName: "addVideoAudioButton"
+                    text: "Adicionar áudio do vídeo à timeline"
+                    Layout.fillWidth: true
+                    visible: panel.node.kind === "video"
+                    onClicked: editor.addAudioFromSelectedVideo()
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Cria uma pista editável alinhada ao trim e à velocidade deste clipe"
+                }
                 RowLayout {
                     visible: panel.node.kind === "video"
                     Field { caption: "Início da fonte · s"; propertyKey: "videoSourceInSeconds"; currentValue: panel.node.videoSourceInSeconds }

@@ -1,8 +1,31 @@
 #include <stdexcept>
-#include <studio/core/editor.hpp>
+#include <algorithm>
 #include <utility>
+#include <studio/core/editor.hpp>
 
 namespace studio {
+namespace {
+void synchronizeLinkedVideoAudio(Project &project) {
+    for (auto &track : project.audioTracks) {
+        if (track.linkedVideoNodeId.empty())
+            continue;
+        const auto *node = findNode(project, track.linkedVideoNodeId);
+        if (!node || node->kind != NodeKind::Video) {
+            track.linkedVideoNodeId.clear();
+            continue;
+        }
+        track.source = node->source;
+        track.start = node->start;
+        track.duration = node->duration;
+        track.sourceInSeconds = node->videoSourceInSeconds;
+        track.playbackRate = node->videoPlaybackRate;
+        track.fadeInFrames = std::min(track.fadeInFrames, track.duration);
+        track.fadeOutFrames = std::min(track.fadeOutFrames, track.duration - track.fadeInFrames);
+        std::erase_if(track.gainAutomation,
+                      [&](const auto &point) { return point.frame >= track.duration; });
+    }
+}
+} // namespace
 Editor::Editor(Project project) {
     reset(std::move(project));
 }
@@ -23,6 +46,7 @@ void Editor::remember(Project project) {
 std::string Editor::execute(const std::function<void(Project &)> &mutation) {
     auto candidate = project_;
     mutation(candidate);
+    synchronizeLinkedVideoAudio(candidate);
     if (auto error = validate(candidate); !error.empty())
         return error;
     if (!gesturing_)

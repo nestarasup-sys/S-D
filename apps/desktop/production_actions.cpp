@@ -12,6 +12,7 @@
 #include <QUrl>
 #include <QUuid>
 #include <algorithm>
+#include <cmath>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
 #include <studio/storage/workspace_store.hpp>
@@ -137,6 +138,8 @@ QVariantList EditorController::audioTracks() const {
                                 {"source", QFileInfo(QString::fromStdString(track.source)).fileName()},
                                 {"start", int(track.start)},
                                 {"duration", int(track.duration)},
+                                {"sourceInSeconds", track.sourceInSeconds},
+                                {"playbackRate", track.playbackRate},
                                 {"gain", track.gain},
                                 {"muted", track.muted},
                                 {"duckUnderVoice", track.duckUnderVoice},
@@ -180,6 +183,84 @@ void EditorController::addAudioTrack(QUrl source) {
     refreshAudioTracks();
     changed();
     notify("Pista adicionada: " + file.fileName());
+}
+void EditorController::addAudioFromSelectedVideo() {
+    if (producing() || exporting())
+        return;
+    const auto *node = studio::findNode(project(), selectedId_.toStdString());
+    if (!node || node->kind != studio::NodeKind::Video) {
+        notify("Selecione uma camada de vídeo primeiro.");
+        return;
+    }
+    if (project().audioTracks.size() >= 32) {
+        notify("O projeto aceita até 32 pistas de áudio.");
+        return;
+    }
+    const auto path = QString::fromStdString(node->source);
+    if (!QFileInfo(path).isFile()) {
+        notify("O arquivo de vídeo desta camada não está disponível.");
+        return;
+    }
+    QProcess probe;
+    probe.setProcessChannelMode(QProcess::SeparateChannels);
+    probe.start(qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg"), {"-hide_banner", "-i", path});
+    if (!probe.waitForStarted(10000)) {
+        notify("Não foi possível iniciar o FFmpeg para verificar o áudio do vídeo.");
+        return;
+    }
+    if (!probe.waitForFinished(10000)) {
+        probe.kill();
+        probe.waitForFinished(2000);
+        notify("A verificação do áudio do vídeo excedeu o tempo limite.");
+        return;
+    }
+    if (!QString::fromLocal8Bit(probe.readAllStandardError()).contains("Audio:", Qt::CaseInsensitive)) {
+        notify("Esse vídeo não tem uma faixa de áudio reconhecida pelo FFmpeg.");
+        return;
+    }
+    stop();
+    studio::AudioTrack track;
+    track.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
+    track.name = QString("Áudio: %1").arg(QString::fromStdString(node->name)).toStdString();
+    track.source = node->source;
+    track.start = node->start;
+    track.duration = node->duration;
+    track.sourceInSeconds = node->videoSourceInSeconds;
+    track.playbackRate = node->videoPlaybackRate;
+    track.linkedVideoNodeId = node->id;
+    track.duckUnderVoice = hasMainAudio();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        p.schemaVersion = std::max(p.schemaVersion, 13);
+        p.audioTracks.push_back(track);
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
+    notify("Áudio do vídeo adicionado à timeline.");
+}
+void EditorController::setAudioTrackSourceTiming(QString id, double sourceInSeconds, double playbackRate) {
+    if (!std::isfinite(sourceInSeconds) || !std::isfinite(playbackRate))
+        return;
+    stop();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        p.schemaVersion = std::max(p.schemaVersion, 13);
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString()) {
+                track.linkedVideoNodeId.clear();
+                track.sourceInSeconds = sourceInSeconds;
+                track.playbackRate = playbackRate;
+                break;
+            }
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
+    refreshAudioTracks();
+    changed();
 }
 void EditorController::removeAudioTrack(QString id) {
     stop();
@@ -259,6 +340,7 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
     const auto error = editor_.execute([&](studio::Project &p) {
         for (auto &track : p.audioTracks)
             if (track.id == id.toStdString()) {
+                track.linkedVideoNodeId.clear();
                 track.start = start;
                 track.duration = length;
                 std::erase_if(track.gainAutomation,

@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Entrega implementada: áudio embutido em clipes de vídeo
+
+- Ao selecionar uma camada de vídeo, **Adicionar áudio do vídeo à timeline** verifica a faixa de áudio local e cria uma pista vinculada ao início, duração, trim e velocidade do clipe. Alterações posteriores na camada mantêm a sincronização; mover/aparar a pista ou editar seu trim/velocidade a desvincula para edição independente. Arquivos sem faixa de áudio reconhecida são recusados com uma mensagem específica.
+- A pista permanece editável: início, duração, ganho, mute, ducking, fades, automação, trim da fonte e velocidade. Prévia e exportação aplicam o mesmo trim/velocidade; a exportação decodifica a faixa de áudio 0 do arquivo de vídeo e a mistura com as demais fontes.
+- Receitas v3 podem usar um arquivo de vídeo local como `audioTracks[].source` e declarar `sourceInSeconds` (0–3600, padrão 0) e `playbackRate` (0,25–4, padrão 1). Projetos com esses controles persistem no schema 13; schemas anteriores continuam abrindo.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1`, `scripts/smoke-workspace.ps1` e `scripts/smoke-production.ps1` passaram. O smoke gerou MP4 com vídeo e seno de áudio, aplicou trim de 0,25 s e velocidade 1,5×, mediu áudio audível com 1 segundo na saída, comparou preview/export em 32,99 dB e confirmou a ação do inspetor, o vínculo e a persistência schema 13.
+- Decisão arquitetural: [ADR 0023 — áudio embutido em vídeo](architecture/0023-embedded-video-audio.md).
+
 ### Entrega implementada: seleção múltipla na timeline
 
 - Ctrl+clique adiciona ou remove clipes da seleção. O inspetor continua editando o item principal da seleção.
@@ -82,7 +90,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O editor oferece **Adicionar vídeo à composição** e reconhece MP4, MOV, MKV, WebM, AVI e M4V. A camada aparece como objeto selecionável e usa os controles de duração, posição e escala existentes.
 - Projetos schema 5 persistem a camada sem alterar a leitura dos projetos anteriores. Receitas v3 aceitam `kind: "video"` com `source` local relativo ao JSON ou absoluto; links remotos não são aceitos.
 - Guia IA, catálogo de capacidades e README descrevem formatos, comportamento e dependência de arquivo local/FFmpeg. Teste automatizado gera um clipe curto e verifica persistência e diferença entre quadros consecutivos.
-- Limites atuais: o áudio embutido no clipe não entra automaticamente na mixagem; importe-o como uma pista independente. Trim de entrada, velocidade, duração de saída e recorte manual já são editáveis. Ainda não há waveform da fonte; em prévia, buscar para trás reinicia a decodificação do clipe.
+- Limites atuais: a ação **Adicionar áudio do vídeo à timeline** extrai a faixa de áudio 0 e mantém o vínculo de sincronização com a camada até que a pista seja editada separadamente. Ainda não há waveform da fonte; em prévia, buscar para trás reinicia a decodificação do clipe.
 
 ### Concluído nesta rodada
 
@@ -145,7 +153,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico de camadas visuais e áudio, incluindo mover e aparar pistas de áudio. Faltam áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico de camadas visuais e áudio, incluindo mover e aparar pistas de áudio. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export; faltam outros formatos de tela e otimizações de seek. |
 
 ### Limites confirmados nesta versão
 
@@ -161,7 +169,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Avançar para extração do áudio embutido nos clipes de vídeo. Depois, tratar fontes externas e presets visuais nomeados; formatos de tela adicionais e cache/seek seguem como pendências.
+Formatos de tela adicionais, começando por retrato 1080×1920 sem alterar projetos horizontais. Depois, otimizar cache/seek de vídeo e preview de áudio. Fontes externas e presets visuais nomeados também continuam pendentes.
 
 ---
 
@@ -938,7 +946,8 @@ Implementar:
 8. [x] Snapping geométrico de clipes visuais/áudio, movimento e trim de duração das pistas de áudio na timeline.
 9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
 10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
-11. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
+11. [x] Áudio embutido em vídeos locais, com trim e velocidade sincronizados à camada e pista editável.
+12. [ ] Formatos de tela adicionais, incluindo projetos verticais.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 

@@ -96,6 +96,8 @@ struct AudioTrack {
         bool operator==(const GainPoint &) const = default;
     };
     std::vector<GainPoint> gainAutomation;
+    double sourceInSeconds{0}, playbackRate{1};
+    std::string linkedVideoNodeId;
 };
 struct Project {
     std::string id;

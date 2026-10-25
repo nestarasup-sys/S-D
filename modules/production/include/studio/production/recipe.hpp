@@ -60,6 +60,7 @@ struct DirectedAudioTrack {
     QString source;
     DirectedTime start;
     double gain{1}, duckAmount{0.65};
+    double sourceInSeconds{0}, playbackRate{1};
     bool duckUnderVoice{false};
     int fadeInFrames{0}, fadeOutFrames{0};
     std::vector<AudioTrack::GainPoint> gainAutomation;

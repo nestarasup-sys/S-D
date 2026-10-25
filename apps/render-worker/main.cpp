@@ -202,8 +202,22 @@ int main(int argc, char **argv) {
             const auto gain = QString::number(track.gain, 'f', 6);
             const auto pre = QString("pre%1").arg(i);
             const auto out = QString("track%1").arg(i);
-            QString trackFilter = "[" + QString::number(input) + ":a:0]atrim=duration=" +
-                                  seconds(length) + ",asetpts=PTS-STARTPTS";
+            QString trackFilter = "[" + QString::number(input) + ":a:0]atrim=start=" +
+                                  seconds(track.sourceInSeconds) + ":duration=" +
+                                  seconds(length * track.playbackRate) + ",asetpts=PTS-STARTPTS";
+            if (std::abs(track.playbackRate - 1.) > 1e-9) {
+                double remaining = track.playbackRate;
+                while (remaining < .5) {
+                    trackFilter += ",atempo=0.5";
+                    remaining /= .5;
+                }
+                while (remaining > 2.) {
+                    trackFilter += ",atempo=2";
+                    remaining /= 2.;
+                }
+                trackFilter += ",atempo=" + QString::number(remaining, 'f', 9);
+            }
+            trackFilter += ",apad,atrim=duration=" + seconds(length) + ",asetpts=PTS-STARTPTS";
             if (track.fadeInFrames > 0)
                 trackFilter += ",afade=t=in:st=0:d=" + seconds(double(track.fadeInFrames) / p.fps.value());
             if (track.fadeOutFrames > 0)

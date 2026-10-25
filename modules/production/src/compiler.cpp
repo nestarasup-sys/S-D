@@ -366,6 +366,10 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                      directedTrack.duckAmount, directedTrack.fadeInFrames,
                                      directedTrack.fadeOutFrames});
             p.audioTracks.back().gainAutomation = directedTrack.gainAutomation;
+            p.audioTracks.back().sourceInSeconds = directedTrack.sourceInSeconds;
+            p.audioTracks.back().playbackRate = directedTrack.playbackRate;
+            if (directedTrack.sourceInSeconds != 0 || directedTrack.playbackRate != 1)
+                p.schemaVersion = std::max(p.schemaVersion, 13);
             if (!directedTrack.gainAutomation.empty())
                 p.schemaVersion = std::max(p.schemaVersion, 8);
             if (directedTrack.fadeInFrames > 0 || directedTrack.fadeOutFrames > 0)

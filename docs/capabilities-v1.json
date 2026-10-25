@@ -168,6 +168,7 @@
         "global-art-direction",
         "scene-shot-art-direction",
         "word-aligned-visual-beats",
+        "embedded-video-audio-with-source-trim-and-speed",
         "word-aligned-elements-keyframes",
         "multi-track-audio",
         "visual-beat-sound-effects",
@@ -200,7 +201,7 @@
         "word-timed-caption-highlights",
         "word-animated-caption-presets"
     ],
-    "projectVersion": 12,
+    "projectVersion": 13,
     "shotTransitionTypes": [
         "cut",
         "fade",

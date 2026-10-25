@@ -219,18 +219,25 @@ QByteArray serialize(const Project &p) {
         for (const auto &point : track.gainAutomation)
             automation.append(QJsonObject{{"frame", double(point.frame)}, {"value", point.value},
                                           {"easing", text(point.easing)}});
-        audioTracks.append(QJsonObject{{"id", text(track.id)},
-                                       {"name", text(track.name)},
-                                       {"source", text(track.source)},
-                                       {"start", double(track.start)},
-                                       {"duration", double(track.duration)},
-                                       {"gain", track.gain},
-                                       {"muted", track.muted},
-                                       {"duckUnderVoice", track.duckUnderVoice},
-                                       {"duckAmount", track.duckAmount},
-                                       {"fadeInFrames", double(track.fadeInFrames)},
-                                       {"fadeOutFrames", double(track.fadeOutFrames)},
-                                       {"gainAutomation", automation}});
+        QJsonObject trackJson{{"id", text(track.id)},
+                              {"name", text(track.name)},
+                              {"source", text(track.source)},
+                              {"start", double(track.start)},
+                              {"duration", double(track.duration)},
+                              {"gain", track.gain},
+                              {"muted", track.muted},
+                              {"duckUnderVoice", track.duckUnderVoice},
+                              {"duckAmount", track.duckAmount},
+                              {"fadeInFrames", double(track.fadeInFrames)},
+                              {"fadeOutFrames", double(track.fadeOutFrames)},
+                              {"gainAutomation", automation}};
+        if (p.schemaVersion >= 13) {
+            trackJson["sourceInSeconds"] = track.sourceInSeconds;
+            trackJson["playbackRate"] = track.playbackRate;
+            if (!track.linkedVideoNodeId.empty())
+                trackJson["linkedVideoNodeId"] = text(track.linkedVideoNodeId);
+        }
+        audioTracks.append(trackJson);
     }
     QJsonObject document{
         {"format", "studio-dark"},
@@ -270,7 +277,8 @@ LoadResult deserialize(const QByteArray &bytes) {
                                          o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
-                                         o["schemaVersion"] != 11 && o["schemaVersion"] != 12))
+                                         o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
+                                         o["schemaVersion"] != 13))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -318,12 +326,23 @@ LoadResult deserialize(const QByteArray &bytes) {
                 (track.contains("muted") && !track["muted"].isBool()) ||
                 (track.contains("duckUnderVoice") && !track["duckUnderVoice"].isBool()))
                 return fail("Metadados da pista de áudio inválidos.");
+            if ((track.contains("sourceInSeconds") || track.contains("playbackRate")) && p.schemaVersion < 13)
+                return fail("Trim e velocidade da fonte de áudio exigem schema 13.");
+            if (track.contains("linkedVideoNodeId") &&
+                (p.schemaVersion < 13 || !track["linkedVideoNodeId"].isString()))
+                return fail("Vínculo com camada de vídeo exige texto e schema 13.");
+            if ((track.contains("sourceInSeconds") && !track["sourceInSeconds"].isDouble()) ||
+                (track.contains("playbackRate") && !track["playbackRate"].isDouble()))
+                return fail("Trim e velocidade da fonte de áudio devem ser numéricos.");
             p.audioTracks.push_back({str(track, "id"), str(track, "name"), str(track, "source"),
                                      track["start"].toInteger(), track["duration"].toInteger(),
                                      track["gain"].toDouble(), track["muted"].toBool(),
                                      track["duckUnderVoice"].toBool(), track["duckAmount"].toDouble(.65),
                                      track["fadeInFrames"].toInteger(), track["fadeOutFrames"].toInteger()});
             auto &loadedTrack = p.audioTracks.back();
+            loadedTrack.sourceInSeconds = track["sourceInSeconds"].toDouble(0);
+            loadedTrack.playbackRate = track["playbackRate"].toDouble(1);
+            loadedTrack.linkedVideoNodeId = str(track, "linkedVideoNodeId");
             if (track.contains("gainAutomation") && !track["gainAutomation"].isArray())
                 return fail("Lista de automação de ganho inválida.");
             for (const auto pointValue : track["gainAutomation"].toArray()) {
