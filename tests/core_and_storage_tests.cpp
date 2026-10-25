@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 11;
+        malformed["schemaVersion"] = 13;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -105,6 +105,57 @@ int main(int argc, char **argv) {
                   persistedShots.project.audioTracks.front().gain == .45 &&
                   persistedShots.project.voiceDuckingSource == "C:/media/voice-stem.wav",
               "shots, beats and independent audio tracks survive schema 4 roundtrip");
+        auto styledShotProject = shotProject;
+        styledShotProject.schemaVersion = 11;
+        studio::ArtDirection sceneArt = styledShotProject.artDirection;
+        sceneArt.backgroundColor = "#112233";
+        styledShotProject.scenes.front().artDirection = sceneArt;
+        studio::ArtDirection shotArt = sceneArt;
+        shotArt.backgroundColor = "#334455";
+        styledShotProject.shots.front().artDirection = shotArt;
+        auto persistedScopedStyles = studio::deserialize(studio::serialize(styledShotProject));
+        check(studio::validate(styledShotProject).empty() && persistedScopedStyles.error.isEmpty() &&
+                  persistedScopedStyles.project.scenes.front().artDirection->backgroundColor == "#112233" &&
+                  persistedScopedStyles.project.shots.front().artDirection->backgroundColor == "#334455",
+              "scene and shot art direction survive schema 11 roundtrip");
+        studio::CompositionPainter scopedStylePainter;
+        check(scopedStylePainter.frame(styledShotProject, 10) != scopedStylePainter.frame(styledShotProject, 80),
+              "shot style overrides the scene style in the composition");
+        auto legacyScopedStyle = styledShotProject;
+        legacyScopedStyle.schemaVersion = 10;
+        check(!studio::validate(legacyScopedStyle).empty(), "scene and shot styles require schema 11");
+        auto animatedCaptionProject = studio::makeEmpty();
+        animatedCaptionProject.schemaVersion = 12;
+        animatedCaptionProject.duration = 20;
+        studio::Node animatedCaption;
+        animatedCaption.id = "caption-word-motion";
+        animatedCaption.name = "Legenda";
+        animatedCaption.text = "Uma palavra.";
+        animatedCaption.role = "caption";
+        animatedCaption.duration = 20;
+        animatedCaption.x = 80;
+        animatedCaption.y = 610;
+        animatedCaption.width = 1120;
+        animatedCaption.height = 80;
+        animatedCaption.fontSize = 27;
+        animatedCaption.captionWords = {{"Uma", 0, 8}, {"palavra.", 8, 20}};
+        animatedCaption.wordAnimationPreset = "pop-rise";
+        animatedCaption.wordAnimationDurationFrames = 6;
+        animatedCaption.wordAnimationStartScale = .72;
+        animatedCaption.wordAnimationTravelY = 18;
+        animatedCaptionProject.nodes.push_back(animatedCaption);
+        const auto persistedWordAnimation =
+            studio::deserialize(studio::serialize(animatedCaptionProject));
+        check(studio::validate(animatedCaptionProject).empty() && persistedWordAnimation.error.isEmpty() &&
+                  persistedWordAnimation.project.schemaVersion == 12 &&
+                  persistedWordAnimation.project.nodes.front().wordAnimationPreset == "pop-rise" &&
+                  persistedWordAnimation.project.nodes.front().wordAnimationDurationFrames == 6 &&
+                  persistedWordAnimation.project.nodes.front().wordAnimationStartScale == .72 &&
+                  persistedWordAnimation.project.nodes.front().wordAnimationTravelY == 18,
+              "word-animation settings survive the schema 12 roundtrip");
+        animatedCaptionProject.schemaVersion = 11;
+        check(!studio::validate(animatedCaptionProject).empty(),
+              "word-animation settings require schema 12 and retain older project compatibility");
         auto soundBeatProject = shotProject;
         soundBeatProject.schemaVersion = 9;
         soundBeatProject.visualBeats.push_back({"price-chime", "detail", "sfx-price-chime", "sound", 80, 0});

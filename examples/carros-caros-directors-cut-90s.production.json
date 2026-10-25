@@ -6,6 +6,12 @@
   "voice": "auto",
   "speechRate": 0,
   "captions": true,
+  "wordAnimation": {
+    "preset": "pop-rise",
+    "durationFrames": 8,
+    "startScale": 0.82,
+    "travelY": 12
+  },
   "timingMode": "fit-to-duration",
   "targetDurationSeconds": 90,
   "preserveVoicePitch": true,
@@ -80,6 +86,7 @@
     },
     {
       "id": "financiamento",
+      "artDirection": {"backgroundColor": "#17131b", "glowColor": "#46304f", "primaryColor": "#f4b35b"},
       "narration": [
         "Quando existe financiamento, a parcela esconde juros, tarifas e seguros incluídos no contrato.",
         "Compare o custo efetivo total e some tudo que será pago até a última prestação."
@@ -99,6 +106,7 @@
         },
         {
           "id": "financiamento-cet",
+          "artDirection": {"primaryColor": "#ff5d72", "textColor": "#fff0db"},
           "start": { "cue": 0, "wordIndex": 6 },
           "transitionIn": { "type": "slide", "direction": "left", "durationFrames": 12 },
           "camera": { "x": 640, "y": 360, "zoom": 1.08, "focus": { "target": "cet-texto", "padding": 1.4 } },

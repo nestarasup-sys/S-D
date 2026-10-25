@@ -23,7 +23,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 10},
+            {"projectVersion", 12},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -32,17 +32,19 @@ QJsonObject capabilities() {
                         "visual-beats-show-hide-transform-camera-sound", "shot-cut-camera",
                         "shot-transitions-fade-dissolve-slide-zoom", "auto-reframe-by-shot-target",
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
-                        "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
+                        "global-art-direction", "scene-shot-art-direction", "word-aligned-visual-beats",
+                        "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
-                        "word-timed-karaoke-captions"}},
+                        "word-timed-karaoke-captions", "word-animated-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
                         "visual-beat-linked-audio-tracks",
-                        "video-layers", "video-trim-speed-crop", "audio-track-fades", "audio-gain-automation",
-                        "word-timed-caption-highlights"}},
+                        "video-layers", "video-trim-speed-crop", "scene-art-direction", "shot-art-direction",
+                        "audio-track-fades", "audio-gain-automation",
+                        "word-timed-caption-highlights", "word-animated-caption-presets"}},
             {"width", 1280},
             {"height", 720},
             {"fps", 30},
@@ -67,7 +69,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 10 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 12 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -134,6 +136,8 @@ Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 car
 
 `captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.primaryColor` (ou a cor primária padrão). O projeto guarda os intervalos em quadros no schema 7; isso não exige um campo adicional na receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
+`wordAnimation` é opcional na raiz v3 e aplica movimento à palavra ativa de cada legenda alinhada. Presets: `highlight` (padrão, somente cor), `none`, `pop`, `rise`, `fade` e `pop-rise`. Exemplo: `{"wordAnimation":{"preset":"pop-rise","durationFrames":8,"startScale":0.82,"travelY":12}}`. `durationFrames` aceita 1–30 (padrão 8), `startScale` aceita 0.5–1.5 (padrão 0.82) e `travelY` aceita −80 a 80 px (padrão 12; positivo sobe). O app usa timestamps reais da voz e rejeita presets animados se não houver um timestamp por palavra. O projeto salva os parâmetros no schema 12; inspetor, prévia e exportação usam o mesmo preset. A escala e a subida terminam no tamanho/posição normal; `fade` aumenta a opacidade durante o intervalo inicial.
+
 ## Plano temporal: voz sincronizada e duração fixa
 
 A receita v2 permite dois modos. **Natural** (padrão para projetos antigos): sintetiza os trechos, mede o áudio e monta as cenas com pausas automáticas. **Duração fixa**: planeja o número exato de quadros solicitado depois de medir a voz. Use estes campos na raiz:
@@ -189,7 +193,23 @@ Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuai
 
 `editing.intensity` é opcional e aceita inteiro de 0 a 100. Ele só preenche `motion`, `motionFrames` e `exitFrames` omitidos nos elementos: 0 desliga movimentos automáticos, 1–30 usa entradas discretas com fade, 31–70 usa entradas rise e 71–100 usa pop mais rápido. Campos explicitamente declarados pela IA não são substituídos. Sem o objeto `editing`, receitas v3 mantêm os defaults anteriores; receitas v1/v2 não aceitam essa opção. Intensidade ainda não cria cortes nem beats sem direção narrativa.
 
-`artDirection` é opcional na raiz da receita v3 e define o estilo global: `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. Cores/tamanho/fonte são aplicados como defaults a objetos e texto, e elementos com `color`, `secondaryColor` ou `fontSize` explícitos mantêm sua direção individual. A direção também estiliza fundo, títulos gerados e legendas. Arquivos de fonte e estilos por cena ainda não são carregados.
+`artDirection` é opcional na raiz da receita v3 e define o estilo global. Os mesmos campos podem ser informados parcialmente em cada cena (`scenes[].artDirection`) e shot (`scenes[].shots[].artDirection`). A herança é global → cena → shot; cada objeto local substitui apenas os campos presentes. Valores `color`, `secondaryColor` e `fontSize` explícitos nos elementos mantêm prioridade sobre os defaults de direção de arte. O estilo efetivo controla fundo, tipografia, cartões padrão, cabeçalhos, legendas e destaque da palavra. O inspetor permite escolher escopo global, cena atual ou shot atual. `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. Fontes externas e presets visuais nomeados ainda não são carregados.
+
+Exemplo de herança parcial (fragmento):
+```json
+{
+  "artDirection": {"textColor":"#F4F7FA", "primaryColor":"#55E2C4"},
+  "scenes": [{
+    "id":"abertura",
+    "artDirection":{"backgroundColor":"#101820"},
+    "shots":[{
+      "id":"detalhe",
+      "artDirection":{"primaryColor":"#FFCB69"}
+    }]
+  }]
+}
+```
+O shot usa o fundo da cena e o texto global; só a cor primária substitui o valor herdado.
 
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera e edita transição/duração no shot ativo.
 
@@ -364,13 +384,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v10 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9 e controles de fonte de vídeo usam schema 10.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v12 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11 e presets de animação por palavra usam schema 12.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada com trim de entrada, velocidade e recorte manual, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação por pontos e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada com trim de entrada, velocidade e recorte manual, direção de arte global/cena/shot, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação por pontos e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes, presets visuais nomeados e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 

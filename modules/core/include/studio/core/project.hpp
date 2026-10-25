@@ -60,17 +60,22 @@ struct Node {
     int motionFrames{24}, exitFrames{0};
     std::vector<TransformKeyframe> keyframes;
     std::vector<CaptionWordCue> captionWords;
+    std::string wordAnimationPreset{"highlight"};
+    int wordAnimationDurationFrames{8};
+    double wordAnimationStartScale{0.82}, wordAnimationTravelY{12};
     bool operator==(const Node &) const = default;
 };
 struct SceneMarker {
     std::string id, name, narration;
     std::int64_t start{0}, duration{1};
+    std::optional<ArtDirection> artDirection;
 };
 struct ShotMarker {
     std::string id, sceneId, name, transitionIn{"cut"};
     std::int64_t start{0}, duration{1};
     int transitionDurationFrames{0};
     std::string transitionDirection{"left"};
+    std::optional<ArtDirection> artDirection;
 };
 struct VisualBeat {
     std::string id, shotId, targetId, action;

@@ -97,7 +97,18 @@ Rectangle {
             Label { text: "INSPETOR"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
-            Label { text: "DIREÇÃO DE ARTE GLOBAL"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            Label { text: "ESCOPO DA DIREÇÃO DE ARTE"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            StudioComboBox {
+                Layout.fillWidth: true
+                model: ["global", "scene", "shot"]
+                currentIndex: Math.max(0, model.indexOf(editor.artDirectionScope))
+                onActivated: editor.setArtDirectionScope(currentText)
+            }
+            Label {
+                text: editor.artDirectionScope === "global" ? "ESTILO GLOBAL" :
+                      editor.artDirectionScope === "scene" ? "ESTILO DA CENA ATUAL" : "ESTILO DO SHOT ATUAL"
+                color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1
+            }
             RowLayout {
                 StyleField { caption: "Fundo · #RRGGBB"; propertyKey: "backgroundColor"; currentValue: editor.artDirection.backgroundColor }
                 StyleField { caption: "Luz · #RRGGBB"; propertyKey: "glowColor"; currentValue: editor.artDirection.glowColor }
@@ -128,7 +139,7 @@ Rectangle {
                 currentIndex: Math.max(0, model.indexOf(editor.artDirection.captionPosition))
                 onActivated: editor.updateArtDirection("captionPosition", currentText)
             }
-            Label { text: "Os estilos são salvos junto ao projeto e afetam a prévia e a exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: "O estilo local herda os valores do escopo acima. Valores de objetos definidos explicitamente permanecem preservados. Os estilos são salvos no projeto e usados na prévia e na exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { text: "INTENSIDADE DE EDIÇÃO · CENA ATUAL"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
             Slider { id: intensitySlider; Layout.fillWidth: true; from: 0; to: 100; stepSize: 1; value: 50 }
             Label { text: Math.round(intensitySlider.value) + " / 100 · " + (intensitySlider.value === 0 ? "sem movimento automático" : intensitySlider.value <= 30 ? "movimento discreto" : intensitySlider.value <= 70 ? "movimento moderado" : "movimento intenso"); color: "#708393"; font.pixelSize: 10 }
@@ -220,6 +231,22 @@ Rectangle {
                     onActivated: editor.updateSelected("pose", currentText)
                 }
                 Field { caption: "Tamanho do texto"; propertyKey: "fontSize"; currentValue: panel.node.fontSize; visible: panel.node.kind === "text" }
+                Label { text: "ANIMAÇÃO POR PALAVRA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.role === "caption" && panel.node.wordAligned }
+                StudioComboBox {
+                    Layout.fillWidth: true
+                    visible: panel.node.role === "caption" && panel.node.wordAligned
+                    model: ["highlight", "none", "pop", "rise", "fade", "pop-rise"]
+                    currentIndex: Math.max(0, model.indexOf(panel.node.wordAnimationPreset || "highlight"))
+                    onActivated: editor.updateSelected("wordAnimationPreset", currentText)
+                }
+                RowLayout {
+                    visible: panel.node.role === "caption" && panel.node.wordAligned && panel.node.wordAnimationPreset !== "highlight" && panel.node.wordAnimationPreset !== "none"
+                    Field { caption: "Duração · quadros"; propertyKey: "wordAnimationDurationFrames"; currentValue: panel.node.wordAnimationDurationFrames }
+                    Field { caption: "Escala inicial"; propertyKey: "wordAnimationStartScale"; currentValue: panel.node.wordAnimationStartScale }
+                }
+                Field { caption: "Subida · px"; propertyKey: "wordAnimationTravelY"; currentValue: panel.node.wordAnimationTravelY; visible: panel.node.role === "caption" && panel.node.wordAligned && (panel.node.wordAnimationPreset === "rise" || panel.node.wordAnimationPreset === "pop-rise") }
+                Label { text: "Esta legenda tem alinhamento real por palavra. A animação acompanha a voz na prévia e na exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true; visible: panel.node.role === "caption" && panel.node.wordAligned }
+                Label { text: "Esta legenda não tem timestamps reais por palavra; importe uma voz que forneça alinhamento para animá-la."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true; visible: panel.node.role === "caption" && !panel.node.wordAligned }
                 Label { text: "Conteúdo"; color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
                 TextArea {
                     id: textEditor

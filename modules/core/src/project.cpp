@@ -19,6 +19,16 @@ bool validColor(const std::string &value) {
            std::all_of(value.begin() + 1, value.end(),
                        [](unsigned char c) { return std::isxdigit(c); });
 }
+bool validArtDirection(const ArtDirection &art) {
+    return validColor(art.backgroundColor) && validColor(art.glowColor) && validColor(art.primaryColor) &&
+           validColor(art.secondaryColor) && validColor(art.textColor) && validColor(art.cardColor) &&
+           validColor(art.captionBackgroundColor) && !art.fontFamily.empty() && art.fontFamily.size() <= 120 &&
+           (art.captionPosition == "top" || art.captionPosition == "bottom") &&
+           std::isfinite(art.titleSize) && art.titleSize >= 8 && art.titleSize <= 160 &&
+           std::isfinite(art.bodySize) && art.bodySize >= 8 && art.bodySize <= 160 &&
+           std::isfinite(art.captionSize) && art.captionSize >= 8 && art.captionSize <= 120 &&
+           art.safeMargin >= 0 && art.safeMargin <= 300;
+}
 double eased(double t, const std::string &curve) {
     if (curve == "ease-in")
         return t * t * t;
@@ -30,21 +40,13 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 10)
+    if (p.schemaVersion < 2 || p.schemaVersion > 12)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
     if (p.width < 64 || p.height < 64 || p.width > 3840 || p.height > 2160 || p.width % 2 || p.height % 2)
         return "Resolução inválida: use dimensões pares entre 64 e 3840 × 2160.";
-    const auto &art = p.artDirection;
-    if (!validColor(art.backgroundColor) || !validColor(art.glowColor) || !validColor(art.primaryColor) ||
-        !validColor(art.secondaryColor) || !validColor(art.textColor) || !validColor(art.cardColor) ||
-        !validColor(art.captionBackgroundColor) || art.fontFamily.empty() || art.fontFamily.size() > 120 ||
-        (art.captionPosition != "top" && art.captionPosition != "bottom") ||
-        !std::isfinite(art.titleSize) || art.titleSize < 8 || art.titleSize > 160 ||
-        !std::isfinite(art.bodySize) || art.bodySize < 8 || art.bodySize > 160 ||
-        !std::isfinite(art.captionSize) || art.captionSize < 8 || art.captionSize > 120 ||
-        art.safeMargin < 0 || art.safeMargin > 300)
+    if (!validArtDirection(p.artDirection))
         return "Direção de arte global inválida.";
     if (p.fps.numerator <= 0 || p.fps.numerator > 120000 || p.fps.denominator <= 0 ||
         p.fps.denominator > 10000 || p.fps.value() < 1 || p.fps.value() > 120)
@@ -75,6 +77,8 @@ std::string validate(const Project &p) {
         if (scene.id.empty() || !sceneIds.insert(scene.id).second || scene.start < sceneEnd ||
             scene.duration < 1 || scene.start < 0 || scene.duration > p.duration - scene.start)
             return "Marcadores de cena inválidos ou sobrepostos.";
+        if (scene.artDirection && (p.schemaVersion < 11 || !validArtDirection(*scene.artDirection)))
+            return "Direção de arte da cena inválida; exige schema 11.";
         sceneEnd = scene.start + scene.duration;
     }
     for (const auto &n : p.nodes) {
@@ -112,6 +116,23 @@ std::string validate(const Project &p) {
                 return "Tempos das palavras da legenda inválidos.";
             priorWordEnd = word.end;
         }
+        const bool wordAnimationCustomized = n.wordAnimationPreset != "highlight" ||
+                                             n.wordAnimationDurationFrames != 8 ||
+                                             std::abs(n.wordAnimationStartScale - 0.82) > 1e-9 ||
+                                             std::abs(n.wordAnimationTravelY - 12) > 1e-9;
+        if (n.wordAnimationPreset != "highlight" && n.wordAnimationPreset != "none" &&
+            n.wordAnimationPreset != "pop" && n.wordAnimationPreset != "rise" &&
+            n.wordAnimationPreset != "fade" && n.wordAnimationPreset != "pop-rise")
+            return "Preset de animação por palavra desconhecido.";
+        if (n.wordAnimationDurationFrames < 1 || n.wordAnimationDurationFrames > 30 ||
+            !std::isfinite(n.wordAnimationStartScale) || n.wordAnimationStartScale < 0.5 ||
+            n.wordAnimationStartScale > 1.5 || !std::isfinite(n.wordAnimationTravelY) ||
+            std::abs(n.wordAnimationTravelY) > 80)
+            return "Parâmetros de animação por palavra fora dos limites.";
+        if (wordAnimationCustomized &&
+            (p.schemaVersion < 12 || n.role != "caption" ||
+             (n.wordAnimationPreset != "none" && n.captionWords.empty())))
+            return "Animação por palavra exige uma legenda alinhada e schema 12.";
         if (n.kind == NodeKind::Image && n.source.empty())
             return "Imagem sem arquivo de origem.";
         if (n.kind == NodeKind::Svg && n.source.empty())
@@ -175,6 +196,8 @@ std::string validate(const Project &p) {
              shot.transitionDirection != "down") ||
             (shot.transitionIn != "slide" && shot.transitionDirection != "left"))
             return "Duração ou direção da transição inválida.";
+        if (shot.artDirection && (p.schemaVersion < 11 || !validArtDirection(*shot.artDirection)))
+            return "Direção de arte do shot inválida; exige schema 11.";
         const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
             return candidate.id == shot.sceneId;
         });

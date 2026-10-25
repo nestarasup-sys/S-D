@@ -150,7 +150,19 @@ int main(int argc, char **argv) {
         detailNode.shotId = "detail";
         detailNode.start = 60;
         detailNode.duration = 60;
-        shotProject.nodes = {wideNode, detailNode};
+        studio::Node shotCaption;
+        shotCaption.id = "shot-caption";
+        shotCaption.name = "Legenda da narração";
+        shotCaption.sceneId = "story";
+        shotCaption.role = "caption";
+        shotCaption.text = "Uma palavra.";
+        shotCaption.duration = 120;
+        shotCaption.x = 80;
+        shotCaption.y = 610;
+        shotCaption.width = 1120;
+        shotCaption.height = 80;
+        shotCaption.captionWords = {{"Uma", 0, 45}, {"palavra.", 45, 120}};
+        shotProject.nodes = {wideNode, detailNode, shotCaption};
         shotProject.visualBeats = {{"detail-beat", "detail", "detail-node", "show", 75, 0},
                                    {"detail-chime", "detail", "sfx-detail-chime", "sound", 75, 0}};
         shotProject.audioTracks = {{"sfx-detail-chime", "Efeito: detail-chime", "C:/media/chime.wav",
@@ -164,6 +176,31 @@ int main(int argc, char **argv) {
                   c.open(shotPath),
               "open a schema 9 project with independent shots and a linked sound beat");
         c.setFrame(80);
+        c.setArtDirectionScope("scene");
+        c.updateArtDirection("backgroundColor", "#112233");
+        check(c.project().schemaVersion == 11 && c.project().scenes.front().artDirection &&
+                  c.artDirection()["backgroundColor"] == "#112233",
+              "art direction inspector edits the active scene scope");
+        c.setArtDirectionScope("shot");
+        c.updateArtDirection("primaryColor", "#ff33aa");
+        check(c.project().shots.back().artDirection &&
+                  c.project().shots.back().artDirection->backgroundColor == "#112233" &&
+                  c.artDirection()["primaryColor"] == "#ff33aa",
+              "shot style inherits the active scene and saves its local override");
+        c.selectNode("shot-caption");
+        check(c.selected()["role"] == "caption" && c.selected()["wordAligned"].toBool(),
+              "inspector identifies generated captions with real word timings");
+        c.updateSelected("wordAnimationPreset", "pop-rise");
+        c.updateSelected("wordAnimationDurationFrames", 6);
+        c.updateSelected("wordAnimationStartScale", .72);
+        c.updateSelected("wordAnimationDurationFrames", 6.5);
+        check(c.project().schemaVersion == 12 &&
+                  studio::findNode(c.project(), "shot-caption")->wordAnimationPreset == "pop-rise" &&
+                  studio::findNode(c.project(), "shot-caption")->wordAnimationDurationFrames == 6 &&
+                  studio::findNode(c.project(), "shot-caption")->wordAnimationStartScale == .72 &&
+                  c.message().contains("inteiros"),
+              "caption inspector stores editable word animation parameters in schema 12");
+        c.setArtDirectionScope("global");
         c.updateShotTransition("detail", "dissolve", 15, "left");
         check(c.project().shots[1].transitionIn == "dissolve" &&
                   c.project().shots[1].transitionDurationFrames == 15,

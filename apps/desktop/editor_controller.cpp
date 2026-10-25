@@ -65,9 +65,15 @@ QVariantMap map(const studio::Node &n) {
             {"fontSize", n.fontSize},
             {"animated", n.animated},
             {"nativeId", q(n.nativeId)},
+            {"role", q(n.role)},
             {"pose", q(n.pose)},
             {"motion", q(n.motion)},
             {"secondaryColor", q(n.secondaryColor)},
+            {"wordAnimationPreset", q(n.wordAnimationPreset)},
+            {"wordAnimationDurationFrames", n.wordAnimationDurationFrames},
+            {"wordAnimationStartScale", n.wordAnimationStartScale},
+            {"wordAnimationTravelY", n.wordAnimationTravelY},
+            {"wordAligned", !n.captionWords.empty()},
             {"rotation", n.rotation},
             {"scale", n.scale},
             {"travelX", n.travelX},
@@ -198,7 +204,29 @@ QVariantMap EditorController::camera() const {
             {"keyframeEasing", curve}};
 }
 QVariantMap EditorController::artDirection() const {
-    const auto &art = project().artDirection;
+    const studio::ArtDirection *selectedArt = &project().artDirection;
+    if (artDirectionScope_ == "shot") {
+        const auto shotId = currentShotId().toStdString();
+        const auto shot = std::find_if(project().shots.begin(), project().shots.end(), [&](const auto &item) {
+            return item.id == shotId;
+        });
+        if (shot != project().shots.end()) {
+            const auto scene = std::find_if(project().scenes.begin(), project().scenes.end(), [&](const auto &item) {
+                return item.id == shot->sceneId;
+            });
+            selectedArt = shot->artDirection ? &*shot->artDirection
+                          : scene != project().scenes.end() && scene->artDirection ? &*scene->artDirection
+                                                                                  : &project().artDirection;
+        }
+    } else if (artDirectionScope_ == "scene") {
+        const auto sceneId = currentSceneId().toStdString();
+        const auto scene = std::find_if(project().scenes.begin(), project().scenes.end(), [&](const auto &item) {
+            return item.id == sceneId;
+        });
+        if (scene != project().scenes.end() && scene->artDirection)
+            selectedArt = &*scene->artDirection;
+    }
+    const auto &art = *selectedArt;
     return {{"backgroundColor", q(art.backgroundColor)},
             {"glowColor", q(art.glowColor)},
             {"primaryColor", q(art.primaryColor)},
@@ -212,6 +240,15 @@ QVariantMap EditorController::artDirection() const {
             {"bodySize", art.bodySize},
             {"captionSize", art.captionSize},
             {"safeMargin", art.safeMargin}};
+}
+void EditorController::setArtDirectionScope(QString scope) {
+    if (scope != "global" && scope != "scene" && scope != "shot")
+        return;
+    if (artDirectionScope_ == scope)
+        return;
+    artDirectionScope_ = std::move(scope);
+    emit artDirectionScopeChanged();
+    emit artDirectionChanged();
 }
 QString EditorController::title() const {
     return q(project().name);
@@ -229,6 +266,7 @@ void EditorController::notify(QString message) {
 void EditorController::changed() {
     autosaveEnabled_ = true;
     emit documentChanged();
+    emit artDirectionChanged();
     emit selectedChanged();
     emit cameraChanged();
 }
@@ -252,9 +290,9 @@ void EditorController::updateSelected(QString key, QVariant value) {
     const bool keyframedEdit = selectedNode && !selectedNode->keyframes.empty() && transformProperty;
     if (before.isEmpty() || !before.contains(key) || (before[key] == value && !keyframedEdit))
         return;
-    if ((key == "start" || key == "duration") &&
+    if ((key == "start" || key == "duration" || key == "wordAnimationDurationFrames") &&
         (!std::isfinite(value.toDouble()) || std::floor(value.toDouble()) != value.toDouble())) {
-        notify("Tempos devem ser números inteiros de frames.");
+        notify("Durações e tempos devem ser números inteiros de frames.");
         return;
     }
     auto error = editor_.execute([&](studio::Project &p) {
@@ -315,6 +353,14 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.travelY = value.toDouble();
                 else if (key == "spinDegrees")
                     n.spinDegrees = value.toDouble();
+                else if (key == "wordAnimationPreset")
+                    n.wordAnimationPreset = value.toString().toStdString();
+                else if (key == "wordAnimationDurationFrames")
+                    n.wordAnimationDurationFrames = value.toInt();
+                else if (key == "wordAnimationStartScale")
+                    n.wordAnimationStartScale = value.toDouble();
+                else if (key == "wordAnimationTravelY")
+                    n.wordAnimationTravelY = value.toDouble();
                 else if (key == "videoSourceInSeconds")
                     n.videoSourceInSeconds = value.toDouble();
                 else if (key == "videoPlaybackRate")
@@ -329,6 +375,8 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.videoCropHeight = value.toDouble();
                 if (key.startsWith("video"))
                     p.schemaVersion = std::max(p.schemaVersion, 10);
+                if (key.startsWith("wordAnimation"))
+                    p.schemaVersion = std::max(p.schemaVersion, 12);
             }
     });
     if (error.empty())
@@ -825,8 +873,42 @@ void EditorController::updateCamera(QString property, double value) {
         notify(q(error));
 }
 void EditorController::updateArtDirection(QString property, QVariant value) {
+    if (artDirectionScope_ == "scene" && currentSceneId().isEmpty()) {
+        notify("Selecione uma cena para editar a direção de arte local.");
+        return;
+    }
+    if (artDirectionScope_ == "shot" && currentShotId().isEmpty()) {
+        notify("Posicione o playhead dentro de um shot para editar a direção de arte local.");
+        return;
+    }
     const auto error = editor_.execute([&](studio::Project &p) {
-        auto &art = p.artDirection;
+        studio::ArtDirection *selectedArt = &p.artDirection;
+        if (artDirectionScope_ == "scene") {
+            const auto id = currentSceneId().toStdString();
+            auto item = std::find_if(p.scenes.begin(), p.scenes.end(), [&](auto &scene) { return scene.id == id; });
+            if (item != p.scenes.end()) {
+                if (!item->artDirection)
+                    item->artDirection = p.artDirection;
+                selectedArt = &*item->artDirection;
+            }
+        } else if (artDirectionScope_ == "shot") {
+            const auto id = currentShotId().toStdString();
+            auto item = std::find_if(p.shots.begin(), p.shots.end(), [&](auto &shot) { return shot.id == id; });
+            if (item != p.shots.end()) {
+                if (!item->artDirection) {
+                    const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const auto &candidate) {
+                        return candidate.id == item->sceneId;
+                    });
+                    item->artDirection = scene != p.scenes.end() && scene->artDirection
+                                             ? *scene->artDirection
+                                             : p.artDirection;
+                }
+                selectedArt = &*item->artDirection;
+            }
+        }
+        if (artDirectionScope_ != "global")
+            p.schemaVersion = std::max(p.schemaVersion, 11);
+        auto &art = *selectedArt;
         const auto key = property.toStdString();
         if (key == "backgroundColor") art.backgroundColor = value.toString().toStdString();
         else if (key == "glowColor") art.glowColor = value.toString().toStdString();
@@ -928,6 +1010,7 @@ void EditorController::presentFrame(int frame) {
     auto oldScene = currentSceneId();
     frame_ = frame;
     emit frameChanged();
+    emit artDirectionChanged();
     emit cameraChanged();
     emit selectedChanged();
     if (oldScene != currentSceneId()) {
@@ -1034,6 +1117,7 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     autosaveEnabled_ = false;
     emit frameChanged();
     emit documentChanged();
+    emit artDirectionChanged();
     emit selectedChanged();
     emit cameraChanged();
 }

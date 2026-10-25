@@ -18,7 +18,8 @@ class EditorController : public QObject {
     Q_PROPERTY(QAbstractItemModel *nodes READ nodeModel CONSTANT)
     Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectedChanged)
     Q_PROPERTY(QVariantMap camera READ camera NOTIFY cameraChanged)
-    Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY documentChanged)
+    Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY artDirectionChanged)
+    Q_PROPERTY(QString artDirectionScope READ artDirectionScope NOTIFY artDirectionScopeChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
     Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
@@ -84,6 +85,7 @@ class EditorController : public QObject {
     QVariantMap selected() const;
     QVariantMap camera() const;
     QVariantMap artDirection() const;
+    QString artDirectionScope() const { return artDirectionScope_; }
     QString title() const;
     QString selectedId() const {
         return selectedId_;
@@ -147,6 +149,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
     Q_INVOKABLE void updateCamera(QString property, double value);
     Q_INVOKABLE void updateArtDirection(QString property, QVariant value);
+    Q_INVOKABLE void setArtDirectionScope(QString scope);
     Q_INVOKABLE void applyEditingIntensity(int intensity);
     Q_INVOKABLE void updateShotTransition(QString shotId, QString type, int durationFrames,
                                           QString direction);
@@ -174,6 +177,8 @@ class EditorController : public QObject {
     }
   signals:
     void documentChanged();
+    void artDirectionChanged();
+    void artDirectionScopeChanged();
     void selectedChanged();
     void cameraChanged();
     void frameChanged();
@@ -202,6 +207,7 @@ class EditorController : public QObject {
     QString currentShotId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
+    QString artDirectionScope_{"global"};
     QByteArray savedDocument_, revision_, recoveryRevision_, renderBuffer_;
     QString recoveryPath_, renderSnapshot_, cancelPath_;
     QTimer playback_, autosave_;

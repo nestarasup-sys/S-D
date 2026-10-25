@@ -73,12 +73,14 @@ struct DirectedShot {
     QString focusTargetId;
     double focusPadding{1.25};
     bool focusFollow{false};
+    std::optional<ArtDirection> artDirection;
     std::vector<DirectedElement> elements;
     std::vector<DirectedBeat> beats;
 };
 struct DirectedScene {
     QString id, title, kicker, background;
     double targetDurationSeconds{0};
+    std::optional<ArtDirection> artDirection;
     std::vector<Utterance> narration;
     std::vector<DirectedElement> elements;
     std::vector<DirectedCameraKeyframe> camera;
@@ -94,6 +96,9 @@ struct ProductionRecipe {
     double targetDurationSeconds{0};
     bool preserveVoicePitch{true};
     int editingIntensity{-1}; // Optional v3 preset for generated, otherwise-unspecified motion defaults.
+    QString wordAnimationPreset{"highlight"};
+    int wordAnimationDurationFrames{8};
+    double wordAnimationStartScale{0.82}, wordAnimationTravelY{12};
     ArtDirection artDirection;
     double musicGain{.025}, effectsGain{.035};
     std::vector<DirectedScene> scenes;

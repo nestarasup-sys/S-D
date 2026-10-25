@@ -635,7 +635,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (version >= 3)
-        rootKeys << "editing" << "artDirection";
+        rootKeys << "editing" << "artDirection" << "wordAnimation";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
@@ -647,6 +647,35 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         QString styleError;
         if (!parseArtDirection(o["artDirection"].toObject(), r.artDirection, styleError))
             return fail(styleError);
+    }
+    if (o.contains("wordAnimation")) {
+        if (version < 3 || !o["wordAnimation"].isObject())
+            return fail("wordAnimation exige um objeto em receita v3.");
+        const auto animation = o["wordAnimation"].toObject();
+        if (!allowed(animation, {"preset", "durationFrames", "startScale", "travelY"}) ||
+            !animation["preset"].isString())
+            return fail("wordAnimation precisa de preset e aceita somente campos conhecidos.");
+        r.wordAnimationPreset = animation["preset"].toString();
+        if (r.wordAnimationPreset != "highlight" && r.wordAnimationPreset != "none" &&
+            r.wordAnimationPreset != "pop" && r.wordAnimationPreset != "rise" &&
+            r.wordAnimationPreset != "fade" && r.wordAnimationPreset != "pop-rise")
+            return fail("wordAnimation.preset deve ser highlight, none, pop, rise, fade ou pop-rise.");
+        if (animation.contains("durationFrames") &&
+            (!animation["durationFrames"].isDouble() ||
+             std::floor(animation["durationFrames"].toDouble()) != animation["durationFrames"].toDouble()))
+            return fail("wordAnimation.durationFrames deve ser inteiro.");
+        if (animation.contains("startScale") && !animation["startScale"].isDouble())
+            return fail("wordAnimation.startScale deve ser numérico.");
+        if (animation.contains("travelY") && !animation["travelY"].isDouble())
+            return fail("wordAnimation.travelY deve ser numérico.");
+        r.wordAnimationDurationFrames = animation["durationFrames"].toInt(8);
+        r.wordAnimationStartScale = animation["startScale"].toDouble(0.82);
+        r.wordAnimationTravelY = animation["travelY"].toDouble(12);
+        if (r.wordAnimationDurationFrames < 1 || r.wordAnimationDurationFrames > 30 ||
+            !std::isfinite(r.wordAnimationStartScale) || r.wordAnimationStartScale < 0.5 ||
+            r.wordAnimationStartScale > 1.5 || !std::isfinite(r.wordAnimationTravelY) ||
+            std::abs(r.wordAnimationTravelY) > 80)
+            return fail("Parâmetros de wordAnimation fora dos limites permitidos.");
     }
     if (o.contains("editing")) {
         if (!o["editing"].isObject())
@@ -713,8 +742,10 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         QStringList sceneKeys{"id", "narration"};
         if (version < 3)
             sceneKeys << "title" << "kicker" << "background" << "elements";
-        else
+        else {
             sceneKeys << "shots";
+            sceneKeys << "artDirection";
+        }
         if (version >= 3)
             sceneKeys << "audioTracks";
         if (version == 2)
@@ -729,6 +760,17 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                              (s.contains("background") && !s["background"].isString()))))
             return fail("Identificação, título, kicker ou cenário da cena inválidos.");
         DirectedScene scene;
+        ArtDirection sceneStyle = r.artDirection;
+        bool sceneThemed = version >= 3 && o.contains("artDirection");
+        if (s.contains("artDirection")) {
+            if (version < 3 || !s["artDirection"].isObject())
+                return fail("artDirection por cena exige um objeto em receita v3.");
+            QString styleError;
+            if (!parseArtDirection(s["artDirection"].toObject(), sceneStyle, styleError))
+                return fail("Direção de arte da cena " + s["id"].toString() + ": " + styleError);
+            scene.artDirection = sceneStyle;
+            sceneThemed = true;
+        }
         scene.id = s["id"].toString();
         scene.title = s["title"].toString();
         scene.kicker = s["kicker"].toString();
@@ -783,12 +825,24 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     return fail("Shot visual inválido.");
                 const auto shotObject = shotValue.toObject();
                 if (!allowed(shotObject,
-                             {"id", "name", "start", "transitionIn", "camera", "elements", "beats"}))
+                             {"id", "name", "start", "transitionIn", "camera", "elements", "beats",
+                              "artDirection"}))
                     return fail("Shot contém campo desconhecido.");
                 if (!shotObject["id"].isString() || !shotObject["start"].isObject() ||
                     !shotObject["elements"].isArray())
                     return fail("Shot precisa de id, start e elements válidos.");
                 DirectedShot shot;
+                ArtDirection shotStyle = sceneStyle;
+                bool shotThemed = sceneThemed;
+                if (shotObject.contains("artDirection")) {
+                    if (!shotObject["artDirection"].isObject())
+                        return fail("artDirection do shot deve ser um objeto: " + shotObject["id"].toString());
+                    QString styleError;
+                    if (!parseArtDirection(shotObject["artDirection"].toObject(), shotStyle, styleError))
+                        return fail("Direção de arte do shot " + shotObject["id"].toString() + ": " + styleError);
+                    shot.artDirection = shotStyle;
+                    shotThemed = true;
+                }
                 shot.id = shotObject["id"].toString();
                 shot.name = shotObject["name"].toString(shot.id);
                 if (shotObject["transitionIn"].isString()) {
@@ -874,7 +928,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                                       int(scene.narration.size()), ids, elementCount, element, elementError,
                                       0, shot.start, r.editingIntensity,
-                                      o.contains("artDirection") ? &r.artDirection : nullptr))
+                                      shotThemed ? &shotStyle : nullptr))
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }

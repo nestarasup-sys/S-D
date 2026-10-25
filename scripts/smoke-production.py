@@ -82,11 +82,15 @@ run([sys.executable, root / "scripts/embed-ai-production-example.py", "--guide",
      "--example", root / "examples/carros-caros-directors-cut-90s.production.json"])
 guide_text = guide.read_text(encoding="utf-8")
 assert all(f"`{item['id']}`" in guide_text for item in catalog["nativeAssets"])
-assert "Catálogo 1 · Receita 3 · Projeto 10" in guide_text
-assert catalog["projectVersion"] == 10
+assert "Catálogo 1 · Receita 3 · Projeto 12" in guide_text
+assert catalog["projectVersion"] == 12
 assert {"video-source-trim", "video-speed-control", "video-normalized-crop"}.issubset(
     set(catalog["productionCapabilities"]))
 assert '"sourceInSeconds"' in guide_text and '"durationFrames"' in guide_text
+assert "scene-shot-art-direction" in catalog["productionCapabilities"]
+assert "word-animated-karaoke-captions" in catalog["productionCapabilities"]
+assert '"wordAnimation"' in guide_text and "schema 12" in guide_text
+assert "scenes[].artDirection" in guide_text and "shots[].artDirection" in guide_text
 guide_example = re.search(r"<!-- STUDIO-DARK-VALIDATED-EXAMPLE-BEGIN -->\s*```json\s*(.*?)\s*```\s*<!-- STUDIO-DARK-VALIDATED-EXAMPLE-END -->",
                           guide_text, re.DOTALL)
 assert guide_example and json.loads(guide_example.group(1)) == json.loads(
@@ -181,9 +185,16 @@ director_run = run([bin_dir / "studio_produce.exe", "--recipe", director_recipe,
 director_project_path = director_output / "project.studio.json"
 director_project = json.loads(director_project_path.read_text(encoding="utf-8"))
 director_report = json.loads((director_output / "production-report.json").read_text(encoding="utf-8"))
-assert director_project["schemaVersion"] == 9 and director_project["duration"] == 2700
+assert director_project["schemaVersion"] == 12 and director_project["duration"] == 2700
 assert len(director_project["scenes"]) == 6 and len(director_project["shots"]) == 18
 assert len(director_project["visualBeats"]) == 20
+financing_scene = next(scene for scene in director_project["scenes"] if scene["id"] == "financiamento")
+financing_shot = next(shot for shot in director_project["shots"] if shot["id"] == "financiamento-cet")
+assert financing_scene["artDirection"]["backgroundColor"] == "#17131b"
+assert financing_shot["artDirection"]["primaryColor"] == "#ff5d72"
+animated_captions = [node for node in director_project["nodes"] if node.get("role") == "caption"]
+assert animated_captions and all(node.get("wordAnimation", {}).get("preset") == "pop-rise"
+                                 for node in animated_captions)
 sound_beat = next(beat for beat in director_project["visualBeats"] if beat["action"] == "sound")
 sound_track = next(track for track in director_project["audioTracks"] if track["id"] == sound_beat["targetId"])
 assert sound_track["start"] == sound_beat["frame"] and sound_track["source"].endswith("soft-chime.wav")

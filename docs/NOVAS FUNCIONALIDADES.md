@@ -1,16 +1,31 @@
 # PROJETO: EVOLUÇÃO DO STUDIO DARK — MOTOR DE EDIÇÃO AUDIOVISUAL DIRIGIDO POR IA
 
-## ANDAMENTO DA IMPLEMENTAÇÃO — 24/10/2026
+## ANDAMENTO DA IMPLEMENTAÇÃO — 25/10/2026
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
-### Rodada atual: trim, velocidade e recorte de vídeo
+### Rodada atual: tipografia animada por palavra
+
+- Receitas v3 aceitam `wordAnimation` com os presets `highlight`, `none`, `pop`, `rise`, `fade` e `pop-rise`. Escala inicial, deslocamento vertical e duração são configuráveis e usam timestamps reais da voz para cada palavra.
+- O editor permite alterar o preset e os parâmetros em cada legenda alinhada. O projeto schema 12 persiste esses ajustes; o compositor compartilhado aplica os mesmos movimentos na prévia, still e exportação.
+- Legendas sem timestamps reais permanecem estáticas e não aceitam os presets animados. O destaque de cor existente segue como padrão compatível.
+- Verificação desta rodada: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1`, `scripts/smoke-workspace.ps1` e `scripts/smoke-production.ps1` passaram. O teste de produção usou Microsoft Maria Desktop, gerou o Director's Cut schema 12 com 2700 quadros, seis cenas, 18 shots e 20 beats; a comparação entre prévia e MP4 marcou 42,46 dB. O smoke conferiu `wordAnimation: pop-rise` em todas as legendas da receita e a abertura do projeto no editor. O teste unitário verificou persistência, animação visual em dois quadros e edição pelo inspetor.
+
+### Entrega anterior: direção de arte por cena e shot
+
+- Receitas v3 aceitam `artDirection` parcial na raiz, em cada cena e em cada shot. A resolução herda global → cena → shot; propriedades explícitas `color`, `secondaryColor` e `fontSize` dos elementos prevalecem.
+- Os overrides são gravados nos marcadores do projeto schema 11. Preview, still e exportação aplicam o mesmo estilo ao fundo, tipografia, legendas e destaque de palavra; elementos e cenas preservam sua organização editável.
+- O inspetor permite selecionar escopo global, cena atual ou shot atual. Ao criar um override no editor, o estilo efetivo do escopo pai é copiado como base; alterações futuras no pai não reescrevem um override já criado.
+- Fontes externas e presets visuais nomeados ainda não são aceitos. No projeto gerado, cores e tamanho explícitos de um elemento continuam prioritários e não são recoloridos por uma edição posterior do estilo local.
+- Verificação desta rodada: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1` e `scripts/smoke-production.ps1` passaram. O smoke usou Microsoft Maria Desktop, confirmou estilos da cena `financiamento` e do shot `financiamento-cet` no projeto schema 11 e comparou o Director's Cut de 2700 quadros entre preview e MP4 em 42,53 dB. O teste de armazenamento verificou que estilos de cena/shot persistem e que o override do shot altera a composição.
+
+### Entrega anterior: trim, velocidade e recorte de vídeo
 
 - Camadas de vídeo v3 aceitam trim de entrada `sourceInSeconds`, velocidade `speed` de 0,25× a 4×, saída `durationFrames` na timeline e `crop` normalizado da fonte.
 - O compositor aplica a mesma sequência de filtros FFmpeg no preview, still e MP4. O inspetor ganhou controles para início da fonte, velocidade, origem e tamanho do recorte; o campo normal de duração continua ajustando a saída na timeline.
 - Projetos com trim, velocidade ou crop personalizado usam schema 10; os projetos antigos de vídeo schema 5 continuam abrindo com início zero, velocidade normal e corte central.
-- O guia e `capabilities-v1.json` agora descrevem esses campos, limites, defaults e o schema 10.
-- Verificação desta rodada: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1` passou; `scripts/smoke-production.ps1` passou com voz Microsoft Maria Desktop. O smoke renderizou um clipe com trim, velocidade 1,5× e recorte, comparando preview e MP4 em 32,99 dB. O exemplo Director's Cut também passou, com 2700 quadros e comparação preview/export em 42,61 dB.
+- O guia e `capabilities-v1.json` descrevem esses campos, limites, defaults e o schema 10.
+- Verificação: `scripts/build.ps1 -Test`, `scripts/smoke.ps1` e `scripts/smoke-production.ps1` passaram; o Director's Cut teve 2700 quadros e comparação preview/export em 42,61 dB. O clipe de vídeo com os três controles marcou 32,99 dB.
 
 ### Entrega anterior: efeitos sonoros disparados por Visual Beat
 
@@ -53,14 +68,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
 - A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e dissolve entre shots; comparação preview/export em 43,82 dB.
 
-### Direção de arte global implementada parcialmente
+### Direção de arte global, por cena e por shot
 
-- Receitas v3 aceitam `artDirection` para paleta global, fonte instalada, tamanhos de título/texto/legenda, posição das legendas e margem segura.
-- A receita fornece defaults a elementos sem estilo explícito; `color`, `secondaryColor` e `fontSize` explícitos permanecem preservados. Fundo, cabeçalhos gerados e legendas usam o estilo global.
-- Projetos schema 2–7 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte, cartão e destaque de palavra na legenda em prévia/exportação.
-- O inspetor permite alterar cores, fonte instalada, tamanhos de título/texto/legenda, margem segura e posição da legenda; as alterações validam e entram no histórico de undo.
-- Ainda faltam estilos por cena/shot, carregar fontes externas e pré-visualização de tema por paleta.
-- Validação desta etapa: compilação e quatro testes automatizados passaram; os smokes de app, workspace e produção passaram. A produção sintetizou voz pt-BR, gerou 6 cenas/1517 quadros, e o exemplo v3 de 3 shots/3 beats teve comparação prévia/exportação de 43,82 dB.
+- Receitas v3 aceitam `artDirection` global e overrides parciais em cena e shot. A herança global → cena → shot mantém somente os valores realmente sobrescritos pelo escopo local.
+- O compilador preserva cor, cor secundária e tamanho de fonte explicitamente declarados nos elementos; o estilo resolvido controla fundo, objetos com defaults, cabeçalhos, legendas e destaque de palavra.
+- Projetos com estilos locais usam schema 11. A prévia e o render resolvem o mesmo estilo no shot ativo; no inspetor, a pessoa escolhe global, cena atual ou shot atual e pode desfazer a mudança.
+- Alterações posteriores no escopo pai não reescrevem um override já salvo. No editor, a primeira edição local copia o estilo efetivo do pai como base. Cores e tamanhos explicitamente escritos em objetos não são recalculados por edições posteriores.
+- Fontes externas, presets visuais nomeados e edição de estilo via paletas pré-visualizáveis ainda faltam.
 
 ### Sincronização por palavra implementada parcialmente
 
@@ -70,7 +84,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Os eventos SAPI podem ficar ligeiramente fora do tamanho final do WAV devido à diferença entre o relógio reportado e o arquivo; o worker calibra a sequência para o intervalo audível real, preservando a ordem e deixando espaço para o fim da última palavra.
 - Os testes cobrem receita, timestamp e resolução em shot, beat, elemento e keyframe. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
 - Legendas de narração têm destaque da palavra falada pela cor primária; seus tempos ficam gravados no schema 7. A camada de legenda usa layout por métricas de fonte e respeita quebra de linha.
-- Ainda faltam edição manual do alinhamento depois da compilação e estilos de destaque configuráveis. A importação de uma produção precisa sintetizar a mesma fala com a voz local para obter tempos confiáveis.
+- Ainda falta edição manual do alinhamento depois da compilação e escolha de uma cor de destaque independente da direção de arte. A importação de uma produção precisa sintetizar a mesma fala com a voz local para obter tempos confiáveis.
 
 ### Controle de intensidade no editor
 
@@ -92,7 +106,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam estilos por cena/shot, fontes externas, presets visuais e tipografia animada. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
 | 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, áudio embutido nos vídeos e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
@@ -101,13 +115,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Beats aceitam `show`, `hide`, `transform`, `camera` e `sound`. Um beat `sound` cria uma pista local de uma execução, vinculada ao quadro sincronizado; a fonte não é copiada para o JSON e precisa continuar acessível no computador.
 - Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Ainda não há editor manual de alinhamento fonético reutilizável após a importação.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
-- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte global e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
+- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
 
 ### Próxima entrega recomendada
 
-Adicionar direção de arte por cena/shot, preservando a herança global e os estilos explícitos por elemento. Em seguida, avançar para tipografia animada por palavra e seleção múltipla/envelopes da timeline. Áudio embutido em vídeo e formatos de tela adicionais seguem como pendências da fase 4.
+Avançar para seleção múltipla e envelopes gráficos de áudio na timeline. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo e formatos de tela adicionais seguem como pendências da fase 4.
 
 ---
 
@@ -859,13 +873,14 @@ Resultado esperado: criar vídeos com ritmo de edição profissional usando os e
 
 Implementar:
 
-1. [ ] Tipografia animada com presets de movimento/escala e controle por palavra.
+1. [x] Tipografia animada com presets de movimento/escala e controle por palavra, editável no inspetor e sincronizada aos timestamps reais.
 2. [x] Destaque de palavra sincronizado quando existe alinhamento real de voz.
 3. [x] Efeitos sonoros disparados por Visual Beat.
 4. [x] Trilhas importadas em múltiplas pistas, com fades e ducking.
 5. [x] Direção de arte global com paleta, fonte instalada e parâmetros de legenda.
-6. [ ] Estilos/presets por cena e shot, carregamento de fontes externas e presets visuais avançados.
-7. [x] Automação de ganho por pontos com easing na receita, projeto, prévia, exportação e editor.
+6. [x] Direção de arte por cena e shot com herança do estilo global e projeto schema 11.
+7. [ ] Carregamento de fontes externas e presets visuais nomeados reutilizáveis.
+8. [x] Automação de ganho por pontos com easing na receita, projeto, prévia, exportação e editor.
 
 Resultado esperado: produções com identidade visual e sonora consistente.
 

@@ -39,6 +39,42 @@ QJsonObject artDirectionJson(const ArtDirection &art) {
             {"captionSize", art.captionSize},
             {"safeMargin", art.safeMargin}};
 }
+bool readArtDirection(const QJsonObject &style, ArtDirection &art) {
+    const QStringList fields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
+                             "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition",
+                             "titleSize", "bodySize", "captionSize", "safeMargin"};
+    for (auto it = style.begin(); it != style.end(); ++it)
+        if (!fields.contains(it.key()))
+            return false;
+    for (const auto &field : {"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
+                              "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition"}) {
+        if (style.contains(QLatin1String(field)) && !style[QLatin1String(field)].isString())
+            return false;
+    }
+    for (const auto &field : {"titleSize", "bodySize", "captionSize"})
+        if (style.contains(QLatin1String(field)) && !style[QLatin1String(field)].isDouble())
+            return false;
+    if (style.contains("safeMargin") && !integer(style["safeMargin"]))
+        return false;
+    auto assign = [&](const char *field, std::string &out) {
+        if (style.contains(QLatin1String(field)))
+            out = style[QLatin1String(field)].toString().toStdString();
+    };
+    assign("backgroundColor", art.backgroundColor);
+    assign("glowColor", art.glowColor);
+    assign("primaryColor", art.primaryColor);
+    assign("secondaryColor", art.secondaryColor);
+    assign("textColor", art.textColor);
+    assign("cardColor", art.cardColor);
+    assign("captionBackgroundColor", art.captionBackgroundColor);
+    assign("fontFamily", art.fontFamily);
+    assign("captionPosition", art.captionPosition);
+    art.titleSize = style["titleSize"].toDouble(art.titleSize);
+    art.bodySize = style["bodySize"].toDouble(art.bodySize);
+    art.captionSize = style["captionSize"].toDouble(art.captionSize);
+    art.safeMargin = style["safeMargin"].toInt(art.safeMargin);
+    return true;
+}
 bool writeAtomic(const QString &path, const QByteArray &bytes, QString &error) {
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
@@ -102,6 +138,15 @@ QByteArray serialize(const Project &p) {
                                  {"exitFrames", n.exitFrames},
                                  {"keyframes", keyframes},
                                  {"captionWords", captionWords}};
+        const bool hasWordAnimation = n.wordAnimationPreset != "highlight" ||
+                                      n.wordAnimationDurationFrames != 8 ||
+                                      std::abs(n.wordAnimationStartScale - 0.82) > 1e-9 ||
+                                      std::abs(n.wordAnimationTravelY - 12) > 1e-9;
+        if (p.schemaVersion >= 12 && n.role == "caption" && hasWordAnimation)
+            serializedNode["wordAnimation"] = QJsonObject{{"preset", text(n.wordAnimationPreset)},
+                                                          {"durationFrames", n.wordAnimationDurationFrames},
+                                                          {"startScale", n.wordAnimationStartScale},
+                                                          {"travelY", n.wordAnimationTravelY}};
         if (p.schemaVersion >= 10 && n.kind == NodeKind::Video)
             serializedNode["video"] = QJsonObject{{"sourceInSeconds", n.videoSourceInSeconds},
                                                   {"speed", n.videoPlaybackRate},
@@ -112,12 +157,16 @@ QByteArray serialize(const Project &p) {
         nodes.append(serializedNode);
     }
     QJsonArray scenes;
-    for (const auto &s : p.scenes)
-        scenes.append(QJsonObject{{"id", text(s.id)},
+    for (const auto &s : p.scenes) {
+        QJsonObject scene{{"id", text(s.id)},
                                   {"name", text(s.name)},
                                   {"narration", text(s.narration)},
                                   {"start", double(s.start)},
-                                  {"duration", double(s.duration)}});
+                                  {"duration", double(s.duration)}};
+        if (p.schemaVersion >= 11 && s.artDirection)
+            scene["artDirection"] = artDirectionJson(*s.artDirection);
+        scenes.append(scene);
+    }
     QJsonArray camera;
     for (const auto &key : p.camera)
         camera.append(QJsonObject{{"frame", double(key.frame)},
@@ -129,15 +178,19 @@ QByteArray serialize(const Project &p) {
                                   {"shotId", text(key.shotId)}});
     QJsonObject shots;
     QJsonArray shotArray;
-    for (const auto &shot : p.shots)
-        shotArray.append(QJsonObject{{"id", text(shot.id)},
+    for (const auto &shot : p.shots) {
+        QJsonObject value{{"id", text(shot.id)},
                                      {"sceneId", text(shot.sceneId)},
                                      {"name", text(shot.name)},
                                      {"transitionIn", text(shot.transitionIn)},
                                      {"transitionDurationFrames", shot.transitionDurationFrames},
                                      {"transitionDirection", text(shot.transitionDirection)},
                                      {"start", double(shot.start)},
-                                     {"duration", double(shot.duration)}});
+                                     {"duration", double(shot.duration)}};
+        if (p.schemaVersion >= 11 && shot.artDirection)
+            value["artDirection"] = artDirectionJson(*shot.artDirection);
+        shotArray.append(value);
+    }
     QJsonArray beats;
     for (const auto &beat : p.visualBeats) {
         QJsonObject value{{"id", text(beat.id)},
@@ -216,7 +269,8 @@ LoadResult deserialize(const QByteArray &bytes) {
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
                                          o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
-                                         o["schemaVersion"] != 9 && o["schemaVersion"] != 10))
+                                         o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
+                                         o["schemaVersion"] != 11 && o["schemaVersion"] != 12))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -235,35 +289,8 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (o.contains("artDirection")) {
         if (!o["artDirection"].isObject())
             return fail("Direção de arte deve ser um objeto.");
-        const auto style = o["artDirection"].toObject();
-        const QStringList stringFields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor",
-                                       "textColor", "cardColor", "captionBackgroundColor", "fontFamily",
-                                       "captionPosition"};
-        for (const auto &field : stringFields)
-            if (style.contains(field) && !style[field].isString())
-                return fail("Campo textual da direção de arte inválido.");
-        for (auto field : {"titleSize", "bodySize", "captionSize"})
-            if (style.contains(field) && !style[field].isDouble())
-                return fail("Tamanho tipográfico da direção de arte inválido.");
-        if (style.contains("safeMargin") && !integer(style["safeMargin"]))
-            return fail("Margem de segurança da direção de arte inválida.");
-        auto assignText = [&](const char *field, std::string &destination) {
-            if (style.contains(field))
-                destination = str(style, field);
-        };
-        assignText("backgroundColor", p.artDirection.backgroundColor);
-        assignText("glowColor", p.artDirection.glowColor);
-        assignText("primaryColor", p.artDirection.primaryColor);
-        assignText("secondaryColor", p.artDirection.secondaryColor);
-        assignText("textColor", p.artDirection.textColor);
-        assignText("cardColor", p.artDirection.cardColor);
-        assignText("captionBackgroundColor", p.artDirection.captionBackgroundColor);
-        assignText("fontFamily", p.artDirection.fontFamily);
-        assignText("captionPosition", p.artDirection.captionPosition);
-        p.artDirection.titleSize = style["titleSize"].toDouble(p.artDirection.titleSize);
-        p.artDirection.bodySize = style["bodySize"].toDouble(p.artDirection.bodySize);
-        p.artDirection.captionSize = style["captionSize"].toDouble(p.artDirection.captionSize);
-        p.artDirection.safeMargin = style["safeMargin"].toInt(p.artDirection.safeMargin);
+        if (!readArtDirection(o["artDirection"].toObject(), p.artDirection))
+            return fail("Direção de arte contém campos inválidos ou desconhecidos.");
     }
     if (o.contains("audioSource") && !o["audioSource"].isString())
         return fail("Referência de áudio inválida.");
@@ -317,8 +344,17 @@ LoadResult deserialize(const QByteArray &bytes) {
         auto s = value.toObject();
         if (!integer(s["start"]) || !integer(s["duration"]))
             return fail("Tempo de cena inválido.");
-        p.scenes.push_back({str(s, "id"), str(s, "name"), str(s, "narration"), s["start"].toInteger(),
-                            s["duration"].toInteger()});
+        SceneMarker marker{str(s, "id"), str(s, "name"), str(s, "narration"), s["start"].toInteger(),
+                           s["duration"].toInteger()};
+        if (s.contains("artDirection")) {
+            if (p.schemaVersion < 11 || !s["artDirection"].isObject())
+                return fail("Direção de arte local exige cena e schema 11.");
+            ArtDirection style = p.artDirection;
+            if (!readArtDirection(s["artDirection"].toObject(), style))
+                return fail("Direção de arte da cena contém campos inválidos ou desconhecidos.");
+            marker.artDirection = std::move(style);
+        }
+        p.scenes.push_back(std::move(marker));
     }
     if (o["nodes"].toArray().size() > 200)
         return fail("Máximo de 200 objetos neste protótipo.");
@@ -420,6 +456,19 @@ LoadResult deserialize(const QByteArray &bytes) {
             n.captionWords.push_back({word["text"].toString().toStdString(), word["start"].toInteger(),
                                       word["end"].toInteger()});
         }
+        if (v.contains("wordAnimation")) {
+            if (p.schemaVersion < 12 || n.role != "caption" || !v["wordAnimation"].isObject())
+                return fail("Animação por palavra exige legenda e schema 12.");
+            const auto animation = v["wordAnimation"].toObject();
+            if (animation.size() != 4 || !animation["preset"].isString() ||
+                !integer(animation["durationFrames"]) || !animation["startScale"].isDouble() ||
+                !animation["travelY"].isDouble())
+                return fail("Animação por palavra incompleta ou com campos desconhecidos.");
+            n.wordAnimationPreset = animation["preset"].toString().toStdString();
+            n.wordAnimationDurationFrames = animation["durationFrames"].toInt();
+            n.wordAnimationStartScale = animation["startScale"].toDouble();
+            n.wordAnimationTravelY = animation["travelY"].toDouble();
+        }
         if (v.contains("keyframes") && !v["keyframes"].isArray())
             return fail("Lista de keyframes inválida.");
         for (auto keyValue : v["keyframes"].toArray()) {
@@ -471,12 +520,26 @@ LoadResult deserialize(const QByteArray &bytes) {
             return fail("Duração da transição inválida.");
         if (shot.contains("transitionDirection") && !shot["transitionDirection"].isString())
             return fail("Direção da transição inválida.");
-        p.shots.push_back({str(shot, "id"), str(shot, "sceneId"), str(shot, "name"),
-                           str(shot, "transitionIn"), shot["start"].toInteger(), shot["duration"].toInteger(),
-                           shot["transitionDurationFrames"].toInt(0),
-                           shot.contains("transitionDirection")
-                               ? shot["transitionDirection"].toString().toStdString()
-                               : "left"});
+        ShotMarker marker{str(shot, "id"), str(shot, "sceneId"), str(shot, "name"),
+                         str(shot, "transitionIn"), shot["start"].toInteger(), shot["duration"].toInteger(),
+                         shot["transitionDurationFrames"].toInt(0),
+                         shot.contains("transitionDirection")
+                             ? shot["transitionDirection"].toString().toStdString()
+                             : "left"};
+        if (shot.contains("artDirection")) {
+            if (p.schemaVersion < 11 || !shot["artDirection"].isObject())
+                return fail("Direção de arte local exige shot e schema 11.");
+            ArtDirection style = p.artDirection;
+            const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
+                return candidate.id == str(shot, "sceneId");
+            });
+            if (scene != p.scenes.end() && scene->artDirection)
+                style = *scene->artDirection;
+            if (!readArtDirection(shot["artDirection"].toObject(), style))
+                return fail("Direção de arte do shot contém campos inválidos ou desconhecidos.");
+            marker.artDirection = std::move(style);
+        }
+        p.shots.push_back(std::move(marker));
     }
     if (o.contains("visualBeats") && !o["visualBeats"].isArray())
         return fail("Lista de Visual Beats inválida.");

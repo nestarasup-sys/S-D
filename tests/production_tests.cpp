@@ -315,6 +315,8 @@ int main(int argc, char **argv) {
                                                         {"captionPosition", "top"},
                                                         {"safeMargin", 40}};
         auto styledScene = styledRecipeJson["scenes"].toArray().at(0).toObject();
+        styledScene["artDirection"] = QJsonObject{{"backgroundColor", "#14202d"},
+                                                  {"textColor", "#ca6af0"}};
         QFile trackFixture(directory.filePath("music-track.wav"));
         check(trackFixture.open(QIODevice::WriteOnly) && trackFixture.write("fixture") == 7,
               "audio track fixture is available");
@@ -333,8 +335,20 @@ int main(int argc, char **argv) {
                                                             {"duckUnderVoice", true},
                                                             {"duckAmount", 0.8}}};
         auto styledShots = styledScene["shots"].toArray();
+        auto styledFirstShot = styledShots[0].toObject();
+        auto styledFirstElements = styledFirstShot["elements"].toArray();
+        styledFirstElements.append(QJsonObject{{"id", "scene-style-text"}, {"kind", "text"},
+                                               {"text", "Cena"}, {"x", 60}, {"y", 80},
+                                               {"width", 300}, {"height", 70}});
+        styledFirstShot["elements"] = styledFirstElements;
+        styledShots[0] = styledFirstShot;
         auto styledSecondShot = styledShots[1].toObject();
+        styledSecondShot["artDirection"] = QJsonObject{{"backgroundColor", "#070a0c"},
+                                                       {"textColor", "#ffffff"}};
         auto styledElements = styledSecondShot["elements"].toArray();
+        styledElements.append(QJsonObject{{"id", "shot-style-text"}, {"kind", "text"},
+                                          {"text", "Shot"}, {"x", 60}, {"y", 180},
+                                          {"width", 300}, {"height", 70}});
         styledElements.append(QJsonObject{{"id", "card-default"}, {"kind", "shape"},
                                           {"x", 700}, {"y", 300}, {"width", 300}, {"height", 180}});
         styledSecondShot["elements"] = styledElements;
@@ -348,10 +362,14 @@ int main(int argc, char **argv) {
         check(styledRecipe.error.isEmpty() &&
                   styledRecipe.recipe.artDirection.backgroundColor == "#101820" &&
                   styledRecipe.recipe.artDirection.captionPosition == "top" &&
+                  styledRecipe.recipe.scenes.front().artDirection->backgroundColor == "#14202d" &&
+                  styledRecipe.recipe.scenes.front().shots.back().artDirection->backgroundColor == "#070a0c" &&
+                  styledRecipe.recipe.scenes.front().shots.back().artDirection->primaryColor == "#f2b84b" &&
                   styledRecipe.recipe.scenes.front().shots.back().elements.back().node.color == "#24323b" &&
                   styledRecipe.recipe.scenes.front().shots.back().elements.front().children.front().node.color ==
-                      "#fff3d6" &&
+                      "#ffffff" &&
                   styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078" &&
+                  styledRecipe.recipe.scenes.front().shots.front().elements.back().node.color == "#ca6af0" &&
                   styledRecipe.recipe.scenes.front().audioTracks.size() == 1 &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice &&
                   styledRecipe.recipe.scenes.front().audioTracks.front().fadeInFrames == 2 &&
@@ -567,12 +585,46 @@ int main(int argc, char **argv) {
                   studio::findNode(savedTimedCaptions.project, "caption-car-story-u1")->captionWords ==
                       timedCaption->captionWords,
               "word-highlight timings survive project save and load");
+        auto wordAnimationJson = shotRecipeJson;
+        wordAnimationJson["wordAnimation"] =
+            QJsonObject{{"preset", "pop-rise"}, {"durationFrames", 6}, {"startScale", .72}, {"travelY", 18}};
+        auto parsedWordAnimation =
+            studio::parseRecipe(QJsonDocument(wordAnimationJson).toJson(), directory.path());
+        check(parsedWordAnimation.error.isEmpty() &&
+                  parsedWordAnimation.recipe.wordAnimationPreset == "pop-rise" &&
+                  parsedWordAnimation.recipe.wordAnimationDurationFrames == 6 &&
+                  parsedWordAnimation.recipe.wordAnimationStartScale == .72 &&
+                  parsedWordAnimation.recipe.wordAnimationTravelY == 18,
+              "v3 parses word-level caption animation presets and limits");
+        auto unsupportedWordAnimation = wordAnimationJson;
+        unsupportedWordAnimation["wordAnimation"] = QJsonObject{{"preset", "bounce"}};
+        check(!studio::parseRecipe(QJsonDocument(unsupportedWordAnimation).toJson(), directory.path())
+                   .error.isEmpty(),
+              "unknown word-level caption animation presets are rejected");
+        const auto animatedCaptions = studio::compileProduction(
+            parsedWordAnimation.recipe, captionAudio, "word-animation.wav", nullptr, &captionWordMap);
+        const auto *animatedCaption = studio::findNode(animatedCaptions.project, "caption-car-story-u1");
+        const auto persistedAnimatedCaptions =
+            studio::deserialize(studio::serialize(animatedCaptions.project));
+        check(animatedCaptions.error.isEmpty() && animatedCaptions.project.schemaVersion == 12 &&
+                  animatedCaption && animatedCaption->wordAnimationPreset == "pop-rise" &&
+                  animatedCaption->captionWords.size() == 8 && persistedAnimatedCaptions.error.isEmpty() &&
+                  studio::findNode(persistedAnimatedCaptions.project, "caption-car-story-u1")
+                          ->wordAnimationPreset == "pop-rise",
+              "word animation compiles to a timed editable caption and persists in schema 12");
         auto karaokeProject = studio::makeEmpty();
         karaokeProject.schemaVersion = 7;
         karaokeProject.duration = 10;
+        karaokeProject.scenes = {{"car-story", "Car Story", "", 0, 10}};
         auto karaokeCaption = *timedCaption;
         karaokeCaption.start = 0;
         karaokeCaption.duration = 8;
+        karaokeCaption.captionWords.clear();
+        const auto karaokeText = QString::fromStdString(karaokeCaption.text).split(QRegularExpression("\\s+"),
+                                                                                     Qt::SkipEmptyParts);
+        for (int index = 0; index < karaokeText.size(); ++index)
+            karaokeCaption.captionWords.push_back(
+                {karaokeText[index].toStdString(), index, index + 1});
         karaokeProject.nodes.push_back(karaokeCaption);
         studio::CompositionPainter karaokePainter;
         const auto firstSpokenWord = karaokePainter.frame(karaokeProject, 0);
@@ -590,6 +642,25 @@ int main(int argc, char **argv) {
         check(!firstSpokenWord.isNull() && highlightedPixels(firstSpokenWord) > 0 &&
                   highlightedPixels(firstSpokenWord) != highlightedPixels(fourthSpokenWord),
               "caption painter changes the active word color on its measured frame");
+        auto animationStaticProject = karaokeProject;
+        auto animationProject = karaokeProject;
+        animationProject.schemaVersion = 12;
+        animationProject.nodes.front().wordAnimationPreset = "pop-rise";
+        animationProject.nodes.front().wordAnimationDurationFrames = 4;
+        animationProject.nodes.front().wordAnimationStartScale = .72;
+        animationProject.nodes.front().wordAnimationTravelY = 18;
+        studio::CompositionPainter animationPainter;
+        const auto animatedWordImage = animationPainter.frame(animationProject, 0);
+        const auto staticWordImage = animationPainter.frame(animationStaticProject, 0);
+        int animatedPixelChanges = 0;
+        for (int y = 580; y < 720; ++y)
+            for (int x = 60; x < 1220; ++x)
+                animatedPixelChanges += animatedWordImage.pixel(x, y) != staticWordImage.pixel(x, y);
+        check(animatedPixelChanges > 0, "word animation changes pixels around the caption baseline");
+        check(studio::validate(animationProject).empty() &&
+                  animatedWordImage != staticWordImage &&
+                  animationPainter.frame(animationProject, 2) != animationPainter.frame(animationStaticProject, 2),
+              "caption motion and scale animate each aligned word in the shared compositor");
         auto alignedWordElement = studio::compileProduction(wordRecipe.recipe, shotAudio, "word-elements.wav",
                                                             nullptr, &wordMap);
         const auto *wordTimedPrice = studio::findNode(alignedWordElement.project, "price");
@@ -605,8 +676,10 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 8 &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 11 &&
                   styledAudio.project.artDirection.backgroundColor == "#101820" &&
+                  styledAudio.project.scenes.front().artDirection->backgroundColor == "#14202d" &&
+                  styledAudio.project.shots.back().artDirection->backgroundColor == "#070a0c" &&
                   studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
                   studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078" &&
                   styledAudio.project.audioTracks.size() == 1 &&

@@ -20,18 +20,42 @@ namespace studio {
 namespace {
 enum class NodePass { All, ShotComposition, Captions };
 
-void paintBackground(QPainter &painter, const Project &project, bool black = false) {
-    if (black) {
-        painter.fillRect(QRect(0, 0, project.width, project.height), Qt::black);
-        return;
-    }
-    const auto background = QColor(QString::fromStdString(project.artDirection.backgroundColor));
-    const auto glowColor = QColor(QString::fromStdString(project.artDirection.glowColor));
+const ArtDirection &artDirectionFor(const Project &project, const std::string &sceneId,
+                                    const std::string &shotId = {}) {
+    if (!shotId.empty())
+        for (const auto &shot : project.shots)
+            if (shot.id == shotId && shot.artDirection)
+                return *shot.artDirection;
+    if (!sceneId.empty())
+        for (const auto &scene : project.scenes)
+            if (scene.id == sceneId && scene.artDirection)
+                return *scene.artDirection;
+    return project.artDirection;
+}
+
+const ArtDirection &artDirectionAt(const Project &project, std::int64_t frame) {
+    for (const auto &shot : project.shots)
+        if (frame >= shot.start && frame < shot.start + shot.duration)
+            return artDirectionFor(project, shot.sceneId, shot.id);
+    for (const auto &scene : project.scenes)
+        if (frame >= scene.start && frame < scene.start + scene.duration)
+            return artDirectionFor(project, scene.id);
+    return project.artDirection;
+}
+
+void paintBackground(QPainter &painter, const Project &project, const ArtDirection &art) {
+    const auto background = QColor(QString::fromStdString(art.backgroundColor));
+    const auto glowColor = QColor(QString::fromStdString(art.glowColor));
     painter.fillRect(QRect(0, 0, project.width, project.height), background);
     QRadialGradient glow(project.width * .82, project.height * .2, project.width * .8);
     glow.setColorAt(0, glowColor);
     glow.setColorAt(1, background);
     painter.fillRect(QRect(0, 0, project.width, project.height), glow);
+}
+
+double animationEaseOut(double progress) {
+    const auto t = std::clamp(progress, 0.0, 1.0);
+    return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
 }
 
 void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
@@ -75,6 +99,29 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
         }
         if (!visible || node.kind == NodeKind::Group)
             continue;
+        auto styleSceneId = node.sceneId;
+        auto styleShotId = node.shotId;
+        if (styleShotId.empty() && shotId)
+            styleShotId = *shotId;
+        if (styleSceneId.empty() && !styleShotId.empty())
+            for (const auto &shot : project.shots)
+                if (shot.id == styleShotId) {
+                    styleSceneId = shot.sceneId;
+                    break;
+                }
+        if (styleSceneId.empty())
+            for (const auto &scene : project.scenes)
+                if (frame >= scene.start && frame < scene.start + scene.duration) {
+                    styleSceneId = scene.id;
+                    break;
+                }
+        if (node.role == "caption" && styleShotId.empty())
+            for (const auto &shot : project.shots)
+                if (shot.sceneId == styleSceneId && frame >= shot.start && frame < shot.start + shot.duration) {
+                    styleShotId = shot.id;
+                    break;
+                }
+        const auto &art = artDirectionFor(project, styleSceneId, styleShotId);
         painter.save();
         painter.setOpacity(opacity);
         for (const auto *part : chain) {
@@ -117,12 +164,12 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
             const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds;
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
-                auto captionBackground = QColor(QString::fromStdString(project.artDirection.captionBackgroundColor));
+                auto captionBackground = QColor(QString::fromStdString(art.captionBackgroundColor));
                 captionBackground.setAlpha(225);
                 painter.setBrush(captionBackground);
                 painter.drawRoundedRect(bounds, 12, 12);
             }
-            QFont font(QString::fromStdString(project.artDirection.fontFamily));
+            QFont font(QString::fromStdString(art.fontFamily));
             font.setPixelSize(qRound(node.fontSize));
             font.setWeight(QFont::DemiBold);
             painter.setFont(font);
@@ -131,24 +178,42 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                     QString text;
                     QColor color;
                     qreal width;
+                    qreal scale{1};
+                    qreal opacity{1};
+                    qreal offsetY{0};
                 };
                 struct CaptionLine {
                     std::vector<CaptionPart> parts;
                     qreal width{0};
                 };
                 const QFontMetricsF metrics(font);
-                const auto baseColor = QColor(QString::fromStdString(node.color));
-                const auto highlightColor = QColor(QString::fromStdString(project.artDirection.primaryColor));
+                const auto baseColor = QColor(QString::fromStdString(node.role == "caption" ? art.textColor
+                                                                                              : node.color));
+                const auto highlightColor = QColor(QString::fromStdString(art.primaryColor));
                 const auto words = QString::fromStdString(node.text).split(QRegularExpression("\\s+"),
                                                                            Qt::SkipEmptyParts);
                 std::vector<CaptionLine> lines(1);
                 std::size_t cueIndex = 0;
                 const qreal wordGap = metrics.horizontalAdvance(QLatin1Char(' '));
                 for (const auto &word : words) {
-                    const bool highlighted = cueIndex < node.captionWords.size() &&
-                                             frame >= node.captionWords[cueIndex].start &&
-                                             frame < node.captionWords[cueIndex].end;
+                    const bool hasCue = cueIndex < node.captionWords.size();
+                    const auto cue = hasCue ? node.captionWords[cueIndex] : CaptionWordCue{};
+                    const bool highlighted = hasCue && frame >= cue.start && frame < cue.end &&
+                                             node.wordAnimationPreset != "none";
                     const qreal width = metrics.horizontalAdvance(word);
+                    qreal wordScale = 1, wordOpacity = 1, wordOffsetY = 0;
+                    if (hasCue && frame >= cue.start && frame < cue.end) {
+                        const auto elapsed = std::max<std::int64_t>(0, frame - cue.start);
+                        const auto progress = animationEaseOut(
+                            double(elapsed) / std::max(1, node.wordAnimationDurationFrames));
+                        if (node.wordAnimationPreset == "pop" || node.wordAnimationPreset == "pop-rise")
+                            wordScale = node.wordAnimationStartScale +
+                                        (1 - node.wordAnimationStartScale) * progress;
+                        if (node.wordAnimationPreset == "rise" || node.wordAnimationPreset == "pop-rise")
+                            wordOffsetY = -node.wordAnimationTravelY * (1 - progress);
+                        if (node.wordAnimationPreset == "fade")
+                            wordOpacity = progress;
+                    }
                     auto *line = &lines.back();
                     const qreal addedWidth = width + (line->parts.empty() ? 0 : wordGap);
                     if (!line->parts.empty() && line->width + addedWidth > textBounds.width()) {
@@ -157,7 +222,8 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                     }
                     if (!line->parts.empty())
                         line->width += wordGap;
-                    line->parts.push_back({word, highlighted ? highlightColor : baseColor, width});
+                    line->parts.push_back({word, highlighted ? highlightColor : baseColor, width, wordScale,
+                                           wordOpacity, wordOffsetY});
                     line->width += width;
                     if (cueIndex < node.captionWords.size())
                         ++cueIndex;
@@ -173,8 +239,20 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                     for (std::size_t part = 0; part < line.parts.size(); ++part) {
                         if (part > 0)
                             x += wordGap;
-                        painter.setPen(line.parts[part].color);
-                        painter.drawText(QPointF(x, baseline), line.parts[part].text);
+                        const auto &captionPart = line.parts[part];
+                        painter.save();
+                        painter.setOpacity(captionPart.opacity);
+                        painter.setPen(captionPart.color);
+                        if (captionPart.scale != 1 || captionPart.offsetY != 0) {
+                            const qreal centerX = x + captionPart.width / 2;
+                            const qreal centerY = baseline - metrics.height() / 2 + captionPart.offsetY;
+                            painter.translate(centerX, centerY);
+                            painter.scale(captionPart.scale, captionPart.scale);
+                            painter.drawText(QPointF(-captionPart.width / 2, metrics.height() / 2),
+                                             captionPart.text);
+                        } else
+                            painter.drawText(QPointF(x, baseline), captionPart.text);
+                        painter.restore();
                         x += line.parts[part].width;
                     }
                     baseline += lineHeight;
@@ -228,7 +306,7 @@ QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &s
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-    paintBackground(painter, project);
+    paintBackground(painter, project, artDirectionFor(project, shot.sceneId, shot.id));
     paintNodes(painter, project, frame, shot.id, NodePass::ShotComposition, images, videoFrame);
     painter.end();
     return image;
@@ -353,7 +431,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     if (project.shots.empty()) {
-        paintBackground(painter, project);
+        paintBackground(painter, project, artDirectionAt(project, frame));
         paintNodes(painter, project, frame, std::nullopt, NodePass::All, images_,
                    [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
@@ -367,7 +445,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
             (!currentShot || shot.start > currentShot->start))
             currentShot = &shot;
     if (!currentShot) {
-        paintBackground(painter, project);
+        paintBackground(painter, project, artDirectionAt(project, frame));
         paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_,
                    [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
@@ -384,7 +462,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     }
 
     if (!previousShot || currentShot->transitionIn == "cut") {
-        paintBackground(painter, project);
+        paintBackground(painter, project, artDirectionFor(project, currentShot->sceneId, currentShot->id));
         paintNodes(painter, project, frame, currentShot->id, NodePass::ShotComposition, images_,
                    [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
