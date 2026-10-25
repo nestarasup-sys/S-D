@@ -1267,6 +1267,55 @@ void EditorController::updateArtDirection(QString property, QVariant value) {
     else
         notify(q(error));
 }
+void EditorController::applyArtDirectionPreset(QVariantMap values) {
+    if (artDirectionScope_ == "scene" && currentSceneId().isEmpty()) {
+        notify("Selecione uma cena para aplicar o estilo visual.");
+        return;
+    }
+    if (artDirectionScope_ == "shot" && currentShotId().isEmpty()) {
+        notify("Posicione o playhead dentro de um shot para aplicar o estilo visual.");
+        return;
+    }
+    studio::ArtDirection style;
+    style.backgroundColor = values["backgroundColor"].toString().toStdString();
+    style.glowColor = values["glowColor"].toString().toStdString();
+    style.primaryColor = values["primaryColor"].toString().toStdString();
+    style.secondaryColor = values["secondaryColor"].toString().toStdString();
+    style.textColor = values["textColor"].toString().toStdString();
+    style.cardColor = values["cardColor"].toString().toStdString();
+    style.captionBackgroundColor = values["captionBackgroundColor"].toString().toStdString();
+    style.fontFamily = values["fontFamily"].toString().toStdString();
+    style.captionPosition = values["captionPosition"].toString().toStdString();
+    style.titleSize = values["titleSize"].toDouble();
+    style.bodySize = values["bodySize"].toDouble();
+    style.captionSize = values["captionSize"].toDouble();
+    style.safeMargin = values["safeMargin"].toInt();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        studio::ArtDirection *selectedArt = &p.artDirection;
+        if (artDirectionScope_ == "scene") {
+            const auto id = currentSceneId().toStdString();
+            auto item = std::find_if(p.scenes.begin(), p.scenes.end(), [&](auto &scene) { return scene.id == id; });
+            if (item != p.scenes.end()) {
+                item->artDirection = style;
+                selectedArt = &*item->artDirection;
+            }
+        } else if (artDirectionScope_ == "shot") {
+            const auto id = currentShotId().toStdString();
+            auto item = std::find_if(p.shots.begin(), p.shots.end(), [&](auto &shot) { return shot.id == id; });
+            if (item != p.shots.end()) {
+                item->artDirection = style;
+                selectedArt = &*item->artDirection;
+            }
+        }
+        *selectedArt = style;
+        if (artDirectionScope_ != "global")
+            p.schemaVersion = std::max(p.schemaVersion, 11);
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
 void EditorController::applyEditingIntensity(int intensity) {
     if (intensity < 0 || intensity > 100) {
         notify("A intensidade precisa ficar entre 0 e 100.");

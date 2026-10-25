@@ -488,6 +488,40 @@ int main(int argc, char **argv) {
                   styledRecipe.recipe.scenes.front().audioTracks.front().gainAutomation.back().easing ==
                       "ease-in-out",
               "v3 parses global art direction and independent, voice-ducked audio tracks");
+        auto presetRecipe = shotRecipeJson;
+        presetRecipe["artDirectionPreset"] = "style-global";
+        auto stylePresetScene = presetRecipe["scenes"].toArray().at(0).toObject();
+        stylePresetScene["artDirectionPreset"] = "style-scene";
+        auto stylePresetShots = stylePresetScene["shots"].toArray();
+        auto stylePresetShot = stylePresetShots.at(1).toObject();
+        stylePresetShot["artDirectionPreset"] = "style-shot";
+        stylePresetShot["artDirection"] = QJsonObject{{"textColor", "#ffffff"}};
+        stylePresetShots[1] = stylePresetShot;
+        stylePresetScene["shots"] = stylePresetShots;
+        presetRecipe["scenes"] = QJsonArray{stylePresetScene};
+        const auto styleLibrary = QJsonObject{{"assets", QJsonArray{
+            QJsonObject{{"id", "style-global"}, {"kind", "visual-style"}, {"deleted", false},
+                        {"name", "Global"}, {"style", QJsonObject{{"primaryColor", "#112233"}}}},
+            QJsonObject{{"id", "style-scene"}, {"kind", "visual-style"}, {"deleted", false},
+                        {"name", "Cena"}, {"style", QJsonObject{{"primaryColor", "#445566"}}}},
+            QJsonObject{{"id", "style-shot"}, {"kind", "visual-style"}, {"deleted", false},
+                        {"name", "Shot"}, {"style", QJsonObject{{"primaryColor", "#778899"}}}}
+        }}};
+        const auto presetParsed = studio::parseRecipe(QJsonDocument(presetRecipe).toJson(), directory.path(), styleLibrary);
+        check(presetParsed.error.isEmpty() && presetParsed.recipe.artDirection.primaryColor == "#112233" &&
+                  presetParsed.recipe.scenes.front().artDirection->primaryColor == "#445566" &&
+                  presetParsed.recipe.scenes.front().shots.back().artDirection->primaryColor == "#778899" &&
+                  presetParsed.recipe.scenes.front().shots.back().artDirection->textColor == "#ffffff",
+              "named visual style presets inherit from root to scene to shot and inline fields override presets");
+        auto missingStyle = presetRecipe;
+        missingStyle["artDirectionPreset"] = "deleted-style";
+        check(!studio::parseRecipe(QJsonDocument(missingStyle).toJson(), directory.path(), styleLibrary).error.isEmpty(),
+              "recipes reject missing or inactive named visual styles");
+        const auto styleGuide = studio::aiGuide(styleLibrary);
+        check(styleGuide.contains("style-global") && styleGuide.contains("artDirectionPreset") &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains("named-visual-style-presets") &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains("external-library-fonts"),
+              "generated AI guide and capability manifest expose only the supported local styles and fonts");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
         auto wordShots = wordScene["shots"].toArray();

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
@@ -31,6 +32,14 @@ bool write(const QString &path, const QByteArray &b) {
 }
 QString nativeCategory(const std::string &s) {
     return s == "personagens" ? "characters" : s == "cenários" ? "scenes" : s == "dados" ? "data" : "objects";
+}
+bool categoryExists(const QJsonObject &data, const QString &id);
+void ensureCategory(QJsonObject &data, const QString &id, const QString &name) {
+    if (categoryExists(data, id))
+        return;
+    auto categories = data["categories"].toArray();
+    categories.append(QJsonObject{{"id", id}, {"name", name}});
+    data["categories"] = categories;
 }
 bool validName(const QString &s) {
     return !s.trimmed().isEmpty() && s.trimmed().size() <= 120 && !s.contains('\n') && !s.contains('\r');
@@ -79,6 +88,12 @@ QString validateCatalogue(const QJsonObject &data) {
                 (!o["width"].isDouble() || !o["height"].isDouble() || o["width"].toInt() < 1 ||
                  o["height"].toInt() < 1 || o["width"].toInt() > 30000 || o["height"].toInt() > 30000))
                 return "Dimensões de mídia inválidas no catálogo.";
+            if (QString(key) == "assets" && o["kind"] == "font" &&
+                (!o["family"].isString() || o["family"].toString().isEmpty() || !o["source"].isString() ||
+                 !QFileInfo(o["source"].toString()).isAbsolute()))
+                return "Fonte externa inválida no catálogo.";
+            if (QString(key) == "assets" && o["kind"] == "visual-style" && !o["style"].isObject())
+                return "Preset visual inválido no catálogo.";
             if (QString(key) == "projects" &&
                 (!o["path"].isString() || !QFileInfo(o["path"].toString()).isAbsolute()))
                 return "Caminho de projeto inválido.";
@@ -92,6 +107,8 @@ QJsonObject defaults() {
                       {"characters", "Personagens"},
                       {"scenes", "Cenários"},
                       {"data", "Dados"},
+                      {"fonts", "Fontes"},
+                      {"visual-styles", "Estilos visuais"},
                       {"uncategorized", "Sem categoria"}})
         categories.append(QJsonObject{{"id", pair.first}, {"name", pair.second}});
     QJsonArray assets;
@@ -111,6 +128,31 @@ QJsonObject defaults() {
             {"assets", assets}};
 }
 } // namespace
+QStringList loadWorkspaceFonts(const QString &workspaceDirectory) {
+    static QSet<QString> registeredPaths;
+    QStringList loadedFamilies;
+    QFile catalogue(QDir(workspaceDirectory).filePath("catalogue.json"));
+    if (!catalogue.open(QIODevice::ReadOnly) || catalogue.size() > 8 * 1024 * 1024)
+        return loadedFamilies;
+    const auto data = QJsonDocument::fromJson(catalogue.readAll()).object();
+    for (const auto &value : data["assets"].toArray()) {
+        const auto asset = value.toObject();
+        if (asset["kind"] != "font" || asset["deleted"].toBool())
+            continue;
+        const auto path = QFileInfo(asset["source"].toString()).absoluteFilePath();
+        if (!QFileInfo(path).isFile())
+            continue;
+        if (!registeredPaths.contains(path)) {
+            if (QFontDatabase::addApplicationFont(path) < 0)
+                continue;
+            registeredPaths.insert(path);
+        }
+        const auto family = asset["family"].toString();
+        if (!family.isEmpty() && !loadedFamilies.contains(family))
+            loadedFamilies.append(family);
+    }
+    return loadedFamilies;
+}
 WorkspaceStore::WorkspaceStore(QString directory) : root_(QDir(directory).absolutePath()) {
     QDir().mkpath(root_);
     reload();
@@ -441,6 +483,56 @@ WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &c
                                 {"builtin", false},
                                 {"createdAt", now()}});
         d["assets"] = list;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::addFont(const QString &family, const QString &source) {
+    const auto name = family.trimmed();
+    const auto extension = QFileInfo(source).suffix().toLower();
+    QFile file(source);
+    if (!validName(name) || !QStringList{"ttf", "otf"}.contains(extension) ||
+        !file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 64 * 1024 * 1024)
+        return {{}, "Use uma fonte TTF ou OTF válida, de até 64 MiB."};
+    const auto bytes = file.readAll();
+    const auto owned = root_ + "/library/fonts/" + QString::fromLatin1(hash(bytes)) + "." + extension;
+    const auto id = uuid();
+    return mutate([&](QJsonObject &data) {
+        ensureCategory(data, "fonts", "Fontes");
+        if (!QDir().mkpath(root_ + "/library/fonts"))
+            return WorkspaceResult{{}, "Falha ao criar a biblioteca de fontes."};
+        if (!QFile::exists(owned) && !write(owned, bytes))
+            return WorkspaceResult{{}, "Não foi possível copiar a fonte para a biblioteca."};
+        auto assets = data["assets"].toArray();
+        assets.append(QJsonObject{{"id", id},
+                                  {"name", name},
+                                  {"kind", "font"},
+                                  {"family", name},
+                                  {"source", owned},
+                                  {"categoryId", "fonts"},
+                                  {"deleted", false},
+                                  {"builtin", false},
+                                  {"createdAt", now()}});
+        data["assets"] = assets;
+        return WorkspaceResult{id, {}};
+    });
+}
+WorkspaceResult WorkspaceStore::addVisualStylePreset(const QString &input, const QJsonObject &style) {
+    const auto name = input.trimmed();
+    if (!validName(name) || style.isEmpty())
+        return {{}, "Informe um nome e uma direção de arte válida."};
+    const auto id = uuid();
+    return mutate([&](QJsonObject &data) {
+        ensureCategory(data, "visual-styles", "Estilos visuais");
+        auto assets = data["assets"].toArray();
+        assets.append(QJsonObject{{"id", id},
+                                  {"name", name},
+                                  {"kind", "visual-style"},
+                                  {"style", style},
+                                  {"categoryId", "visual-styles"},
+                                  {"deleted", false},
+                                  {"builtin", false},
+                                  {"createdAt", now()}});
+        data["assets"] = assets;
         return WorkspaceResult{id, {}};
     });
 }

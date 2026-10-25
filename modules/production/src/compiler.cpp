@@ -354,7 +354,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         const auto &scene = recipe.scenes[sceneIndex];
         const ArtDirection &sceneArt = scene.artDirection ? *scene.artDirection : recipe.artDirection;
         const bool sceneThemed = recipe.version >= 3 &&
-                                 (recipe.original.contains("artDirection") || scene.artDirection.has_value());
+                                 (recipe.original.contains("artDirection") ||
+                                  recipe.original.contains("artDirectionPreset") || scene.artDirection.has_value());
         const TimedScene *sceneTiming = fixed ? &timing->scenes[sceneIndex] : nullptr;
         if (fixed &&
             (sceneTiming->cues.size() != scene.narration.size() || sceneTiming->durationFrames <= 0)) {

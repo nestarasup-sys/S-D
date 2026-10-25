@@ -13,6 +13,8 @@ class WorkspaceController : public QObject {
     Q_PROPERTY(QVariantList assets READ assets NOTIFY assetsChanged)
     Q_PROPERTY(QVariantList categories READ categories NOTIFY assetsChanged)
     Q_PROPERTY(QVariantList assetChoices READ assetChoices NOTIFY assetsChanged)
+    Q_PROPERTY(QVariantList visualStylePresets READ visualStylePresets NOTIFY assetsChanged)
+    Q_PROPERTY(QStringList fontFamilies READ fontFamilies NOTIFY assetsChanged)
     Q_PROPERTY(int projectCount READ projectCount NOTIFY projectsChanged)
     Q_PROPERTY(int assetCount READ assetCount NOTIFY assetsChanged)
     Q_PROPERTY(QString projectSearch READ projectSearch WRITE setProjectSearch NOTIFY projectsChanged)
@@ -36,6 +38,8 @@ class WorkspaceController : public QObject {
     QVariantList assets() const;
     QVariantList categories() const;
     QVariantList assetChoices() const;
+    QVariantList visualStylePresets() const;
+    QStringList fontFamilies() const;
     int projectCount() const;
     int assetCount() const;
     QString projectSearch() const {
@@ -72,6 +76,8 @@ class WorkspaceController : public QObject {
     Q_INVOKABLE bool renameCategory(QString id, QString name);
     Q_INVOKABLE bool deleteCategory(QString id);
     Q_INVOKABLE bool addAsset(QUrl source, QString name, QString category);
+    Q_INVOKABLE bool addFont(QUrl source);
+    Q_INVOKABLE bool saveVisualStylePreset(QString name);
     Q_INVOKABLE bool saveSelection(QString name, QString category);
     Q_INVOKABLE void saveAiGuide(QUrl path);
     Q_INVOKABLE bool updateAsset(QString id, QString name, QString category);

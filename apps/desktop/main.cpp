@@ -11,12 +11,16 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QTimer>
+#include <studio/storage/workspace_store.hpp>
 
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     app.setOrganizationName("StudioDarkPrototype");
     app.setApplicationName("Studio Dark");
+    studio::loadWorkspaceFonts(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
+                               "/workspace");
     QQuickStyle::setStyle("Basic");
     const auto args = app.arguments();
     int index = args.indexOf("--smoke");

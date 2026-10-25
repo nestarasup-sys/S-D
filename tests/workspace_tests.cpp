@@ -37,12 +37,32 @@ int main(int argc, char **argv) {
         EditorController editor(nullptr, temp.filePath("recovery"));
         WorkspaceController ui(&editor, temp.filePath("workspace"));
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
-        check(ui.projectCount() == 0 && ui.assetCount() == 14 && ui.categories().size() == 5,
+        check(ui.projectCount() == 0 && ui.assetCount() == 14 && ui.categories().size() == 7,
               "initial complete native library and categories");
         check(!ui.createProject(" "), "empty project names rejected");
         check(ui.createProject("Minha história"), "create managed project");
         check(ui.hasDocument() && ui.page() == "editor" && !editor.dirty(),
               "creation opens an already saved blank document");
+        const auto fontPath = QStringLiteral("C:/Windows/Fonts/arial.ttf");
+        if (QFile::exists(fontPath)) {
+            check(ui.addFont(QUrl::fromLocalFile(fontPath)), "import a system font into the private library");
+            const auto importedFont = named(ui.assets(), "Arial");
+            check(importedFont["kind"].toString() == "font" && importedFont["source"].toString() != fontPath &&
+                      QFile::exists(importedFont["source"].toString()),
+                  "external font is copied and catalogued independently of its original file");
+            check(ui.useAsset(importedFont["id"].toString()) &&
+                      editor.project().artDirection.fontFamily == "Arial",
+                  "a library font can be applied to the project direction of art");
+        }
+        editor.updateArtDirection("primaryColor", "#d85e3f");
+        check(ui.saveVisualStylePreset("Noite editorial"), "save named visual style from current direction of art");
+        const auto stylePreset = named(ui.assets(), "Noite editorial");
+        check(stylePreset["kind"].toString() == "visual-style" &&
+                  stylePreset["style"].toMap()["primaryColor"].toString() == "#d85e3f" &&
+                  ui.useAsset(stylePreset["id"].toString()) &&
+                  editor.project().artDirection.primaryColor == "#d85e3f",
+              "named visual style can be reapplied to the selected scope");
+        const auto baseAssetCount = ui.assetCount();
         auto first = named(ui.projects(), "Minha história");
         auto firstId = first["id"].toString(), path = first["path"].toString();
         check(QFile::exists(path) && path.startsWith(temp.path()),
@@ -52,7 +72,7 @@ int main(int argc, char **argv) {
         check(ui.saveSelection("Meu carro", "objects"), "save configured native object as reusable preset");
         auto preset = named(ui.assets(), "Meu carro");
         auto presetId = preset["id"].toString();
-        check(!presetId.isEmpty() && ui.assetCount() == 15, "custom preset catalogued");
+        check(!presetId.isEmpty() && ui.assetCount() == baseAssetCount + 1, "custom preset catalogued");
         check(ui.useAsset(presetId) && editor.project().nodes.size() == 2, "reuse custom preset");
         check(editor.project().nodes.back().color == "#44aa88" &&
                   editor.project().nodes[0].id != editor.project().nodes[1].id,
@@ -67,17 +87,17 @@ int main(int argc, char **argv) {
         check(ui.assets().size() == 1, "category filter returns matching item");
         check(ui.renameCategory(category, "Minha garagem"), "rename category");
         check(ui.assets()[0].toMap()["categoryName"] == "Minha garagem", "item follows renamed category");
-        check(ui.deleteCategory(category) && ui.assetCount() == 15, "deleting category retains its items");
+        check(ui.deleteCategory(category) && ui.assetCount() == baseAssetCount + 1, "deleting category retains its items");
         check(named(ui.assets(), "Meu carro verde")["categoryId"] == "uncategorized",
               "items reassigned to fallback category");
         check(!ui.deleteCategory("uncategorized"), "fallback category cannot be removed");
-        check(ui.deleteAsset("native:car") && ui.assetCount() == 14,
+        check(ui.deleteAsset("native:car") && ui.assetCount() == baseAssetCount,
               "native item removed from visible catalogue");
         check(studio::libraryItem("car") && studio::validate(editor.project()).empty(),
               "native removal never breaks existing projects or renderer registry");
         ui.setAssetTrash(true);
         check(ui.assets().size() == 1, "removed native visible in excluded-items view");
-        check(ui.restoreAsset("native:car") && ui.assetCount() == 15, "restore native item");
+        check(ui.restoreAsset("native:car") && ui.assetCount() == baseAssetCount + 1, "restore native item");
         ui.setAssetTrash(false);
         QImage image(80, 60, QImage::Format_RGB32);
         image.fill(QColor("#adcf8d"));

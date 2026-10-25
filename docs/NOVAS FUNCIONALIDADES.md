@@ -2,7 +2,17 @@
 
 ## ANDAMENTO DA IMPLEMENTAÇÃO — 25/10/2026
 
-Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
+**Estado do checklist principal: completo.** Fases 1–4 concluídas; a entrega de fontes externas e presets visuais fecha o último item pendente da Fase 3. Os aprimoramentos futuros abaixo permanecem explicitamente separados das capacidades atuais.
+
+Este quadro separa as funcionalidades implementadas, as limitações atuais e as próximas evoluções sugeridas. O checklist principal das quatro fases está concluído.
+
+### Entrega implementada: fontes externas e presets visuais nomeados
+
+- A biblioteca importa arquivos TTF/OTF válidos, guarda uma cópia própria e registra a família no aplicativo e no render-worker. Fontes excluídas podem ser restauradas e ficam disponíveis no seletor da direção de arte.
+- O inspetor salva o estilo ativo como preset nomeado e aplica qualquer preset ao escopo global, cena ou shot. A biblioteca mostra uma amostra de tipografia e paleta; itens têm categorias, busca, restauração e exclusão reversível.
+- Receitas v3 aceitam `artDirectionPreset` na raiz, cena e shot usando IDs do guia gerado na instalação. A herança continua global → cena → shot e campos inline substituem valores do preset. IDs de biblioteca são locais; a fonte precisa estar importada na máquina que renderiza.
+- Testes automatizados cobrem cópia e aplicação de fontes disponíveis no Windows, salvamento/aplicação de estilos, herança nos três escopos e precedência de campos inline. Verificações do guia e smoke de workspace registram a interface real.
+- Decisão arquitetural: [ADR 0029 — fontes externas e presets visuais](architecture/0029-library-fonts-and-visual-style-presets.md).
 
 ### Entrega implementada: ajuste de cortes e sobreposição na timeline
 
@@ -158,7 +168,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O compilador preserva cor, cor secundária e tamanho de fonte explicitamente declarados nos elementos; o estilo resolvido controla fundo, objetos com defaults, cabeçalhos, legendas e destaque de palavra.
 - Projetos com estilos locais usam schema 11. A prévia e o render resolvem o mesmo estilo no shot ativo; no inspetor, a pessoa escolhe global, cena atual ou shot atual e pode desfazer a mudança.
 - Alterações posteriores no escopo pai não reescrevem um override já salvo. No editor, a primeira edição local copia o estilo efetivo do pai como base. Cores e tamanhos explicitamente escritos em objetos não são recalculados por edições posteriores.
-- Fontes externas, presets visuais nomeados e edição de estilo via paletas pré-visualizáveis ainda faltam.
+- Fontes externas, presets visuais nomeados e prévia de paletas estão disponíveis na biblioteca e no inspetor. A família de fonte é carregada localmente para a prévia e a exportação.
 
 ### Sincronização por palavra implementada parcialmente
 
@@ -191,8 +201,8 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom, presets de câmera, ritmo de cortes guiado pela narração e edição de duração/overlap na timeline estão implementados. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render, com cache de quadros limitado e seek direto validado contra exportação. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação e snapping geométrico. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados. |
+| 3 — Acabamento audiovisual | Concluída | Direção de arte por escopo, fontes importadas, presets visuais nomeados, tipografia por palavra, áudio em múltiplas pistas e efeitos sonoros estão implementados. Presets reutilizáveis para títulos e uma cor de destaque de palavra independente seguem como aprimoramentos fora do checklist desta fase. |
+| 4 — Recursos avançados | Concluída | Todos os 12 itens desta fase estão implementados e verificados. Regiões de documentos/PDF, conectores ancorados, trajetórias Bézier e mais ferramentas de timeline ficam como propostas futuras fora do checklist atual. |
 
 ### Limites confirmados nesta versão
 
@@ -202,13 +212,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
 - Com Snap ligado, arrastar clipes visuais alinha início/fim ao playhead, limites de cenas/shots, beats, outras camadas e inícios/fins de áudio. A tolerância equivale a oito pixels e acompanha o zoom; uma guia âmbar mostra o encaixe. O botão desliga o snap para movimento livre. A ferramenta não acrescenta campos à receita IA; o movimento continua undoável como um gesto.
 - A alça ↔ no início do envelope move a pista; a alça direita altera o fim/duração por frame. Ambas usam as mesmas referências de snap e cada gesto tem um único undo. Efeitos de som ligados a Visual Beats acompanham a mudança do início.
-- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
+- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem. Regiões de documentos/PDF e conectores ancorados são evoluções futuras.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot. Presets de trajetória reutilizáveis já são aceitos em `cameraPresets`; trajetórias Bézier personalizadas continuam pendentes.
 - `editing.intensity` orienta entradas/saídas automáticas quando a receita omite esses campos e ajusta o equilíbrio temporal/semântico do modo `editing.rhythm:"narration"`. Esse modo escolhe entre timestamps reais de palavras, favorecendo pontuação e pivôs textuais; não faz interpretação semântica livre. No editor, o comando de intensidade aplica o perfil explicitamente à cena atual.
 
 ### Próxima entrega recomendada
 
-Implementar carregamento de fontes externas e presets visuais nomeados reutilizáveis. A Fase 2 está concluída.
+As quatro fases do checklist estão concluídas. Próximas evoluções sugeridas: presets reutilizáveis para títulos/textos, cor de destaque independente da direção de arte, trajetórias de câmera Bézier, regiões de documentos/PDF, conectores ancorados e ferramentas avançadas de timeline.
 
 ---
 
@@ -967,7 +977,7 @@ Implementar:
 4. [x] Trilhas importadas em múltiplas pistas, com fades e ducking.
 5. [x] Direção de arte global com paleta, fonte instalada e parâmetros de legenda.
 6. [x] Direção de arte por cena e shot com herança do estilo global e projeto schema 11.
-7. [ ] Carregamento de fontes externas e presets visuais nomeados reutilizáveis.
+7. [x] Carregamento de fontes externas e presets visuais nomeados reutilizáveis, com prévia de paleta e integração ao guia da IA.
 8. [x] Automação de ganho por pontos com easing na receita, projeto, prévia, exportação e editor.
 
 Resultado esperado: produções com identidade visual e sonora consistente.

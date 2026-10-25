@@ -170,6 +170,8 @@
         "global-art-direction",
         "scene-shot-art-direction",
         "word-aligned-visual-beats",
+        "external-library-fonts",
+        "named-visual-style-presets",
         "embedded-video-audio-with-source-trim-and-speed",
         "word-aligned-elements-keyframes",
         "multi-track-audio",

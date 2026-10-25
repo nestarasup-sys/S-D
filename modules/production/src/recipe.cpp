@@ -156,6 +156,20 @@ QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
     }
     return {};
 }
+bool applyVisualStylePreset(const QJsonObject &library, const QString &id, ArtDirection &style,
+                            QString &error) {
+    const auto asset = libraryAsset(library, id);
+    if (asset.isEmpty() || asset["deleted"].toBool() || asset["kind"] != "visual-style" ||
+        !asset["style"].isObject()) {
+        error = "Preset visual não encontrado ou excluído na biblioteca local: " + id;
+        return false;
+    }
+    if (!parseArtDirection(asset["style"].toObject(), style, error)) {
+        error = "Preset visual inválido '" + asset["name"].toString() + "': " + error;
+        return false;
+    }
+    return true;
+}
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
                   QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1,
@@ -639,7 +653,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (version >= 3)
-        rootKeys << "editing" << "artDirection" << "wordAnimation" << "canvas" << "cameraPresets";
+        rootKeys << "editing" << "artDirection" << "artDirectionPreset" << "wordAnimation" << "canvas"
+                 << "cameraPresets";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
@@ -660,6 +675,13 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                                (r.width == 1080 && r.height == 1920);
         if (!supported)
             return fail("canvas aceita 1280×720, 1920×1080 ou 1080×1920.");
+    }
+    if (o.contains("artDirectionPreset")) {
+        if (version < 3 || !o["artDirectionPreset"].isString())
+            return fail("artDirectionPreset exige o ID ativo de um estilo visual v3.");
+        QString presetError;
+        if (!applyVisualStylePreset(library, o["artDirectionPreset"].toString(), r.artDirection, presetError))
+            return fail(presetError);
     }
     if (o.contains("artDirection")) {
         if (version < 3 || !o["artDirection"].isObject())
@@ -817,7 +839,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             sceneKeys << "title" << "kicker" << "background" << "elements";
         else {
             sceneKeys << "shots";
-            sceneKeys << "artDirection";
+            sceneKeys << "artDirection" << "artDirectionPreset";
         }
         if (version >= 3)
             sceneKeys << "audioTracks";
@@ -834,7 +856,16 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             return fail("Identificação, título, kicker ou cenário da cena inválidos.");
         DirectedScene scene;
         ArtDirection sceneStyle = r.artDirection;
-        bool sceneThemed = version >= 3 && o.contains("artDirection");
+        bool sceneThemed = version >= 3 && (o.contains("artDirection") || o.contains("artDirectionPreset"));
+        if (s.contains("artDirectionPreset")) {
+            if (!s["artDirectionPreset"].isString())
+                return fail("artDirectionPreset da cena precisa usar o ID ativo de um estilo.");
+            QString presetError;
+            if (!applyVisualStylePreset(library, s["artDirectionPreset"].toString(), sceneStyle, presetError))
+                return fail(presetError);
+            scene.artDirection = sceneStyle;
+            sceneThemed = true;
+        }
         if (s.contains("artDirection")) {
             if (version < 3 || !s["artDirection"].isObject())
                 return fail("artDirection por cena exige um objeto em receita v3.");
@@ -900,7 +931,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 const auto shotObject = shotValue.toObject();
                 if (!allowed(shotObject,
                              {"id", "name", "start", "transitionIn", "camera", "elements", "beats",
-                              "artDirection", "cameraPreset"}))
+                              "artDirection", "artDirectionPreset", "cameraPreset"}))
                     return fail("Shot contém campo desconhecido.");
                 const bool autoStart = !shotObject.contains("start");
                 if (!shotObject["id"].isString() ||
@@ -916,6 +947,16 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 shot.cameraY = r.height / 2.0;
                 ArtDirection shotStyle = sceneStyle;
                 bool shotThemed = sceneThemed;
+                if (shotObject.contains("artDirectionPreset")) {
+                    if (!shotObject["artDirectionPreset"].isString())
+                        return fail("artDirectionPreset do shot precisa usar o ID ativo de um estilo.");
+                    QString presetError;
+                    if (!applyVisualStylePreset(library, shotObject["artDirectionPreset"].toString(), shotStyle,
+                                                presetError))
+                        return fail(presetError);
+                    shot.artDirection = shotStyle;
+                    shotThemed = true;
+                }
                 if (shotObject.contains("artDirection")) {
                     if (!shotObject["artDirection"].isObject())
                         return fail("artDirection do shot deve ser um objeto: " + shotObject["id"].toString());

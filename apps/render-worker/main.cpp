@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QStandardPaths>
 #include <QSvgRenderer>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -16,6 +17,7 @@
 #include <studio/composition/painter.hpp>
 #include <studio/media/wave.hpp>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 static void report(int progress, QString error = {}) {
     QTextStream stream(stdout);
@@ -26,6 +28,10 @@ static void report(int progress, QString error = {}) {
 }
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
+    app.setOrganizationName("StudioDarkPrototype");
+    app.setApplicationName("Studio Dark");
+    studio::loadWorkspaceFonts(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
+                               "/workspace");
     QCommandLineParser parser;
     parser.addHelpOption();
     for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still", "still-sequence"})

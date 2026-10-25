@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -35,6 +36,7 @@ WorkspaceController::WorkspaceController(EditorController *editor, QString direc
     connect(editor_, &EditorController::documentChanged, this, &WorkspaceController::selectionChanged);
     if (!store_.error().isEmpty())
         notify(store_.error());
+    studio::loadWorkspaceFonts(store_.root());
     if (directory.isEmpty() && store_.data()["projects"].toArray().isEmpty()) {
         auto old = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/productions";
         for (const auto &child : QDir(old).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
@@ -184,7 +186,9 @@ QVariantList WorkspaceController::assetChoices() const {
     QVariantList result;
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
-        if (!o["deleted"].toBool())
+        if (!o["deleted"].toBool() &&
+            (o["kind"] == "native" || o["kind"] == "image" || o["kind"] == "svg" ||
+             o["kind"] == "preset"))
             result.append(o.toVariantMap());
     }
     return result;
@@ -206,16 +210,33 @@ QVariantList WorkspaceController::assets() const {
         else if (kind == "preset") {
             auto path = thumbnailPath(o["id"].toString());
             o["thumbnail"] = QFileInfo::exists(path) ? QUrl::fromLocalFile(path).toString() : QString{};
+        } else if (kind == "font" || kind == "visual-style") {
+            o["thumbnail"] = QString{};
+            o["missing"] = kind == "font" && !QFileInfo::exists(o["source"].toString());
         } else {
             o["thumbnail"] = QUrl::fromLocalFile(o["source"].toString()).toString();
             o["missing"] = !QFileInfo::exists(o["source"].toString());
         }
-        o["typeLabel"] = kind == "native"   ? "NATIVO"
-                         : kind == "preset" ? "PERSONALIZADO"
-                                            : QFileInfo(o["source"].toString()).suffix().toUpper();
+        o["typeLabel"] = kind == "native"        ? "NATIVO"
+                         : kind == "preset"      ? "PERSONALIZADO"
+                         : kind == "font"        ? "FONTE"
+                         : kind == "visual-style" ? "ESTILO"
+                                                   : QFileInfo(o["source"].toString()).suffix().toUpper();
         result.append(o.toVariantMap());
     }
     return result;
+}
+QVariantList WorkspaceController::visualStylePresets() const {
+    QVariantList result;
+    for (const auto &value : store_.data()["assets"].toArray()) {
+        const auto asset = value.toObject();
+        if (asset["kind"] == "visual-style" && !asset["deleted"].toBool())
+            result.append(asset.toVariantMap());
+    }
+    return result;
+}
+QStringList WorkspaceController::fontFamilies() const {
+    return QFontDatabase::families();
 }
 bool WorkspaceController::createProject(QString name, int width, int height) {
     if (busy())
@@ -373,6 +394,28 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
     return complete(store_.addAsset(name, category, path, mediaSize.width(), mediaSize.height()),
                     "Item copiado para a biblioteca. O arquivo original não precisa ser movido.");
 }
+bool WorkspaceController::addFont(QUrl source) {
+    const auto path = source.toLocalFile();
+    const auto fontId = QFontDatabase::addApplicationFont(path);
+    const auto families = QFontDatabase::applicationFontFamilies(fontId);
+    if (fontId < 0 || families.isEmpty()) {
+        notify("Não foi possível ler esta fonte. Use um arquivo TTF ou OTF válido.");
+        return false;
+    }
+    const auto family = families.front();
+    const auto result = store_.addFont(family, path);
+    if (!result.error.isEmpty()) {
+        QFontDatabase::removeApplicationFont(fontId);
+        notify(result.error);
+        return false;
+    }
+    studio::loadWorkspaceFonts(store_.root());
+    return complete(result, "Fonte copiada para a biblioteca e disponível na direção de arte.");
+}
+bool WorkspaceController::saveVisualStylePreset(QString name) {
+    const auto style = QJsonObject::fromVariantMap(editor_->artDirection());
+    return complete(store_.addVisualStylePreset(name, style), "Estilo visual salvo na biblioteca.");
+}
 bool WorkspaceController::canSaveSelection() const {
     const auto *node = studio::findNode(editor_->project(), editor_->selectedId().toStdString());
     return hasDocument_ && node && node->role != "background" && node->parentId.empty();
@@ -441,6 +484,22 @@ bool WorkspaceController::useAsset(QString id) {
     if (item.isEmpty() || item["deleted"].toBool()) {
         notify("Item indisponível.");
         return false;
+    }
+    if (item["kind"] == "visual-style") {
+        editor_->applyArtDirectionPreset(item["style"].toObject().toVariantMap());
+        navigate("editor");
+        notify("Estilo visual aplicado ao escopo selecionado.");
+        return true;
+    }
+    if (item["kind"] == "font") {
+        if (!QFileInfo::exists(item["source"].toString())) {
+            notify("Arquivo da fonte ausente na biblioteca.");
+            return false;
+        }
+        editor_->updateArtDirection("fontFamily", item["family"].toString());
+        navigate("editor");
+        notify("Fonte aplicada à direção de arte.");
+        return true;
     }
     studio::Node n;
     std::vector<studio::Node> presetNodes;

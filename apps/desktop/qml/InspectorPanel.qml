@@ -1,11 +1,39 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 Rectangle {
     id: panel
     color: "#151c23"
     property var node: editor.selected
+    FileDialog {
+        id: fontDialog
+        title: "Adicionar fonte à biblioteca"
+        nameFilters: ["Fontes TrueType/OpenType (*.ttf *.otf)"]
+        onAccepted: workspace.addFont(selectedFile)
+    }
+    Dialog {
+        id: stylePresetDialog
+        anchors.centerIn: parent
+        width: 430
+        modal: true
+        title: "Salvar estilo visual"
+        ColumnLayout {
+            width: parent.width
+            spacing: 14
+            StudioField { id: stylePresetName; Layout.fillWidth: true; placeholderText: "Ex.: Noite neon, Jornal…"; maximumLength: 120 }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                StudioButton { text: "Cancelar"; onClicked: stylePresetDialog.close() }
+                StudioButton {
+                    text: "Salvar estilo"
+                    accent: true
+                    onClicked: if (workspace.saveVisualStylePreset(stylePresetName.text)) stylePresetDialog.close()
+                }
+            }
+        }
+    }
     function activeShot() {
         for (let i = 0; i < editor.shots.length; ++i)
             if (editor.shots[i].id === editor.camera.shotId)
@@ -125,6 +153,20 @@ Rectangle {
                 StyleField { caption: "Legenda · #RRGGBB"; propertyKey: "captionBackgroundColor"; currentValue: editor.artDirection.captionBackgroundColor }
                 StyleField { caption: "Fonte instalada"; propertyKey: "fontFamily"; currentValue: editor.artDirection.fontFamily }
             }
+            StudioComboBox {
+                Layout.fillWidth: true
+                model: workspace.fontFamilies
+                currentIndex: Math.max(0, model.indexOf(editor.artDirection.fontFamily))
+                onActivated: editor.updateArtDirection("fontFamily", currentText)
+                ToolTip.text: "Fontes instaladas no sistema e fontes importadas para a biblioteca"
+                ToolTip.visible: hovered
+            }
+            StudioButton {
+                text: "+  Importar fonte TTF / OTF"
+                Layout.fillWidth: true
+                quiet: true
+                onClicked: fontDialog.open()
+            }
             RowLayout {
                 StyleField { caption: "Título · px"; propertyKey: "titleSize"; currentValue: editor.artDirection.titleSize; number: true }
                 StyleField { caption: "Texto · px"; propertyKey: "bodySize"; currentValue: editor.artDirection.bodySize; number: true }
@@ -140,6 +182,21 @@ Rectangle {
                 onActivated: editor.updateArtDirection("captionPosition", currentText)
             }
             Label { text: "O estilo local herda os valores do escopo acima. Valores de objetos definidos explicitamente permanecem preservados. Os estilos são salvos no projeto e usados na prévia e na exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: "PRESETS VISUAIS DA BIBLIOTECA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            StudioComboBox {
+                id: visualStylePicker
+                Layout.fillWidth: true
+                model: workspace.visualStylePresets
+                textRole: "name"
+                valueRole: "id"
+                currentIndex: workspace.visualStylePresets.length > 0 ? 0 : -1
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                StudioButton { text: "Salvar estilo atual"; Layout.fillWidth: true; quiet: true; onClicked: stylePresetDialog.open() }
+                StudioButton { text: "Aplicar"; Layout.fillWidth: true; accent: true; enabled: !!visualStylePicker.currentValue; onClicked: workspace.useAsset(visualStylePicker.currentValue) }
+            }
+            Label { text: "O estilo salvo contém paleta, tipografia e parâmetros de legenda; aplicar respeita o escopo escolhido acima."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { text: "INTENSIDADE DE EDIÇÃO · CENA ATUAL"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
             Slider { id: intensitySlider; Layout.fillWidth: true; from: 0; to: 100; stepSize: 1; value: 50 }
             Label { text: Math.round(intensitySlider.value) + " / 100 · " + (intensitySlider.value === 0 ? "sem movimento automático" : intensitySlider.value <= 30 ? "movimento discreto" : intensitySlider.value <= 70 ? "movimento moderado" : "movimento intenso"); color: "#708393"; font.pixelSize: 10 }

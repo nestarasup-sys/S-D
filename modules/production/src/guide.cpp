@@ -35,6 +35,7 @@ QJsonObject capabilities() {
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
                         "reusable-camera-keyframe-presets",
                         "global-art-direction", "scene-shot-art-direction", "word-aligned-visual-beats",
+                        "external-library-fonts", "named-visual-style-presets",
                         "embedded-video-audio-with-source-trim-and-speed",
                         "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
@@ -207,7 +208,7 @@ Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuai
 
 `editing` é opcional na receita v3. `intensity` aceita inteiro de 0 a 100 e só preenche `motion`, `motionFrames` e `exitFrames` omitidos nos elementos: 0 desliga movimentos automáticos, 1–30 usa entradas discretas com fade, 31–70 usa entradas rise e 71–100 usa pop mais rápido. Campos explicitamente declarados pela IA não são substituídos. `rhythm` aceita `manual` (padrão) ou `narration`; o modo narration requer inícios de shot omitidos em toda a receita e alinhamento real de cada palavra. Ele seleciona cortes em limites de frases e pivôs de fala disponíveis, buscando equilíbrio entre ritmo e pontuação; a intensidade ajusta esse equilíbrio. Sem timestamps suficientes ou duração para distribuir os shots, a produção falha com uma mensagem específica. Sem o objeto `editing`, receitas v3 mantêm os defaults anteriores; receitas v1/v2 não aceitam essa opção.
 
-`artDirection` é opcional na raiz da receita v3 e define o estilo global. Os mesmos campos podem ser informados parcialmente em cada cena (`scenes[].artDirection`) e shot (`scenes[].shots[].artDirection`). A herança é global → cena → shot; cada objeto local substitui apenas os campos presentes. Valores `color`, `secondaryColor` e `fontSize` explícitos nos elementos mantêm prioridade sobre os defaults de direção de arte. O estilo efetivo controla fundo, tipografia, cartões padrão, cabeçalhos, legendas e destaque da palavra. O inspetor permite escolher escopo global, cena atual ou shot atual. `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. Fontes externas e presets visuais nomeados ainda não são carregados.
+`artDirection` é opcional na raiz da receita v3 e define o estilo global. Os mesmos campos podem ser informados parcialmente em cada cena (`scenes[].artDirection`) e shot (`scenes[].shots[].artDirection`). A herança é global → cena → shot; cada objeto local substitui apenas os campos presentes. Valores `color`, `secondaryColor` e `fontSize` explícitos nos elementos mantêm prioridade sobre os defaults de direção de arte. O estilo efetivo controla fundo, tipografia, cartões padrão, cabeçalhos, legendas e destaque da palavra. O inspetor permite escolher escopo global, cena atual ou shot atual. `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. O campo `artDirectionPreset` aceita o ID de um item `visual-style` da biblioteca pessoal na raiz, cena ou shot; campos inline sobrescrevem o preset. Fontes importadas ficam disponíveis localmente e também podem ser usadas em `fontFamily`.
 
 Exemplo de herança parcial (fragmento):
 ```json
@@ -224,6 +225,9 @@ Exemplo de herança parcial (fragmento):
 }
 ```
 O shot usa o fundo da cena e o texto global; só a cor primária substitui o valor herdado.
+
+
+
 
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. O controle Zoom ajusta a ampliação temporal de 1× a 8×; use Ctrl+roda sobre a régua para aproximar no ponto do ponteiro e Shift+roda ou a barra horizontal para navegar. Régua, shots, marcadores, camadas e envelopes compartilham o mesmo intervalo visível; clique na régua para posicionar o playhead nesse trecho. Arraste a alça verde à esquerda de um shot para mover o corte e ajustar a duração dos shots vizinhos; os elementos, beats e keyframes de câmera acompanham o corte. A faixa âmbar mostra a sobreposição de entrada de cada transição; arraste sua alça âmbar final para ajustar o overlap de 2 a 300 quadros, limitado pela duração do shot. Os arrastes de corte ou overlap são desfeitos em um único passo. Nas camadas visuais, use Ctrl+clique para adicionar/remover clipes da seleção; arraste qualquer clipe selecionado para mover o conjunto pelo mesmo delta, preservando os espaçamentos e respeitando os limites de cena. Com **Snap ligado**, os clipes alinham ao playhead, limites de cena/shot, beats, outras camadas e início/fim das pistas de áudio; a guia âmbar aparece durante o encaixe e a tolerância acompanha o zoom. Desligue Snap para posicionamento livre. Na pista de áudio, arraste a alça ↔ no início do envelope para mover o clipe e a alça direita para ajustar o fim; o início e beats de som vinculados acompanham a faixa. O movimento e o trim formam uma única ação de desfazer/refazer. O inspetor permanece focado no item principal selecionado; a seleção múltipla não cria um comando JSON. O inspetor grava keyframes de câmera e edita transição/duração no shot ativo. O snapping é uma ferramenta da timeline, não um campo da receita JSON.
 
@@ -318,11 +322,20 @@ Biblioteca nativa disponível: car, person, house, building, document, computer,
         const auto category = value.toObject();
         categories.insert(category["id"].toString(), category["name"].toString());
     }
-    QStringList assets;
+    QStringList assets, fonts, styles;
     for (const auto &value : library["assets"].toArray()) {
         const auto asset = value.toObject();
         if (asset["deleted"].toBool() || asset["builtin"].toBool())
             continue;
+        if (asset["kind"] == "font") {
+            fonts.append("- `" + asset["family"].toString() + "` — `" + asset["id"].toString() + "` (" +
+                         asset["name"].toString() + ").");
+            continue;
+        }
+        if (asset["kind"] == "visual-style") {
+            styles.append("- `" + asset["id"].toString() + "` — " + asset["name"].toString() + ".");
+            continue;
+        }
         QString dimensions;
         if (asset["width"].isDouble() && asset["height"].isDouble())
             dimensions = ", " + QString::number(asset["width"].toInt()) + "×" +
@@ -368,7 +381,7 @@ Biblioteca nativa disponível: car, person, house, building, document, computer,
         guide += "Esta cópia não recebeu o catálogo local. Salve o guia pelo botão no app para incluir sua "
                  "biblioteca pessoal.\n";
     else if (assets.isEmpty())
-        guide += "Nenhum item pessoal ativo no momento em que este guia foi salvo.\n";
+        guide += "Nenhum objeto, mídia ou composição pessoal ativo no momento em que este guia foi salvo.\n";
     else {
         constexpr int manifestLimit = 500;
         for (int i = 0; i < std::min(int(assets.size()), manifestLimit); ++i)
@@ -376,6 +389,18 @@ Biblioteca nativa disponível: car, person, house, building, document, computer,
         if (assets.size() > manifestLimit)
             guide += "\nManifesto limitado aos primeiros 500 itens ativos.\n";
     }
+    guide += "\n## Fontes externas na biblioteca pessoal\n\n";
+    if (fonts.isEmpty())
+        guide += "Nenhuma fonte externa ativa. A direção de arte pode usar fontes disponíveis no sistema.\n";
+    else
+        for (const auto &font : fonts)
+            guide += font + "\n";
+    guide += "\n## Presets de direção de arte na biblioteca pessoal\n\n";
+    if (styles.isEmpty())
+        guide += "Nenhum preset visual ativo.\n";
+    else
+        for (const auto &style : styles)
+            guide += style + "\n";
     guide += R"GUIDE(
 Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":0}`. Itens apagados não aparecem. O aplicativo resolve IDs na biblioteca local e informa se o item foi removido ou não existe. Não invente IDs nem suponha que outra máquina tenha os mesmos arquivos. O manifesto descreve nomes, categorias e dimensões; ele não inspeciona visualmente a imagem. Se a descrição não bastar para decidir, pergunte ao usuário. Itens image/SVG também podem ser referenciados por `source` se o usuário fornecer um caminho.
 

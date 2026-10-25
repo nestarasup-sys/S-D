@@ -147,7 +147,26 @@ Rectangle {
                                 anchors.fill: parent; anchors.margins: 12; spacing: 8
                                 Rectangle {
                                     Layout.fillWidth: true; Layout.preferredHeight: 140; radius: 5; color: "#102028"; clip: true
-                                    Image { anchors.fill: parent; anchors.margins: 4; source: modelData.thumbnail; fillMode: Image.PreserveAspectFit; autoTransform: true; sourceSize.width: 480; sourceSize.height: 270 }
+                                    Image { anchors.fill: parent; anchors.margins: 4; visible: modelData.kind !== "font" && modelData.kind !== "visual-style"; source: modelData.thumbnail; fillMode: Image.PreserveAspectFit; autoTransform: true; sourceSize.width: 480; sourceSize.height: 270 }
+                                    Label {
+                                        anchors.centerIn: parent
+                                        visible: modelData.kind === "font"
+                                        text: "Aa\n" + (modelData.family || modelData.name)
+                                        color: modelData.style ? modelData.style.textColor : "#e2edf0"
+                                        font.family: modelData.kind === "font" ? modelData.family : "Segoe UI"
+                                        font.pixelSize: 22
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                    Row {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 5
+                                        visible: modelData.kind === "visual-style"
+                                        Repeater {
+                                            model: modelData.kind === "visual-style" ? [modelData.style.backgroundColor, modelData.style.primaryColor, modelData.style.secondaryColor, modelData.style.textColor, modelData.style.cardColor] : []
+                                            delegate: Rectangle { required property var modelData; width: 24; height: 48; radius: 4; color: modelData }
+                                        }
+                                    }
                                     Label { anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 7; text: modelData.typeLabel; color: "#b0c7cb"; font.pixelSize: 9; font.letterSpacing: 1 }
                                 }
                                 Label { text: modelData.name; textFormat: Text.PlainText; Layout.fillWidth: true; color: "#e2edf0"; elide: Text.ElideRight; font.pixelSize: 16; font.weight: Font.DemiBold }

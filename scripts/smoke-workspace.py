@@ -29,7 +29,7 @@ def capture(page, destination, project=None):
 
 
 empty = capture("projects", "home-empty")
-assert empty["projects"] == 0 and empty["assets"] == 14 and empty["categories"] == 5
+assert empty["projects"] == 0 and empty["assets"] == 14 and empty["categories"] == 7
 assert empty["newProjectCanvasOptions"] == 3, empty
 base = json.loads((profile / "demo.studio.json").read_text(encoding="utf-8"))
 fixtures = out / "fixtures"
@@ -47,6 +47,6 @@ library = capture("library", "asset-library", path)
 assert library["assets"] == 14 and library["projects"] == 2
 editor = capture("editor", "editor-navigation", path)
 assert editor["projects"] == 2
-report = {"status": "passed", "projects": 2, "nativeAssets": 14, "categories": 5, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "complete native library", "editor navigation", "QML error-free captures"]}
+report = {"status": "passed", "projects": 2, "nativeAssets": 14, "categories": 7, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "complete native library", "font and visual-style library categories", "editor navigation", "QML error-free captures"]}
 (out / "verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(out), **report}, indent=2))
