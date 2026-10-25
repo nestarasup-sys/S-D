@@ -410,6 +410,8 @@ Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":
 
 O app agora permite salvar e reutilizar um **grupo raiz** com filhos, subgrupos, animações e mídias copiadas para a biblioteca. O guia exportado pelo aplicativo identifica esses presets; o guia do repositório não contém IDs pessoais.
 
+Textos e títulos estilizados também podem ser salvos pela ação **Salvar seleção do editor**. A composição preserva texto, tamanho, cor, fonte e movimento, aparece no manifesto pessoal como `kind: "preset"` e pode ser reutilizada com `{"kind":"library","assetId":"ID-DO-PRESET","cue":0}`. O grupo ou título inserido continua editável no projeto.
+
 Em receitas v2, `{"id":"painel1","kind":"library","assetId":"ID-DO-PRESET","cue":0}` também instancia grupos inteiros. Os filhos mantêm posições locais, duração e keyframes em frames relativos ao cue escolhido (30 FPS); o importador cria novos IDs e preserva a hierarquia. A duração efetiva é limitada pela cena/trecho medido: uma chave que cair depois do fim provoca erro, não um corte silencioso. Se a animação precisa ser ajustada à narração, descreva o grupo diretamente em `children` com keyframes por cue.
 
 Propriedades visuais passadas à referência alteram a raiz; keyframes salvos continuam controlando a animação dessa raiz. Não combine keyframes explícitos com o mesmo preset animado. Se o item do manifesto for uma imagem, seu nome não confirma o conteúdo visual: solicite descrição quando necessário. IDs dependem da instalação e devem ser obtidos exportando o guia atualizado no próprio app.

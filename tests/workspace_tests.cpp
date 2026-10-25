@@ -241,6 +241,18 @@ int main(int argc, char **argv) {
                   editor.project().height == 1920,
               "create a managed portrait project with its chosen canvas dimensions");
         check(!ui.createProject("Formato inválido", 1000, 1000), "reject unsupported new project dimensions");
+        editor.addNode("text");
+        editor.updateSelected("text", "PREÇO EM ALTA");
+        editor.updateSelected("fontSize", 84);
+        editor.updateSelected("color", "#f2b84b");
+        check(ui.saveSelection("Título de impacto", "objects"),
+              "save styled text as a reusable title preset through the composition library");
+        const auto titlePreset = named(ui.assets(), "Título de impacto");
+        const auto titlePresetId = titlePreset["id"].toString();
+        check(titlePreset["kind"].toString() == "preset" && ui.useAsset(titlePresetId) &&
+                  editor.project().nodes.back().text == "PREÇO EM ALTA" &&
+                  editor.project().nodes.back().fontSize == 84 && editor.project().nodes.back().color == "#f2b84b",
+              "reusable title preset restores its text, size and color in the editor");
         auto brokenRoot = temp.filePath("broken");
         QDir().mkpath(brokenRoot);
         QFile broken(brokenRoot + "/catalogue.json");
