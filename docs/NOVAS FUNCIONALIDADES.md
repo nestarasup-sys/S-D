@@ -25,12 +25,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
 - A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e dissolve entre shots; comparação preview/export em 43,82 dB.
 
-### Direção de arte global em andamento
+### Direção de arte global implementada parcialmente
 
 - Receitas v3 aceitam `artDirection` para paleta global, fonte instalada, tamanhos de título/texto/legenda, posição das legendas e margem segura.
 - A receita fornece defaults a elementos sem estilo explícito; `color`, `secondaryColor` e `fontSize` explícitos permanecem preservados. Fundo, cabeçalhos gerados e legendas usam o estilo global.
 - Projetos schema 2–4 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte e cartão de legenda na prévia/exportação.
 - Ainda falta uma tela de edição da direção de arte, controles por cena/shot, carregar fontes externas e suporte a elementos de vídeo.
+- Validação desta etapa: compilação e quatro testes automatizados passaram; os smokes de app, workspace e produção passaram. A produção sintetizou voz pt-BR, gerou 6 cenas/1517 quadros, e o exemplo v3 de 3 shots/3 beats teve comparação prévia/exportação de 43,82 dB.
 
 ### Situação por fase
 
