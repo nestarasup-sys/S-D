@@ -283,8 +283,8 @@ assert portrait_runtime["page"] == "editor" and portrait_runtime["hasAudio"]
 # Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
 video_source = folder / "video-controls-source.mp4"
 run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-     "testsrc2=size=320x180:rate=30:duration=2", "-f", "lavfi", "-i",
-     "sine=frequency=440:sample_rate=24000:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+     "testsrc2=size=320x180:rate=30:duration=7", "-f", "lavfi", "-i",
+     "sine=frequency=440:sample_rate=24000:duration=7", "-c:v", "libx264", "-pix_fmt", "yuv420p",
      "-c:a", "aac", "-b:a", "96k", "-shortest", video_source])
 video_controls_project = {
     "format": "studio-dark", "schemaVersion": 13, "id": "video-controls-smoke",
@@ -328,6 +328,43 @@ video_controls_match = run([ffmpeg, "-hide_banner", "-i", video_controls_preview
 video_controls_psnr = re.search(r"average:([0-9.]+|inf)", video_controls_match.stderr)
 assert video_controls_psnr and float(video_controls_psnr.group(1)) > 30
 
+# Exercise bounded decoded-frame caching and direct FFmpeg seeks in a shared painter instance.
+seek_project = {
+    "format": "studio-dark", "schemaVersion": 13, "id": "video-seek-smoke",
+    "name": "Video seek cache smoke", "width": 320, "height": 180, "duration": 120,
+    "fps": {"numerator": 30, "denominator": 1}, "nodes": [{
+        "id": "seek-broll", "name": "Seek B-roll", "kind": "video", "source": str(video_source),
+        "color": "#e4f5e9", "secondaryColor": "#f3c49a",
+        "start": 0, "duration": 120, "x": 0, "y": 0, "width": 320, "height": 180,
+        "opacity": 1, "fontSize": 64, "animated": False, "motion": "none",
+        "video": {"sourceInSeconds": 0.25, "speed": 1.5,
+                  "crop": {"x": 0.125, "y": 0.125, "width": 0.75, "height": 0.75}},
+    }]
+}
+seek_project_path = output / "video-seek.studio.json"
+seek_project_path.write_text(json.dumps(seek_project, indent=2), encoding="utf-8")
+seek_frames = output / "video-seek-frames"
+seek_result = run([bin_dir / "studio_render.exe", "--project", seek_project_path,
+                   "--still-sequence", "55,56,55,30,55", "--output", seek_frames,
+                   "--ffmpeg", ffmpeg])
+seek_stats = json.loads(seek_result.stdout.strip().splitlines()[-1])["videoCache"]
+assert seek_stats["hits"] == 2 and seek_stats["seekStarts"] == 2, seek_stats
+assert seek_stats["decodedFrames"] < 10, seek_stats
+seek_first = seek_frames / "frame-0-55.png"
+assert seek_first.read_bytes() == (seek_frames / "frame-2-55.png").read_bytes()
+seek_video = output / "video-seek.mp4"
+run([bin_dir / "studio_render.exe", "--project", seek_project_path, "--output", seek_video,
+     "--ffmpeg", ffmpeg], timeout=180)
+seek_video_decode = run([ffmpeg, "-hide_banner", "-i", seek_video, "-f", "null", "-"])
+assert re.search(r"frame=\s*120\b", seek_video_decode.stderr)
+seek_export_frame = output / "video-seek-export-frame.png"
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", seek_video,
+     "-vf", "select=eq(n\\,55)", "-frames:v", "1", seek_export_frame])
+seek_match = run([ffmpeg, "-hide_banner", "-i", seek_first, "-i", seek_export_frame,
+                  "-lavfi", "psnr", "-f", "null", "-"])
+seek_psnr = re.search(r"average:([0-9.]+|inf)", seek_match.stderr)
+assert seek_psnr and float(seek_psnr.group(1)) > 30
+
 video_audio_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-video-audio",
                       "--project", video_controls_path, "--frame", 15, "--select", "broll",
                       "--extract-video-audio-smoke"], timeout=30)
@@ -353,8 +390,11 @@ summary["checks"].extend(["90-second 2700-frame director cut", "18 independent s
                           "90-second project opens in editor", "word timing controls open for a generated caption",
                           "selected caption track is revealed in the timeline"])
 summary["videoControlsPreviewExportPsnrDb"] = float(video_controls_psnr.group(1))
+summary["videoSeekCache"] = seek_stats
+summary["videoSeekPreviewExportPsnrDb"] = float(seek_psnr.group(1))
 summary["embeddedVideoAudioTrack"] = extracted_track["source"]
 summary["checks"].extend(["video source trim, speed and normalized crop match between preview and MP4",
+                          "bounded decoded-video frame cache hits and direct seeking match sequential MP4 decode",
                           "embedded video audio appears as an editable schema 13 track",
                           "video audio action is visible for a selected video layer"])
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

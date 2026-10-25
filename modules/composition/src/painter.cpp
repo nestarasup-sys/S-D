@@ -1,4 +1,5 @@
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include <QFont>
 #include <QImageReader>
 #include <QLinearGradient>
@@ -19,6 +20,52 @@
 namespace studio {
 namespace {
 enum class NodePass { All, ShotComposition, Captions };
+constexpr std::int64_t sequentialVideoDecodeWindow = 24;
+
+QString videoFrameCacheKey(const Node &node, const Project &project, int width, int height,
+                           std::int64_t localFrame) {
+    const auto source = QString::fromStdString(node.source);
+    const QFileInfo sourceInfo(source);
+    const auto fingerprint = QStringList{QString::fromStdString(node.id), source,
+                                         QString::number(sourceInfo.size()),
+                                         QString::number(sourceInfo.lastModified().toMSecsSinceEpoch()),
+                                         QString::number(width), QString::number(height),
+                                         QString::number(node.videoSourceInSeconds, 'f', 6),
+                                         QString::number(node.videoPlaybackRate, 'f', 6),
+                                         QString::number(node.videoCropX, 'f', 6),
+                                         QString::number(node.videoCropY, 'f', 6),
+                                         QString::number(node.videoCropWidth, 'f', 6),
+                                         QString::number(node.videoCropHeight, 'f', 6),
+                                         QString::number(project.fps.numerator),
+                                         QString::number(project.fps.denominator)}
+                                 .join(QChar(0));
+    const auto digest = QCryptographicHash::hash(fingerprint.toUtf8(), QCryptographicHash::Sha256).toHex();
+    return QString::fromLatin1(digest) + ':' + QString::number(localFrame);
+}
+
+double firstVideoFrameAtOrAfter(const QString &ffmpeg, const QString &source, double sourceInSeconds,
+                                double fallbackFrameRate) {
+    QProcess probe;
+    probe.setProcessChannelMode(QProcess::SeparateChannels);
+    probe.start(ffmpeg, {"-hide_banner", "-i", source});
+    if (!probe.waitForStarted(2000))
+        return 0.0;
+    if (!probe.waitForFinished(5000)) {
+        probe.kill();
+        probe.waitForFinished(1000);
+    }
+    const auto diagnostic = QString::fromLocal8Bit(probe.readAllStandardError());
+    static const QRegularExpression startExpression(R"(Duration:.*?start:\s*(-?\d+(?:\.\d+)?))");
+    static const QRegularExpression frameRateExpression(R"((\d+(?:\.\d+)?)\s+fps\b)");
+    const auto startMatch = startExpression.match(diagnostic);
+    const auto frameRateMatch = frameRateExpression.match(diagnostic);
+    const double startTime = startMatch.hasMatch() ? startMatch.captured(1).toDouble() : 0.0;
+    const double frameRate = frameRateMatch.hasMatch() ? frameRateMatch.captured(1).toDouble()
+                                                       : fallbackFrameRate;
+    if (frameRate <= 0.0)
+        return startTime;
+    return startTime + std::ceil(std::max(0.0, sourceInSeconds - startTime) * frameRate - 1e-9) / frameRate;
+}
 
 const ArtDirection &artDirectionFor(const Project &project, const std::string &sceneId,
                                     const std::string &shotId = {}) {
@@ -319,6 +366,7 @@ struct CompositionPainter::VideoDecoder {
     QByteArray pending;
     QImage lastImage;
     std::int64_t decodedFrame{-1};
+    std::int64_t decodeStartFrame{0};
     std::size_t frameBytes{0};
     int width{0}, height{0};
     QString source;
@@ -331,6 +379,8 @@ CompositionPainter::~CompositionPainter() = default;
 
 void CompositionPainter::clearCache() {
     images_.clear();
+    videoFrames_.clear();
+    videoCacheStats_ = {};
     for (auto &[id, decoder] : videoDecoders_) {
         Q_UNUSED(id);
         if (decoder->process.state() != QProcess::NotRunning) {
@@ -352,6 +402,12 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
     const QString source = QString::fromStdString(node.source);
     const int width = std::clamp(qCeil(node.width), 2, 1920);
     const int height = std::clamp(qCeil(node.height), 2, 1080);
+    const auto cacheKey = videoFrameCacheKey(node, project, width, height, localFrame);
+    if (const auto *cached = videoFrames_.object(cacheKey)) {
+        ++videoCacheStats_.hits;
+        return *cached;
+    }
+    ++videoCacheStats_.misses;
     const auto frameBytes = std::size_t(width) * std::size_t(height) * 4;
     const auto stopDecoder = [&] {
         if (decoder.process.state() != QProcess::NotRunning) {
@@ -361,13 +417,17 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         decoder.pending.clear();
         decoder.lastImage = {};
         decoder.decodedFrame = -1;
+        decoder.decodeStartFrame = 0;
         decoder.endOfStream = false;
     };
-    if (decoder.source != source || decoder.width != width || decoder.height != height ||
+    const bool decoderSettingsChanged =
+        decoder.source != source || decoder.width != width || decoder.height != height ||
         decoder.sourceInSeconds != node.videoSourceInSeconds || decoder.playbackRate != node.videoPlaybackRate ||
         decoder.cropX != node.videoCropX || decoder.cropY != node.videoCropY ||
-        decoder.cropWidth != node.videoCropWidth || decoder.cropHeight != node.videoCropHeight ||
-        localFrame < decoder.decodedFrame)
+        decoder.cropWidth != node.videoCropWidth || decoder.cropHeight != node.videoCropHeight;
+    const bool jumpedAhead = decoder.decodedFrame >= 0 &&
+                             localFrame - decoder.decodedFrame > sequentialVideoDecodeWindow;
+    if (decoderSettingsChanged || localFrame < decoder.decodedFrame || jumpedAhead)
         stopDecoder();
     decoder.source = source;
     decoder.width = width;
@@ -385,8 +445,11 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG");
         if (ffmpeg.isEmpty())
             ffmpeg = "ffmpeg";
+        decoder.decodeStartFrame = localFrame > sequentialVideoDecodeWindow ? localFrame : 0;
+        decoder.decodedFrame = decoder.decodeStartFrame - 1;
         QStringList filters;
-        filters << QString("trim=start=%1").arg(QString::number(node.videoSourceInSeconds, 'f', 6));
+        if (decoder.decodeStartFrame == 0)
+            filters << QString("trim=start=%1").arg(QString::number(node.videoSourceInSeconds, 'f', 6));
         filters << QString("setpts=(PTS-STARTPTS)/%1").arg(QString::number(node.videoPlaybackRate, 'f', 6));
         if (node.videoCropX != 0 || node.videoCropY != 0 || node.videoCropWidth != 1 ||
             node.videoCropHeight != 1)
@@ -398,11 +461,22 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         filters << QString("scale=%1:%2:force_original_aspect_ratio=decrease").arg(width).arg(height);
         filters << QString("pad=%1:%2:(ow-iw)/2:(oh-ih)/2").arg(width).arg(height);
         filters << QString("fps=%1/%2").arg(project.fps.numerator).arg(project.fps.denominator);
+        QStringList arguments{"-nostdin", "-hide_banner", "-loglevel", "error"};
+        if (decoder.decodeStartFrame > 0) {
+            const double projectSecondsPerFrame =
+                double(project.fps.denominator) / project.fps.numerator;
+            const double fallbackFrameRate = double(project.fps.numerator) / project.fps.denominator;
+            const double firstSourceFrame = firstVideoFrameAtOrAfter(
+                ffmpeg, source, node.videoSourceInSeconds, fallbackFrameRate);
+            const double sourceTime = firstSourceFrame +
+                                      decoder.decodeStartFrame * projectSecondsPerFrame * node.videoPlaybackRate;
+            arguments << "-ss" << QString::number(sourceTime, 'f', 6);
+            ++videoCacheStats_.seekStarts;
+        }
+        arguments << "-i" << source << "-vf" << filters.join(',') << "-an" << "-sn" << "-dn" << "-f"
+                  << "rawvideo" << "-pix_fmt" << "rgba" << "pipe:1";
         decoder.process.setProcessChannelMode(QProcess::SeparateChannels);
-        decoder.process.start(ffmpeg,
-                              {"-nostdin", "-hide_banner", "-loglevel", "error", "-i", source,
-                               "-vf", filters.join(','), "-an", "-sn", "-dn", "-f", "rawvideo",
-                               "-pix_fmt", "rgba", "pipe:1"});
+        decoder.process.start(ffmpeg, arguments);
         if (!decoder.process.waitForStarted(5000))
             return {};
     }
@@ -422,6 +496,10 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         decoder.lastImage = QImage(reinterpret_cast<const uchar *>(bytes.constData()), width, height,
                                    width * 4, QImage::Format_RGBA8888).copy();
         ++decoder.decodedFrame;
+        ++videoCacheStats_.decodedFrames;
+        const auto frameKey = videoFrameCacheKey(node, project, width, height, decoder.decodedFrame);
+        const auto costKb = std::max(1, int(decoder.lastImage.sizeInBytes() / 1024));
+        videoFrames_.insert(frameKey, new QImage(decoder.lastImage), costKb);
     }
     return decoder.lastImage;
 }

@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QCommandLineParser parser;
     parser.addHelpOption();
-    for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still"})
+    for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still", "still-sequence"})
         parser.addOption({key, key, key});
     parser.process(app);
     if (parser.isSet("ffmpeg"))
@@ -41,6 +41,35 @@ int main(int argc, char **argv) {
     if (!loaded.error.isEmpty())
         return fail(loaded.error);
     studio::CompositionPainter painter;
+    if (parser.isSet("still-sequence")) {
+        const auto frameValues = parser.value("still-sequence").split(',', Qt::SkipEmptyParts);
+        if (frameValues.isEmpty())
+            return fail("A sequência precisa de pelo menos um quadro.");
+        const auto directory = parser.value("output");
+        if (directory.isEmpty() || !QDir().mkpath(directory))
+            return fail("Escolha uma pasta válida para os quadros da sequência.");
+        int index = 0;
+        for (const auto &value : frameValues) {
+            bool ok = false;
+            const auto frame = value.toLongLong(&ok);
+            if (!ok || frame < 0 || frame >= loaded.project.duration)
+                return fail("A sequência contém um quadro fora do projeto.");
+            const auto path = QDir(directory).filePath(QString("frame-%1-%2.png").arg(index++).arg(frame));
+            if (!painter.frame(loaded.project, frame).save(path))
+                return fail("Falha ao salvar quadro da sequência.");
+        }
+        const auto stats = painter.videoCacheStats();
+        QTextStream stream(stdout);
+        stream.setEncoding(QStringConverter::Utf8);
+        stream << QJsonDocument(QJsonObject{{"progress", 100},
+                                            {"videoCache", QJsonObject{{"hits", qint64(stats.hits)},
+                                                                        {"misses", qint64(stats.misses)},
+                                                                        {"decodedFrames", qint64(stats.decodedFrames)},
+                                                                        {"seekStarts", qint64(stats.seekStarts)}}}})
+                      .toJson(QJsonDocument::Compact)
+               << Qt::endl;
+        return 0;
+    }
     if (parser.isSet("still")) {
         bool ok;
         int frame = parser.value("still").toInt(&ok);

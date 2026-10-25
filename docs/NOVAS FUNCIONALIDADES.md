@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Entrega implementada: cache de quadros e seek em vídeos
+
+- O compositor mantém até 64 MiB de quadros de vídeo decodificados em cache LRU. A chave considera arquivo, revisão, tamanho do quadro, trim, velocidade, recorte, FPS e número do quadro; alterações nesses dados não reutilizam imagens antigas.
+- Saltos grandes e buscas para trás reiniciam o decoder com seek temporal FFmpeg em vez de decodificar desde o início do clipe. O ponto de seek considera o primeiro quadro da fonte depois do trim, preservando o mesmo quadro que a sequência de exportação.
+- A prévia de áudio usa o seek de `QMediaPlayer`: ao iniciar a reprodução, a posição da fonte é calculada pelo quadro, trim e velocidade da pista. Não há uma segunda implementação de decoder de áudio no compositor.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. No teste de seek fora de ordem, houve 2 hits de cache, 2 seeks diretos e apenas 3 quadros decodificados; o quadro da prévia comparado ao MP4 marcou 32,29 dB. O Director's Cut continuou com 2700 quadros e 42,46 dB entre prévia e exportação.
+- Decisão arquitetural: [ADR 0025 — cache e seek de vídeo](architecture/0025-video-frame-cache-seek.md).
+
 ### Entrega implementada: formatos paisagem e retrato
 
 - A criação de projetos oferece paisagem 1280×720, paisagem Full HD 1920×1080 e retrato 1080×1920; o armazenamento preserva as dimensões sem alterar projetos anteriores.
@@ -952,7 +960,7 @@ Implementar:
 6. [x] Envelopes gráficos de áudio editáveis diretamente na timeline.
 7. [x] Zoom temporal de 1× a 8× e navegação horizontal sincronizados com régua, shots, beats, camadas e áudio.
 8. [x] Snapping geométrico de clipes visuais/áudio, movimento e trim de duração das pistas de áudio na timeline.
-9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
+9. [x] Cache limitado e seek temporal para quadros de vídeo; a prévia de áudio reutiliza o seek nativo do Qt Multimedia.
 10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
 11. [x] Áudio embutido em vídeos locais, com trim e velocidade sincronizados à camada e pista editável.
 12. [x] Formatos de tela adicionais, incluindo projetos verticais 1080×1920 e Full HD 1920×1080.
