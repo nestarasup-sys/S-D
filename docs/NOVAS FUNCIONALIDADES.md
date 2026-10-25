@@ -25,13 +25,20 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
 - A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e dissolve entre shots; comparação preview/export em 43,82 dB.
 
+### Direção de arte global em andamento
+
+- Receitas v3 aceitam `artDirection` para paleta global, fonte instalada, tamanhos de título/texto/legenda, posição das legendas e margem segura.
+- A receita fornece defaults a elementos sem estilo explícito; `color`, `secondaryColor` e `fontSize` explícitos permanecem preservados. Fundo, cabeçalhos gerados e legendas usam o estilo global.
+- Projetos schema 2–4 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte e cartão de legenda na prévia/exportação.
+- Ainda falta uma tela de edição da direção de arte, controles por cena/shot, carregar fontes externas e suporte a elementos de vídeo.
+
 ### Situação por fase
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e transições fade/dissolve/slide/zoom implementados. Falta controle global de intensidade no editor, decisões de ritmo guiadas pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
-| 3 — Acabamento audiovisual | Pendente | Tipografia animada e direção de arte global, presets visuais avançados, efeitos por beat e trilhas importadas com mixagem/ducking. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global na receita e persistência/renderização implementadas. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e trilhas importadas com mixagem/ducking. |
 | 4 — Recursos avançados | Pendente | Vídeo/B-roll como camada, avaliação local de alinhamento por palavra em pt-BR, timeline avançada e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
@@ -40,13 +47,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Os cortes e beats são resolvidos por fala/progresso proporcional depois da síntese. Não existe timestamp por palavra.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
-- Vídeo como camada, mídia remota automática, áudio em múltiplas pistas, direção de arte global e intensidade de edição ainda não existem.
+- Vídeo como camada, mídia remota automática e áudio em múltiplas pistas ainda não existem. Direção de arte global e intensidade básica existem na receita; controle de intensidade e tema dentro do editor ainda não existem.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. Não gera cortes ou efeitos a partir do significado da fala e ainda não pode ser ajustado por um controle global do editor.
 
 ### Próxima entrega recomendada
 
-Ampliar a validação automatizada para cortes próximos aos limites dos shots, transições consecutivas e mídia em movimento na saída. Em seguida, adicionar controle global de intensidade no editor e iniciar o Dynamic Edit Engine para sugerir mudanças de ritmo com base na direção narrativa, sem inserir cortes aleatórios nem alterar ordens explícitas da IA.
+Ampliar a validação automatizada para cortes próximos aos limites dos shots, transições consecutivas e mídia em movimento na saída. Em seguida, adicionar no editor controles para intensidade e direção de arte do projeto, e iniciar o Dynamic Edit Engine para sugerir mudanças de ritmo com base na direção narrativa. Depois avançar para áudio em múltiplas pistas com ducking e vídeo como camada; sincronização por palavra depende de integrar/alimentar alinhamento temporal real da fala.
 
 ---
 

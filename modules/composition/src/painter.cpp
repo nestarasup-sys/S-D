@@ -18,10 +18,12 @@ void paintBackground(QPainter &painter, const Project &project, bool black = fal
         painter.fillRect(QRect(0, 0, project.width, project.height), Qt::black);
         return;
     }
-    painter.fillRect(QRect(0, 0, project.width, project.height), QColor("#0b1014"));
+    const auto background = QColor(QString::fromStdString(project.artDirection.backgroundColor));
+    const auto glowColor = QColor(QString::fromStdString(project.artDirection.glowColor));
+    painter.fillRect(QRect(0, 0, project.width, project.height), background);
     QRadialGradient glow(project.width * .82, project.height * .2, project.width * .8);
-    glow.setColorAt(0, QColor("#1e3435"));
-    glow.setColorAt(1, QColor("#0b1014"));
+    glow.setColorAt(0, glowColor);
+    glow.setColorAt(1, background);
     painter.fillRect(QRect(0, 0, project.width, project.height), glow);
 }
 
@@ -89,10 +91,12 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
         } else if (node.kind == NodeKind::Text) {
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
-                painter.setBrush(QColor(8, 16, 24, 225));
+                auto captionBackground = QColor(QString::fromStdString(project.artDirection.captionBackgroundColor));
+                captionBackground.setAlpha(225);
+                painter.setBrush(captionBackground);
                 painter.drawRoundedRect(bounds, 12, 12);
             }
-            QFont font("Segoe UI");
+            QFont font(QString::fromStdString(project.artDirection.fontFamily));
             font.setPixelSize(qRound(node.fontSize));
             font.setWeight(QFont::DemiBold);
             painter.setFont(font);

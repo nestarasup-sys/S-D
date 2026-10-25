@@ -14,6 +14,11 @@ bool supportedEasing(const std::string &name) {
     return name == "linear" || name == "ease-in" || name == "ease-out" || name == "ease-in-out";
 }
 namespace {
+bool validColor(const std::string &value) {
+    return value.size() == 7 && value[0] == '#' &&
+           std::all_of(value.begin() + 1, value.end(),
+                       [](unsigned char c) { return std::isxdigit(c); });
+}
 double eased(double t, const std::string &curve) {
     if (curve == "ease-in")
         return t * t * t;
@@ -31,6 +36,16 @@ std::string validate(const Project &p) {
         return "Projeto sem identificação ou nome.";
     if (p.width < 64 || p.height < 64 || p.width > 3840 || p.height > 2160 || p.width % 2 || p.height % 2)
         return "Resolução inválida: use dimensões pares entre 64 e 3840 × 2160.";
+    const auto &art = p.artDirection;
+    if (!validColor(art.backgroundColor) || !validColor(art.glowColor) || !validColor(art.primaryColor) ||
+        !validColor(art.secondaryColor) || !validColor(art.textColor) || !validColor(art.cardColor) ||
+        !validColor(art.captionBackgroundColor) || art.fontFamily.empty() || art.fontFamily.size() > 120 ||
+        (art.captionPosition != "top" && art.captionPosition != "bottom") ||
+        !std::isfinite(art.titleSize) || art.titleSize < 8 || art.titleSize > 160 ||
+        !std::isfinite(art.bodySize) || art.bodySize < 8 || art.bodySize > 160 ||
+        !std::isfinite(art.captionSize) || art.captionSize < 8 || art.captionSize > 120 ||
+        art.safeMargin < 0 || art.safeMargin > 300)
+        return "Direção de arte global inválida.";
     if (p.fps.numerator <= 0 || p.fps.numerator > 120000 || p.fps.denominator <= 0 ||
         p.fps.denominator > 10000 || p.fps.value() < 1 || p.fps.value() > 120)
         return "Taxa de quadros inválida.";

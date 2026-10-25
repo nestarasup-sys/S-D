@@ -173,6 +173,42 @@ int main(int argc, char **argv) {
                   parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
                   parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
               "v3 parses independent shots, Visual Beats, and transition timing");
+        auto styledRecipeJson = shotRecipeJson;
+        styledRecipeJson["artDirection"] = QJsonObject{{"backgroundColor", "#101820"},
+                                                        {"glowColor", "#29434a"},
+                                                        {"primaryColor", "#f2b84b"},
+                                                        {"secondaryColor", "#65d6c4"},
+                                                        {"textColor", "#fff3d6"},
+                                                        {"cardColor", "#24323b"},
+                                                        {"captionBackgroundColor", "#101820"},
+                                                        {"fontFamily", "Segoe UI"},
+                                                        {"titleSize", 60},
+                                                        {"bodySize", 42},
+                                                        {"captionSize", 29},
+                                                        {"captionPosition", "top"},
+                                                        {"safeMargin", 40}};
+        auto styledScene = styledRecipeJson["scenes"].toArray().at(0).toObject();
+        auto styledShots = styledScene["shots"].toArray();
+        auto styledSecondShot = styledShots[1].toObject();
+        auto styledElements = styledSecondShot["elements"].toArray();
+        styledElements.append(QJsonObject{{"id", "card-default"}, {"kind", "shape"},
+                                          {"x", 700}, {"y", 300}, {"width", 300}, {"height", 180}});
+        styledSecondShot["elements"] = styledElements;
+        styledShots[1] = styledSecondShot;
+        styledScene["shots"] = styledShots;
+        QJsonArray styledScenes;
+        styledScenes.append(styledScene);
+        styledRecipeJson["scenes"] = styledScenes;
+        const auto styledRecipe =
+            studio::parseRecipe(QJsonDocument(styledRecipeJson).toJson(), directory.path());
+        check(styledRecipe.error.isEmpty() &&
+                  styledRecipe.recipe.artDirection.backgroundColor == "#101820" &&
+                  styledRecipe.recipe.artDirection.captionPosition == "top" &&
+                  styledRecipe.recipe.scenes.front().shots.back().elements.back().node.color == "#24323b" &&
+                  styledRecipe.recipe.scenes.front().shots.back().elements.front().children.front().node.color ==
+                      "#fff3d6" &&
+                  styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078",
+              "v3 global art direction parses, supplies defaults, and preserves element styles");
         auto highIntensityJson = shotRecipeJson;
         highIntensityJson["editing"] = QJsonObject{{"intensity", 90}};
         const auto highIntensity =
@@ -233,6 +269,17 @@ int main(int argc, char **argv) {
                   persistedShots.project.shots.back().transitionIn == "dissolve" &&
                   persistedShots.project.shots.back().transitionDurationFrames == 3,
               "shot transition settings survive project save and load");
+        const auto styledAudio =
+            studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav");
+        check(styledAudio.error.isEmpty() && styledAudio.project.artDirection.backgroundColor == "#101820" &&
+                  studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
+                  studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078",
+              "global art direction reaches compilation and keeps explicit element styling");
+        const auto persistedStyle = studio::deserialize(studio::serialize(styledAudio.project));
+        check(persistedStyle.error.isEmpty() &&
+                  persistedStyle.project.artDirection.backgroundColor == "#101820" &&
+                  persistedStyle.project.artDirection.captionPosition == "top",
+              "global art direction survives project save and load");
         check(studio::validate(compiledShots.project).empty() &&
                   studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
                   studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,

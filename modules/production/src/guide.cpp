@@ -31,7 +31,8 @@ QJsonObject capabilities() {
                         "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
                         "visual-beats-show-hide-transform-camera", "shot-cut-camera",
                         "shot-transitions-fade-dissolve-slide-zoom", "auto-reframe-by-shot-target",
-                        "continuous-shot-focus-follow", "intensity-driven-default-motion"}},
+                        "continuous-shot-focus-follow", "intensity-driven-default-motion",
+                        "global-art-direction"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
@@ -175,6 +176,8 @@ Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuai
 
 `editing.intensity` é opcional e aceita inteiro de 0 a 100. Ele só preenche `motion`, `motionFrames` e `exitFrames` omitidos nos elementos: 0 desliga movimentos automáticos, 1–30 usa entradas discretas com fade, 31–70 usa entradas rise e 71–100 usa pop mais rápido. Campos explicitamente declarados pela IA não são substituídos. Sem o objeto `editing`, receitas v3 mantêm os defaults anteriores; receitas v1/v2 não aceitam essa opção. Intensidade ainda não cria cortes nem beats sem direção narrativa.
 
+`artDirection` é opcional na raiz da receita v3 e define o estilo global: `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. Cores/tamanho/fonte são aplicados como defaults a objetos e texto, e elementos com `color`, `secondaryColor` ou `fontSize` explícitos mantêm sua direção individual. A direção também estiliza fundo, títulos gerados e legendas. Arquivos de fonte e estilos por cena ainda não são carregados.
+
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera no shot ativo. A edição manual ainda não oferece transições sobrepostas.
 
 Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
@@ -188,6 +191,11 @@ Exemplo curto, válido e coberto por teste automatizado:
   "catalogVersion": 1,
   "title": "O preço do carro",
   "editing": {"intensity": 65},
+  "artDirection": {"backgroundColor":"#101820", "glowColor":"#29434a",
+    "primaryColor":"#f2b84b", "secondaryColor":"#65d6c4", "textColor":"#fff3d6",
+    "cardColor":"#24323b", "captionBackgroundColor":"#101820",
+    "fontFamily":"Segoe UI", "titleSize":58, "bodySize":44,
+    "captionSize":27, "captionPosition":"bottom", "safeMargin":32},
   "scenes": [{
     "id": "oferta",
     "narration": ["O carro parece barato. Mas há um detalhe escondido."],

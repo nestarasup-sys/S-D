@@ -7,6 +7,7 @@
 #include <QSvgRenderer>
 #include <QUrl>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -28,6 +29,63 @@ bool number(const QJsonObject &o, const QString &key, double &target) {
     if (!o[key].isDouble() || !std::isfinite(o[key].toDouble()))
         return false;
     target = o[key].toDouble();
+    return true;
+}
+bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &error) {
+    const QStringList fields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
+                             "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition",
+                             "titleSize", "bodySize", "captionSize", "safeMargin"};
+    if (!allowed(object, fields)) {
+        error = "Direção de arte contém campos desconhecidos.";
+        return false;
+    }
+    auto assignText = [&](const char *key, std::string &destination) {
+        if (!object.contains(QLatin1String(key)))
+            return true;
+        if (!object[key].isString())
+            return false;
+        destination = object[key].toString().toStdString();
+        return true;
+    };
+    if (!assignText("backgroundColor", art.backgroundColor) || !assignText("glowColor", art.glowColor) ||
+        !assignText("primaryColor", art.primaryColor) || !assignText("secondaryColor", art.secondaryColor) ||
+        !assignText("textColor", art.textColor) || !assignText("cardColor", art.cardColor) ||
+        !assignText("captionBackgroundColor", art.captionBackgroundColor) ||
+        !assignText("fontFamily", art.fontFamily) || !assignText("captionPosition", art.captionPosition)) {
+        error = "Cores, fonte ou posição das legendas na direção de arte são inválidas.";
+        return false;
+    }
+    for (const auto *key : {"titleSize", "bodySize", "captionSize"}) {
+        auto *target = key == std::string("titleSize") ? &art.titleSize
+                       : key == std::string("bodySize") ? &art.bodySize
+                                                        : &art.captionSize;
+        if (!number(object, key, *target)) {
+            error = "Tamanho tipográfico da direção de arte deve ser numérico.";
+            return false;
+        }
+    }
+    if (object.contains("safeMargin")) {
+        if (!object["safeMargin"].isDouble() ||
+            std::floor(object["safeMargin"].toDouble()) != object["safeMargin"].toDouble()) {
+            error = "safeMargin deve ser um número inteiro.";
+            return false;
+        }
+        art.safeMargin = object["safeMargin"].toInt();
+    }
+    auto validColor = [](const std::string &color) {
+        return color.size() == 7 && color.front() == '#' &&
+               std::all_of(color.begin() + 1, color.end(),
+                           [](unsigned char c) { return std::isxdigit(c); });
+    };
+    if (!validColor(art.backgroundColor) || !validColor(art.glowColor) || !validColor(art.primaryColor) ||
+        !validColor(art.secondaryColor) || !validColor(art.textColor) || !validColor(art.cardColor) ||
+        !validColor(art.captionBackgroundColor) || art.fontFamily.empty() || art.fontFamily.size() > 120 ||
+        (art.captionPosition != "top" && art.captionPosition != "bottom") || art.titleSize < 8 ||
+        art.titleSize > 160 || art.bodySize < 8 || art.bodySize > 160 || art.captionSize < 8 ||
+        art.captionSize > 120 || art.safeMargin < 0 || art.safeMargin > 300) {
+        error = "Valores da direção de arte estão fora dos limites.";
+        return false;
+    }
     return true;
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
@@ -83,7 +141,8 @@ QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
 }
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
-                  QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1) {
+                  QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1,
+                  const ArtDirection *artDirection = nullptr) {
     auto fail = [&](QString message) {
         error = std::move(message);
         return false;
@@ -258,6 +317,20 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
         n.motion = e["motion"].toString().toStdString();
     if (e.contains("pose"))
         n.pose = e["pose"].toString().toStdString();
+    if (artDirection) {
+        if (!e.contains("color")) {
+            if (n.kind == NodeKind::Text)
+                n.color = artDirection->textColor;
+            else if (n.kind == NodeKind::Shape)
+                n.color = artDirection->cardColor;
+            else if (n.kind == NodeKind::Native)
+                n.color = artDirection->primaryColor;
+        }
+        if (!e.contains("secondaryColor"))
+            n.secondaryColor = artDirection->secondaryColor;
+        if (n.kind == NodeKind::Text && !e.contains("fontSize"))
+            n.fontSize = artDirection->bodySize;
+    }
     for (auto key : {"cue", "motionFrames", "exitFrames"})
         if (e.contains(key) && (!e[key].isDouble() || std::floor(e[key].toDouble()) != e[key].toDouble()))
             return fail("Cue e durações de movimento devem ser inteiros.");
@@ -391,7 +464,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
-                              {element.cue, element.cueProgress, element.offsetSeconds}, editingIntensity))
+                              {element.cue, element.cueProgress, element.offsetSeconds}, editingIntensity,
+                              artDirection))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -474,12 +548,19 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (version >= 3)
-        rootKeys << "editing";
+        rootKeys << "editing" << "artDirection";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
     r.version = version;
     r.original = o;
+    if (o.contains("artDirection")) {
+        if (version < 3 || !o["artDirection"].isObject())
+            return fail("artDirection exige um objeto em receita v3.");
+        QString styleError;
+        if (!parseArtDirection(o["artDirection"].toObject(), r.artDirection, styleError))
+            return fail(styleError);
+    }
     if (o.contains("editing")) {
         if (!o["editing"].isObject())
             return fail("editing precisa ser um objeto.");
@@ -688,7 +769,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     DirectedElement element;
                     if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                                       int(scene.narration.size()), ids, elementCount, element, elementError,
-                                      0, shot.start, r.editingIntensity))
+                                      0, shot.start, r.editingIntensity,
+                                      o.contains("artDirection") ? &r.artDirection : nullptr))
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }
@@ -776,7 +858,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             DirectedElement element;
             if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                               int(scene.narration.size()), ids, elementCount, element, elementError, 0, {},
-                              r.editingIntensity))
+                              r.editingIntensity,
+                              o.contains("artDirection") ? &r.artDirection : nullptr))
                 return fail(elementError);
             scene.elements.push_back(std::move(element));
         }

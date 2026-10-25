@@ -154,7 +154,8 @@
         "shot-transitions-fade-dissolve-slide-zoom",
         "auto-reframe-by-shot-target",
         "continuous-shot-focus-follow",
-        "intensity-driven-default-motion"
+        "intensity-driven-default-motion",
+        "global-art-direction"
     ],
     "productionVersion": 3,
     "projectCapabilities": [

@@ -180,6 +180,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     auto &p = r.project;
     p = makeEmpty();
     p.schemaVersion = recipe.version >= 3 ? 4 : 3;
+    p.artDirection = recipe.artDirection;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();
@@ -230,8 +231,15 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             r.subtitles += QString::number(++captionIndex) + "\n" + srtTime(begin) + " --> " + srtTime(end) +
                            "\n" + utterance.text + "\n\n";
             auto start = begin / samplesPerFrame, finish = (end + samplesPerFrame - 1) / samplesPerFrame;
-            auto caption = textNode("caption-" + utterance.id.toStdString(), utterance.text.toStdString(), 80,
-                                    620, 1120, 80, 27, start, finish - start);
+            const bool themed = recipe.version >= 3 && !recipe.original["artDirection"].isUndefined();
+            auto caption = textNode("caption-" + utterance.id.toStdString(), utterance.text.toStdString(),
+                                    themed ? recipe.artDirection.safeMargin : 80,
+                                    themed && recipe.artDirection.captionPosition == "top"
+                                        ? recipe.artDirection.safeMargin
+                                        : themed ? 720 - recipe.artDirection.safeMargin - 80 : 620,
+                                    themed ? 1280 - recipe.artDirection.safeMargin * 2 : 1120,
+                                    80, themed ? recipe.artDirection.captionSize : 27, start, finish - start);
+            caption.color = recipe.artDirection.textColor;
             caption.role = "caption";
             caption.sceneId = scene.id.toStdString();
             caption.animated = false;
@@ -287,16 +295,24 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             p.nodes.insert(p.nodes.begin(), bg);
         }
         if (!scene.kicker.isEmpty()) {
-            auto kicker = textNode("kicker-" + scene.id.toStdString(), scene.kicker.toStdString(), 70, 44,
-                                   1140, 35, 19, sceneStart, sceneDuration);
-            kicker.color = "#efb873";
+            const bool themed = recipe.version >= 3 && !recipe.original["artDirection"].isUndefined();
+            auto kicker = textNode("kicker-" + scene.id.toStdString(), scene.kicker.toStdString(),
+                                   themed ? recipe.artDirection.safeMargin : 70, 44,
+                                   themed ? 1280 - recipe.artDirection.safeMargin * 2 : 1140, 35,
+                                   themed ? recipe.artDirection.bodySize * .55 : 19, sceneStart, sceneDuration);
+            kicker.color = themed ? recipe.artDirection.secondaryColor : "#efb873";
             kicker.sceneId = scene.id.toStdString();
             kicker.role = "header";
             p.nodes.push_back(kicker);
         }
         if (!scene.title.isEmpty()) {
-            auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(), 70, 92,
-                                  1140, 140, 58, sceneStart, sceneDuration);
+            const bool themed = recipe.version >= 3 && !recipe.original["artDirection"].isUndefined();
+            auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(),
+                                  themed ? recipe.artDirection.safeMargin : 70, 92,
+                                  themed ? 1280 - recipe.artDirection.safeMargin * 2 : 1140, 140,
+                                  themed ? recipe.artDirection.titleSize : 58, sceneStart, sceneDuration);
+            if (themed)
+                title.color = recipe.artDirection.textColor;
             title.sceneId = scene.id.toStdString();
             title.role = "header";
             p.nodes.push_back(title);

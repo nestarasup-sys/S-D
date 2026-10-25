@@ -24,6 +24,21 @@ bool integer(const QJsonValue &v) {
     auto d = v.toDouble(-1);
     return v.isDouble() && std::isfinite(d) && std::floor(d) == d && std::abs(d) < 1000000000;
 }
+QJsonObject artDirectionJson(const ArtDirection &art) {
+    return {{"backgroundColor", text(art.backgroundColor)},
+            {"glowColor", text(art.glowColor)},
+            {"primaryColor", text(art.primaryColor)},
+            {"secondaryColor", text(art.secondaryColor)},
+            {"textColor", text(art.textColor)},
+            {"cardColor", text(art.cardColor)},
+            {"captionBackgroundColor", text(art.captionBackgroundColor)},
+            {"fontFamily", text(art.fontFamily)},
+            {"captionPosition", text(art.captionPosition)},
+            {"titleSize", art.titleSize},
+            {"bodySize", art.bodySize},
+            {"captionSize", art.captionSize},
+            {"safeMargin", art.safeMargin}};
+}
 bool writeAtomic(const QString &path, const QByteArray &bytes, QString &error) {
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
@@ -139,6 +154,7 @@ QByteArray serialize(const Project &p) {
         {"width", p.width},
         {"height", p.height},
         {"fps", QJsonObject{{"numerator", p.fps.numerator}, {"denominator", p.fps.denominator}}},
+        {"artDirection", artDirectionJson(p.artDirection)},
         {"duration", double(p.duration)},
         {"nodes", nodes},
         {"camera", camera},
@@ -178,6 +194,39 @@ LoadResult deserialize(const QByteArray &bytes) {
     p.height = o["height"].toInt();
     p.duration = o["duration"].toInteger();
     p.fps = {fps["numerator"].toInt(), fps["denominator"].toInt()};
+    if (o.contains("artDirection")) {
+        if (!o["artDirection"].isObject())
+            return fail("Direção de arte deve ser um objeto.");
+        const auto style = o["artDirection"].toObject();
+        const QStringList stringFields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor",
+                                       "textColor", "cardColor", "captionBackgroundColor", "fontFamily",
+                                       "captionPosition"};
+        for (const auto &field : stringFields)
+            if (style.contains(field) && !style[field].isString())
+                return fail("Campo textual da direção de arte inválido.");
+        for (auto field : {"titleSize", "bodySize", "captionSize"})
+            if (style.contains(field) && !style[field].isDouble())
+                return fail("Tamanho tipográfico da direção de arte inválido.");
+        if (style.contains("safeMargin") && !integer(style["safeMargin"]))
+            return fail("Margem de segurança da direção de arte inválida.");
+        auto assignText = [&](const char *field, std::string &destination) {
+            if (style.contains(field))
+                destination = str(style, field);
+        };
+        assignText("backgroundColor", p.artDirection.backgroundColor);
+        assignText("glowColor", p.artDirection.glowColor);
+        assignText("primaryColor", p.artDirection.primaryColor);
+        assignText("secondaryColor", p.artDirection.secondaryColor);
+        assignText("textColor", p.artDirection.textColor);
+        assignText("cardColor", p.artDirection.cardColor);
+        assignText("captionBackgroundColor", p.artDirection.captionBackgroundColor);
+        assignText("fontFamily", p.artDirection.fontFamily);
+        assignText("captionPosition", p.artDirection.captionPosition);
+        p.artDirection.titleSize = style["titleSize"].toDouble(p.artDirection.titleSize);
+        p.artDirection.bodySize = style["bodySize"].toDouble(p.artDirection.bodySize);
+        p.artDirection.captionSize = style["captionSize"].toDouble(p.artDirection.captionSize);
+        p.artDirection.safeMargin = style["safeMargin"].toInt(p.artDirection.safeMargin);
+    }
     if (o.contains("audioSource") && !o["audioSource"].isString())
         return fail("Referência de áudio inválida.");
     p.audioSource = str(o, "audioSource");

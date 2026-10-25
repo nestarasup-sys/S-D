@@ -10,6 +10,14 @@ struct FrameRate {
     int denominator{1};
     double value() const;
 };
+struct ArtDirection {
+    std::string backgroundColor{"#0b1014"}, glowColor{"#1e3435"};
+    std::string primaryColor{"#b4f078"}, secondaryColor{"#efb873"}, textColor{"#e4f5e9"};
+    std::string cardColor{"#17242c"}, captionBackgroundColor{"#081018"};
+    std::string fontFamily{"Segoe UI"}, captionPosition{"bottom"};
+    double titleSize{58}, bodySize{44}, captionSize{27};
+    int safeMargin{32};
+};
 enum class NodeKind { Text, Shape, Image, Native, Svg, Group };
 struct TransformKeyframe {
     std::int64_t frame{0};
@@ -67,6 +75,7 @@ struct Project {
     int schemaVersion{3};
     int width{1280}, height{720};
     FrameRate fps;
+    ArtDirection artDirection;
     std::int64_t duration{360};
     std::vector<Node> nodes;
     std::vector<SceneMarker> scenes;
