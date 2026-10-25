@@ -589,6 +589,82 @@ void EditorController::moveSelectedClips(QString anchorId, int originStart, int 
     } else
         notify(q(error));
 }
+QVariantMap EditorController::snapClipMove(QString anchorId, int originStart, int requestedStart,
+                                           int toleranceFrames) const {
+    QVariantMap result{{"start", requestedStart}, {"guideFrame", -1}};
+    if (gestureClipIds_.isEmpty() || !gestureClipOrigins_.contains(anchorId) || toleranceFrames < 0)
+        return result;
+
+    int movingStart = std::numeric_limits<int>::max();
+    int movingEnd = std::numeric_limits<int>::min();
+    int lowerDelta = std::numeric_limits<int>::min();
+    int upperDelta = std::numeric_limits<int>::max();
+    for (const auto &id : gestureClipIds_) {
+        const auto *node = studio::findNode(project(), id.toStdString());
+        if (!node)
+            continue;
+        const int start = gestureClipOrigins_.value(id, int(node->start));
+        const int end = start + int(node->duration);
+        movingStart = std::min(movingStart, start);
+        movingEnd = std::max(movingEnd, end);
+        lowerDelta = std::max(lowerDelta, -start);
+        upperDelta = std::min(upperDelta, duration() - end);
+        for (const auto &scene : project().scenes)
+            if (scene.id == node->sceneId) {
+                lowerDelta = std::max(lowerDelta, int(scene.start) - start);
+                upperDelta = std::min(upperDelta, int(scene.start + scene.duration) - end);
+            }
+    }
+    if (movingStart == std::numeric_limits<int>::max() || lowerDelta > upperDelta)
+        return result;
+
+    std::vector<int> references{frame_};
+    auto appendFrame = [&](std::int64_t frame) {
+        if (frame >= 0 && frame < duration())
+            references.push_back(int(frame));
+    };
+    for (const auto &scene : project().scenes) {
+        appendFrame(scene.start);
+        appendFrame(scene.start + scene.duration);
+    }
+    for (const auto &shot : project().shots) {
+        appendFrame(shot.start);
+        appendFrame(shot.start + shot.duration);
+    }
+    for (const auto &beat : project().visualBeats)
+        appendFrame(beat.frame);
+    for (const auto &node : project().nodes)
+        if (!gestureClipIds_.contains(QString::fromStdString(node.id))) {
+            appendFrame(node.start);
+            appendFrame(node.start + node.duration);
+        }
+    for (const auto &track : project().audioTracks) {
+        appendFrame(track.start);
+        appendFrame(track.start + track.duration);
+    }
+
+    const int desiredDelta = requestedStart - originStart;
+    int bestDelta = desiredDelta;
+    int bestGuide = -1;
+    int bestDistance = toleranceFrames + 1;
+    for (const int target : references)
+        for (const int movingEdge : {movingStart, movingEnd}) {
+            const int candidateDelta = target - movingEdge;
+            if (candidateDelta < lowerDelta || candidateDelta > upperDelta)
+                continue;
+            const int distance = std::abs(candidateDelta - desiredDelta);
+            if (distance <= toleranceFrames && distance < bestDistance) {
+                bestDistance = distance;
+                bestDelta = candidateDelta;
+                bestGuide = target;
+            }
+        }
+    if (bestGuide >= 0) {
+        result["start"] = originStart + bestDelta;
+        result["guideFrame"] = bestGuide;
+    }
+    return result;
+}
 void EditorController::moveShotBoundary(QString rightShotId, int requestedFrame) {
     const auto rightId = rightShotId.toStdString();
     const auto right = std::find_if(project().shots.begin(), project().shots.end(),

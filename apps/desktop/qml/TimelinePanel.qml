@@ -9,6 +9,8 @@ Rectangle {
     color: "#141c24"
     property real timelineZoom: 1
     property real timelineOffset: 0
+    property bool snapEnabled: true
+    property int snapGuideFrame: -1
     property bool selectedCaptionTrackAvailable: {
         const rows = editor.nodeItems
         for (let i = 0; i < rows.length; ++i)
@@ -85,6 +87,13 @@ Rectangle {
                 from: 0; to: 1; value: root.timelineOffset; enabled: root.timelineZoom > 1.001
                 onMoved: root.timelineOffset = value
                 ToolTip.visible: hovered; ToolTip.text: "Navegação horizontal: início → fim"
+            }
+            StudioButton {
+                text: root.snapEnabled ? "Snap ligado" : "Snap desligado"
+                quiet: !root.snapEnabled
+                onClicked: { root.snapEnabled = !root.snapEnabled; root.snapGuideFrame = -1 }
+                ToolTip.visible: hovered
+                ToolTip.text: "Alinha clipes a cenas, shots, camadas, beats, áudio e playhead"
             }
             StudioButton { text: "+ Áudio"; onClicked: root.addAudioRequested() }
             Label { text: (editor.duration / editor.fps).toFixed(1) + " s"; color: "#b4f078"; font.pixelSize: 12; Layout.leftMargin: 15 }
@@ -225,6 +234,7 @@ Rectangle {
                                         return nearest
                                     }
                                     onPressed: function(mouse) {
+                                        root.snapGuideFrame = -1
                                         track.forceActiveFocus()
                                         if (editor.playing) editor.togglePlayback()
                                         selectionClick = (mouse.modifiers & Qt.ControlModifier) !== 0
@@ -254,17 +264,27 @@ Rectangle {
                                                     Math.round(root.xToFrame(pointerX, shotTrackArea.width))))
                                                 editor.setCaptionWordBoundary(boundaryWordIndex, boundaryEdge, frame)
                                             } else {
-                                                editor.moveSelectedClips(track.modelData.id, startFrame,
-                                                    startFrame + Math.round((currentX - originX) / track.width * root.visibleFrames()))
+                                                const requestedStart = startFrame + Math.round((currentX - originX) / track.width * root.visibleFrames())
+                                                let nextStart = requestedStart
+                                                root.snapGuideFrame = -1
+                                                if (root.snapEnabled) {
+                                                    const tolerance = Math.max(1, Math.ceil(8 / Math.max(1, shotTrackArea.width) * root.visibleFrames()))
+                                                    const snap = editor.snapClipMove(track.modelData.id, startFrame, requestedStart, tolerance)
+                                                    nextStart = snap.start
+                                                    root.snapGuideFrame = snap.guideFrame
+                                                }
+                                                editor.moveSelectedClips(track.modelData.id, startFrame, nextStart)
                                             }
                                         }
                                     }
                                     onReleased: {
                                         if (!selectionClick) editor.endGesture()
+                                        root.snapGuideFrame = -1
                                         selectionClick = false; boundaryWordIndex = -1; boundaryEdge = ""
                                     }
                                     onCanceled: {
                                         if (!selectionClick) editor.endGesture()
+                                        root.snapGuideFrame = -1
                                         selectionClick = false; boundaryWordIndex = -1; boundaryEdge = ""
                                     }
                                 }
@@ -357,6 +377,17 @@ Rectangle {
                     Rectangle {
                         x: root.frameToX(editor.frame, parent.width - 1); y: 0; width: 1; height: parent.height; color: "#b4f078"
                         Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 7; height: 7; radius: 2; color: "#b4f078" }
+                    }
+                    Rectangle {
+                        visible: root.snapGuideFrame >= 0
+                        x: root.frameToX(root.snapGuideFrame, parent.width) - 1
+                        y: 0; width: 2; height: parent.height
+                        color: "#f0bd63"
+                        z: 10
+                        Label {
+                            anchors.left: parent.left; anchors.top: parent.top; anchors.leftMargin: 4; anchors.topMargin: 3
+                            text: "ALINHADO"; color: "#f0bd63"; font.pixelSize: 8; font.bold: true
+                        }
                     }
                 }
             }

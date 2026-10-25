@@ -25,13 +25,21 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Selecionar uma camada rola a timeline até a faixa correspondente. A lista de áudio rola separadamente, preservando espaço visível para shots e camadas mesmo em produções com várias pistas.
 - Os intervalos continuam no campo `captionWords` e no schema 7; nenhuma propriedade nova foi acrescentada à receita. O guia da IA esclarece que a correção ocorre no projeto compilado.
 - Verificação: `scripts/build.ps1 -Test` passou (4/4), `scripts/smoke-workspace.ps1` passou e `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. O smoke abriu uma legenda real de 13 palavras na cena ativa, confirmou a faixa selecionada e os controles QML, e renderizou o Director's Cut de 2700 quadros com preview/export em 42,46 dB. O teste do controlador verifica drag com frames sucessivos agrupados em um undo. `scripts/update-ai-guide.ps1` regenerou o guia e o catálogo.
-- Continua pendente snapping de clipes e outras ferramentas de alinhamento geométrico na timeline.
+- Snapping geométrico de clipes visuais implementado nesta continuação; alinhamento e arraste próprio das pistas de áudio continuam pendentes.
 
 ### Entrega implementada: zoom temporal e navegação da timeline
 
 - A timeline oferece zoom contínuo de 1× a 8×, aproximação centrada sob o ponteiro com Ctrl+roda e deslocamento horizontal com Shift+roda/barra.
 - Régua, playhead, shots, beats, camadas e envelopes usam o mesmo intervalo visível. Scrubbing e arrastes convertem pixels para frames conforme o zoom atual.
 - Verificação: `scripts/build.ps1 -Test` passou (4/4) e `scripts/smoke-workspace.ps1` passou sem erros QML. A captura confirma os controles de Zoom/Pan e os rótulos da régua. `scripts/update-ai-guide.ps1` gerou a documentação manual; a suíte ainda não simula gestos de Ctrl+roda nem movimento do slider.
+
+### Entrega implementada: snapping geométrico de clipes visuais
+
+- O botão **Snap ligado/desligado** controla o alinhamento durante o arraste. As bordas do conjunto selecionado podem encaixar no playhead, limites de cena/shot, beats, outras camadas e início/fim de pistas de áudio.
+- A tolerância representa oito pixels na escala atual da timeline. Uma guia vertical âmbar mostra o frame alinhado; desligar o botão preserva o movimento livre.
+- Seleções múltiplas e grupos mantêm o movimento sincronizado, limites válidos por cena e uma única ação undo/redo. Nenhum campo novo foi adicionado à receita IA; arraste independente de pistas de áudio ainda falta.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4), incluindo casos do controlador para alinhamento dentro da tolerância e ausência de encaixe distante; `scripts/smoke-workspace.ps1` passou sem erros QML; `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop, exportou o exemplo principal e o Director's Cut de 2700 frames e abriu os projetos no editor. `scripts/update-ai-guide.ps1` regenerou o guia e o catálogo; o guia documenta o controle manual sem atribuir campos JSON inexistentes.
+- Decisão arquitetural: [ADR 0022 — snapping geométrico de clipes](architecture/0022-timeline-geometric-snapping.md).
 
 ### Entrega anterior: tipografia animada por palavra
 
@@ -137,7 +145,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis e zoom/navegação sincronizados. Faltam snapping de clipes, áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico para clipes visuais. Faltam edição temporal direta das pistas de áudio com snap, áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
 
 ### Limites confirmados nesta versão
 
@@ -145,13 +153,14 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Beats aceitam `show`, `hide`, `transform`, `camera` e `sound`. Um beat `sound` cria uma pista local de uma execução, vinculada ao quadro sincronizado; a fonte não é copiada para o JSON e precisa continuar acessível no computador.
 - Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Legendas alinhadas podem ter cada limite de palavra corrigido numericamente no inspetor ou arrastado na faixa correspondente da timeline, com snapping por quadro.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
+- Com Snap ligado, arrastar clipes visuais alinha início/fim ao playhead, limites de cenas/shots, beats, outras camadas e inícios/fins de áudio. A tolerância equivale a oito pixels e acompanha o zoom; uma guia âmbar mostra o encaixe. O botão desliga o snap para movimento livre. A ferramenta não acrescenta campos à receita IA; o movimento continua undoável como um gesto.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
 
 ### Próxima entrega recomendada
 
-Avançar para snapping de clipes e alinhamento frame a frame de áudio e elementos na timeline. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
+Avançar para arraste e snapping das pistas de áudio, incluindo alinhamento de envelope/elementos por frame. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
 
 ---
 
@@ -925,7 +934,7 @@ Implementar:
 5. [x] Seleção múltipla e movimento conjunto de clipes na timeline com undo/redo atômico.
 6. [x] Envelopes gráficos de áudio editáveis diretamente na timeline.
 7. [x] Zoom temporal de 1× a 8× e navegação horizontal sincronizados com régua, shots, beats, camadas e áudio.
-8. [ ] Snapping geométrico de clipes na timeline (o alinhamento visual de palavras por quadro já está implementado).
+8. [x] Snapping geométrico de clipes visuais na timeline; arraste e ajuste temporal direto das pistas de áudio continuam pendentes.
 9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
 10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
 11. [ ] Áudio embutido em vídeo e formatos de tela adicionais.

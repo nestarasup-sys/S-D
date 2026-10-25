@@ -149,6 +149,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void moveSelected(double x, double y);
     Q_INVOKABLE void moveClip(QString id, int start);
     Q_INVOKABLE void moveSelectedClips(QString anchorId, int originStart, int requestedStart);
+    Q_INVOKABLE QVariantMap snapClipMove(QString anchorId, int originStart, int requestedStart,
+                                         int toleranceFrames) const;
     Q_INVOKABLE void moveShotBoundary(QString rightShotId, int frame);
     Q_INVOKABLE void addNode(QString kind, QUrl source = {});
     Q_INVOKABLE void removeSelected();

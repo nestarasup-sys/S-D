@@ -205,6 +205,15 @@ int main(int argc, char **argv) {
         check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
                   c.open(shotPath),
               "open a schema 9 project with independent shots and a linked sound beat");
+        c.selectNode("wide-node");
+        c.beginGesture();
+        const auto snappedClip = c.snapClipMove("wide-node", 0, 9, 2);
+        const auto unsnappedClip = c.snapClipMove("wide-node", 0, 20, 2);
+        check(snappedClip["start"].toInt() == 10 && snappedClip["guideFrame"].toInt() == 60,
+              "timeline snap aligns a clip edge to a shot boundary within frame tolerance");
+        check(unsnappedClip["start"].toInt() == 20 && unsnappedClip["guideFrame"].toInt() == -1,
+              "timeline snap leaves distant clip moves untouched");
+        c.endGesture();
         check(c.audioTracks().front().toMap()["gainEnvelope"].toList().size() == 97,
               "audio track model exposes a sampled envelope for the timeline");
         int audioTrackResets = 0;
