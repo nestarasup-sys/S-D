@@ -51,6 +51,8 @@ struct DirectedBeat {
 };
 struct DirectedShot {
     QString id, name, transitionIn{"cut"};
+    QString transitionDirection{"left"};
+    int transitionDurationFrames{0};
     DirectedTime start;
     double cameraX{640}, cameraY{360}, cameraZoom{1}, cameraRotation{0};
     QString focusTargetId;

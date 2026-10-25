@@ -13,6 +13,7 @@
     "maxScenes": 20,
     "maxShots": 256,
     "maxShotsPerScene": 64,
+    "maxTransitionDurationFrames": 300,
     "maxVisualBeats": 4096,
     "media": [
         "png",
@@ -150,6 +151,7 @@
         "independent-shots",
         "visual-beats-show-hide-transform-camera",
         "shot-cut-camera",
+        "shot-transitions-fade-dissolve-slide-zoom",
         "auto-reframe-by-shot-target",
         "continuous-shot-focus-follow",
         "intensity-driven-default-motion"
@@ -164,5 +166,12 @@
         "visual-beat-markers"
     ],
     "projectVersion": 4,
+    "shotTransitionTypes": [
+        "cut",
+        "fade",
+        "dissolve",
+        "slide",
+        "zoom"
+    ],
     "width": 1280
 }

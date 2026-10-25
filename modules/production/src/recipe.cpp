@@ -620,14 +620,41 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 DirectedShot shot;
                 shot.id = shotObject["id"].toString();
                 shot.name = shotObject["name"].toString(shot.id);
-                shot.transitionIn = shotObject["transitionIn"].toString("cut");
+                if (shotObject["transitionIn"].isString()) {
+                    shot.transitionIn = shotObject["transitionIn"].toString("cut");
+                    if (shot.transitionIn != "cut")
+                        return fail("Transições além de cut precisam declarar tipo e durationFrames.");
+                } else if (shotObject["transitionIn"].isObject()) {
+                    const auto transition = shotObject["transitionIn"].toObject();
+                    if (!allowed(transition, {"type", "durationFrames", "direction"}) ||
+                        !transition["type"].isString() || !transition["durationFrames"].isDouble() ||
+                        std::floor(transition["durationFrames"].toDouble()) !=
+                            transition["durationFrames"].toDouble())
+                        return fail("Transição exige type e durationFrames inteiro.");
+                    shot.transitionIn = transition["type"].toString();
+                    shot.transitionDurationFrames = transition["durationFrames"].toInt();
+                    if (shot.transitionDurationFrames < 2 || shot.transitionDurationFrames > 300)
+                        return fail("durationFrames de transição deve estar entre 2 e 300.");
+                    if (shot.transitionIn == "slide") {
+                        if (transition.contains("direction") && !transition["direction"].isString())
+                            return fail("direction da transição slide deve ser texto.");
+                        shot.transitionDirection = transition["direction"].toString("left");
+                        if (shot.transitionDirection != "left" && shot.transitionDirection != "right" &&
+                            shot.transitionDirection != "up" && shot.transitionDirection != "down")
+                            return fail("direction de slide aceita left, right, up ou down.");
+                    } else if (transition.contains("direction")) {
+                        return fail("direction só é aceita para transitionIn do tipo slide.");
+                    }
+                    if (shot.transitionIn != "fade" && shot.transitionIn != "dissolve" &&
+                        shot.transitionIn != "slide" && shot.transitionIn != "zoom")
+                        return fail("Tipo de transição não suportado.");
+                } else if (shotObject.contains("transitionIn")) {
+                    return fail("transitionIn deve ser cut ou um objeto de transição.");
+                }
                 if (shot.id.isEmpty() || shot.id.size() > 80 || ids.contains(shot.id) ||
                     shot.name.size() > 120)
                     return fail("ID ou nome de shot inválido ou duplicado.");
                 ids.insert(shot.id);
-                if (shot.transitionIn != "cut")
-                    return fail(
-                        "Receita v3 suporta cortes secos; transições animadas virão em uma etapa posterior.");
                 QString timeError;
                 if (!parseTimeRef(shotObject["start"].toObject(), int(scene.narration.size()), shot.start,
                                   timeError, "start do shot"))

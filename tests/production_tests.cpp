@@ -19,6 +19,21 @@ static void check(bool value, const char *reason) {
     if (!value)
         throw std::runtime_error(reason);
 }
+static double sampledImageDifference(const QImage &left, const QImage &right) {
+    if (left.size() != right.size())
+        return std::numeric_limits<double>::infinity();
+    double total = 0;
+    int samples = 0;
+    for (int y = 0; y < left.height(); y += 8)
+        for (int x = 0; x < left.width(); x += 8) {
+            const auto a = left.pixelColor(x, y);
+            const auto b = right.pixelColor(x, y);
+            total +=
+                std::abs(a.red() - b.red()) + std::abs(a.green() - b.green()) + std::abs(a.blue() - b.blue());
+            ++samples;
+        }
+    return total / std::max(1, samples * 3);
+}
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QTemporaryDir directory;
@@ -121,6 +136,7 @@ int main(int argc, char **argv) {
             {"id", "price-cut"},
             {"name", "Revelação do preço"},
             {"start", QJsonObject{{"cue", 0}, {"progress", 0.5}}},
+            {"transitionIn", QJsonObject{{"type", "dissolve"}, {"durationFrames", 3}}},
             {"camera", QJsonObject{{"x", 650},
                                    {"y", 350},
                                    {"zoom", 1.25},
@@ -153,8 +169,10 @@ int main(int argc, char **argv) {
                            {"shots", QJsonArray{wideShot, detailShot}}}}}};
         auto parsedShots = studio::parseRecipe(QJsonDocument(shotRecipeJson).toJson(), directory.path());
         check(parsedShots.error.isEmpty() && parsedShots.recipe.scenes.front().shots.size() == 2 &&
-                  parsedShots.recipe.scenes.front().shots.back().beats.size() == 3,
-              "v3 parses independent shots and Visual Beats");
+                  parsedShots.recipe.scenes.front().shots.back().beats.size() == 3 &&
+                  parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
+                  parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
+              "v3 parses independent shots, Visual Beats, and transition timing");
         auto highIntensityJson = shotRecipeJson;
         highIntensityJson["editing"] = QJsonObject{{"intensity", 90}};
         const auto highIntensity =
@@ -210,6 +228,11 @@ int main(int argc, char **argv) {
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 4 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
+        const auto persistedShots = studio::deserialize(studio::serialize(compiledShots.project));
+        check(persistedShots.error.isEmpty() &&
+                  persistedShots.project.shots.back().transitionIn == "dissolve" &&
+                  persistedShots.project.shots.back().transitionDurationFrames == 3,
+              "shot transition settings survive project save and load");
         check(studio::validate(compiledShots.project).empty() &&
                   studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
                   studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,
@@ -220,6 +243,38 @@ int main(int argc, char **argv) {
         check(std::any_of(compiledShots.project.camera.begin(), compiledShots.project.camera.end(),
                           [](const auto &key) { return key.frame == 2; }),
               "continuous shot focus records the final frame of its span");
+        studio::CompositionPainter transitionPainter;
+        const auto beforeDissolve = transitionPainter.frame(compiledShots.project, 2);
+        const auto dissolveStart = transitionPainter.frame(compiledShots.project, 3);
+        const auto dissolveMiddle = transitionPainter.frame(compiledShots.project, 4);
+        check(sampledImageDifference(beforeDissolve, dissolveStart) < 0.5,
+              "dissolve starts on the outgoing shot without a visual jump");
+        check(sampledImageDifference(dissolveStart, dissolveMiddle) > 0.5,
+              "dissolve advances between its endpoints");
+        double transitionBrightness = 0;
+        for (int y = 0; y < dissolveMiddle.height(); y += 16)
+            for (int x = 0; x < dissolveMiddle.width(); x += 16) {
+                const auto color = dissolveMiddle.pixelColor(x, y);
+                transitionBrightness += color.red() + color.green() + color.blue();
+            }
+        check(transitionBrightness > 100000,
+              "dissolve keeps the composition visible instead of producing a black frame");
+        auto fadeProject = compiledShots.project;
+        fadeProject.shots.back().transitionIn = "fade";
+        const auto fadeMiddle = transitionPainter.frame(fadeProject, 4);
+        auto slideProject = compiledShots.project;
+        slideProject.shots.back().transitionIn = "slide";
+        const auto slideMiddle = transitionPainter.frame(slideProject, 4);
+        slideProject.shots.back().transitionDirection = "right";
+        const auto slideRightMiddle = transitionPainter.frame(slideProject, 4);
+        auto zoomProject = compiledShots.project;
+        zoomProject.shots.back().transitionIn = "zoom";
+        const auto zoomMiddle = transitionPainter.frame(zoomProject, 4);
+        check(sampledImageDifference(fadeMiddle, dissolveMiddle) > 0.5 &&
+                  sampledImageDifference(slideMiddle, dissolveMiddle) > 0.5 &&
+                  sampledImageDifference(zoomMiddle, dissolveMiddle) > 0.5 &&
+                  sampledImageDifference(slideMiddle, slideRightMiddle) > 0.5,
+              "fade, slide directions, zoom, and dissolve render distinct transition frames");
         const auto priceShot =
             std::find_if(compiledShots.project.shots.begin(), compiledShots.project.shots.end(),
                          [](const auto &shot) { return shot.id == "price-cut"; });

@@ -19,22 +19,24 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Câmera de um shot pode enquadrar automaticamente um elemento ou grupo usando `camera.focus.target` e uma margem `padding` configurável. Os limites do elemento são transformados através dos grupos ancestrais para calcular centro e zoom.
 - Com `camera.focus.follow: true`, o compilador recalcula o enquadramento em todos os quadros do shot e grava os estados como keyframes editáveis. O modo não pode ser combinado com Visual Beats de câmera.
 - Receitas v3 podem definir `editing.intensity` de 0 a 100. O valor determina movimento/timing de entrada e saída apenas para propriedades não informadas; instruções explícitas da IA e receitas sem esse campo preservam o comportamento anterior.
+- Shots v3 aceitam `cut` ou transições `fade`, `dissolve`, `slide` e `zoom`, com duração de 2 a 300 quadros e direção para slide. O compositor sobrepõe as imagens na prévia e na exportação, e a timeline marca a faixa entrante.
+- Tipo, direção e duração de transição são salvos no projeto schema 4; projetos anteriores continuam assumindo `cut` sem duração.
 - O foco é validado durante a importação: o alvo precisa existir dentro do mesmo shot; a margem aceita valores de 1 a 4. O foco define centro e zoom, preservando a rotação informada.
 - O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
-- A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e comparação preview/export em 43,71 dB.
+- A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e dissolve entre shots; comparação preview/export em 43,82 dB.
 
 ### Situação por fase
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo e perfil de intensidade para movimentos padrão implementados na receita. Falta controle de intensidade no editor, mudanças visuais/cortes automáticos justificados e transições além do corte seco. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e transições fade/dissolve/slide/zoom implementados. Falta controle global de intensidade no editor, decisões de ritmo guiadas pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
 | 3 — Acabamento audiovisual | Pendente | Tipografia animada e direção de arte global, presets visuais avançados, efeitos por beat e trilhas importadas com mixagem/ducking. |
 | 4 — Recursos avançados | Pendente | Vídeo/B-roll como camada, avaliação local de alinhamento por palavra em pt-BR, timeline avançada e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
-- `transitionIn` aceita somente `cut`; não há sobreposição de shots ou dissolve/fade/slide/zoom.
+- `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Os cortes e beats são resolvidos por fala/progresso proporcional depois da síntese. Não existe timestamp por palavra.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
@@ -44,7 +46,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Ampliar a validação visual automatizada para cortes próximos aos limites dos shots e keyframes de câmera. Depois iniciar o Dynamic Edit Engine com intensidade configurável que guie movimentos e transições automáticos sem alterar instruções explícitas da IA; implementar transições com duração/overlap explícitos e comparação entre prévia e exportação.
+Ampliar a validação automatizada para cortes próximos aos limites dos shots, transições consecutivas e mídia em movimento na saída. Em seguida, adicionar controle global de intensidade no editor e iniciar o Dynamic Edit Engine para sugerir mudanças de ritmo com base na direção narrativa, sem inserir cortes aleatórios nem alterar ordens explícitas da IA.
 
 ---
 

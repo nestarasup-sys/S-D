@@ -53,6 +53,8 @@ struct SceneMarker {
 struct ShotMarker {
     std::string id, sceneId, name, transitionIn{"cut"};
     std::int64_t start{0}, duration{1};
+    int transitionDurationFrames{0};
+    std::string transitionDirection{"left"};
 };
 struct VisualBeat {
     std::string id, shotId, targetId, action;

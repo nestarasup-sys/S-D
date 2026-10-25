@@ -108,9 +108,23 @@ Rectangle {
                             z: 2
                             Label {
                                 anchors.fill: parent; anchors.leftMargin: 6
-                                text: modelData.name; color: "#d7eee1"
+                                text: modelData.transitionIn === "cut" ? modelData.name : modelData.name + " · " + modelData.transitionIn
+                                color: "#d7eee1"
                                 verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight
                                 font.pixelSize: 9
+                                z: 2
+                            }
+                            Rectangle {
+                                visible: modelData.transitionIn !== "cut"
+                                x: 0; y: 0
+                                width: Math.min(parent.width, modelData.transitionDurationFrames / editor.duration * shotTrackArea.width)
+                                height: parent.height
+                                color: "#d8b46b"
+                                opacity: 0.35
+                                z: 1
+                                ToolTip.visible: transitionArea.containsMouse
+                                ToolTip.text: modelData.transitionIn + " · " + modelData.transitionDurationFrames + " quadros · " + modelData.transitionDirection
+                                MouseArea { id: transitionArea; anchors.fill: parent; hoverEnabled: true }
                             }
                             MouseArea {
                                 anchors.fill: parent

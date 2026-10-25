@@ -104,8 +104,19 @@ std::string validate(const Project &p) {
     for (const auto &shot : p.shots) {
         if (shot.id.empty() || !shotIds.insert(shot.id).second || !sceneIds.contains(shot.sceneId) ||
             shot.start < 0 || shot.duration < 1 || shot.start >= p.duration ||
-            shot.duration > p.duration - shot.start || shot.name.size() > 120 || shot.transitionIn != "cut")
-            return "Plano visual inválido; esta versão exige cortes secos.";
+            shot.duration > p.duration - shot.start || shot.name.size() > 120 ||
+            (shot.transitionIn != "cut" && shot.transitionIn != "fade" && shot.transitionIn != "dissolve" &&
+             shot.transitionIn != "slide" && shot.transitionIn != "zoom"))
+            return "Plano visual inválido ou tipo de transição não suportado.";
+        if ((shot.transitionIn == "cut" && shot.transitionDurationFrames != 0) ||
+            (shot.transitionIn != "cut" &&
+             (shot.transitionDurationFrames < 2 || shot.transitionDurationFrames > 300 ||
+              shot.transitionDurationFrames > shot.duration)) ||
+            (shot.transitionIn == "slide" && shot.transitionDirection != "left" &&
+             shot.transitionDirection != "right" && shot.transitionDirection != "up" &&
+             shot.transitionDirection != "down") ||
+            (shot.transitionIn != "slide" && shot.transitionDirection != "left"))
+            return "Duração ou direção da transição inválida.";
         const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
             return candidate.id == shot.sceneId;
         });
@@ -124,6 +135,8 @@ std::string validate(const Project &p) {
         if (sceneShots.front()->start != scene->start ||
             sceneShots.back()->start + sceneShots.back()->duration != scene->start + scene->duration)
             return "Planos visuais precisam cobrir toda a cena narrativa.";
+        if (sceneShots.front()->transitionIn != "cut")
+            return "O primeiro plano da cena não pode ter transição de entrada.";
         for (std::size_t i = 1; i < sceneShots.size(); ++i)
             if (sceneShots[i - 1]->start + sceneShots[i - 1]->duration != sceneShots[i]->start)
                 return "Planos visuais da mesma cena têm lacuna ou sobreposição.";

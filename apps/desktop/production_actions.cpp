@@ -100,6 +100,8 @@ QVariantList EditorController::shots() const {
                                 {"sceneId", QString::fromStdString(shot.sceneId)},
                                 {"name", QString::fromStdString(shot.name)},
                                 {"transitionIn", QString::fromStdString(shot.transitionIn)},
+                                {"transitionDurationFrames", shot.transitionDurationFrames},
+                                {"transitionDirection", QString::fromStdString(shot.transitionDirection)},
                                 {"hasPrevious", hasPrevious},
                                 {"start", int(shot.start)},
                                 {"duration", int(shot.duration)}});

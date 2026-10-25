@@ -105,6 +105,8 @@ QByteArray serialize(const Project &p) {
                                      {"sceneId", text(shot.sceneId)},
                                      {"name", text(shot.name)},
                                      {"transitionIn", text(shot.transitionIn)},
+                                     {"transitionDurationFrames", shot.transitionDurationFrames},
+                                     {"transitionDirection", text(shot.transitionDirection)},
                                      {"start", double(shot.start)},
                                      {"duration", double(shot.duration)}});
     QJsonArray beats;
@@ -305,9 +307,16 @@ LoadResult deserialize(const QByteArray &bytes) {
         const auto shot = value.toObject();
         if (!integer(shot["start"]) || !integer(shot["duration"]))
             return fail("Tempo de shot inválido.");
+        if (shot.contains("transitionDurationFrames") && !integer(shot["transitionDurationFrames"]))
+            return fail("Duração da transição inválida.");
+        if (shot.contains("transitionDirection") && !shot["transitionDirection"].isString())
+            return fail("Direção da transição inválida.");
         p.shots.push_back({str(shot, "id"), str(shot, "sceneId"), str(shot, "name"),
-                           str(shot, "transitionIn"), shot["start"].toInteger(),
-                           shot["duration"].toInteger()});
+                           str(shot, "transitionIn"), shot["start"].toInteger(), shot["duration"].toInteger(),
+                           shot["transitionDurationFrames"].toInt(0),
+                           shot.contains("transitionDirection")
+                               ? shot["transitionDirection"].toString().toStdString()
+                               : "left"});
     }
     if (o.contains("visualBeats") && !o["visualBeats"].isArray())
         return fail("Lista de Visual Beats inválida.");

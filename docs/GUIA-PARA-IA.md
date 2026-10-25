@@ -108,7 +108,11 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` atualmente aceita somente `cut`, que troca composição e câmera em um corte seco. `camera` aceita `x`, `y`, `zoom` e `rotation`; quando omitidos, o centro é 640×360, o zoom é 1 e a rotação é 0.
+Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
+
+Exemplos de transição: `{"type":"fade","durationFrames":18}`, `{"type":"dissolve","durationFrames":12}`, `{"type":"slide","direction":"left","durationFrames":16}` ou `{"type":"zoom","durationFrames":12}`. `durationFrames` aceita de 2 a 300 quadros e precisa caber no shot de entrada. `slide` aceita direção `left`, `right`, `up` ou `down`. `fade` atravessa preto; `dissolve` mistura as imagens; `slide` move o novo shot; `zoom` aproxima o novo shot ao entrar. Prévia e exportação usam o mesmo compositor. A timeline destaca a faixa de transição.
+
+`camera` aceita `x`, `y`, `zoom` e `rotation`; quando omitidos, o centro é 640×360, o zoom é 1 e a rotação é 0.
 
 Para enquadrar automaticamente um elemento ou grupo, adicione `"focus":{"target":"ID-DO-ELEMENTO","padding":1.25}` dentro de `camera`. O alvo deve pertencer ao mesmo shot. O aplicativo transforma os limites locais através de todos os grupos ancestrais, centraliza a câmera nesse retângulo e calcula o zoom para mantê-lo dentro do quadro com a margem solicitada. `padding` aceita 1–4 e assume 1.25. Quando `focus` está presente, ele substitui o centro e o zoom explícitos; a rotação continua sendo usada. Com `"follow":true`, o aplicativo recalcula o enquadramento para cada quadro do shot e grava a trajetória como keyframes editáveis. `follow` assume false. Não combine esse modo com Visual Beats de ação `camera` no mesmo shot.
 
@@ -142,7 +146,7 @@ Exemplo curto, válido e coberto por teste automatizado:
       },
       {
         "id": "detalhe", "name": "Preço", "start": {"cue": 0, "cueProgress": 0.55},
-        "transitionIn": "cut",
+        "transitionIn": {"type": "dissolve", "durationFrames": 12},
         "camera": {"x": 640, "y": 360, "zoom": 1.15, "rotation": 0},
         "elements": [{"id": "preco", "kind": "text", "text": "BARATO?",
           "x": 420, "y": 240, "width": 440, "height": 100, "fontSize": 68,
@@ -223,7 +227,7 @@ A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. 
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, eventos por palavra, trajetórias/curvas Bézier personalizadas, transições além de corte seco, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, eventos por palavra, trajetórias/curvas Bézier personalizadas, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
 
 ## Capacidades em JSON
 
@@ -243,6 +247,7 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
     "maxScenes": 20,
     "maxShots": 256,
     "maxShotsPerScene": 64,
+    "maxTransitionDurationFrames": 300,
     "maxVisualBeats": 4096,
     "media": [
         "png",
@@ -380,6 +385,7 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "independent-shots",
         "visual-beats-show-hide-transform-camera",
         "shot-cut-camera",
+        "shot-transitions-fade-dissolve-slide-zoom",
         "auto-reframe-by-shot-target",
         "continuous-shot-focus-follow",
         "intensity-driven-default-motion"
@@ -394,6 +400,13 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "visual-beat-markers"
     ],
     "projectVersion": 4,
+    "shotTransitionTypes": [
+        "cut",
+        "fade",
+        "dissolve",
+        "slide",
+        "zoom"
+    ],
     "width": 1280
 }
 ```

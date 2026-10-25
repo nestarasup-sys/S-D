@@ -325,9 +325,16 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     r.error = "Início de shot repetido ou fora dos limites da cena: " + directedShot.id;
                     return r;
                 }
+                if (directedShot.transitionIn != "cut" &&
+                    (shotIndex == 0 || directedShot.transitionDurationFrames > shotEnd - shotStart)) {
+                    r.error = "Transição precisa de um shot anterior e deve caber no intervalo do plano: " +
+                              directedShot.id;
+                    return r;
+                }
                 p.shots.push_back({directedShot.id.toStdString(), scene.id.toStdString(),
                                    directedShot.name.toStdString(), directedShot.transitionIn.toStdString(),
-                                   shotStart, shotEnd - shotStart});
+                                   shotStart, shotEnd - shotStart, directedShot.transitionDurationFrames,
+                                   directedShot.transitionDirection.toStdString()});
                 for (const auto &element : directedShot.elements)
                     if (!compileElement(element, cues, shotStart, shotEnd, scene.id.toStdString(),
                                         directedShot.id.toStdString(), samplesPerFrame, p, r.error))
