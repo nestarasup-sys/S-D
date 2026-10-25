@@ -66,6 +66,12 @@ QString EditorController::currentSceneId() const {
             return QString::fromStdString(s.id);
     return {};
 }
+QString EditorController::currentShotId() const {
+    for (const auto &shot : project().shots)
+        if (frame_ >= shot.start && frame_ < shot.start + shot.duration)
+            return QString::fromStdString(shot.id);
+    return {};
+}
 QVariantList EditorController::library() const {
     QVariantList list;
     for (const auto &a : studio::nativeLibrary())

@@ -10,6 +10,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Receitas `studio-dark-production` v3 importam várias composições dentro da mesma cena narrativa. O início de cada shot e beat usa tempos medidos da fala (`cueProgress`/`progress`) ou `offsetSeconds`; a duração do shot termina no próximo corte ou no fim da cena.
 - Cortes secos trocam composição e câmera por shot. Beats `show`, `hide`, `transform` e `camera` são compilados em keyframes editáveis. A validação rejeita sequência com lacunas, sobreposições e beats fora do shot.
 - A timeline exibe os shots e os marcadores dos Visual Beats, permite navegar até seus quadros e arrastar cortes. Um arraste atualiza durações, elementos, beats e câmera em uma só ação de desfazer.
+- O inspetor de câmera grava keyframes vinculados ao shot ativo; keyframes acompanham o shot ao arrastar o corte.
 - O exemplo `examples/shots-visual-beats-v3.production.json` foi sintetizado com voz pt-BR, compilado e renderizado em MP4; os quadros de shot/beat da exportação foram comparados com a prévia.
 - `GUIA-PARA-IA.md` e `capabilities-v1.json` são gerados a partir das capacidades do aplicativo e identificam receita 3/projeto 4, limites e restrições reais.
 
@@ -17,7 +18,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
-| 1 — Fundação | Parcialmente concluída | Controles de câmera por shot no inspetor; ampliar cenários automatizados de regressão para composição visual e movimentos de câmera. |
+| 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
 | 2 — Edição dinâmica | Pendente | Dynamic Edit Engine configurável, intensidade 0–100, auto reframe/foco em elemento e transições além do corte seco. |
 | 3 — Acabamento audiovisual | Pendente | Tipografia animada e direção de arte global, presets visuais avançados, efeitos por beat e trilhas importadas com mixagem/ducking. |
 | 4 — Recursos avançados | Pendente | Vídeo/B-roll como camada, avaliação local de alinhamento por palavra em pt-BR, timeline avançada e outros formatos de tela. |
@@ -27,12 +28,12 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - `transitionIn` aceita somente `cut`; não há sobreposição de shots ou dissolve/fade/slide/zoom.
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Os cortes e beats são resolvidos por fala/progresso proporcional depois da síntese. Não existe timestamp por palavra.
-- A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. Câmera de shot ainda não tem controles diretos no inspetor.
+- A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
 - Vídeo como camada, mídia remota automática, áudio em múltiplas pistas, direção de arte global e intensidade de edição ainda não existem.
 
 ### Próxima entrega recomendada
 
-Fechar os controles de câmera por shot no inspetor e ampliar a validação visual automatizada. Depois iniciar a fase 2 com intensidade explícita e transições, cada qual coberta por testes de render e comparação entre prévia e exportação.
+Ampliar a validação visual automatizada para cortes próximos aos limites dos shots e keyframes de câmera. Depois iniciar a fase 2 com intensidade explícita e transições, cada qual coberta por testes de render e comparação entre prévia e exportação.
 
 ---
 

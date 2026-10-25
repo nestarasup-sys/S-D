@@ -144,6 +144,12 @@ int main(int argc, char **argv) {
         check(groupedShotNode && groupedShotNode->shotId == "detail",
               "grouping an element preserves its shot ownership");
         const auto groupedId = c.selectedId();
+        c.setFrame(80);
+        c.updateCamera("zoom", 1.3);
+        const auto ownedCamera = std::find_if(c.project().camera.begin(), c.project().camera.end(),
+                                              [](const auto &key) { return key.frame == 80; });
+        check(ownedCamera != c.project().camera.end() && ownedCamera->shotId == "detail",
+              "camera inspector edits create shot-owned camera keyframes");
         c.beginGesture();
         c.moveShotBoundary("detail", 70);
         c.endGesture();
@@ -151,11 +157,15 @@ int main(int argc, char **argv) {
                   c.project().shots[1].duration == 50 &&
                   studio::findNode(c.project(), "detail-node")->start == 70 &&
                   studio::findNode(c.project(), groupedId.toStdString())->start == 70 &&
+                  std::any_of(c.project().camera.begin(), c.project().camera.end(),
+                              [](const auto &key) { return key.frame == 90 && key.shotId == "detail"; }) &&
                   c.project().visualBeats.front().frame == 85 && c.project().camera[1].frame == 70,
               "dragging a shot cut moves its duration, contents, beats and camera together");
         c.undo();
         check(c.project().shots[1].start == 60 && c.project().visualBeats.front().frame == 75 &&
-                  c.project().camera[1].frame == 60,
+                  c.project().camera[1].frame == 60 &&
+                  std::any_of(c.project().camera.begin(), c.project().camera.end(),
+                              [](const auto &key) { return key.frame == 80 && key.shotId == "detail"; }),
               "one shot-cut gesture undoes as one action");
         c.setFrame(c.duration() - 1);
         c.togglePlayback();

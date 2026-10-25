@@ -35,6 +35,8 @@ void upsertKeyframe(std::vector<studio::CameraKeyframe> &keys, studio::CameraKey
                          [](const auto &candidate, std::int64_t frame) { return candidate.frame < frame; });
     if (it != keys.end() && it->frame == key.frame) {
         key.easing = it->easing; // Editing values must preserve the curve.
+        if (!it->shotId.empty())
+            key.shotId = it->shotId;
         *it = key;
     } else
         keys.insert(it, key);
@@ -181,6 +183,7 @@ QVariantMap EditorController::camera() const {
             {"y", state.y},
             {"zoom", state.zoom},
             {"rotation", state.rotation},
+            {"shotId", currentShotId()},
             {"keyframeEasing", curve}};
 }
 QString EditorController::title() const {
@@ -733,6 +736,7 @@ void EditorController::setCameraKeyframeEasing(QString easing) {
 void EditorController::updateCamera(QString property, double value) {
     if (property != "x" && property != "y" && property != "zoom" && property != "rotation")
         return;
+    const auto shotId = currentShotId().toStdString();
     auto error = editor_.execute([&](studio::Project &p) {
         auto state = studio::evaluateCamera(p, frame_);
         if (property == "x")
@@ -743,7 +747,7 @@ void EditorController::updateCamera(QString property, double value) {
             state.zoom = value;
         else
             state.rotation = value;
-        upsertKeyframe(p.camera, {frame_, state.x, state.y, state.zoom, state.rotation});
+        upsertKeyframe(p.camera, {frame_, state.x, state.y, state.zoom, state.rotation, "linear", shotId});
         p.schemaVersion = std::max(p.schemaVersion, 3);
     });
     if (error.empty())

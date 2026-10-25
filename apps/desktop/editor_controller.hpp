@@ -175,6 +175,7 @@ class EditorController : public QObject {
     void startProductionLog(const QString &recipeFileName);
     void logProductionEvent(const QString &event, const QString &message = {}, int progress = -1);
     QString currentSceneId() const;
+    QString currentShotId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
     QByteArray savedDocument_, revision_, recoveryRevision_, renderBuffer_;

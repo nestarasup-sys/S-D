@@ -15,6 +15,7 @@ Uma cena narrativa precisava aceitar vários cortes sem duplicar nem interromper
 - Visual Beats aceitos são `show`, `hide`, `transform` e `camera`. Transformações e câmera são compiladas em keyframes comuns do projeto para compartilhar avaliação na prévia e exportação. Os marcadores de beats permanecem serializados para a timeline e diagnóstico.
 - Projetos schema 4 guardam marcadores de shots/beats, a associação `Node.shotId` e a associação `CameraKeyframe.shotId`. Projetos v1/v2/v3 continuam legíveis; composições antigas mantêm o caminho de compilação anterior.
 - Arrastar uma alça de corte ajusta as durações adjacentes, desloca os elementos, beats e keyframes de câmera do shot seguinte e agrupa o gesto como uma ação de undo. O corte não atravessa elementos, beats ou keyframes do plano anterior.
+- Os controles de câmera existentes no inspetor passam a gravar keyframes com o ID do shot ativo; esses estados acompanham o plano ao mover o corte.
 
 ## Consequências
 
@@ -22,7 +23,7 @@ Uma cena narrativa precisava aceitar vários cortes sem duplicar nem interromper
 - A duração dos planos se adapta à fala realmente sintetizada, inclusive em receitas de duração fixa já suportadas.
 - O editor pode modificar o corte sem destruir IDs; a movimentação do plano seguinte preserva seus offsets temporais.
 - Elementos da v3 ainda não viram faixas de áudio ou vídeo, e não há efeitos por beat, transições com sobreposição, eventos por palavra ou câmera focada por ID.
-- Os controles numéricos da câmera de shot no inspetor ainda estão pendentes; a câmera pode ser ajustada no JSON e seus keyframes/estado podem ser movidos junto ao corte.
+- O inspetor edita posição, zoom e rotação da câmera no quadro atual. Foco por ID e presets de movimento reutilizáveis ainda estão pendentes.
 
 ## Verificação
 

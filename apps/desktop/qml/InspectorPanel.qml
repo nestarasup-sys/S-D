@@ -65,7 +65,7 @@ Rectangle {
             Label { text: "INSPETOR"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
-            Label { text: "CÂMERA 2D"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            Label { text: editor.camera.shotId ? "CÂMERA 2D · SHOT " + editor.camera.shotId : "CÂMERA 2D"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8; elide: Text.ElideRight; Layout.fillWidth: true }
             RowLayout {
                 CameraField { caption: "Centro X"; propertyKey: "x"; currentValue: editor.camera.x }
                 CameraField { caption: "Centro Y"; propertyKey: "y"; currentValue: editor.camera.y }
@@ -74,7 +74,7 @@ Rectangle {
                 CameraField { caption: "Zoom"; propertyKey: "zoom"; currentValue: editor.camera.zoom }
                 CameraField { caption: "Rotação"; propertyKey: "rotation"; currentValue: editor.camera.rotation }
             }
-            Label { text: "Os valores gravam um keyframe no quadro atual."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: editor.camera.shotId ? "Os valores gravam um keyframe vinculado ao shot no quadro atual." : "Os valores gravam um keyframe no quadro atual."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { text: "Curva da câmera até este keyframe"; visible: !!editor.camera.keyframeEasing; color: "#8193a2"; font.pixelSize: 10 }
             StudioComboBox {
                 Layout.fillWidth: true; visible: !!editor.camera.keyframeEasing
