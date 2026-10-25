@@ -7,7 +7,8 @@ try {
     $StudioVoices = @($StudioSpeech.GetInstalledVoices() | Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.Name -eq 'pt-BR' })
     if ($StudioInput.voice -eq 'auto') {
         if ($StudioVoices.Count -eq 0) { throw 'No installed pt-BR speech voice.' }
-        $StudioChosen = $StudioVoices | Sort-Object { if ($_.VoiceInfo.Name -match 'Daniel') { 0 } else { 1 } } | Select-Object -First 1
+        $StudioChosen = $StudioVoices | Where-Object { $_.VoiceInfo.Gender.ToString() -eq 'Male' } | Sort-Object { $_.VoiceInfo.Name } | Select-Object -First 1
+        if ($null -eq $StudioChosen) { $StudioChosen = $StudioVoices | Sort-Object { $_.VoiceInfo.Name } | Select-Object -First 1 }
         $StudioVoiceName = $StudioChosen.VoiceInfo.Name
     } else { $StudioVoiceName = [string]$StudioInput.voice }
     $StudioSpeech.SelectVoice($StudioVoiceName)

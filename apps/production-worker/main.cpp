@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QProcess>
 #include <QSaveFile>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <memory>
@@ -98,7 +99,8 @@ int main(int argc, char **argv) {
         "-InputFile", request,           "-OutputDirectory", output + "/media"};
     if (parser.isSet("cancel-file"))
         speechArgs << "-CancelFile" << parser.value("cancel-file");
-    speech.start("powershell.exe", speechArgs);
+    const auto modernPowerShell = QStandardPaths::findExecutable("pwsh.exe");
+    speech.start(modernPowerShell.isEmpty() ? QStringLiteral("powershell.exe") : modernPowerShell, speechArgs);
     if (!speech.waitForStarted(10000))
         return fail("Não foi possível iniciar a voz do Windows.");
     if (!speech.waitForFinished(300000)) {

@@ -63,7 +63,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 }
 ```
 
-Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; `speechRate` vai de -3 a 3.
+Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; com `voice: "auto"`, prefere uma voz masculina e usa outra voz pt-BR se nenhuma masculina estiver instalada. Também é possível informar o nome exato da voz instalada. `speechRate` vai de -3 a 3.
 
 `captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.captionHighlightColor`; quando omitida, herda `primaryColor`. A cor pode ser configurada globalmente, por cena ou por shot. O projeto guarda os intervalos em quadros no schema 7 e a cor independente no schema 14. Depois da importação, o inspetor permite ajustar início e fim de cada palavra alinhada numericamente; na faixa da legenda da timeline, arraste um limite para aproximar ao quadro mais próximo. Limites compartilhados mantêm palavras vizinhas contíguas e um gesto inteiro pode ser desfeito. Esses ajustes ficam no projeto compilado e não são campos de entrada da receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
