@@ -1,6 +1,7 @@
 #pragma once
 #include <QByteArray>
 #include <QJsonObject>
+#include <QMap>
 #include <QString>
 #include <optional>
 #include <studio/core/project.hpp>
@@ -31,6 +32,11 @@ struct DirectedCameraKeyframe {
     double progress{0};
     double offsetSeconds{0};
     double cueProgress{-1};
+    double x{640}, y{360}, zoom{1}, rotation{0};
+    std::string easing{"linear"};
+};
+struct DirectedCameraPresetKeyframe {
+    double offsetSeconds{0};
     double x{640}, y{360}, zoom{1}, rotation{0};
     std::string easing{"linear"};
 };
@@ -66,7 +72,7 @@ struct DirectedAudioTrack {
     std::vector<AudioTrack::GainPoint> gainAutomation;
 };
 struct DirectedShot {
-    QString id, name, transitionIn{"cut"};
+    QString id, name, transitionIn{"cut"}, cameraPreset;
     QString transitionDirection{"left"};
     int transitionDurationFrames{0};
     DirectedTime start;
@@ -102,6 +108,7 @@ struct ProductionRecipe {
     int wordAnimationDurationFrames{8};
     double wordAnimationStartScale{0.82}, wordAnimationTravelY{12};
     ArtDirection artDirection;
+    QMap<QString, std::vector<DirectedCameraPresetKeyframe>> cameraPresets;
     double musicGain{.025}, effectsGain{.035};
     std::vector<DirectedScene> scenes;
     QJsonObject original;

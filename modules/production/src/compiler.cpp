@@ -228,7 +228,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         return r;
     }
     std::vector<std::int64_t> transitions;
-    int captionIndex = 0;
+    int captionIndex = 0, compiledCameraPresetKeys = 0;
     CameraState previousShotCamera{p.width / 2.0, p.height / 2.0, 1, 0};
     for (std::size_t sceneIndex = 0; sceneIndex < recipe.scenes.size(); ++sceneIndex) {
         const auto &scene = recipe.scenes[sceneIndex];
@@ -494,6 +494,34 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                         directedShot.id.toStdString()});
                 p.camera.push_back({shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
                                     shotCamera.rotation, "linear", directedShot.id.toStdString()});
+                if (!directedShot.cameraPreset.isEmpty()) {
+                    if (directedShot.focusFollow ||
+                        std::any_of(directedShot.beats.begin(), directedShot.beats.end(),
+                                    [](const auto &beat) { return beat.action == "camera"; })) {
+                        r.error = "cameraPreset não pode ser combinado com focus.follow ou Visual Beats de câmera: " +
+                                  directedShot.id;
+                        return r;
+                    }
+                    const auto preset = recipe.cameraPresets.constFind(directedShot.cameraPreset);
+                    if (preset == recipe.cameraPresets.cend()) {
+                        r.error = "Preset de câmera ausente: " + directedShot.cameraPreset;
+                        return r;
+                    }
+                    for (const auto &key : *preset) {
+                        const auto frame = shotStart + qRound64(key.offsetSeconds * 30.0);
+                        if (frame >= shotEnd) {
+                            r.error = "cameraPreset ultrapassa a duração do shot: " + directedShot.id;
+                            return r;
+                        }
+                        if (++compiledCameraPresetKeys > 4096) {
+                            r.error = "A produção excede 4096 keyframes compilados de cameraPreset.";
+                            return r;
+                        }
+                        p.camera.push_back({frame, key.x, key.y, key.zoom, key.rotation, key.easing,
+                                            directedShot.id.toStdString()});
+                        shotCamera = {key.x, key.y, key.zoom, key.rotation};
+                    }
+                }
                 auto beats = directedShot.beats;
                 for (const auto &beat : beats)
                     if (resolveTime(beat.at, cues, wordStarts) < 0) {

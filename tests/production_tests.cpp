@@ -173,6 +173,51 @@ int main(int argc, char **argv) {
                   parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
                   parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
               "v3 parses independent shots, Visual Beats, and transition timing");
+        auto cameraPresetJson = shotRecipeJson;
+        auto presetScenes = cameraPresetJson["scenes"].toArray();
+        auto presetScene = presetScenes[0].toObject();
+        auto presetShots = presetScene["shots"].toArray();
+        auto presetFirstShot = presetShots[0].toObject();
+        auto presetFirstCamera = presetFirstShot["camera"].toObject();
+        auto presetFirstFocus = presetFirstCamera["focus"].toObject();
+        presetFirstFocus.remove("follow");
+        presetFirstCamera["focus"] = presetFirstFocus;
+        presetFirstShot["camera"] = presetFirstCamera;
+        presetFirstShot["cameraPreset"] = "steady-push";
+        presetShots[0] = presetFirstShot;
+        auto presetShot = presetShots[1].toObject();
+        auto presetBeats = presetShot["beats"].toArray();
+        presetBeats.removeLast(); // Camera beats cannot compete with a reusable camera trajectory.
+        presetShot["beats"] = presetBeats;
+        presetShot["cameraPreset"] = "steady-push";
+        presetShots[1] = presetShot;
+        presetScene["shots"] = presetShots;
+        presetScenes[0] = presetScene;
+        cameraPresetJson["scenes"] = presetScenes;
+        cameraPresetJson["cameraPresets"] = QJsonObject{
+            {"steady-push", QJsonArray{QJsonObject{{"offsetSeconds", 0}, {"x", 640}, {"y", 360},
+                                                    {"zoom", 1}, {"rotation", 0}},
+                                        QJsonObject{{"offsetSeconds", .033333333}, {"x", 660}, {"y", 360},
+                                                    {"zoom", 1.4}, {"rotation", 0},
+                                                    {"easing", "ease-in-out"}}}}};
+        const auto parsedCameraPreset =
+            studio::parseRecipe(QJsonDocument(cameraPresetJson).toJson(), directory.path());
+        check(parsedCameraPreset.error.isEmpty() &&
+                  parsedCameraPreset.recipe.cameraPresets.contains("steady-push") &&
+                  parsedCameraPreset.recipe.scenes.front().shots.back().cameraPreset == "steady-push",
+              "v3 validates named camera presets and shot references");
+        auto missingCameraPreset = cameraPresetJson;
+        auto missingPresetScenes = missingCameraPreset["scenes"].toArray();
+        auto missingPresetScene = missingPresetScenes[0].toObject();
+        auto missingPresetShots = missingPresetScene["shots"].toArray();
+        auto missingPresetShot = missingPresetShots[1].toObject();
+        missingPresetShot["cameraPreset"] = "unknown-preset";
+        missingPresetShots[1] = missingPresetShot;
+        missingPresetScene["shots"] = missingPresetShots;
+        missingPresetScenes[0] = missingPresetScene;
+        missingCameraPreset["scenes"] = missingPresetScenes;
+        check(!studio::parseRecipe(QJsonDocument(missingCameraPreset).toJson(), directory.path()).error.isEmpty(),
+              "reject references to undefined camera presets");
         QFile portraitFixture(QString(STUDIO_SOURCE_DIR) + "/examples/retrato-1080x1920-v3.production.json");
         check(portraitFixture.open(QIODevice::ReadOnly), "portrait production example exists");
         const auto portraitBytes = portraitFixture.readAll();
@@ -590,6 +635,33 @@ int main(int argc, char **argv) {
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 7 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
+        const auto compiledCameraPreset =
+            studio::compileProduction(parsedCameraPreset.recipe, shotAudio, "camera-preset.wav");
+        const auto cameraPresetShot = std::find_if(
+            compiledCameraPreset.project.shots.begin(), compiledCameraPreset.project.shots.end(),
+            [](const auto &shot) { return shot.id == "price-cut"; });
+        check(compiledCameraPreset.error.isEmpty() && cameraPresetShot != compiledCameraPreset.project.shots.end() &&
+                  std::any_of(compiledCameraPreset.project.camera.begin(), compiledCameraPreset.project.camera.end(),
+                              [&](const auto &key) {
+                                  return key.frame == cameraPresetShot->start && key.zoom == 1.0;
+                              }) &&
+                  std::count_if(compiledCameraPreset.project.camera.begin(), compiledCameraPreset.project.camera.end(),
+                                [](const auto &key) { return key.shotId == "wide"; }) >= 2 &&
+                  std::count_if(compiledCameraPreset.project.camera.begin(), compiledCameraPreset.project.camera.end(),
+                                [](const auto &key) { return key.shotId == "price-cut"; }) >= 2 &&
+                  studio::evaluateCamera(compiledCameraPreset.project, cameraPresetShot->start + 2).zoom > 1.1,
+              "a reusable camera preset expands into editable timed keyframes in multiple shots");
+        auto overlongCameraPreset = parsedCameraPreset.recipe;
+        overlongCameraPreset.cameraPresets["steady-push"][1].offsetSeconds = 600;
+        const auto overlongCameraResult =
+            studio::compileProduction(overlongCameraPreset, shotAudio, "camera-preset-overlong.wav");
+        auto conflictingCameraPreset = parsedCameraPreset.recipe;
+        conflictingCameraPreset.scenes.front().shots.front().focusFollow = true;
+        const auto conflictingCameraResult =
+            studio::compileProduction(conflictingCameraPreset, shotAudio, "camera-preset-conflict.wav");
+        check(overlongCameraResult.error.contains("ultrapassa a duração do shot") &&
+                  conflictingCameraResult.error.contains("cameraPreset não pode ser combinado"),
+              "camera presets cannot exceed shot duration or compete with continuous follow");
         const auto missingWordAlignment =
             studio::compileProduction(wordRecipe.recipe, shotAudio, "word-shots.wav");
         studio::WordTimingMap wordMap;

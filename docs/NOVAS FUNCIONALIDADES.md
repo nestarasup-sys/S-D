@@ -12,6 +12,14 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. No teste de seek fora de ordem, houve 2 hits de cache, 2 seeks diretos e apenas 3 quadros decodificados; o quadro da prévia comparado ao MP4 marcou 32,29 dB. O Director's Cut continuou com 2700 quadros e 42,46 dB entre prévia e exportação.
 - Decisão arquitetural: [ADR 0025 — cache e seek de vídeo](architecture/0025-video-frame-cache-seek.md).
 
+### Entrega implementada: presets reutilizáveis de câmera
+
+- Receitas v3 podem declarar trajetórias nomeadas em `cameraPresets` e aplicá-las a um shot por `cameraPreset`. Cada preset define estados completos em segundos relativos ao início do shot; o compilador os converte em keyframes de câmera editáveis no projeto.
+- A validação limita 32 nomes, 512 keyframes nas definições, 4096 keyframes expandidos por produção e exige que o último estado caiba no shot. O mesmo preset pode ser referenciado por vários shots.
+- `cameraPreset` não pode ser combinado no mesmo shot com `focus.follow:true` nem com Visual Beats de câmera, evitando comandos concorrentes. Câmera sem preset, receitas v1/v2 e o schema de projeto permanecem compatíveis.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4), incluindo reutilização em dois shots e referências inválidas; `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop e confirmou keyframes no exemplo v3 editável, com comparação prévia/exportação em 44,32 dB.
+- O exemplo `examples/shots-visual-beats-v3.production.json` demonstra o campo. `docs/GUIA-PARA-IA.md` e `docs/capabilities-v1.json` foram regenerados.
+
 ### Entrega implementada: formatos paisagem e retrato
 
 - A criação de projetos oferece paisagem 1280×720, paisagem Full HD 1920×1080 e retrato 1080×1920; o armazenamento preserva as dimensões sem alterar projetos anteriores.
@@ -167,9 +175,9 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom e presets reutilizáveis de trajetória de câmera na receita v3 estão implementados. Faltam ritmo guiado pelo conteúdo e edição avançada de duração/overlap da sequência. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico de camadas visuais e áudio, incluindo mover e aparar pistas de áudio. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados; faltam otimizações de seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render, com cache de quadros limitado e seek direto validado contra exportação. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação e snapping geométrico. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados. |
 
 ### Limites confirmados nesta versão
 
@@ -180,12 +188,12 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Com Snap ligado, arrastar clipes visuais alinha início/fim ao playhead, limites de cenas/shots, beats, outras camadas e inícios/fins de áudio. A tolerância equivale a oito pixels e acompanha o zoom; uma guia âmbar mostra o encaixe. O botão desliga o snap para movimento livre. A ferramenta não acrescenta campos à receita IA; o movimento continua undoável como um gesto.
 - A alça ↔ no início do envelope move a pista; a alça direita altera o fim/duração por frame. Ambas usam as mesmas referências de snap e cada gesto tem um único undo. Efeitos de som ligados a Visual Beats acompanham a mudança do início.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
-- Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
+- Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot. Presets de trajetória reutilizáveis já são aceitos em `cameraPresets`; trajetórias Bézier personalizadas continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
 
 ### Próxima entrega recomendada
 
-Otimizar cache/seek de vídeo e preview de áudio para produções longas. Depois, presets reutilizáveis de câmera e edição avançada de duração/overlap. Fontes externas e presets visuais nomeados também continuam pendentes.
+Implementar ritmo de corte guiado pelo conteúdo da narração e edição avançada de duração/overlap. Fontes externas e presets visuais nomeados também continuam pendentes.
 
 ---
 
@@ -929,7 +937,8 @@ Implementar:
 3. [x] Transições fade, dissolve, slide e zoom editáveis.
 4. [x] Sincronização temporal de animações com fala/progresso/palavra.
 5. [ ] Cortes e ritmo escolhidos automaticamente com base no conteúdo da narração.
-6. [ ] Presets reutilizáveis de câmera e edição avançada de duração/overlap da sequência.
+6. [x] Presets reutilizáveis de trajetórias de câmera definidos na receita v3 e aplicados a um ou mais shots.
+7. [ ] Edição avançada de duração/overlap da sequência no editor.
 
 Resultado esperado: criar vídeos com ritmo de edição profissional usando os elementos já existentes.
 

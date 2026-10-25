@@ -3,6 +3,7 @@
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QRegularExpression>
 #include <QSet>
 #include <QSvgRenderer>
 #include <QUrl>
@@ -635,7 +636,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (version >= 3)
-        rootKeys << "editing" << "artDirection" << "wordAnimation" << "canvas";
+        rootKeys << "editing" << "artDirection" << "wordAnimation" << "canvas" << "cameraPresets";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
@@ -692,6 +693,49 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             r.wordAnimationStartScale > 1.5 || !std::isfinite(r.wordAnimationTravelY) ||
             std::abs(r.wordAnimationTravelY) > 80)
             return fail("Parâmetros de wordAnimation fora dos limites permitidos.");
+    }
+    if (o.contains("cameraPresets")) {
+        if (version < 3 || !o["cameraPresets"].isObject() || o["cameraPresets"].toObject().size() > 32)
+            return fail("cameraPresets exige um objeto v3 com até 32 presets nomeados.");
+        int totalPresetKeys = 0;
+        const auto presets = o["cameraPresets"].toObject();
+        static const QRegularExpression presetId("^[A-Za-z][A-Za-z0-9_-]{0,63}$");
+        for (auto it = presets.begin(); it != presets.end(); ++it) {
+            if (!presetId.match(it.key()).hasMatch() || !it.value().isArray() ||
+                it.value().toArray().size() < 2 || it.value().toArray().size() > 64)
+                return fail("Cada cameraPreset precisa de um ID simples e de 2 a 64 keyframes.");
+            std::vector<DirectedCameraPresetKeyframe> keys;
+            for (const auto &value : it.value().toArray()) {
+                if (!value.isObject())
+                    return fail("Keyframe de cameraPreset deve ser um objeto.");
+                const auto keyObject = value.toObject();
+                if (!allowed(keyObject, {"offsetSeconds", "x", "y", "zoom", "rotation", "easing"}))
+                    return fail("Keyframe de cameraPreset contém campo desconhecido.");
+                DirectedCameraPresetKeyframe key;
+                if (!keyObject["offsetSeconds"].isDouble() || !keyObject["x"].isDouble() ||
+                    !keyObject["y"].isDouble() || !keyObject["zoom"].isDouble() ||
+                    !keyObject["rotation"].isDouble() ||
+                    !number(keyObject, "offsetSeconds", key.offsetSeconds) || key.offsetSeconds < 0 ||
+                    key.offsetSeconds > 600 ||
+                    !number(keyObject, "x", key.x) || !number(keyObject, "y", key.y) ||
+                    !number(keyObject, "zoom", key.zoom) || !number(keyObject, "rotation", key.rotation) ||
+                    std::abs(key.x) > 10000 || std::abs(key.y) > 10000 || key.zoom < .1 || key.zoom > 10 ||
+                    std::abs(key.rotation) > 360)
+                    return fail("Keyframe de cameraPreset exige offsetSeconds, x/y, zoom e rotação válidos.");
+                key.easing = keyObject["easing"].toString("linear").toStdString();
+                if ((keyObject.contains("easing") && !keyObject["easing"].isString()) ||
+                    !supportedEasing(key.easing))
+                    return fail("Curva de cameraPreset deve ser linear, ease-in, ease-out ou ease-in-out.");
+                const auto frame = qRound64(key.offsetSeconds * 30.0);
+                if ((keys.empty() && frame != 0) ||
+                    (!keys.empty() && frame <= qRound64(keys.back().offsetSeconds * 30.0)))
+                    return fail("Keyframes de cameraPreset devem começar em zero e avançar ao menos um quadro.");
+                keys.push_back(key);
+                if (++totalPresetKeys > 512)
+                    return fail("Use até 512 keyframes nas definições de cameraPresets.");
+            }
+            r.cameraPresets.insert(it.key(), std::move(keys));
+        }
     }
     if (o.contains("editing")) {
         if (!o["editing"].isObject())
@@ -842,7 +886,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 const auto shotObject = shotValue.toObject();
                 if (!allowed(shotObject,
                              {"id", "name", "start", "transitionIn", "camera", "elements", "beats",
-                              "artDirection"}))
+                              "artDirection", "cameraPreset"}))
                     return fail("Shot contém campo desconhecido.");
                 if (!shotObject["id"].isString() || !shotObject["start"].isObject() ||
                     !shotObject["elements"].isArray())
@@ -863,6 +907,12 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 }
                 shot.id = shotObject["id"].toString();
                 shot.name = shotObject["name"].toString(shot.id);
+                if (shotObject.contains("cameraPreset")) {
+                    if (!shotObject["cameraPreset"].isString() ||
+                        !r.cameraPresets.contains(shotObject["cameraPreset"].toString()))
+                        return fail("cameraPreset do shot precisa referenciar um preset definido na raiz.");
+                    shot.cameraPreset = shotObject["cameraPreset"].toString();
+                }
                 if (shotObject["transitionIn"].isString()) {
                     shot.transitionIn = shotObject["transitionIn"].toString("cut");
                     if (shot.transitionIn != "cut")

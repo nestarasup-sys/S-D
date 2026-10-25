@@ -8,6 +8,12 @@
   "editing": { "intensity": 50 },
   "musicGain": 0.025,
   "effectsGain": 0.035,
+  "cameraPresets": {
+    "push-price": [
+      { "offsetSeconds": 0, "x": 640, "y": 360, "zoom": 1.12, "rotation": 0 },
+      { "offsetSeconds": 0.4, "x": 640, "y": 360, "zoom": 1.28, "rotation": 0, "easing": "ease-in-out" }
+    ]
+  },
   "scenes": [
     {
       "id": "oferta",
@@ -31,6 +37,7 @@
           "name": "Revelação do preço",
           "start": { "cue": 0, "cueProgress": 0.55 },
           "transitionIn": { "type": "dissolve", "durationFrames": 12 },
+          "cameraPreset": "push-price",
           "camera": { "x": 640, "y": 360, "zoom": 1.12, "rotation": 0, "focus": { "target": "preco", "padding": 1.2 } },
           "elements": [
             { "id": "preco", "kind": "text", "text": "BARATO?", "x": 420, "y": 235, "width": 440, "height": 100, "fontSize": 68, "color": "#b4f078", "cue": 0, "cueProgress": 0.55 }
