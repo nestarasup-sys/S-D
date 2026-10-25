@@ -75,6 +75,7 @@ struct ProductionRecipe {
     QString timingMode{"natural"};
     double targetDurationSeconds{0};
     bool preserveVoicePitch{true};
+    int editingIntensity{-1}; // Optional v3 preset for generated, otherwise-unspecified motion defaults.
     double musicGain{.025}, effectsGain{.035};
     std::vector<DirectedScene> scenes;
     QJsonObject original;

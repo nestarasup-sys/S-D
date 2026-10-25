@@ -18,16 +18,17 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 - Câmera de um shot pode enquadrar automaticamente um elemento ou grupo usando `camera.focus.target` e uma margem `padding` configurável. Os limites do elemento são transformados através dos grupos ancestrais para calcular centro e zoom.
 - Com `camera.focus.follow: true`, o compilador recalcula o enquadramento em todos os quadros do shot e grava os estados como keyframes editáveis. O modo não pode ser combinado com Visual Beats de câmera.
+- Receitas v3 podem definir `editing.intensity` de 0 a 100. O valor determina movimento/timing de entrada e saída apenas para propriedades não informadas; instruções explícitas da IA e receitas sem esse campo preservam o comportamento anterior.
 - O foco é validado durante a importação: o alvo precisa existir dentro do mesmo shot; a margem aceita valores de 1 a 4. O foco define centro e zoom, preservando a rotação informada.
-- O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem e exercitam esse comportamento.
-- A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção também passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera e comparação preview/export em 43,72 dB.
+- O guia da IA, o manifesto de capacidades e a receita de demonstração descrevem auto reframe contínuo e intensidade 50.
+- A compilação C++20 e os 4 testes automatizados passaram. O smoke de produção passou com voz Microsoft Maria Desktop: 6 cenas, 1517 quadros, exemplo v3 com 3 shots/3 beats, acompanhamento contínuo de câmera, intensidade 50 e comparação preview/export em 43,71 dB.
 
 ### Situação por fase
 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe e acompanhamento contínuo por quadro implementados. Falta Dynamic Edit Engine configurável, intensidade 0–100 e transições além do corte seco. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo e perfil de intensidade para movimentos padrão implementados na receita. Falta controle de intensidade no editor, mudanças visuais/cortes automáticos justificados e transições além do corte seco. |
 | 3 — Acabamento audiovisual | Pendente | Tipografia animada e direção de arte global, presets visuais avançados, efeitos por beat e trilhas importadas com mixagem/ducking. |
 | 4 — Recursos avançados | Pendente | Vídeo/B-roll como camada, avaliação local de alinhamento por palavra em pt-BR, timeline avançada e outros formatos de tela. |
 
@@ -39,6 +40,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
 - Vídeo como camada, mídia remota automática, áudio em múltiplas pistas, direção de arte global e intensidade de edição ainda não existem.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
+- `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. Não gera cortes ou efeitos a partir do significado da fala e ainda não pode ser ajustado por um controle global do editor.
 
 ### Próxima entrega recomendada
 

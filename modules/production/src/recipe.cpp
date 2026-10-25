@@ -83,7 +83,7 @@ QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
 }
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
-                  QString &error, int depth = 0, DirectedTime defaultStart = {}) {
+                  QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1) {
     auto fail = [&](QString message) {
         error = std::move(message);
         return false;
@@ -279,6 +279,38 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     }
     n.motionFrames = e["motionFrames"].toInt(24);
     n.exitFrames = e["exitFrames"].toInt(8);
+    if (editingIntensity >= 0) {
+        if (!e.contains("motion")) {
+            if (editingIntensity == 0) {
+                n.motion = "none";
+                n.animated = false;
+            } else if (editingIntensity <= 30) {
+                n.motion = "fade";
+            } else if (editingIntensity <= 70) {
+                n.motion = "rise";
+            } else {
+                n.motion = "pop";
+            }
+        }
+        if (!e.contains("motionFrames")) {
+            if (editingIntensity <= 30)
+                n.motionFrames = int(std::lround(48.0 - editingIntensity * 18.0 / 30.0));
+            else if (editingIntensity <= 70)
+                n.motionFrames = int(std::lround(30.0 - (editingIntensity - 30) * 10.0 / 40.0));
+            else
+                n.motionFrames = int(std::lround(20.0 - (editingIntensity - 70) * 12.0 / 30.0));
+        }
+        if (!e.contains("exitFrames")) {
+            if (editingIntensity == 0)
+                n.exitFrames = 0;
+            else if (editingIntensity <= 30)
+                n.exitFrames = int(std::lround(20.0 - editingIntensity * 8.0 / 30.0));
+            else if (editingIntensity <= 70)
+                n.exitFrames = int(std::lround(12.0 - (editingIntensity - 30) * 4.0 / 40.0));
+            else
+                n.exitFrames = int(std::lround(8.0 - (editingIntensity - 70) * 5.0 / 30.0));
+        }
+    }
     element.utteranceOnly = e["span"].toString("scene") == "utterance";
     if (!number(e, "offsetSeconds", element.offsetSeconds) || element.offsetSeconds < 0 ||
         element.offsetSeconds > 10 || element.cue < 0 || element.cue >= cueCount ||
@@ -359,7 +391,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
-                              {element.cue, element.cueProgress, element.offsetSeconds}))
+                              {element.cue, element.cueProgress, element.offsetSeconds}, editingIntensity))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -441,11 +473,23 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                          "speechRate", "musicGain", "effectsGain",    "scenes", "sources"};
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
+    if (version >= 3)
+        rootKeys << "editing";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
     r.version = version;
     r.original = o;
+    if (o.contains("editing")) {
+        if (!o["editing"].isObject())
+            return fail("editing precisa ser um objeto.");
+        const auto editing = o["editing"].toObject();
+        if (!allowed(editing, {"intensity"}) || !editing["intensity"].isDouble() ||
+            std::floor(editing["intensity"].toDouble()) != editing["intensity"].toDouble() ||
+            editing["intensity"].toInt(-1) < 0 || editing["intensity"].toInt(-1) > 100)
+            return fail("editing.intensity deve ser um inteiro entre 0 e 100.");
+        r.editingIntensity = editing["intensity"].toInt();
+    }
     if (o.contains("timingMode") && !o["timingMode"].isString())
         return fail("timingMode deve ser natural ou fit-to-duration.");
     r.timingMode = o["timingMode"].toString("natural");
@@ -617,7 +661,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     DirectedElement element;
                     if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                                       int(scene.narration.size()), ids, elementCount, element, elementError,
-                                      0, shot.start))
+                                      0, shot.start, r.editingIntensity))
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }
@@ -704,7 +748,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 return fail("Elemento inválido.");
             DirectedElement element;
             if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
-                              int(scene.narration.size()), ids, elementCount, element, elementError))
+                              int(scene.narration.size()), ids, elementCount, element, elementError, 0, {},
+                              r.editingIntensity))
                 return fail(elementError);
             scene.elements.push_back(std::move(element));
         }

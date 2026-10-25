@@ -151,7 +151,8 @@
         "visual-beats-show-hide-transform-camera",
         "shot-cut-camera",
         "auto-reframe-by-shot-target",
-        "continuous-shot-focus-follow"
+        "continuous-shot-focus-follow",
+        "intensity-driven-default-motion"
     ],
     "productionVersion": 3,
     "projectCapabilities": [

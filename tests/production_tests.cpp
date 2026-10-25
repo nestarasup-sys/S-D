@@ -90,9 +90,10 @@ int main(int argc, char **argv) {
         mutedRecipe.effectsGain = 0;
         auto muted = studio::compileProduction(mutedRecipe, speech, directory.filePath("muted.wav"));
         check(muted.mix.samples == muted.voice.samples, "zero gains mute procedural soundtrack");
-        const QJsonObject priceElement{{"id", "price"}, {"kind", "text"}, {"text", "BARATO?"},
-                                       {"x", 100},      {"y", 50},        {"width", 400},
-                                       {"height", 100}, {"fontSize", 64}};
+        const QJsonObject priceElement{{"id", "price"},      {"kind", "text"}, {"text", "BARATO?"},
+                                       {"x", 100},           {"y", 50},        {"width", 400},
+                                       {"height", 100},      {"fontSize", 64}, {"motion", "rise"},
+                                       {"motionFrames", 42}, {"exitFrames", 9}};
         const QJsonObject detailGroup{{"id", "detail-group"},
                                       {"kind", "group"},
                                       {"x", 300},
@@ -154,6 +155,47 @@ int main(int argc, char **argv) {
         check(parsedShots.error.isEmpty() && parsedShots.recipe.scenes.front().shots.size() == 2 &&
                   parsedShots.recipe.scenes.front().shots.back().beats.size() == 3,
               "v3 parses independent shots and Visual Beats");
+        auto highIntensityJson = shotRecipeJson;
+        highIntensityJson["editing"] = QJsonObject{{"intensity", 90}};
+        const auto highIntensity =
+            studio::parseRecipe(QJsonDocument(highIntensityJson).toJson(), directory.path());
+        bool generatedMotionMatches = false;
+        bool explicitMotionPreserved = false;
+        if (highIntensity.error.isEmpty() && highIntensity.recipe.scenes.front().shots.size() == 2) {
+            const auto &generatedMotion =
+                highIntensity.recipe.scenes.front().shots.front().elements.front().node;
+            const auto &explicitMotion =
+                highIntensity.recipe.scenes.front().shots.back().elements.front().children.front().node;
+            generatedMotionMatches = highIntensity.recipe.editingIntensity == 90 &&
+                                     generatedMotion.motion == "pop" && generatedMotion.motionFrames == 12 &&
+                                     generatedMotion.exitFrames == 5;
+            explicitMotionPreserved = explicitMotion.motion == "rise" && explicitMotion.motionFrames == 42 &&
+                                      explicitMotion.exitFrames == 9;
+        }
+        check(generatedMotionMatches, "editing intensity generates deterministic default motion settings");
+        check(explicitMotionPreserved, "editing intensity preserves explicitly directed motion");
+        highIntensityJson["editing"] = QJsonObject{{"intensity", 0}};
+        const auto calmIntensity =
+            studio::parseRecipe(QJsonDocument(highIntensityJson).toJson(), directory.path());
+        bool calmDefaultsMatch = false;
+        if (calmIntensity.error.isEmpty() && !calmIntensity.recipe.scenes.front().shots.empty()) {
+            const auto &motion = calmIntensity.recipe.scenes.front().shots.front().elements.front().node;
+            calmDefaultsMatch = motion.motion == "none" && !motion.animated && motion.exitFrames == 0;
+        }
+        check(calmDefaultsMatch, "editing intensity zero disables automatic motion and exit fade");
+        highIntensityJson["editing"] = QJsonObject{{"intensity", 100}};
+        const auto maxIntensity =
+            studio::parseRecipe(QJsonDocument(highIntensityJson).toJson(), directory.path());
+        bool maxDefaultsMatch = false;
+        if (maxIntensity.error.isEmpty() && !maxIntensity.recipe.scenes.front().shots.empty()) {
+            const auto &motion = maxIntensity.recipe.scenes.front().shots.front().elements.front().node;
+            maxDefaultsMatch = motion.motion == "pop" && motion.motionFrames == 8 && motion.exitFrames == 3;
+        }
+        check(maxDefaultsMatch, "editing intensity one hundred uses the maximum motion profile");
+        highIntensityJson["editing"] = QJsonObject{{"intensity", 101}};
+        check(
+            !studio::parseRecipe(QJsonDocument(highIntensityJson).toJson(), directory.path()).error.isEmpty(),
+            "editing intensity rejects values outside 0 to 100");
         QFile shotFixture(QString(STUDIO_SOURCE_DIR) + "/examples/shots-visual-beats-v3.production.json");
         check(shotFixture.open(QIODevice::ReadOnly), "v3 shots example exists");
         const auto fileRecipe = studio::parseRecipe(shotFixture.readAll(), directory.path());

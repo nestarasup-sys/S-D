@@ -42,6 +42,8 @@ Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyf
 
 Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; `follow: true` acompanha o alvo quadro a quadro. Nesta versão, `transitionIn` aceita somente cortes secos.
 
+Receitas v3 aceitam `editing.intensity` de 0 a 100 para escolher entradas e saídas padrão apenas quando a IA não especificou movimento ou duração. Sem esse parâmetro, o padrão antigo é mantido.
+
 Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. São convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.
 
 O guia lista os campos, limites e restrições da v3. Exemplo completo: [shots e Visual Beats](examples/shots-visual-beats-v3.production.json). Veja também a [decisão de arquitetura 0009](docs/architecture/0009-shots-and-visual-beats.md).
@@ -112,7 +114,7 @@ Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-pro
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).
 
-A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md). Os presets de grupos são detalhados na [ADR 0006](docs/architecture/0006-reusable-group-presets.md). Shots e Visual Beats estão em [0009](docs/architecture/0009-shots-and-visual-beats.md).
+A composição por grupos/câmera e a direção v2 estão em [0004](docs/architecture/0004-groups-camera-keyframes.md) e [0005](docs/architecture/0005-production-v2-personal-library.md). Os presets de grupos são detalhados na [ADR 0006](docs/architecture/0006-reusable-group-presets.md). Shots e Visual Beats estão em [0009](docs/architecture/0009-shots-and-visual-beats.md). A intensidade da edição e seus defaults estão em [0010](docs/architecture/0010-editing-intensity.md).
 
 A evolução proposta a partir do vídeo de referência está em [Futuro do aplicativo](FUTURO-DO-APP.md): composição livre, grupos, câmera, documentos, vídeo e direção por IA. Esse documento é planejamento, não uma lista de recursos já implementados.
 

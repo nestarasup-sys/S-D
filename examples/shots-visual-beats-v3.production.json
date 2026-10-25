@@ -5,6 +5,7 @@
   "title": "Por que o carro parecia barato",
   "voice": "auto",
   "captions": true,
+  "editing": { "intensity": 50 },
   "musicGain": 0.025,
   "effectsGain": 0.035,
   "scenes": [

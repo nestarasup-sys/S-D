@@ -20,34 +20,35 @@ QJsonObject capabilities() {
         motions.append(QString::fromStdString(motion));
     for (const auto &pose : poseNames())
         poses.append(QString::fromStdString(pose));
-    return {{"format", "studio-dark-capabilities"},
-            {"catalogVersion", 1},
-            {"productionVersion", 3},
-            {"projectVersion", 4},
-            {"productionCapabilities",
-             QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
-                        "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
-                        "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
-                        "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
-                        "visual-beats-show-hide-transform-camera", "shot-cut-camera",
-                        "auto-reframe-by-shot-target", "continuous-shot-focus-follow"}},
-            {"projectCapabilities",
-             QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
-                        "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
-            {"width", 1280},
-            {"height", 720},
-            {"fps", 30},
-            {"nativeAssets", items},
-            {"motions", motions},
-            {"poses", poses},
-            {"media", QJsonArray{"png", "jpeg", "webp", "bmp", "svg"}},
-            {"maxScenes", 20},
-            {"maxShotsPerScene", 64},
-            {"maxShots", 256},
-            {"maxVisualBeats", 4096},
-            {"maxNodes", 200},
-            {"maxNarrationCharactersPerCue", 150},
-            {"audio", QJsonArray{"windows-pt-BR-tts", "procedural-bed", "scene-chime"}}};
+    return {
+        {"format", "studio-dark-capabilities"},
+        {"catalogVersion", 1},
+        {"productionVersion", 3},
+        {"projectVersion", 4},
+        {"productionCapabilities",
+         QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear", "camera-2d-keyframes",
+                    "keyframe-easing-curves", "personal-library-assets", "reusable-group-presets",
+                    "optional-visual-captions", "fixed-duration-timing", "cue-progress-sync",
+                    "pitch-preserving-atempo", "independent-shots", "visual-beats-show-hide-transform-camera",
+                    "shot-cut-camera", "auto-reframe-by-shot-target", "continuous-shot-focus-follow",
+                    "intensity-driven-default-motion"}},
+        {"projectCapabilities",
+         QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
+                    "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
+        {"width", 1280},
+        {"height", 720},
+        {"fps", 30},
+        {"nativeAssets", items},
+        {"motions", motions},
+        {"poses", poses},
+        {"media", QJsonArray{"png", "jpeg", "webp", "bmp", "svg"}},
+        {"maxScenes", 20},
+        {"maxShotsPerScene", 64},
+        {"maxShots", 256},
+        {"maxVisualBeats", 4096},
+        {"maxNodes", 200},
+        {"maxNarrationCharactersPerCue", 150},
+        {"audio", QJsonArray{"windows-pt-BR-tts", "procedural-bed", "scene-chime"}}};
 }
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
@@ -166,6 +167,8 @@ Para enquadrar automaticamente um elemento ou grupo, adicione `"focus":{"target"
 
 Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuais editáveis no projeto. Sem referência temporal explícita, começam no início do shot. Os elementos e grupos continuam usando os tipos e propriedades documentados abaixo.
 
+`editing.intensity` é opcional e aceita inteiro de 0 a 100. Ele só preenche `motion`, `motionFrames` e `exitFrames` omitidos nos elementos: 0 desliga movimentos automáticos, 1–30 usa entradas discretas com fade, 31–70 usa entradas rise e 71–100 usa pop mais rápido. Campos explicitamente declarados pela IA não são substituídos. Sem o objeto `editing`, receitas v3 mantêm os defaults anteriores; receitas v1/v2 não aceitam essa opção. Intensidade ainda não cria cortes nem beats sem direção narrativa.
+
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera no shot ativo. A edição manual ainda não oferece transições sobrepostas.
 
 Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
@@ -178,6 +181,7 @@ Exemplo curto, válido e coberto por teste automatizado:
   "version": 3,
   "catalogVersion": 1,
   "title": "O preço do carro",
+  "editing": {"intensity": 65},
   "scenes": [{
     "id": "oferta",
     "narration": ["O carro parece barato. Mas há um detalhe escondido."],
