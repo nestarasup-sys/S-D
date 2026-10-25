@@ -369,6 +369,8 @@ void EditorController::setupProduction() {
             const auto stage = o["stage"].toString();
             const auto error = o["error"].toString();
             productionProgress_ = o["progress"].toInt();
+            if (!error.isEmpty())
+                productionError_ = error;
             logProductionEvent(error.isEmpty() ? "worker-stage" : "worker-error",
                                error.isEmpty() ? stage : error, productionProgress_);
             if (!error.isEmpty())
@@ -398,7 +400,8 @@ void EditorController::setupProduction() {
             } else if (status == QProcess::CrashExit)
                 notify("Produção interrompida; projeto anterior preservado. Veja Logs.");
             else
-                notify("A produção não terminou com sucesso. Veja Logs.");
+                notify(productionError_.isEmpty() ? "A produção não terminou com sucesso. Veja Logs."
+                                                  : productionError_ + " (veja Logs)");
             QFile::remove(productionCancel_);
             emit productionChanged();
         });
@@ -443,6 +446,7 @@ void EditorController::importProduction(QUrl recipe) {
     stop();
     productionBaseline_ = studio::serialize(project());
     productionBuffer_.clear();
+    productionError_.clear();
     productionProgress_ = 0;
     auto parent = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/productions";
     QDir().mkpath(parent);

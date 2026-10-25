@@ -33,7 +33,7 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 1. Escreva seu roteiro em qualquer lugar.
 2. Use o botão **Guia IA** para salvar o guia atual com os itens ativos da sua biblioteca pessoal. A cópia do repositório lista as capacidades nativas e explica como salvar um manifesto local.
 3. Envie à IA o roteiro e o guia gerado; peça uma receita v3 quando quiser cortes/ações visuais dentro da mesma cena, ou v2 para uma composição tradicional, e salve como `.production.json`.
-4. No editor, use **Importar produção IA**. O app valida o plano, gera a voz local, mede os tempos e monta as cenas.
+4. No editor, use **Importar produção IA**. A tela inicial também aceita `.production.json` por **Importar projeto**. O app valida o plano, gera a voz local, mede os tempos e monta as cenas.
 5. Reproduza, ajuste os objetos e exporte MP4.
 
 Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyframes ligados às falas, câmera e referências por ID a itens pessoais ativos. Receitas v1 antigas continuam funcionando. Exemplos: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md), [receita v1 de carros](examples/carros-caros.production.json) e [composição livre v2](examples/composicao-livre-v2.production.json).

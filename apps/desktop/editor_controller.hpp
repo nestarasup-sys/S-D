@@ -220,7 +220,7 @@ class EditorController : public QObject {
     QVariantList waveform_;
     QProcess production_;
     QByteArray productionBuffer_, productionBaseline_;
-    QString productionDirectory_, productionCancel_, productionLogPath_, diagnosticsDirectory_;
+    QString productionDirectory_, productionCancel_, productionLogPath_, diagnosticsDirectory_, productionError_;
     int productionProgress_{0};
     QUrl latestProduction_;
 };

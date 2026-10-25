@@ -57,7 +57,14 @@ ApplicationWindow {
         onAccepted: workspace.saveAiGuide(selectedFile)
     }
     FileDialog {
-        id: openDialog; title: "Importar projeto ou receita JSON"; nameFilters: ["Todos os JSON (*.json)", "Receitas de produção IA (*.production.json)", "Projetos Studio Dark (*.studio.json)"]
+        id: openDialog
+        title: "Importar projeto ou receita JSON"
+        nameFilters: [
+            "Arquivos Studio Dark (*.production.json *.studio.json *.json)",
+            "Receitas de produção IA (*.production.json)",
+            "Projetos Studio Dark (*.studio.json)",
+            "Todos os arquivos (*)"
+        ]
         onAccepted: workspace.importProject(selectedFile)
     }
     FileDialog {
