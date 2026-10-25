@@ -54,14 +54,14 @@ TimingPlan planNarrationTiming(const ProductionRecipe &recipe, const QMap<QStrin
             }
             const int minSpeech = std::max(1, int(std::ceil(count / (samplesPerFrame * maxVoiceSpeed))));
             const int natural = int((count + samplesPerFrame - 1) / samplesPerFrame);
-            const int fixed =
+            const int requestedCueFrames =
                 u.targetDurationSeconds > 0 ? int(std::llround(u.targetDurationSeconds * 30)) : 0;
-            if (fixed > 0 && fixed < minSpeech) {
-                plan.error = QString("Fala %1 pede %2 frames; precisa de %3 no mínimo (limite de 15%).")
-                                 .arg(u.id)
-                                 .arg(fixed)
-                                 .arg(minSpeech);
-                return plan;
+            const int fixed = requestedCueFrames >= minSpeech ? requestedCueFrames : 0;
+            if (requestedCueFrames > 0 && fixed == 0) {
+                plan.warnings.push_back(
+                    QString("A fala %1 precisa de pelo menos %2 quadros; seu intervalo foi ampliado.")
+                        .arg(u.id)
+                        .arg(minSpeech));
             }
             minimumScene += fixed > 0 ? fixed : minSpeech;
             preferredScene += std::max(natural + 4, fixed);
