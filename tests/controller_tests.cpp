@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
         c.updateCamera("zoom", 1.25);
         check(c.camera()["keyframeEasing"] == "ease-out", "camera update preserves easing");
         auto shotProject = studio::makeEmpty();
-        shotProject.schemaVersion = 4;
+        shotProject.schemaVersion = 9;
         shotProject.duration = 120;
         shotProject.scenes = {{"story", "História", "", 0, 120}};
         shotProject.shots = {{"wide", "story", "Aberto", "cut", 0, 60},
@@ -151,7 +151,10 @@ int main(int argc, char **argv) {
         detailNode.start = 60;
         detailNode.duration = 60;
         shotProject.nodes = {wideNode, detailNode};
-        shotProject.visualBeats = {{"detail-beat", "detail", "detail-node", "show", 75, 0}};
+        shotProject.visualBeats = {{"detail-beat", "detail", "detail-node", "show", 75, 0},
+                                   {"detail-chime", "detail", "sfx-detail-chime", "sound", 75, 0}};
+        shotProject.audioTracks = {{"sfx-detail-chime", "Efeito: detail-chime", "C:/media/chime.wav",
+                                    75, 45, .65}};
         shotProject.camera = {{59, 640, 360, 1, 0, "linear", "detail"},
                               {60, 700, 360, 1.1, 0, "linear", "detail"},
                               {90, 720, 360, 1.2, 0, "linear", "detail"}};
@@ -159,7 +162,7 @@ int main(int argc, char **argv) {
         const auto shotPath = QUrl::fromLocalFile(directory.filePath("shots.studio.json"));
         check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
                   c.open(shotPath),
-              "open a schema 4 project with independent shots");
+              "open a schema 9 project with independent shots and a linked sound beat");
         c.setFrame(80);
         c.updateShotTransition("detail", "dissolve", 15, "left");
         check(c.project().shots[1].transitionIn == "dissolve" &&
@@ -191,9 +194,29 @@ int main(int argc, char **argv) {
         c.undo();
         check(c.project().shots[1].start == 60 && c.project().visualBeats.front().frame == 75 &&
                   c.project().camera[1].frame == 60 &&
+                  c.project().audioTracks.front().start == 75 && c.project().audioTracks.front().duration == 45 &&
                   std::any_of(c.project().camera.begin(), c.project().camera.end(),
                               [](const auto &key) { return key.frame == 80 && key.shotId == "detail"; }),
               "one shot-cut gesture undoes as one action");
+        const auto soundBeatAt = [&] {
+            const auto it = std::find_if(c.project().visualBeats.begin(), c.project().visualBeats.end(),
+                                         [](const auto &beat) { return beat.action == "sound"; });
+            return it == c.project().visualBeats.end() ? -1 : int(it->frame);
+        };
+        check(soundBeatAt() == 75, "undo restores the linked sound marker");
+        c.setAudioTrackTiming("sfx-detail-chime", 80, 30);
+        check(soundBeatAt() == 80 && c.project().audioTracks.front().start == 80,
+              "moving a one-shot effect moves its Visual Beat marker");
+        c.beginGesture();
+        c.moveShotBoundary("detail", 70);
+        c.endGesture();
+        check(soundBeatAt() == 90 && c.project().audioTracks.front().start == 90 &&
+                  c.project().audioTracks.front().duration == 20,
+              "moving a shot boundary keeps its sound track and beat synchronized");
+        c.undo();
+        c.removeAudioTrack("sfx-detail-chime");
+        check(soundBeatAt() == -1 && c.project().audioTracks.empty(),
+              "removing a sound effect track also removes its Visual Beat marker");
         c.setFrame(c.duration() - 1);
         c.togglePlayback();
         check(c.playing() && c.frame() == 0, "play at end restarts");

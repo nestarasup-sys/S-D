@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 9;
+        malformed["schemaVersion"] = 10;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -105,6 +105,24 @@ int main(int argc, char **argv) {
                   persistedShots.project.audioTracks.front().gain == .45 &&
                   persistedShots.project.voiceDuckingSource == "C:/media/voice-stem.wav",
               "shots, beats and independent audio tracks survive schema 4 roundtrip");
+        auto soundBeatProject = shotProject;
+        soundBeatProject.schemaVersion = 9;
+        soundBeatProject.visualBeats.push_back({"price-chime", "detail", "sfx-price-chime", "sound", 80, 0});
+        soundBeatProject.audioTracks.push_back(
+            {"sfx-price-chime", "Efeito: price-chime", "C:/media/chime.wav", 80, 40, .65});
+        const auto persistedSoundBeat = studio::deserialize(studio::serialize(soundBeatProject));
+        check(studio::validate(soundBeatProject).empty() && persistedSoundBeat.error.isEmpty() &&
+                  persistedSoundBeat.project.schemaVersion == 9 &&
+                  persistedSoundBeat.project.visualBeats.back().action == "sound" &&
+                  persistedSoundBeat.project.visualBeats.back().targetId == "sfx-price-chime" &&
+                  persistedSoundBeat.project.audioTracks.back().start == 80,
+              "sound Visual Beats persist as linked audio tracks in schema 9");
+        auto detachedSoundBeat = soundBeatProject;
+        detachedSoundBeat.audioTracks.back().start = 79;
+        check(!studio::validate(detachedSoundBeat).empty(), "sound Visual Beat and audio track share a frame");
+        detachedSoundBeat = soundBeatProject;
+        detachedSoundBeat.audioTracks.pop_back();
+        check(!studio::validate(detachedSoundBeat).empty(), "sound Visual Beat requires its linked track");
         auto fadedProject = shotProject;
         fadedProject.schemaVersion = 6;
         fadedProject.audioTracks.front().fadeInFrames = 12;

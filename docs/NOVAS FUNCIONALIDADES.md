@@ -4,12 +4,15 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
-### Rodada atual: ducking estável, carga temporal e Director's Cut de 90 s
+### Rodada atual: efeitos sonoros disparados por Visual Beat
 
 - A exportação para WAV PCM mono a 24 kHz calcula a mesma envoltória RMS suavizada por quadro usada na prévia. O smoke confirma redução durante a fala e retorno ao volume após o stem; também cobre pista estéreo, fades e automação por pontos/easing.
 - A suíte de receitas compila um plano sintético de 60 segundos com 20 cenas, 120 shots contíguos, 240 beats, eventos simultâneos, transições de dois quadros e beats próximos ao começo/fim dos shots.
-- `examples/carros-caros-directors-cut-90s.production.json` foi sintetizado com Microsoft Maria Desktop e exportado com exatamente 2700 quadros, 18 shots e 19 beats. A comparação dos quadros de cortes/beats entre prévia e MP4 marcou 42,61 dB; o projeto também abriu no editor.
-- O gerador agora incorpora a receita profissional completa e testada no `GUIA-PARA-IA.md`, a partir do mesmo JSON usado pelo smoke. O guia identifica projeto schema 8.
+- Visual Beats aceitam agora `action: "sound"`, um caminho local em `source` e `gain` opcional de 0–4. O compilador resolve o disparo pelo mesmo relógio da narração e cria uma pista de áudio editável vinculada ao beat.
+- Projetos schema 9 validam e persistem a associação entre marcador e pista. Mover a faixa reposiciona o marcador; mover o corte mantém a faixa alinhada; excluir a faixa remove o beat associado. O limite de 32 pistas inclui os efeitos.
+- `examples/carros-caros-directors-cut-90s.production.json` inclui um efeito de amostra em `examples/media/soft-chime.wav`; o smoke de produção verifica fonte, quadro, projeto schema 9 e compara a composição de 2700 quadros com o MP4.
+- O guia incorpora a mesma receita completa do smoke e documenta campos, extensões locais suportadas, limites e dependência do arquivo de áudio. `capabilities-v1.json` declara a ação e o schema 9.
+- Verificação desta rodada: C++20 compilado e 4/4 testes automatizados passaram; `scripts/smoke-production.ps1` passou com voz Microsoft Maria Desktop, 2700 quadros e projeto aberto no editor. A comparação preview/export do Director's Cut marcou 42,61 dB.
 - Evidência de exportação: `artifacts/production-smoke-20261024-232057/directors-cut-90s/directors-cut-90s.mp4` (artefato local, não versionado).
 
 ### Sincronização visual por palavra concluída nesta rodada
@@ -74,7 +77,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Áudio em múltiplas pistas implementado parcialmente
 
-- Projetos schema 4–8 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute, ducking e automação configurável. Fades exigem schema 6 ou superior; automação de ganho exige schema 8. Os arquivos antigos continuam carregando sem migração destrutiva.
+- Projetos schema 4–9 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute, ducking e automação configurável. Fades exigem schema 6 ou superior; automação de ganho exige schema 8. Os arquivos antigos continuam carregando sem migração destrutiva.
 - A timeline importa, remove, silencia, reposiciona, altera duração/ganho, liga ducking e permite definir fades lineares de entrada/saída. Na prévia, cada pista toca sincronizada com o playhead e segue os fades.
 - A prévia e a exportação calculam a mesma envoltória RMS suavizada por quadro quando a referência é WAV PCM mono a 24 kHz; a exportação aplica o envelope determinístico na pista. Referências em outros formatos usam sidechaincompress do FFmpeg como fallback.
 - Receitas v3 podem declarar pistas por cena com fonte local, sincronizar início por cue/progresso/wordIndex e definir `fadeInFrames`/`fadeOutFrames` até 1800 quadros cada, limitados ao intervalo da pista. Projetos com fades usam schema 6; os fades também são aplicados no render por FFmpeg.
@@ -86,13 +89,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global, pistas com ducking/fades e automação por pontos/easing estão implementadas. Faltam estilos por cena/shot, fontes externas, presets visuais, tipografia animada e efeitos acionados por beat. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam estilos por cena/shot, fontes externas, presets visuais e tipografia animada. |
 | 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
 - `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. O inspetor permite ajustar tipo, duração e direção no shot atual. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
-- Beats aceitam `show`, `hide`, `transform` e `camera`. Ainda não disparam efeitos de áudio.
+- Beats aceitam `show`, `hide`, `transform`, `camera` e `sound`. Um beat `sound` cria uma pista local de uma execução, vinculada ao quadro sincronizado; a fonte não é copiada para o JSON e precisa continuar acessível no computador.
 - Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Ainda não há editor manual de alinhamento fonético reutilizável após a importação.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte global e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
@@ -855,7 +858,7 @@ Implementar:
 
 1. [ ] Tipografia animada com presets de movimento/escala e controle por palavra.
 2. [x] Destaque de palavra sincronizado quando existe alinhamento real de voz.
-3. [ ] Efeitos sonoros disparados por Visual Beat.
+3. [x] Efeitos sonoros disparados por Visual Beat.
 4. [x] Trilhas importadas em múltiplas pistas, com fades e ducking.
 5. [x] Direção de arte global com paleta, fonte instalada e parâmetros de legenda.
 6. [ ] Estilos/presets por cena e shot, carregamento de fontes externas e presets visuais avançados.
@@ -918,7 +921,7 @@ Use um roteiro que tenha mudanças de composição suficientes para demonstrar o
 - As legendas acompanham o áudio.
 - A timeline continua editável.
 - O resultado exportado corresponde à prévia.
-- A receita `examples/carros-caros-directors-cut-90s.production.json` gerou uma montagem de 90 segundos com narração pt-BR, seis cenas, 18 shots, 19 Visual Beats, câmera, transições e legendas. A exportação contém 2700 quadros; 36 quadros de cortes/beats foram comparados à prévia (PSNR médio 42,61 dB), e o projeto abriu na interface. O smoke demonstra os recursos existentes; efeitos sonoros disparados especificamente por Visual Beat seguem pendentes.
+- A receita `examples/carros-caros-directors-cut-90s.production.json` gera uma montagem de 90 segundos com narração pt-BR, seis cenas, 18 shots, 20 Visual Beats, um efeito sonoro, câmera, transições e legendas. A exportação contém 2700 quadros; os cortes/beats são comparados à prévia e o projeto abre na interface.
 
 Adicione testes automatizados sempre que possível, além da validação visual.
 

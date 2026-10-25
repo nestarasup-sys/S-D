@@ -24,8 +24,11 @@ def main() -> None:
 
     shots = [shot for scene in recipe["scenes"] for shot in scene.get("shots", [])]
     beats = [beat for shot in shots for beat in shot.get("beats", [])]
-    if len(shots) != 18 or len(beats) != 19:
-        raise SystemExit("O exemplo profissional deve conter 18 shots e 19 Visual Beats.")
+    if len(shots) != 18 or len(beats) != 20:
+        raise SystemExit("O exemplo profissional deve conter 18 shots e 20 Visual Beats.")
+    sound_beats = [beat for beat in beats if beat.get("action") == "sound"]
+    if len(sound_beats) != 1 or not (args.example.parent / sound_beats[0].get("source", "")).is_file():
+        raise SystemExit("O exemplo profissional deve apontar para o efeito sonoro local existente.")
 
     block = f"{start}\n```json\n{json.dumps(recipe, ensure_ascii=False, indent=2)}\n```\n{end}"
     before, remainder = guide.split(start, 1)

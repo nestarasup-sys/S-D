@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 8)
+    if (p.schemaVersion < 2 || p.schemaVersion > 9)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -192,15 +192,29 @@ std::string validate(const Project &p) {
                 node.start + node.duration > shot->second->start + shot->second->duration)
                 return "Elemento aponta para um shot inexistente ou excede seu intervalo.";
         }
+    std::unordered_set<std::string> soundTracksByBeat;
     for (const auto &beat : p.visualBeats) {
         const auto shot = shotsById.find(beat.shotId);
         if (beat.id.empty() || !beatIds.insert(beat.id).second || shot == shotsById.end() || beat.frame < 0 ||
             beat.frame >= p.duration || beat.durationFrames < 0 || beat.frame < shot->second->start ||
             beat.durationFrames > shot->second->start + shot->second->duration - beat.frame - 1 ||
             (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
-             beat.action != "camera"))
+             beat.action != "camera" && beat.action != "sound"))
             return "Visual Beat inválido ou fora do shot.";
         const bool cameraBeat = beat.action == "camera";
+        const bool soundBeat = beat.action == "sound";
+        if (soundBeat) {
+            if (p.schemaVersion < 9 || beat.targetId.empty() || beat.durationFrames != 0 || beat.x || beat.y ||
+                beat.rotation || beat.scale || beat.opacity || beat.zoom ||
+                !soundTracksByBeat.insert(beat.targetId).second)
+                return "Visual Beat sonoro inválido ou exige projeto schema 9.";
+            const auto track = std::find_if(p.audioTracks.begin(), p.audioTracks.end(), [&](const auto &candidate) {
+                return candidate.id == beat.targetId;
+            });
+            if (track == p.audioTracks.end() || track->start != beat.frame)
+                return "Visual Beat sonoro precisa de uma pista no mesmo quadro.";
+            continue;
+        }
         if (cameraBeat != beat.targetId.empty())
             return "Visual Beat precisa de alvo visual, exceto quando controla a câmera.";
         if (!cameraBeat) {

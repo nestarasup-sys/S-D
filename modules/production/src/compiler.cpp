@@ -479,7 +479,6 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     VisualBeat stored;
                     stored.id = beat.id.toStdString();
                     stored.shotId = directedShot.id.toStdString();
-                    stored.targetId = beat.targetId.toStdString();
                     stored.action = beat.action.toStdString();
                     stored.frame = beatFrame;
                     stored.durationFrames = beat.durationFrames;
@@ -489,8 +488,19 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     stored.scale = beat.scale;
                     stored.opacity = beat.opacity;
                     stored.zoom = beat.zoom;
+                    if (beat.action == "sound") {
+                        stored.targetId = ("sfx-" + beat.id).toStdString();
+                        const auto sceneEnd = sceneStart + sceneDuration;
+                        p.audioTracks.push_back({stored.targetId, "Efeito: " + beat.id.toStdString(),
+                                                 beat.soundSource.toStdString(), beatFrame,
+                                                 sceneEnd - beatFrame, beat.soundGain, false, false, .65});
+                        p.schemaVersion = std::max(p.schemaVersion, 9);
+                    } else
+                        stored.targetId = beat.targetId.toStdString();
                     p.visualBeats.push_back(std::move(stored));
-                    if (beat.action == "camera") {
+                    if (beat.action == "sound") {
+                        continue;
+                    } else if (beat.action == "camera") {
                         CameraState target = shotCamera;
                         target.x = beat.x.value_or(target.x);
                         target.y = beat.y.value_or(target.y);

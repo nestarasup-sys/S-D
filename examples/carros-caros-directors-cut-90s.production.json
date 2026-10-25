@@ -59,7 +59,8 @@
             { "id": "parcela-baixa", "kind": "text", "text": "PARCELA QUE CABE?", "x": 250, "y": 475, "width": 780, "height": 80, "fontSize": 40, "color": "#55E2C4" }
           ],
           "beats": [
-            { "id": "preco-escala", "at": { "cue": 0, "wordIndex": 10 }, "action": "transform", "target": "preco-anuncio", "durationFrames": 10, "scale": 1.14, "rotation": 3 }
+            { "id": "preco-escala", "at": { "cue": 0, "wordIndex": 10 }, "action": "transform", "target": "preco-anuncio", "durationFrames": 10, "scale": 1.14, "rotation": 3 },
+            { "id": "som-da-etiqueta", "at": { "cue": 0, "wordIndex": 10 }, "action": "sound", "source": "media/soft-chime.wav", "gain": 0.65 }
           ]
         },
         {

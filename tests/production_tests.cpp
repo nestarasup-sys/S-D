@@ -173,6 +173,58 @@ int main(int argc, char **argv) {
                   parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
                   parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
               "v3 parses independent shots, Visual Beats, and transition timing");
+        QFile soundFixture(directory.filePath("beat-chime.wav"));
+        check(soundFixture.open(QIODevice::WriteOnly) && soundFixture.write("fixture") == 7,
+              "Visual Beat sound fixture exists");
+        soundFixture.close();
+        auto soundRecipeJson = shotRecipeJson;
+        auto soundScene = soundRecipeJson["scenes"].toArray().at(0).toObject();
+        auto soundShots = soundScene["shots"].toArray();
+        auto soundShot = soundShots.at(1).toObject();
+        auto soundBeats = soundShot["beats"].toArray();
+        soundBeats.append(QJsonObject{{"id", "price-chime"},
+                                      {"at", QJsonObject{{"cue", 0}, {"progress", 0.75}}},
+                                      {"action", "sound"},
+                                      {"source", "beat-chime.wav"},
+                                      {"gain", 0.65}});
+        soundShot["beats"] = soundBeats;
+        soundShots[1] = soundShot;
+        soundScene["shots"] = soundShots;
+        soundRecipeJson["scenes"] = QJsonArray{soundScene};
+        const auto parsedSoundRecipe =
+            studio::parseRecipe(QJsonDocument(soundRecipeJson).toJson(), directory.path());
+        auto invalidSoundRecipe = soundRecipeJson;
+        auto invalidSoundScene = invalidSoundRecipe["scenes"].toArray().at(0).toObject();
+        auto invalidSoundShots = invalidSoundScene["shots"].toArray();
+        auto invalidSoundShot = invalidSoundShots.at(1).toObject();
+        auto invalidSoundBeats = invalidSoundShot["beats"].toArray();
+        auto invalidSoundBeat = invalidSoundBeats.at(invalidSoundBeats.size() - 1).toObject();
+        invalidSoundBeat["gain"] = 4.1;
+        invalidSoundBeats[invalidSoundBeats.size() - 1] = invalidSoundBeat;
+        invalidSoundShot["beats"] = invalidSoundBeats;
+        invalidSoundShots[1] = invalidSoundShot;
+        invalidSoundScene["shots"] = invalidSoundShots;
+        invalidSoundRecipe["scenes"] = QJsonArray{invalidSoundScene};
+        check(parsedSoundRecipe.error.isEmpty() &&
+                  parsedSoundRecipe.recipe.scenes.front().shots.back().beats.back().soundSource ==
+                      directory.filePath("beat-chime.wav") &&
+                  !studio::parseRecipe(QJsonDocument(invalidSoundRecipe).toJson(), directory.path()).error.isEmpty(),
+              "sound Visual Beat accepts a local file and rejects out-of-range gain");
+        QMap<QString, studio::PcmAudio> soundAudio;
+        soundAudio[parsedSoundRecipe.recipe.scenes.front().narration.front().id].samples.resize(48000, .1f);
+        const auto compiledSound = studio::compileProduction(parsedSoundRecipe.recipe, soundAudio, "sound.wav");
+        const auto compiledSoundBeat =
+            std::find_if(compiledSound.project.visualBeats.begin(), compiledSound.project.visualBeats.end(),
+                         [](const auto &beat) { return beat.action == "sound"; });
+        check(compiledSound.error.isEmpty() && compiledSound.project.schemaVersion == 9 &&
+                  compiledSound.project.visualBeats.size() == 4 &&
+                  compiledSoundBeat != compiledSound.project.visualBeats.end() &&
+                  compiledSoundBeat->targetId == "sfx-price-chime" &&
+                  compiledSound.project.audioTracks.size() == 1 &&
+                  compiledSound.project.audioTracks.front().start == compiledSoundBeat->frame &&
+                  compiledSound.project.audioTracks.front().source == directory.filePath("beat-chime.wav") &&
+                  studio::validate(compiledSound.project).empty(),
+              "sound Visual Beat compiles into a linked, timed, editable schema 9 audio track");
         auto objectCutJson = shotRecipeJson;
         auto objectCutScenes = objectCutJson["scenes"].toArray();
         auto objectCutScene = objectCutScenes[0].toObject();

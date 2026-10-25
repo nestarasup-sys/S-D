@@ -851,7 +851,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                             return fail("Visual Beat inválido.");
                         const auto beatObject = beatValue.toObject();
                         if (!allowed(beatObject, {"id", "at", "action", "target", "durationFrames", "x", "y",
-                                                  "rotation", "scale", "opacity", "zoom"}))
+                                                  "rotation", "scale", "opacity", "zoom", "source", "gain"}))
                             return fail("Visual Beat contém campo desconhecido.");
                         DirectedBeat beat;
                         beat.id = beatObject["id"].toString();
@@ -864,11 +864,45 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                             return fail(timeError.isEmpty() ? "Visual Beat sem id único ou referência at."
                                                             : timeError);
                         ids.insert(beat.id);
+                        const bool soundBeat = beat.action == "sound";
                         if (beat.action != "show" && beat.action != "hide" && beat.action != "transform" &&
-                            beat.action != "camera")
-                            return fail("Visual Beat aceita action show, hide, transform ou camera.");
-                        if ((beat.action == "camera") != beat.targetId.isEmpty())
-                            return fail("Visual Beat precisa de target, exceto quando action é camera.");
+                            beat.action != "camera" && !soundBeat)
+                            return fail("Visual Beat aceita action show, hide, transform, camera ou sound.");
+                        if (soundBeat ? !beat.targetId.isEmpty()
+                                      : (beat.action == "camera") != beat.targetId.isEmpty())
+                            return fail("Visual Beat exige target visual, salvo camera e sound.");
+                        if (soundBeat) {
+                            if (!beatObject["source"].isString() || beatObject["source"].toString().isEmpty() ||
+                                (beatObject.contains("gain") && !beatObject["gain"].isDouble()))
+                                return fail("Visual Beat sound exige source de áudio local e gain numérico.");
+                            const auto relativeSource = beatObject["source"].toString();
+                            if (relativeSource.contains("://") || relativeSource.startsWith("//") ||
+                                relativeSource.startsWith("\\\\"))
+                                return fail("Efeito de Visual Beat deve usar um arquivo local.");
+                            beat.soundSource = QDir(baseDirectory).absoluteFilePath(relativeSource);
+                            const QFileInfo soundInfo(beat.soundSource);
+                            const auto extension = soundInfo.suffix().toLower();
+                            if (!soundInfo.isFile() || !QStringList{"wav", "mp3", "m4a", "aac", "ogg", "flac", "wma"}
+                                                            .contains(extension))
+                                return fail("Efeito de Visual Beat ausente ou com formato de áudio não suportado: " +
+                                            relativeSource);
+                            beat.soundGain = beatObject["gain"].toDouble(1);
+                            const auto soundTrackId = "sfx-" + beat.id;
+                            if (soundTrackId.size() > 80 || ids.contains(soundTrackId) || beat.soundGain < 0 ||
+                                beat.soundGain > 4 || !std::isfinite(beat.soundGain))
+                                return fail("ID ou ganho do efeito sonoro inválido (gain aceita 0–4).");
+                            if (beatObject.contains("durationFrames") &&
+                                beatObject["durationFrames"].toInt() != 0)
+                                return fail("Visual Beat sound não aceita durationFrames.");
+                            if (beatObject.contains("x") || beatObject.contains("y") ||
+                                beatObject.contains("rotation") || beatObject.contains("scale") ||
+                                beatObject.contains("opacity") || beatObject.contains("zoom"))
+                                return fail("Visual Beat sound não aceita propriedades visuais.");
+                            ids.insert(soundTrackId);
+                            if (++totalAudioTracks > 32)
+                                return fail("A produção aceita até 32 pistas, incluindo efeitos de Visual Beat.");
+                        } else if (beatObject.contains("source") || beatObject.contains("gain"))
+                            return fail("source e gain só podem ser usados por Visual Beat sound.");
                         if (beatObject.contains("durationFrames") &&
                             (!beatObject["durationFrames"].isDouble() ||
                              std::floor(beatObject["durationFrames"].toDouble()) !=

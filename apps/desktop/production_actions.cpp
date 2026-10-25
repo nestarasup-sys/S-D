@@ -178,6 +178,9 @@ void EditorController::removeAudioTrack(QString id) {
     stop();
     const auto error = editor_.execute([&](studio::Project &p) {
         std::erase_if(p.audioTracks, [&](const auto &track) { return track.id == id.toStdString(); });
+        std::erase_if(p.visualBeats, [&](const auto &beat) {
+            return beat.action == "sound" && beat.targetId == id.toStdString();
+        });
     });
     if (!error.empty()) {
         notify(QString::fromStdString(error));
@@ -259,6 +262,9 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
                     track.fadeOutFrames = 0;
                 }
             }
+        for (auto &beat : p.visualBeats)
+            if (beat.action == "sound" && beat.targetId == id.toStdString())
+                beat.frame = start;
     });
     if (!error.empty()) {
         notify(QString::fromStdString(error));

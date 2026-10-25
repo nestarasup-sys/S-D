@@ -450,8 +450,16 @@ void EditorController::moveShotBoundary(QString rightShotId, int requestedFrame)
             }
         }
         for (auto &beat : p.visualBeats)
-            if (beat.shotId == rightId)
+            if (beat.shotId == rightId) {
                 beat.frame += delta;
+                if (beat.action == "sound")
+                    for (auto &track : p.audioTracks)
+                        if (track.id == beat.targetId) {
+                            const auto trackEnd = track.start + track.duration;
+                            track.start = beat.frame;
+                            track.duration = trackEnd - track.start;
+                        }
+            }
         for (auto &key : p.camera)
             if (key.shotId == rightId)
                 key.frame += delta;

@@ -207,7 +207,8 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
                                          o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
-                                         o["schemaVersion"] != 7 && o["schemaVersion"] != 8))
+                                         o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
+                                         o["schemaVersion"] != 9))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))

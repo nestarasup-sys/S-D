@@ -23,23 +23,24 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 8},
+            {"projectVersion", 9},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
                         "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
                         "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
-                        "visual-beats-show-hide-transform-camera", "shot-cut-camera",
+                        "visual-beats-show-hide-transform-camera-sound", "shot-cut-camera",
                         "shot-transitions-fade-dissolve-slide-zoom", "auto-reframe-by-shot-target",
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
                         "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
-                        "multi-track-audio",
+                        "multi-track-audio", "visual-beat-sound-effects",
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
                         "video-layer-broll",
                         "word-timed-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
+                        "visual-beat-linked-audio-tracks",
                         "video-layers", "audio-track-fades", "audio-gain-automation",
                         "word-timed-caption-highlights"}},
             {"width", 1280},
@@ -194,6 +195,8 @@ Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores 
 
 Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
 
+`sound` dispara um efeito de uma vez no quadro do beat. Informe `source` com caminho para arquivo local de áudio (relativo ao `.production.json` ou absoluto) e `gain` opcional de 0 a 4 (padrão 1); não use `target`, `durationFrames` nem propriedades visuais. Extensões aceitas: WAV, MP3, M4A, AAC, OGG, FLAC e WMA. O arquivo precisa existir na máquina. O efeito vira uma pista de áudio editável ligada ao marcador; mover ou excluir a pista mantém o marcador sincronizado. O limite compartilhado é de 32 pistas por produção, incluindo estes efeitos. Projetos com efeitos de Visual Beat usam schema 9; preview e exportação reutilizam o sistema normal de áudio.
+
 Exemplo de sincronização por palavra: `{"cue":0,"wordIndex":7}`. A posição é medida pelo evento de progresso do sintetizador Windows depois da geração da voz (e ajustada junto com a fala quando há aceleração de duração fixa). Em shots v3, `wordIndex` também pode iniciar um elemento ou marcar um keyframe; beats seguem usando `at`. O índice é zero-based dentro do trecho `cue` e não pode ser combinado com `progress`, `cueProgress` ou `offsetSeconds`. Se o sintetizador não emitir timestamps ou o índice não existir, a produção é interrompida com erro; não há estimativa por duração média da palavra. Projetos já compilados guardam os eventos como quadros, sem exigir timestamps depois da importação.
 
 Exemplo curto, válido e coberto por teste automatizado:
@@ -244,7 +247,7 @@ Uma demonstração com dois trechos de fala, três planos e beats de transforma�
 
 ## Exemplo profissional completo validado no aplicativo
 
-A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots, dezenove Visual Beats e timestamps resolvidos pela voz pt-BR. O smoke de produção sintetiza a narração, renderiza 2700 quadros e compara os quadros de shots/beats da exportação com a prévia. O atualizador do guia insere aqui o arquivo de exemplo real, sem reconstruir ou inventar seus campos.
+A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots, vinte Visual Beats, um efeito sonoro local e timestamps resolvidos pela voz pt-BR. O smoke de produção sintetiza a narração, renderiza 2700 quadros e compara os quadros de shots/beats da exportação com a prévia. Copie também `examples/media/soft-chime.wav` para uma pasta `media` ao lado do JSON para manter o caminho relativo do efeito. O atualizador do guia insere aqui o arquivo de exemplo real, sem reconstruir ou inventar seus campos.
 
 <!-- STUDIO-DARK-VALIDATED-EXAMPLE-BEGIN -->
 <!-- STUDIO-DARK-VALIDATED-EXAMPLE-END -->
@@ -359,13 +362,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v8 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7 e automação de ganho usa schema 8.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v9 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8 e efeitos de Visual Beat usam schema 9.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas e automação de ganho por pontos estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes, efeitos sonoros disparados por beat e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação por pontos e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 

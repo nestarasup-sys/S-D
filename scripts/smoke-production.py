@@ -177,9 +177,12 @@ director_run = run([bin_dir / "studio_produce.exe", "--recipe", director_recipe,
 director_project_path = director_output / "project.studio.json"
 director_project = json.loads(director_project_path.read_text(encoding="utf-8"))
 director_report = json.loads((director_output / "production-report.json").read_text(encoding="utf-8"))
-assert director_project["schemaVersion"] == 7 and director_project["duration"] == 2700
+assert director_project["schemaVersion"] == 9 and director_project["duration"] == 2700
 assert len(director_project["scenes"]) == 6 and len(director_project["shots"]) == 18
-assert len(director_project["visualBeats"]) == 19
+assert len(director_project["visualBeats"]) == 20
+sound_beat = next(beat for beat in director_project["visualBeats"] if beat["action"] == "sound")
+sound_track = next(track for track in director_project["audioTracks"] if track["id"] == sound_beat["targetId"])
+assert sound_track["start"] == sound_beat["frame"] and sound_track["source"].endswith("soft-chime.wav")
 assert director_report["timingMode"] == "fit-to-duration" and director_report["frameCount"] == 2700
 with wave.open(str(director_output / "media/master.wav"), "rb") as director_audio:
     assert director_audio.getnframes() == 2700 * 800 and director_audio.getframerate() == 24000
@@ -221,7 +224,8 @@ summary.update({"director90Frames": director_project["duration"], "director90Sho
                 "director90Beats": len(director_project["visualBeats"]),
                 "director90PreviewExportPsnrDb": float(director_psnr.group(1)),
                 "director90Video": str(director_video)})
-summary["checks"].extend(["90-second 2700-frame director cut", "18 independent shots and 19 Visual Beats",
+summary["checks"].extend(["90-second 2700-frame director cut", "18 independent shots and 20 Visual Beats",
+                          "word-synchronized one-shot audio effect through editable track",
                           "word-aligned scene timing", "director preview/export comparison",
                           "90-second project opens in editor"])
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

@@ -169,11 +169,12 @@ Rectangle {
                             x: modelData.frame / editor.duration * parent.width - 3
                             y: 20
                             width: 7; height: 7; radius: 2
-                            color: modelData.action === "camera" ? "#e9bd69" : "#b4f078"
+                            color: modelData.action === "sound" ? "#e97868"
+                                 : modelData.action === "camera" ? "#e9bd69" : "#b4f078"
                             border.width: 1; border.color: "#101820"
                             z: 3
                             ToolTip.visible: beatArea.containsMouse
-                            ToolTip.text: modelData.action + " · " + modelData.targetId
+                            ToolTip.text: (modelData.action === "sound" ? "efeito sonoro" : modelData.action) + " · " + modelData.targetId
                             MouseArea { id: beatArea; anchors.fill: parent; hoverEnabled: true; onClicked: editor.frame = modelData.frame }
                         }
                     }

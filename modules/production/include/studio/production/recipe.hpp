@@ -48,8 +48,10 @@ struct DirectedElement {
 };
 struct DirectedBeat {
     QString id, action, targetId;
+    QString soundSource;
     DirectedTime at;
     int durationFrames{0};
+    double soundGain{1};
     std::optional<double> x, y, rotation, scale, opacity, zoom;
 };
 struct DirectedAudioTrack {
