@@ -151,6 +151,10 @@ class EditorController : public QObject {
     Q_INVOKABLE void moveSelectedClips(QString anchorId, int originStart, int requestedStart);
     Q_INVOKABLE QVariantMap snapClipMove(QString anchorId, int originStart, int requestedStart,
                                          int toleranceFrames) const;
+    Q_INVOKABLE QVariantMap snapAudioTrackMove(QString trackId, int originStart, int requestedStart,
+                                               int trackDuration, int toleranceFrames) const;
+    Q_INVOKABLE QVariantMap snapAudioTrackTrim(QString trackId, int originStart, int originDuration,
+                                               int requestedDuration, int toleranceFrames) const;
     Q_INVOKABLE void moveShotBoundary(QString rightShotId, int frame);
     Q_INVOKABLE void addNode(QString kind, QUrl source = {});
     Q_INVOKABLE void removeSelected();

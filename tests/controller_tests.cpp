@@ -213,7 +213,36 @@ int main(int argc, char **argv) {
               "timeline snap aligns a clip edge to a shot boundary within frame tolerance");
         check(unsnappedClip["start"].toInt() == 20 && unsnappedClip["guideFrame"].toInt() == -1,
               "timeline snap leaves distant clip moves untouched");
+        const auto snappedAudio = c.snapAudioTrackMove("sfx-detail-chime", 75, 59, 45, 2);
+        const auto unsnappedAudio = c.snapAudioTrackMove("sfx-detail-chime", 75, 20, 45, 2);
+        check(snappedAudio["start"].toInt() == 60 && snappedAudio["guideFrame"].toInt() == 60,
+              "audio clip snapping aligns to a shot edge and skips its own linked sound beat");
+        check(unsnappedAudio["start"].toInt() == 20 && unsnappedAudio["guideFrame"].toInt() == -1,
+              "audio clip snapping leaves distant moves untouched");
+        const auto snappedAudioTrim = c.snapAudioTrackTrim("sfx-detail-chime", 75, 45, 43, 2);
+        const auto unsnappedAudioTrim = c.snapAudioTrackTrim("sfx-detail-chime", 75, 45, 20, 2);
+        check(snappedAudioTrim["length"].toInt() == 45 && snappedAudioTrim["guideFrame"].toInt() == 120,
+              "audio trim snapping aligns its end to a shot boundary within tolerance");
+        check(unsnappedAudioTrim["length"].toInt() == 20 && unsnappedAudioTrim["guideFrame"].toInt() == -1,
+              "audio trim snapping leaves a distant end untouched");
         c.endGesture();
+        c.beginGesture();
+        c.setAudioTrackTiming("sfx-detail-chime", 60, 45);
+        c.endGesture();
+        check(c.project().audioTracks.front().start == 60 && c.project().visualBeats.back().frame == 60,
+              "moving an audio clip keeps its linked sound beat at the same frame");
+        c.undo();
+        check(c.project().audioTracks.front().start == 75 && c.project().visualBeats.back().frame == 75,
+              "audio clip movement and linked beat undo together");
+        c.beginGesture();
+        c.setAudioTrackTiming("sfx-detail-chime", 75, 43);
+        c.endGesture();
+        check(c.project().audioTracks.front().start == 75 && c.project().audioTracks.front().duration == 43 &&
+                  c.project().visualBeats.back().frame == 75,
+              "audio edge trim preserves its start and keeps its sound marker linked");
+        c.undo();
+        check(c.project().audioTracks.front().duration == 45,
+              "audio edge trim is one undoable gesture");
         check(c.audioTracks().front().toMap()["gainEnvelope"].toList().size() == 97,
               "audio track model exposes a sampled envelope for the timeline");
         int audioTrackResets = 0;

@@ -546,6 +546,100 @@ Rectangle {
                             ToolTip.visible: containsMouse
                             ToolTip.text: "Clique para criar um ponto ou arraste um ponto para ajustar tempo e ganho · escala ×0–×4"
                         }
+                        Rectangle {
+                            anchors.left: parent.left; width: 15; height: parent.height
+                            color: audioMoveArea.pressed ? "#c7ee8b" : "#334b46"
+                            border.width: 1; border.color: "#789b71"
+                            z: 4
+                            Label { anchors.centerIn: parent; text: "↔"; color: "#e5f2dd"; font.pixelSize: 10 }
+                            MouseArea {
+                                id: audioMoveArea
+                                anchors.fill: parent
+                                cursorShape: Qt.SizeHorCursor
+                                property real originX: 0
+                                property int originStart: 0
+                                property int trackLength: 1
+                                onPressed: function(mouse) {
+                                    if (editor.playing) editor.togglePlayback()
+                                    root.snapGuideFrame = -1
+                                    originX = mapToItem(audioTrackRow, mouse.x, mouse.y).x
+                                    originStart = audioTrackRow.modelData.start
+                                    trackLength = audioTrackRow.modelData.duration
+                                    editor.beginGesture()
+                                }
+                                onPositionChanged: function(mouse) {
+                                    if (!pressed) return
+                                    const currentX = mapToItem(audioTrackRow, mouse.x, mouse.y).x
+                                    const requestedStart = originStart + Math.round(
+                                        (currentX - originX) / Math.max(1, audioTrackRow.width) * root.visibleFrames())
+                                    let nextStart = requestedStart
+                                    root.snapGuideFrame = -1
+                                    if (root.snapEnabled) {
+                                        const tolerance = Math.max(1, Math.ceil(
+                                            8 / Math.max(1, audioTrackRow.width) * root.visibleFrames()))
+                                        const snap = editor.snapAudioTrackMove(audioTrackRow.modelData.id,
+                                            originStart, requestedStart, trackLength, tolerance)
+                                        nextStart = snap.start
+                                        root.snapGuideFrame = snap.guideFrame
+                                    }
+                                    editor.setAudioTrackTiming(audioTrackRow.modelData.id, nextStart, trackLength)
+                                }
+                                onReleased: { editor.endGesture(); root.snapGuideFrame = -1 }
+                                onCanceled: { editor.endGesture(); root.snapGuideFrame = -1 }
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: "Arraste para mover a pista de áudio; Snap alinha a shots, camadas, beats e outras pistas"
+                            }
+                        }
+                        Rectangle {
+                            anchors.right: parent.right; width: 11; height: parent.height
+                            color: audioTrimArea.pressed ? "#c7ee8b" : "#334b46"
+                            border.width: 1; border.color: "#789b71"
+                            z: 4
+                            MouseArea {
+                                id: audioTrimArea
+                                anchors.fill: parent
+                                cursorShape: Qt.SizeHorCursor
+                                property real originX: 0
+                                property int originStart: 0
+                                property int originLength: 1
+                                onPressed: function(mouse) {
+                                    if (editor.playing) editor.togglePlayback()
+                                    root.snapGuideFrame = -1
+                                    originX = mapToItem(audioTrackRow, mouse.x, mouse.y).x
+                                    originStart = audioTrackRow.modelData.start
+                                    originLength = audioTrackRow.modelData.duration
+                                    editor.beginGesture()
+                                }
+                                onPositionChanged: function(mouse) {
+                                    if (!pressed) return
+                                    const currentX = mapToItem(audioTrackRow, mouse.x, mouse.y).x
+                                    const delta = Math.round(
+                                        (currentX - originX) / Math.max(1, audioTrackRow.width) * root.visibleFrames())
+                                    const requestedLength = Math.max(1, Math.min(editor.duration - originStart,
+                                        originLength + delta))
+                                    let nextLength = requestedLength
+                                    root.snapGuideFrame = -1
+                                    if (root.snapEnabled) {
+                                        const tolerance = Math.max(1, Math.ceil(
+                                            8 / Math.max(1, audioTrackRow.width) * root.visibleFrames()))
+                                        const snap = editor.snapAudioTrackTrim(audioTrackRow.modelData.id,
+                                            originStart, originLength, requestedLength, tolerance)
+                                        nextLength = snap.length
+                                        root.snapGuideFrame = snap.guideFrame
+                                    }
+                                    editor.setAudioTrackTiming(audioTrackRow.modelData.id, originStart, nextLength)
+                                }
+                                onReleased: { editor.endGesture(); root.snapGuideFrame = -1 }
+                                onCanceled: { editor.endGesture(); root.snapGuideFrame = -1 }
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: "Arraste para ajustar o fim da pista ao frame; Snap alinha a cenas, shots, camadas e áudio"
+                            }
+                        }
+                    }
+                    Rectangle {
+                        visible: root.snapGuideFrame >= 0
+                        x: root.frameToX(root.snapGuideFrame, parent.width) - 1
+                        y: 0; width: 2; height: parent.height; color: "#f0bd63"; z: 6
                     }
                     Label {
                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter

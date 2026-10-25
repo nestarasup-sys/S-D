@@ -665,6 +665,124 @@ QVariantMap EditorController::snapClipMove(QString anchorId, int originStart, in
     }
     return result;
 }
+QVariantMap EditorController::snapAudioTrackMove(QString trackId, int originStart, int requestedStart,
+                                                 int trackDuration, int toleranceFrames) const {
+    QVariantMap result{{"start", requestedStart}, {"guideFrame", -1}};
+    const auto track = std::find_if(project().audioTracks.begin(), project().audioTracks.end(),
+                                    [&](const auto &candidate) {
+                                        return QString::fromStdString(candidate.id) == trackId;
+                                    });
+    if (track == project().audioTracks.end() || trackDuration < 1 || toleranceFrames < 0)
+        return result;
+    const int lowerDelta = -originStart;
+    const int upperDelta = duration() - originStart - trackDuration;
+    if (lowerDelta > upperDelta)
+        return result;
+
+    std::vector<int> references{frame_};
+    auto appendFrame = [&](std::int64_t frame) {
+        if (frame >= 0 && frame < duration())
+            references.push_back(int(frame));
+    };
+    for (const auto &scene : project().scenes) {
+        appendFrame(scene.start);
+        appendFrame(scene.start + scene.duration);
+    }
+    for (const auto &shot : project().shots) {
+        appendFrame(shot.start);
+        appendFrame(shot.start + shot.duration);
+    }
+    for (const auto &beat : project().visualBeats)
+        if (beat.action != "sound" || beat.targetId != track->id)
+            appendFrame(beat.frame);
+    for (const auto &node : project().nodes) {
+        appendFrame(node.start);
+        appendFrame(node.start + node.duration);
+    }
+    for (const auto &other : project().audioTracks)
+        if (other.id != track->id) {
+            appendFrame(other.start);
+            appendFrame(other.start + other.duration);
+        }
+
+    const int desiredDelta = requestedStart - originStart;
+    int bestDelta = desiredDelta;
+    int bestGuide = -1;
+    int bestDistance = toleranceFrames + 1;
+    for (const int target : references)
+        for (const int movingEdge : {originStart, originStart + trackDuration}) {
+            const int candidateDelta = target - movingEdge;
+            if (candidateDelta < lowerDelta || candidateDelta > upperDelta)
+                continue;
+            const int distance = std::abs(candidateDelta - desiredDelta);
+            if (distance <= toleranceFrames && distance < bestDistance) {
+                bestDistance = distance;
+                bestDelta = candidateDelta;
+                bestGuide = target;
+            }
+        }
+    if (bestGuide >= 0) {
+        result["start"] = originStart + bestDelta;
+        result["guideFrame"] = bestGuide;
+    }
+    return result;
+}
+QVariantMap EditorController::snapAudioTrackTrim(QString trackId, int originStart, int originDuration,
+                                                 int requestedDuration, int toleranceFrames) const {
+    QVariantMap result{{"length", requestedDuration}, {"guideFrame", -1}};
+    const auto track = std::find_if(project().audioTracks.begin(), project().audioTracks.end(),
+                                    [&](const auto &candidate) {
+                                        return QString::fromStdString(candidate.id) == trackId;
+                                    });
+    if (track == project().audioTracks.end() || originDuration < 1 || toleranceFrames < 0)
+        return result;
+    const int earliestEnd = originStart + 1;
+    const int latestEnd = duration();
+    const int requestedEnd = originStart + requestedDuration;
+    if (earliestEnd > latestEnd)
+        return result;
+
+    std::vector<int> references{frame_};
+    auto appendFrame = [&](std::int64_t frame) {
+        if (frame >= earliestEnd && frame <= latestEnd)
+            references.push_back(int(frame));
+    };
+    for (const auto &scene : project().scenes) {
+        appendFrame(scene.start);
+        appendFrame(scene.start + scene.duration);
+    }
+    for (const auto &shot : project().shots) {
+        appendFrame(shot.start);
+        appendFrame(shot.start + shot.duration);
+    }
+    for (const auto &beat : project().visualBeats)
+        if (beat.action != "sound" || beat.targetId != track->id)
+            appendFrame(beat.frame);
+    for (const auto &node : project().nodes) {
+        appendFrame(node.start);
+        appendFrame(node.start + node.duration);
+    }
+    for (const auto &other : project().audioTracks)
+        if (other.id != track->id) {
+            appendFrame(other.start);
+            appendFrame(other.start + other.duration);
+        }
+
+    int bestGuide = -1;
+    int bestDistance = toleranceFrames + 1;
+    for (const int target : references) {
+        const int distance = std::abs(target - requestedEnd);
+        if (distance <= toleranceFrames && distance < bestDistance) {
+            bestDistance = distance;
+            bestGuide = target;
+        }
+    }
+    if (bestGuide >= 0) {
+        result["length"] = bestGuide - originStart;
+        result["guideFrame"] = bestGuide;
+    }
+    return result;
+}
 void EditorController::moveShotBoundary(QString rightShotId, int requestedFrame) {
     const auto rightId = rightShotId.toStdString();
     const auto right = std::find_if(project().shots.begin(), project().shots.end(),

@@ -251,9 +251,10 @@ void EditorController::setAudioTrackMuted(QString id, bool muted) {
     changed();
 }
 void EditorController::setAudioTrackTiming(QString id, int start, int length) {
-    if (duration() < 1) return;
-    start = std::clamp(start, 0, duration() - 1);
-    length = std::clamp(length, 1, duration() - start);
+    if (duration() < 1)
+        return;
+    length = std::clamp(length, 1, duration());
+    start = std::clamp(start, 0, duration() - length);
     stop();
     const auto error = editor_.execute([&](studio::Project &p) {
         for (auto &track : p.audioTracks)
@@ -277,7 +278,6 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
         notify(QString::fromStdString(error));
         return;
     }
-    refreshAudioTracks();
     changed();
 }
 void EditorController::setAudioTrackFades(QString id, int fadeInFrames, int fadeOutFrames) {
