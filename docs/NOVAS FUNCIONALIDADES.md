@@ -2,9 +2,15 @@
 
 ## ANDAMENTO DA IMPLEMENTAÇÃO — 25/10/2026
 
-**Estado do checklist principal: completo.** Fases 1–4 concluídas; a entrega de fontes externas e presets visuais fecha o último item pendente da Fase 3. Os aprimoramentos futuros abaixo permanecem explicitamente separados das capacidades atuais.
+**Fases 1–4 do checklist original: concluídas. Plano global: em andamento.** A cor de destaque independente foi implementada nesta continuação; as demais evoluções ainda listadas no documento continuam pendentes.
 
 Este quadro separa as funcionalidades implementadas, as limitações atuais e as próximas evoluções sugeridas. O checklist principal das quatro fases está concluído.
+
+### Entrega implementada: cor de destaque independente da direção de arte
+
+- `captionHighlightColor` configura separadamente a palavra falada na direção de arte global, por cena ou por shot; quando omitida em receitas antigas, acompanha `primaryColor`.
+- O inspetor expõe o controle de cor, o render e a prévia usam o mesmo valor, e projetos novos persistem o campo no schema 14. Projetos schema 1–13 continuam carregando com comportamento anterior.
+- A receita v3 aceita o campo dentro de `artDirection`; testes cobrem parsing, render schema 14 e compatibilidade de schemas existentes.
 
 ### Entrega implementada: fontes externas e presets visuais nomeados
 
@@ -201,7 +207,7 @@ Este quadro separa as funcionalidades implementadas, as limitações atuais e as
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom, presets de câmera, ritmo de cortes guiado pela narração e edição de duração/overlap na timeline estão implementados. |
-| 3 — Acabamento audiovisual | Concluída | Direção de arte por escopo, fontes importadas, presets visuais nomeados, tipografia por palavra, áudio em múltiplas pistas e efeitos sonoros estão implementados. Presets reutilizáveis para títulos e uma cor de destaque de palavra independente seguem como aprimoramentos fora do checklist desta fase. |
+| 3 — Acabamento audiovisual | Concluída | Direção de arte por escopo, fontes importadas, presets visuais nomeados, tipografia por palavra, áudio em múltiplas pistas e efeitos sonoros estão implementados. Presets reutilizáveis para títulos/textos continuam pendentes. |
 | 4 — Recursos avançados | Concluída | Todos os 12 itens desta fase estão implementados e verificados. Regiões de documentos/PDF, conectores ancorados, trajetórias Bézier e mais ferramentas de timeline ficam como propostas futuras fora do checklist atual. |
 
 ### Limites confirmados nesta versão
@@ -218,7 +224,14 @@ Este quadro separa as funcionalidades implementadas, as limitações atuais e as
 
 ### Próxima entrega recomendada
 
-As quatro fases do checklist estão concluídas. Próximas evoluções sugeridas: presets reutilizáveis para títulos/textos, cor de destaque independente da direção de arte, trajetórias de câmera Bézier, regiões de documentos/PDF, conectores ancorados e ferramentas avançadas de timeline.
+As quatro fases do checklist original estão concluídas. O plano global segue aberto até concluir estas evoluções:
+
+- [x] Cor de destaque de palavra independente da direção de arte.
+- [ ] Presets reutilizáveis para títulos e textos.
+- [ ] Trajetórias de câmera Bézier personalizadas.
+- [ ] Inserção de documentos/PDF com seleção de regiões.
+- [ ] Conectores ancorados a objetos.
+- [ ] Ferramentas avançadas de timeline; definir critérios de aceite antes de considerar esta área concluída.
 
 ---
 

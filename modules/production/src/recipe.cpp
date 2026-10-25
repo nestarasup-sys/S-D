@@ -34,7 +34,7 @@ bool number(const QJsonObject &o, const QString &key, double &target) {
 }
 bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &error) {
     const QStringList fields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
-                             "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition",
+                             "cardColor", "captionBackgroundColor", "captionHighlightColor", "fontFamily", "captionPosition",
                              "titleSize", "bodySize", "captionSize", "safeMargin"};
     if (!allowed(object, fields)) {
         error = "Direção de arte contém campos desconhecidos.";
@@ -52,6 +52,7 @@ bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &er
         !assignText("primaryColor", art.primaryColor) || !assignText("secondaryColor", art.secondaryColor) ||
         !assignText("textColor", art.textColor) || !assignText("cardColor", art.cardColor) ||
         !assignText("captionBackgroundColor", art.captionBackgroundColor) ||
+        !assignText("captionHighlightColor", art.captionHighlightColor) ||
         !assignText("fontFamily", art.fontFamily) || !assignText("captionPosition", art.captionPosition)) {
         error = "Cores, fonte ou posição das legendas na direção de arte são inválidas.";
         return false;
@@ -80,13 +81,16 @@ bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &er
     };
     if (!validColor(art.backgroundColor) || !validColor(art.glowColor) || !validColor(art.primaryColor) ||
         !validColor(art.secondaryColor) || !validColor(art.textColor) || !validColor(art.cardColor) ||
-        !validColor(art.captionBackgroundColor) || art.fontFamily.empty() || art.fontFamily.size() > 120 ||
+        !validColor(art.captionBackgroundColor) || !validColor(art.captionHighlightColor) ||
+        art.fontFamily.empty() || art.fontFamily.size() > 120 ||
         (art.captionPosition != "top" && art.captionPosition != "bottom") || art.titleSize < 8 ||
         art.titleSize > 160 || art.bodySize < 8 || art.bodySize > 160 || art.captionSize < 8 ||
         art.captionSize > 120 || art.safeMargin < 0 || art.safeMargin > 300) {
         error = "Valores da direção de arte estão fora dos limites.";
         return false;
     }
+    if (!object.contains("captionHighlightColor"))
+        art.captionHighlightColor = art.primaryColor;
     return true;
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,

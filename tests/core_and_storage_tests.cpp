@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 14;
+        malformed["schemaVersion"] = 15;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -172,6 +172,15 @@ int main(int argc, char **argv) {
               "audio source trim and speed survive the schema 13 roundtrip");
         timedAudioProject.schemaVersion = 12;
         check(!studio::validate(timedAudioProject).empty(), "audio source trim and speed require schema 13");
+        auto independentHighlight = studio::makeEmpty();
+        independentHighlight.schemaVersion = 14;
+        independentHighlight.artDirection.primaryColor = "#22aa44";
+        independentHighlight.artDirection.captionHighlightColor = "#ff0055";
+        const auto loadedHighlight = studio::deserialize(studio::serialize(independentHighlight));
+        check(studio::validate(independentHighlight).empty() && loadedHighlight.error.isEmpty() &&
+                  loadedHighlight.project.artDirection.primaryColor == "#22aa44" &&
+                  loadedHighlight.project.artDirection.captionHighlightColor == "#ff0055",
+              "schema 14 preserves caption highlight independently of the primary art color");
         auto linkedAudioProject = studio::makeEmpty();
         linkedAudioProject.schemaVersion = 13;
         linkedAudioProject.duration = 120;

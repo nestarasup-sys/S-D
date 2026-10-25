@@ -22,7 +22,8 @@ bool validColor(const std::string &value) {
 bool validArtDirection(const ArtDirection &art) {
     return validColor(art.backgroundColor) && validColor(art.glowColor) && validColor(art.primaryColor) &&
            validColor(art.secondaryColor) && validColor(art.textColor) && validColor(art.cardColor) &&
-           validColor(art.captionBackgroundColor) && !art.fontFamily.empty() && art.fontFamily.size() <= 120 &&
+           validColor(art.captionBackgroundColor) && validColor(art.captionHighlightColor) &&
+           !art.fontFamily.empty() && art.fontFamily.size() <= 120 &&
            (art.captionPosition == "top" || art.captionPosition == "bottom") &&
            std::isfinite(art.titleSize) && art.titleSize >= 8 && art.titleSize <= 160 &&
            std::isfinite(art.bodySize) && art.bodySize >= 8 && art.bodySize <= 160 &&
@@ -40,7 +41,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 13)
+    if (p.schemaVersion < 2 || p.schemaVersion > 14)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";

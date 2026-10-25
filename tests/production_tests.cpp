@@ -414,6 +414,7 @@ int main(int argc, char **argv) {
                                                         {"textColor", "#fff3d6"},
                                                         {"cardColor", "#24323b"},
                                                         {"captionBackgroundColor", "#101820"},
+                                                        {"captionHighlightColor", "#ff21aa"},
                                                         {"fontFamily", "Segoe UI"},
                                                         {"titleSize", 60},
                                                         {"bodySize", 42},
@@ -469,6 +470,7 @@ int main(int argc, char **argv) {
             studio::parseRecipe(QJsonDocument(styledRecipeJson).toJson(), directory.path());
         check(styledRecipe.error.isEmpty() &&
                   styledRecipe.recipe.artDirection.backgroundColor == "#101820" &&
+                  styledRecipe.recipe.artDirection.captionHighlightColor == "#ff21aa" &&
                   styledRecipe.recipe.artDirection.captionPosition == "top" &&
                   styledRecipe.recipe.scenes.front().artDirection->backgroundColor == "#14202d" &&
                   styledRecipe.recipe.scenes.front().shots.back().artDirection->backgroundColor == "#070a0c" &&
@@ -873,7 +875,7 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 13 &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 14 &&
                   styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   styledAudio.project.scenes.front().artDirection->backgroundColor == "#14202d" &&
                   styledAudio.project.shots.back().artDirection->backgroundColor == "#070a0c" &&

@@ -24,8 +24,8 @@ bool integer(const QJsonValue &v) {
     auto d = v.toDouble(-1);
     return v.isDouble() && std::isfinite(d) && std::floor(d) == d && std::abs(d) < 1000000000;
 }
-QJsonObject artDirectionJson(const ArtDirection &art) {
-    return {{"backgroundColor", text(art.backgroundColor)},
+QJsonObject artDirectionJson(const ArtDirection &art, bool includeCaptionHighlight) {
+    QJsonObject result{{"backgroundColor", text(art.backgroundColor)},
             {"glowColor", text(art.glowColor)},
             {"primaryColor", text(art.primaryColor)},
             {"secondaryColor", text(art.secondaryColor)},
@@ -38,16 +38,19 @@ QJsonObject artDirectionJson(const ArtDirection &art) {
             {"bodySize", art.bodySize},
             {"captionSize", art.captionSize},
             {"safeMargin", art.safeMargin}};
+    if (includeCaptionHighlight)
+        result["captionHighlightColor"] = text(art.captionHighlightColor);
+    return result;
 }
-bool readArtDirection(const QJsonObject &style, ArtDirection &art) {
+bool readArtDirection(const QJsonObject &style, ArtDirection &art, int schemaVersion) {
     const QStringList fields{"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
-                             "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition",
+                             "cardColor", "captionBackgroundColor", "captionHighlightColor", "fontFamily", "captionPosition",
                              "titleSize", "bodySize", "captionSize", "safeMargin"};
     for (auto it = style.begin(); it != style.end(); ++it)
         if (!fields.contains(it.key()))
             return false;
     for (const auto &field : {"backgroundColor", "glowColor", "primaryColor", "secondaryColor", "textColor",
-                              "cardColor", "captionBackgroundColor", "fontFamily", "captionPosition"}) {
+                              "cardColor", "captionBackgroundColor", "captionHighlightColor", "fontFamily", "captionPosition"}) {
         if (style.contains(QLatin1String(field)) && !style[QLatin1String(field)].isString())
             return false;
     }
@@ -67,6 +70,13 @@ bool readArtDirection(const QJsonObject &style, ArtDirection &art) {
     assign("textColor", art.textColor);
     assign("cardColor", art.cardColor);
     assign("captionBackgroundColor", art.captionBackgroundColor);
+    if (style.contains("captionHighlightColor")) {
+        if (schemaVersion < 14)
+            return false;
+        assign("captionHighlightColor", art.captionHighlightColor);
+    } else {
+        art.captionHighlightColor = art.primaryColor;
+    }
     assign("fontFamily", art.fontFamily);
     assign("captionPosition", art.captionPosition);
     art.titleSize = style["titleSize"].toDouble(art.titleSize);
@@ -164,7 +174,7 @@ QByteArray serialize(const Project &p) {
                                   {"start", double(s.start)},
                                   {"duration", double(s.duration)}};
         if (p.schemaVersion >= 11 && s.artDirection)
-            scene["artDirection"] = artDirectionJson(*s.artDirection);
+            scene["artDirection"] = artDirectionJson(*s.artDirection, p.schemaVersion >= 14);
         scenes.append(scene);
     }
     QJsonArray camera;
@@ -188,7 +198,7 @@ QByteArray serialize(const Project &p) {
                                      {"start", double(shot.start)},
                                      {"duration", double(shot.duration)}};
         if (p.schemaVersion >= 11 && shot.artDirection)
-            value["artDirection"] = artDirectionJson(*shot.artDirection);
+            value["artDirection"] = artDirectionJson(*shot.artDirection, p.schemaVersion >= 14);
         shotArray.append(value);
     }
     QJsonArray beats;
@@ -247,7 +257,7 @@ QByteArray serialize(const Project &p) {
         {"width", p.width},
         {"height", p.height},
         {"fps", QJsonObject{{"numerator", p.fps.numerator}, {"denominator", p.fps.denominator}}},
-        {"artDirection", artDirectionJson(p.artDirection)},
+        {"artDirection", artDirectionJson(p.artDirection, p.schemaVersion >= 14)},
         {"duration", double(p.duration)},
         {"nodes", nodes},
         {"camera", camera},
@@ -278,7 +288,7 @@ LoadResult deserialize(const QByteArray &bytes) {
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
                                          o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
-                                         o["schemaVersion"] != 13))
+                                         o["schemaVersion"] != 13 && o["schemaVersion"] != 14))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -297,7 +307,7 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (o.contains("artDirection")) {
         if (!o["artDirection"].isObject())
             return fail("Direção de arte deve ser um objeto.");
-        if (!readArtDirection(o["artDirection"].toObject(), p.artDirection))
+        if (!readArtDirection(o["artDirection"].toObject(), p.artDirection, p.schemaVersion))
             return fail("Direção de arte contém campos inválidos ou desconhecidos.");
     }
     if (o.contains("audioSource") && !o["audioSource"].isString())
@@ -369,7 +379,7 @@ LoadResult deserialize(const QByteArray &bytes) {
             if (p.schemaVersion < 11 || !s["artDirection"].isObject())
                 return fail("Direção de arte local exige cena e schema 11.");
             ArtDirection style = p.artDirection;
-            if (!readArtDirection(s["artDirection"].toObject(), style))
+            if (!readArtDirection(s["artDirection"].toObject(), style, p.schemaVersion))
                 return fail("Direção de arte da cena contém campos inválidos ou desconhecidos.");
             marker.artDirection = std::move(style);
         }
@@ -554,7 +564,7 @@ LoadResult deserialize(const QByteArray &bytes) {
             });
             if (scene != p.scenes.end() && scene->artDirection)
                 style = *scene->artDirection;
-            if (!readArtDirection(shot["artDirection"].toObject(), style))
+            if (!readArtDirection(shot["artDirection"].toObject(), style, p.schemaVersion))
                 return fail("Direção de arte do shot contém campos inválidos ou desconhecidos.");
             marker.artDirection = std::move(style);
         }

@@ -236,7 +236,7 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                 const QFontMetricsF metrics(font);
                 const auto baseColor = QColor(QString::fromStdString(node.role == "caption" ? art.textColor
                                                                                               : node.color));
-                const auto highlightColor = QColor(QString::fromStdString(art.primaryColor));
+                const auto highlightColor = QColor(QString::fromStdString(art.captionHighlightColor));
                 const auto words = QString::fromStdString(node.text).split(QRegularExpression("\\s+"),
                                                                            Qt::SkipEmptyParts);
                 std::vector<CaptionLine> lines(1);

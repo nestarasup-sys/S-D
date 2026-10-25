@@ -245,6 +245,7 @@ QVariantMap EditorController::artDirection() const {
             {"textColor", q(art.textColor)},
             {"cardColor", q(art.cardColor)},
             {"captionBackgroundColor", q(art.captionBackgroundColor)},
+            {"captionHighlightColor", q(art.captionHighlightColor)},
             {"fontFamily", q(art.fontFamily)},
             {"captionPosition", q(art.captionPosition)},
             {"titleSize", art.titleSize},
@@ -1247,6 +1248,8 @@ void EditorController::updateArtDirection(QString property, QVariant value) {
             p.schemaVersion = std::max(p.schemaVersion, 11);
         auto &art = *selectedArt;
         const auto key = property.toStdString();
+        if (key == "captionHighlightColor")
+            p.schemaVersion = std::max(p.schemaVersion, 14);
         if (key == "backgroundColor") art.backgroundColor = value.toString().toStdString();
         else if (key == "glowColor") art.glowColor = value.toString().toStdString();
         else if (key == "primaryColor") art.primaryColor = value.toString().toStdString();
@@ -1255,6 +1258,8 @@ void EditorController::updateArtDirection(QString property, QVariant value) {
         else if (key == "cardColor") art.cardColor = value.toString().toStdString();
         else if (key == "captionBackgroundColor")
             art.captionBackgroundColor = value.toString().toStdString();
+        else if (key == "captionHighlightColor")
+            art.captionHighlightColor = value.toString().toStdString();
         else if (key == "fontFamily") art.fontFamily = value.toString().toStdString();
         else if (key == "captionPosition") art.captionPosition = value.toString().toStdString();
         else if (key == "titleSize") art.titleSize = value.toDouble();
@@ -1310,6 +1315,7 @@ void EditorController::applyArtDirectionPreset(QVariantMap values) {
         *selectedArt = style;
         if (artDirectionScope_ != "global")
             p.schemaVersion = std::max(p.schemaVersion, 11);
+        p.schemaVersion = std::max(p.schemaVersion, 14);
     });
     if (error.empty())
         changed();

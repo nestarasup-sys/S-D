@@ -1,4 +1,5 @@
 #include <QPointF>
+#include <QJsonArray>
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
@@ -336,6 +337,22 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     p.height = recipe.height;
     p.schemaVersion = recipe.version >= 3 ? 7 : 3;
     p.artDirection = recipe.artDirection;
+    bool hasCaptionHighlight = recipe.original.value("artDirectionPreset").isString() ||
+                               recipe.original.value("artDirection").toObject().contains("captionHighlightColor");
+    for (const auto &sceneValue : recipe.original.value("scenes").toArray()) {
+        const auto sceneObject = sceneValue.toObject();
+        hasCaptionHighlight = hasCaptionHighlight ||
+            sceneObject.value("artDirection").toObject().contains("captionHighlightColor") ||
+            sceneObject.value("artDirectionPreset").isString();
+        for (const auto &shotValue : sceneObject.value("shots").toArray()) {
+            const auto shotObject = shotValue.toObject();
+            hasCaptionHighlight = hasCaptionHighlight ||
+                shotObject.value("artDirection").toObject().contains("captionHighlightColor") ||
+                shotObject.value("artDirectionPreset").isString();
+        }
+    }
+    if (hasCaptionHighlight)
+        p.schemaVersion = 14;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
     p.audioSource = audioOutput.toStdString();

@@ -13,7 +13,7 @@ struct FrameRate {
 struct ArtDirection {
     std::string backgroundColor{"#0b1014"}, glowColor{"#1e3435"};
     std::string primaryColor{"#b4f078"}, secondaryColor{"#efb873"}, textColor{"#e4f5e9"};
-    std::string cardColor{"#17242c"}, captionBackgroundColor{"#081018"};
+    std::string cardColor{"#17242c"}, captionBackgroundColor{"#081018"}, captionHighlightColor{"#b4f078"};
     std::string fontFamily{"Segoe UI"}, captionPosition{"bottom"};
     double titleSize{58}, bodySize{44}, captionSize{27};
     int safeMargin{32};

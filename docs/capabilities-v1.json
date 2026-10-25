@@ -185,7 +185,8 @@
         "video-normalized-crop",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
-        "word-animated-karaoke-captions"
+        "word-animated-karaoke-captions",
+        "independent-caption-highlight-color"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -204,9 +205,10 @@
         "audio-track-fades",
         "audio-gain-automation",
         "word-timed-caption-highlights",
-        "word-animated-caption-presets"
+        "word-animated-caption-presets",
+        "independent-caption-highlight-color"
     ],
-    "projectVersion": 13,
+    "projectVersion": 14,
     "shotTransitionTypes": [
         "cut",
         "fade",

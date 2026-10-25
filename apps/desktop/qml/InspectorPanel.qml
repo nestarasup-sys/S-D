@@ -151,7 +151,7 @@ Rectangle {
             }
             RowLayout {
                 StyleField { caption: "Legenda · #RRGGBB"; propertyKey: "captionBackgroundColor"; currentValue: editor.artDirection.captionBackgroundColor }
-                StyleField { caption: "Fonte instalada"; propertyKey: "fontFamily"; currentValue: editor.artDirection.fontFamily }
+                StyleField { caption: "Destaque da palavra · #RRGGBB"; propertyKey: "captionHighlightColor"; currentValue: editor.artDirection.captionHighlightColor }
             }
             StudioComboBox {
                 Layout.fillWidth: true
