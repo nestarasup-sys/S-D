@@ -2,6 +2,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QJsonArray>
@@ -243,6 +244,15 @@ bool WorkspaceController::openProject(QString id) {
 bool WorkspaceController::importProject(QUrl path) {
     if (busy())
         return false;
+    QFile source(path.toLocalFile());
+    if (source.open(QIODevice::ReadOnly) && source.size() <= 1024 * 1024) {
+        const auto document = QJsonDocument::fromJson(source.readAll());
+        if (document.isObject() && document.object()["format"] == "studio-dark-production") {
+            editor_->importProduction(path);
+            navigate("editor");
+            return true;
+        }
+    }
     if (!editor_->open(path)) {
         notify(editor_->message());
         return false;

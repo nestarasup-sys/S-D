@@ -173,6 +173,21 @@ int main(int argc, char **argv) {
                   parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
                   parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
               "v3 parses independent shots, Visual Beats, and transition timing");
+        auto objectCutJson = shotRecipeJson;
+        auto objectCutScenes = objectCutJson["scenes"].toArray();
+        auto objectCutScene = objectCutScenes[0].toObject();
+        auto objectCutShots = objectCutScene["shots"].toArray();
+        auto objectCutShot = objectCutShots[1].toObject();
+        objectCutShot["transitionIn"] = QJsonObject{{"type", "cut"}, {"durationFrames", 8}};
+        objectCutShots[1] = objectCutShot;
+        objectCutScene["shots"] = objectCutShots;
+        objectCutScenes[0] = objectCutScene;
+        objectCutJson["scenes"] = objectCutScenes;
+        const auto objectCutRecipe = studio::parseRecipe(QJsonDocument(objectCutJson).toJson(), directory.path());
+        check(objectCutRecipe.error.isEmpty() &&
+                  objectCutRecipe.recipe.scenes.front().shots.back().transitionIn == "cut" &&
+                  objectCutRecipe.recipe.scenes.front().shots.back().transitionDurationFrames == 0,
+              "cut transition objects with an optional duration are normalized to an immediate cut");
         auto styledRecipeJson = shotRecipeJson;
         styledRecipeJson["artDirection"] = QJsonObject{{"backgroundColor", "#101820"},
                                                         {"glowColor", "#29434a"},

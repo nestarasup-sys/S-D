@@ -757,14 +757,28 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 } else if (shotObject["transitionIn"].isObject()) {
                     const auto transition = shotObject["transitionIn"].toObject();
                     if (!allowed(transition, {"type", "durationFrames", "direction"}) ||
-                        !transition["type"].isString() || !transition["durationFrames"].isDouble() ||
-                        std::floor(transition["durationFrames"].toDouble()) !=
-                            transition["durationFrames"].toDouble())
-                        return fail("Transição exige type e durationFrames inteiro.");
+                        !transition["type"].isString())
+                        return fail("Transição exige um type válido.");
                     shot.transitionIn = transition["type"].toString();
-                    shot.transitionDurationFrames = transition["durationFrames"].toInt();
-                    if (shot.transitionDurationFrames < 2 || shot.transitionDurationFrames > 300)
-                        return fail("durationFrames de transição deve estar entre 2 e 300.");
+                    if (shot.transitionIn == "cut") {
+                        // Accept generated recipes that attach a visual duration to an instantaneous cut.
+                        if (transition.contains("direction"))
+                            return fail("direction não se aplica a uma transição cut.");
+                        if (transition.contains("durationFrames") &&
+                            (!transition["durationFrames"].isDouble() ||
+                             std::floor(transition["durationFrames"].toDouble()) !=
+                                 transition["durationFrames"].toDouble()))
+                            return fail("durationFrames de cut, quando informado, deve ser inteiro.");
+                        shot.transitionDurationFrames = 0;
+                    } else {
+                        if (!transition["durationFrames"].isDouble() ||
+                            std::floor(transition["durationFrames"].toDouble()) !=
+                                transition["durationFrames"].toDouble())
+                            return fail("Transições animadas exigem durationFrames inteiro.");
+                        shot.transitionDurationFrames = transition["durationFrames"].toInt();
+                        if (shot.transitionDurationFrames < 2 || shot.transitionDurationFrames > 300)
+                            return fail("durationFrames de transição deve estar entre 2 e 300.");
+                    }
                     if (shot.transitionIn == "slide") {
                         if (transition.contains("direction") && !transition["direction"].isString())
                             return fail("direction da transição slide deve ser texto.");
@@ -775,7 +789,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     } else if (transition.contains("direction")) {
                         return fail("direction só é aceita para transitionIn do tipo slide.");
                     }
-                    if (shot.transitionIn != "fade" && shot.transitionIn != "dissolve" &&
+                    if (shot.transitionIn != "cut" && shot.transitionIn != "fade" && shot.transitionIn != "dissolve" &&
                         shot.transitionIn != "slide" && shot.transitionIn != "zoom")
                         return fail("Tipo de transição não suportado.");
                 } else if (shotObject.contains("transitionIn")) {
