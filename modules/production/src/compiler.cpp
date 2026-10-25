@@ -453,8 +453,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             }
             if (recipe.wordAnimationPreset != "highlight") {
                 if (recipe.wordAnimationPreset != "none" && recipe.renderCaptions &&
-                    caption.captionWords.size() != std::size_t(captionWords.size())) {
-                    r.error = "wordAnimation exige timestamps reais para cada palavra em " + utterance.id;
+                    caption.captionWords.empty() && !captionWords.empty()) {
+                    r.error = "wordAnimation exige timestamps de voz para " + utterance.id;
                     return r;
                 }
                 p.schemaVersion = std::max(p.schemaVersion, 12);

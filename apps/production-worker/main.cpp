@@ -6,13 +6,16 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QMap>
 #include <memory>
 #include <cmath>
 #include <algorithm>
+#include <vector>
 #include <studio/production/compiler.hpp>
 #include <studio/storage/project_store.hpp>
 #include <studio/storage/workspace_store.hpp>
@@ -38,6 +41,85 @@ static QString missingMedia(const studio::DirectedElement &element) {
         if (auto missing = missingMedia(child); !missing.isEmpty())
             return missing;
     return {};
+}
+static bool alignWordEvents(const QJsonArray &events, const QString &text, std::int64_t audioSamples,
+                            std::vector<std::int64_t> &starts, QString &error) {
+    struct TokenSpan { int begin; int end; };
+    struct EventGroup { int begin; int end; std::vector<std::int64_t> samples; };
+    std::vector<TokenSpan> tokens;
+    auto matches = QRegularExpression("\\S+").globalMatch(text);
+    while (matches.hasNext()) {
+        const auto match = matches.next();
+        tokens.push_back({static_cast<int>(match.capturedStart()), static_cast<int>(match.capturedEnd())});
+    }
+    if (tokens.empty() || events.isEmpty() || audioSamples <= 0) {
+        error = "A voz pt-BR não forneceu timestamps de palavra suficientes para animação.";
+        return false;
+    }
+    std::vector<EventGroup> groups;
+    std::int64_t previousSample = -1;
+    for (const auto value : events) {
+        const auto word = value.toObject();
+        const auto characterPosition = word["characterPosition"].toInt(-1);
+        const auto characterCount = word["characterCount"].toInt(-1);
+        const auto sampleValue = word["audioPositionSamples"].toDouble(-1);
+        if (!word["text"].isString() || characterPosition < 0 || characterCount <= 0 ||
+            !std::isfinite(sampleValue) || sampleValue < 0 || sampleValue > audioSamples * 2.0 ||
+            sampleValue < previousSample) {
+            error = "Alinhamento de palavra inválido na fala.";
+            return false;
+        }
+        const auto sample = std::llround(sampleValue);
+        previousSample = sample;
+        const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto &candidate) {
+            return candidate.begin == characterPosition && candidate.end == characterPosition + characterCount;
+        });
+        if (group == groups.end())
+            groups.push_back({characterPosition, characterPosition + characterCount, {sample}});
+        else
+            group->samples.push_back(sample);
+    }
+    starts.assign(tokens.size(), -1);
+    for (const auto &group : groups) {
+        std::vector<std::size_t> covered;
+        for (std::size_t i = 0; i < tokens.size(); ++i)
+            if (tokens[i].begin < group.end && tokens[i].end > group.begin)
+                covered.push_back(i);
+        if (covered.empty() || group.samples.empty())
+            continue;
+        for (std::size_t i = 0; i < covered.size(); ++i) {
+            const auto eventIndex = covered.size() == 1
+                                        ? 0
+                                        : std::size_t(std::llround(double(i) * (group.samples.size() - 1) /
+                                                                   (covered.size() - 1)));
+            if (starts[covered[i]] < 0)
+                starts[covered[i]] = group.samples[eventIndex];
+        }
+    }
+    for (std::size_t i = 0; i < starts.size(); ++i) {
+        if (starts[i] >= 0)
+            continue;
+        std::size_t left = i, right = i;
+        while (left > 0 && starts[left] < 0) --left;
+        while (right + 1 < starts.size() && starts[right] < 0) ++right;
+        const bool hasLeft = starts[left] >= 0;
+        const bool hasRight = starts[right] >= 0;
+        if (hasLeft && hasRight) {
+            starts[i] = starts[left] + std::llround(double(starts[right] - starts[left]) *
+                                                    double(i - left) / double(right - left));
+        } else if (hasRight) {
+            starts[i] = std::llround(double(starts[right]) * double(i) / double(right + 1));
+        } else if (hasLeft) {
+            starts[i] = starts[left] + std::llround(double(audioSamples - starts[left]) *
+                                                    double(i - left) / double(starts.size() - left));
+        } else {
+            error = "Não foi possível alinhar a legenda com a fala.";
+            return false;
+        }
+    }
+    for (auto &sample : starts)
+        sample = std::clamp<std::int64_t>(sample, 0, audioSamples - 1);
+    return true;
 }
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
@@ -117,6 +199,10 @@ int main(int argc, char **argv) {
     QMap<QString, studio::PcmAudio> utterances;
     QMap<QString, QString> wavPaths;
     QMap<QString, std::int64_t> measuredSamples;
+    QMap<QString, QString> narrationTexts;
+    for (const auto &scene : parsed.recipe.scenes)
+        for (const auto &cue : scene.narration)
+            narrationTexts.insert(cue.id, cue.text);
     studio::WordTimingMap wordTimings;
     for (auto value : manifest["utterances"].toArray()) {
         auto line = value.toObject();
@@ -130,17 +216,13 @@ int main(int argc, char **argv) {
         if (!line["words"].isArray() || line["words"].toArray().isEmpty())
             return fail("A voz pt-BR não forneceu timestamps de palavra para " + line["id"].toString());
         std::vector<std::int64_t> starts;
-        std::int64_t previousSample = -1;
-        for (const auto wordValue : line["words"].toArray()) {
-            const auto word = wordValue.toObject();
-            const auto sample = word["audioPositionSamples"].toDouble(-1);
-            if (!word["text"].isString() || !word["characterPosition"].isDouble() ||
-                !word["characterCount"].isDouble() || !std::isfinite(sample) || sample < 0 ||
-                sample > utterances[line["id"].toString()].samples.size() * 2.0 || sample < previousSample)
-                return fail("Alinhamento de palavra inválido na fala " + line["id"].toString());
-            previousSample = std::llround(sample);
-            starts.push_back(previousSample);
-        }
+        QString alignmentError;
+        const auto id = line["id"].toString();
+        if (!narrationTexts.contains(id) ||
+            !alignWordEvents(line["words"].toArray(), narrationTexts.value(id),
+                             std::int64_t(utterances[id].samples.size()), starts, alignmentError))
+            return fail(alignmentError.isEmpty() ? "Texto da narração ausente para alinhar legenda: " + id
+                                                 : alignmentError + " " + id);
         if (!starts.empty()) {
             const auto audioSamples = std::int64_t(utterances[line["id"].toString()].samples.size());
             const auto targetLastStart = std::max<std::int64_t>(
