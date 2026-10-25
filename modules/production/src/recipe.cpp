@@ -193,7 +193,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (version >= 2)
         keys << "assetId" << "children" << "keyframes" << "cueProgress";
     if (version >= 3)
-        keys << "progress" << "wordIndex";
+        keys << "progress" << "wordIndex" << "video";
     if (!allowed(e, keys))
         return fail("Elemento contém campo desconhecido.");
     if (!e["id"].isString() || !e["kind"].isString())
@@ -315,9 +315,44 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             n.animated = false;
             n.motion = "none";
             n.exitFrames = 0;
+            if (e.contains("video")) {
+                if (!e["video"].isObject())
+                    return fail("video deve ser um objeto com controles de fonte.");
+                const auto video = e["video"].toObject();
+                if (!allowed(video, {"sourceInSeconds", "durationFrames", "speed", "crop"}))
+                    return fail("video contém um controle desconhecido.");
+                if (video.contains("durationFrames")) {
+                    if (!video["durationFrames"].isDouble() ||
+                        std::floor(video["durationFrames"].toDouble()) != video["durationFrames"].toDouble() ||
+                        video["durationFrames"].toInt() < 1 || video["durationFrames"].toInt() > 18000)
+                        return fail("video.durationFrames deve ser inteiro entre 1 e 18000.");
+                    element.videoDurationFrames = video["durationFrames"].toInteger();
+                }
+                if (video.contains("sourceInSeconds") && !number(video, "sourceInSeconds", n.videoSourceInSeconds))
+                    return fail("video.sourceInSeconds deve ser numérico.");
+                if (video.contains("speed") && !number(video, "speed", n.videoPlaybackRate))
+                    return fail("video.speed deve ser numérico.");
+                if (video.contains("crop")) {
+                    if (!video["crop"].isObject())
+                        return fail("video.crop deve declarar x, y, width e height normalizados.");
+                    const auto crop = video["crop"].toObject();
+                    if (!allowed(crop, {"x", "y", "width", "height"}) || !number(crop, "x", n.videoCropX) ||
+                        !number(crop, "y", n.videoCropY) || !number(crop, "width", n.videoCropWidth) ||
+                        !number(crop, "height", n.videoCropHeight))
+                        return fail("video.crop exige x, y, width e height numéricos.");
+                }
+                if (n.videoSourceInSeconds < 0 || n.videoSourceInSeconds > 3600 || n.videoPlaybackRate < .25 ||
+                    n.videoPlaybackRate > 4 || n.videoCropX < 0 || n.videoCropY < 0 || n.videoCropWidth <= 0 ||
+                    n.videoCropHeight <= 0 || n.videoCropX + n.videoCropWidth > 1 ||
+                    n.videoCropY + n.videoCropHeight > 1)
+                    return fail("Trim, velocidade ou recorte de vídeo fora dos limites.");
+            }
         }
     } else
         return fail("Tipo de elemento desconhecido.");
+
+    if (kind != "video" && e.contains("video"))
+        return fail("Controles de fonte só podem ser usados por kind: video.");
 
     for (auto pair : {std::pair{"x", &n.x},
                       {"y", &n.y},
@@ -556,6 +591,12 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     candidate.duration = std::max<std::int64_t>(candidate.duration, n.start + n.duration);
     candidate.nodes = {n};
     candidate.nodes.front().parentId.clear();
+    if (n.kind == NodeKind::Video)
+        candidate.schemaVersion = std::max(candidate.schemaVersion, 5);
+    if (n.kind == NodeKind::Video &&
+        (n.videoSourceInSeconds != 0 || n.videoPlaybackRate != 1 || n.videoCropX != 0 || n.videoCropY != 0 ||
+         n.videoCropWidth != 1 || n.videoCropHeight != 1))
+        candidate.schemaVersion = std::max(candidate.schemaVersion, 10);
     if (auto validation = validate(candidate); !validation.empty())
         return fail(QString::fromStdString(validation));
     return true;

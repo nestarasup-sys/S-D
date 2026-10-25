@@ -4,16 +4,19 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
-### Rodada atual: efeitos sonoros disparados por Visual Beat
+### Rodada atual: trim, velocidade e recorte de vídeo
 
-- A exportação para WAV PCM mono a 24 kHz calcula a mesma envoltória RMS suavizada por quadro usada na prévia. O smoke confirma redução durante a fala e retorno ao volume após o stem; também cobre pista estéreo, fades e automação por pontos/easing.
-- A suíte de receitas compila um plano sintético de 60 segundos com 20 cenas, 120 shots contíguos, 240 beats, eventos simultâneos, transições de dois quadros e beats próximos ao começo/fim dos shots.
-- Visual Beats aceitam agora `action: "sound"`, um caminho local em `source` e `gain` opcional de 0–4. O compilador resolve o disparo pelo mesmo relógio da narração e cria uma pista de áudio editável vinculada ao beat.
-- Projetos schema 9 validam e persistem a associação entre marcador e pista. Mover a faixa reposiciona o marcador; mover o corte mantém a faixa alinhada; excluir a faixa remove o beat associado. O limite de 32 pistas inclui os efeitos.
-- `examples/carros-caros-directors-cut-90s.production.json` inclui um efeito de amostra em `examples/media/soft-chime.wav`; o smoke de produção verifica fonte, quadro, projeto schema 9 e compara a composição de 2700 quadros com o MP4.
-- O guia incorpora a mesma receita completa do smoke e documenta campos, extensões locais suportadas, limites e dependência do arquivo de áudio. `capabilities-v1.json` declara a ação e o schema 9.
-- Verificação desta rodada: C++20 compilado e 4/4 testes automatizados passaram; `scripts/smoke-production.ps1` passou com voz Microsoft Maria Desktop, 2700 quadros e projeto aberto no editor. A comparação preview/export do Director's Cut marcou 42,61 dB.
-- Evidência de exportação: `artifacts/production-smoke-20261024-232057/directors-cut-90s/directors-cut-90s.mp4` (artefato local, não versionado).
+- Camadas de vídeo v3 aceitam trim de entrada `sourceInSeconds`, velocidade `speed` de 0,25× a 4×, saída `durationFrames` na timeline e `crop` normalizado da fonte.
+- O compositor aplica a mesma sequência de filtros FFmpeg no preview, still e MP4. O inspetor ganhou controles para início da fonte, velocidade, origem e tamanho do recorte; o campo normal de duração continua ajustando a saída na timeline.
+- Projetos com trim, velocidade ou crop personalizado usam schema 10; os projetos antigos de vídeo schema 5 continuam abrindo com início zero, velocidade normal e corte central.
+- O guia e `capabilities-v1.json` agora descrevem esses campos, limites, defaults e o schema 10.
+- Verificação desta rodada: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1` passou; `scripts/smoke-production.ps1` passou com voz Microsoft Maria Desktop. O smoke renderizou um clipe com trim, velocidade 1,5× e recorte, comparando preview e MP4 em 32,99 dB. O exemplo Director's Cut também passou, com 2700 quadros e comparação preview/export em 42,61 dB.
+
+### Entrega anterior: efeitos sonoros disparados por Visual Beat
+
+- A ação `sound` usa um arquivo local e ganho de 0–4 para criar uma pista de áudio editável sincronizada ao beat. Projetos schema 9 validam a associação e a timeline preserva o vínculo ao mover, cortar e excluir a pista.
+- O Director's Cut de 90 segundos tem 20 beats e inclui `examples/media/soft-chime.wav`; o guia embute a receita e explica que o arquivo local precisa acompanhar o JSON.
+- A compilação, 4/4 testes e smoke de produção passaram; a comparação preview/export marcou 42,61 dB.
 
 ### Sincronização visual por palavra concluída nesta rodada
 
@@ -27,7 +30,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - O editor oferece **Adicionar vídeo à composição** e reconhece MP4, MOV, MKV, WebM, AVI e M4V. A camada aparece como objeto selecionável e usa os controles de duração, posição e escala existentes.
 - Projetos schema 5 persistem a camada sem alterar a leitura dos projetos anteriores. Receitas v3 aceitam `kind: "video"` com `source` local relativo ao JSON ou absoluto; links remotos não são aceitos.
 - Guia IA, catálogo de capacidades e README descrevem formatos, comportamento e dependência de arquivo local/FFmpeg. Teste automatizado gera um clipe curto e verifica persistência e diferença entre quadros consecutivos.
-- Limites atuais: o áudio embutido no clipe não entra automaticamente na mixagem; importe-o como uma pista de áudio. A caixa usa corte central sem controles de ponto de entrada, velocidade, recorte manual ou waveform. Em prévia, buscar para trás reinicia a decodificação do clipe.
+- Limites atuais: o áudio embutido no clipe não entra automaticamente na mixagem; importe-o como uma pista independente. Trim de entrada, velocidade, duração de saída e recorte manual já são editáveis. Ainda não há waveform da fonte; em prévia, buscar para trás reinicia a decodificação do clipe.
 
 ### Concluído nesta rodada
 
@@ -77,7 +80,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Áudio em múltiplas pistas implementado parcialmente
 
-- Projetos schema 4–9 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute, ducking e automação configurável. Fades exigem schema 6 ou superior; automação de ganho exige schema 8. Os arquivos antigos continuam carregando sem migração destrutiva.
+- Projetos schema 4–10 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute, ducking e automação configurável. Fades exigem schema 6 ou superior; automação de ganho exige schema 8. Os arquivos antigos continuam carregando sem migração destrutiva.
 - A timeline importa, remove, silencia, reposiciona, altera duração/ganho, liga ducking e permite definir fades lineares de entrada/saída. Na prévia, cada pista toca sincronizada com o playhead e segue os fades.
 - A prévia e a exportação calculam a mesma envoltória RMS suavizada por quadro quando a referência é WAV PCM mono a 24 kHz; a exportação aplica o envelope determinístico na pista. Referências em outros formatos usam sidechaincompress do FFmpeg como fallback.
 - Receitas v3 podem declarar pistas por cena com fonte local, sincronizar início por cue/progresso/wordIndex e definir `fadeInFrames`/`fadeOutFrames` até 1800 quadros cada, limitados ao intervalo da pista. Projetos com fades usam schema 6; os fades também são aplicados no render por FFmpeg.
@@ -90,7 +93,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam estilos por cena/shot, fontes externas, presets visuais e tipografia animada. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, áudio embutido nos vídeos e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
@@ -104,7 +107,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Adicionar edição de entrada/velocidade/recorte para vídeo e estilos de direção de arte por cena/shot. Aumentar a bateria de testes para sequências longas, manter SAPI→WAV→compilador coberto pelo smoke de produção e comparar prévia/exportação para cada novo caminho visual.
+Adicionar direção de arte por cena/shot, preservando a herança global e os estilos explícitos por elemento. Em seguida, avançar para tipografia animada por palavra e seleção múltipla/envelopes da timeline. Áudio embutido em vídeo e formatos de tela adicionais seguem como pendências da fase 4.
 
 ---
 
@@ -876,7 +879,8 @@ Implementar:
 4. [x] Duração-alvo com aceleração segura e preservação aproximada de tom.
 5. [ ] Timeline avançada com envelopes, seleção múltipla e edição mais precisa.
 6. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
-7. [ ] Trim de entrada, velocidade, recorte manual, áudio embutido e formatos de tela adicionais.
+7. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
+8. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 

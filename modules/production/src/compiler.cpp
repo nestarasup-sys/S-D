@@ -66,8 +66,15 @@ bool compileElement(const DirectedElement &directed,
     node.start = anchor + (directed.presetTiming ? node.start : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
-    const auto end =
+    auto end =
         directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
+    if (node.kind == NodeKind::Video && directed.videoDurationFrames > 0) {
+        if (directed.videoDurationFrames > availableEnd - node.start) {
+            error = "video.durationFrames ultrapassa o intervalo disponível: " + QString::fromStdString(node.id);
+            return false;
+        }
+        end = node.start + directed.videoDurationFrames;
+    }
     if (node.start >= end) {
         error = "Elemento começa depois do intervalo disponível: " + QString::fromStdString(node.id);
         return false;
@@ -586,6 +593,12 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     p.duration = r.voice.samples.size() / samplesPerFrame;
     if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.kind == NodeKind::Video; }))
         p.schemaVersion = std::max(p.schemaVersion, 5);
+    if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) {
+            return node.kind == NodeKind::Video &&
+                   (node.videoSourceInSeconds != 0 || node.videoPlaybackRate != 1 || node.videoCropX != 0 ||
+                    node.videoCropY != 0 || node.videoCropWidth != 1 || node.videoCropHeight != 1);
+        }))
+        p.schemaVersion = std::max(p.schemaVersion, 10);
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

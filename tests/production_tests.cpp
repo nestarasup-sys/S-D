@@ -225,6 +225,66 @@ int main(int argc, char **argv) {
                   compiledSound.project.audioTracks.front().source == directory.filePath("beat-chime.wav") &&
                   studio::validate(compiledSound.project).empty(),
               "sound Visual Beat compiles into a linked, timed, editable schema 9 audio track");
+        QFile videoFixture(directory.filePath("broll.mp4"));
+        check(videoFixture.open(QIODevice::WriteOnly) && videoFixture.write("fixture") == 7,
+              "video recipe fixture exists");
+        videoFixture.close();
+        auto videoRecipeJson = shotRecipeJson;
+        auto videoScene = videoRecipeJson["scenes"].toArray().at(0).toObject();
+        auto videoShots = videoScene["shots"].toArray();
+        auto videoShot = videoShots.at(0).toObject();
+        auto videoElements = videoShot["elements"].toArray();
+        videoElements.append(QJsonObject{{"id", "broll"},
+                                         {"kind", "video"},
+                                         {"source", "broll.mp4"},
+                                         {"x", 100},
+                                         {"y", 100},
+                                         {"width", 500},
+                                         {"height", 300},
+                                         {"video", QJsonObject{{"sourceInSeconds", .25},
+                                                                {"durationFrames", 15},
+                                                                {"speed", 1.5},
+                                                                {"crop", QJsonObject{{"x", .1},
+                                                                                      {"y", .2},
+                                                                                      {"width", .8},
+                                                                                      {"height", .6}}}}}});
+        videoShot["elements"] = videoElements;
+        videoShots[0] = videoShot;
+        videoScene["shots"] = videoShots;
+        videoRecipeJson["scenes"] = QJsonArray{videoScene};
+        const auto parsedVideoRecipe =
+            studio::parseRecipe(QJsonDocument(videoRecipeJson).toJson(), directory.path());
+        auto invalidVideoRecipe = videoRecipeJson;
+        auto invalidVideoScene = invalidVideoRecipe["scenes"].toArray().at(0).toObject();
+        auto invalidVideoShots = invalidVideoScene["shots"].toArray();
+        auto invalidVideoShot = invalidVideoShots.at(0).toObject();
+        auto invalidVideoElements = invalidVideoShot["elements"].toArray();
+        auto invalidVideoElement = invalidVideoElements.at(invalidVideoElements.size() - 1).toObject();
+        auto invalidVideoSettings = invalidVideoElement["video"].toObject();
+        auto invalidVideoCrop = invalidVideoSettings["crop"].toObject();
+        invalidVideoCrop["x"] = .4;
+        invalidVideoCrop["width"] = .8;
+        invalidVideoSettings["crop"] = invalidVideoCrop;
+        invalidVideoElement["video"] = invalidVideoSettings;
+        invalidVideoElements[invalidVideoElements.size() - 1] = invalidVideoElement;
+        invalidVideoShot["elements"] = invalidVideoElements;
+        invalidVideoShots[0] = invalidVideoShot;
+        invalidVideoScene["shots"] = invalidVideoShots;
+        invalidVideoRecipe["scenes"] = QJsonArray{invalidVideoScene};
+        check(parsedVideoRecipe.error.isEmpty() &&
+                  parsedVideoRecipe.recipe.scenes.front().shots.front().elements.back().node.videoSourceInSeconds ==
+                      .25 && parsedVideoRecipe.recipe.scenes.front().shots.front().elements.back()
+                                     .videoDurationFrames == 15 &&
+                  !studio::parseRecipe(QJsonDocument(invalidVideoRecipe).toJson(), directory.path()).error.isEmpty(),
+              "v3 parses a video trim, speed and normalized crop while rejecting an invalid crop");
+        const auto compiledVideo =
+            studio::compileProduction(parsedVideoRecipe.recipe, soundAudio, "video.wav");
+        const auto *compiledBroll = studio::findNode(compiledVideo.project, "broll");
+        check(compiledVideo.error.isEmpty() && compiledVideo.project.schemaVersion == 10 && compiledBroll &&
+                  compiledBroll->duration == 15 && compiledBroll->videoPlaybackRate == 1.5 &&
+                  compiledBroll->videoCropY == .2 &&
+                  studio::validate(compiledVideo.project).empty(),
+              "v3 video controls compile into an editable schema 10 project");
         auto objectCutJson = shotRecipeJson;
         auto objectCutScenes = objectCutJson["scenes"].toArray();
         auto objectCutScene = objectCutScenes[0].toObject();

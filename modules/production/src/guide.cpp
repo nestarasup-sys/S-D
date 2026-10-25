@@ -23,7 +23,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 9},
+            {"projectVersion", 10},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -35,13 +35,13 @@ QJsonObject capabilities() {
                         "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
-                        "video-layer-broll",
+                        "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
                         "word-timed-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
                         "visual-beat-linked-audio-tracks",
-                        "video-layers", "audio-track-fades", "audio-gain-automation",
+                        "video-layers", "video-trim-speed-crop", "audio-track-fades", "audio-gain-automation",
                         "word-timed-caption-highlights"}},
             {"width", 1280},
             {"height", 720},
@@ -67,7 +67,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 8 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 10 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -268,6 +268,8 @@ Para sincronizar, informe `cue` e opcionalmente `offsetSeconds` de 0 a 10. O com
 
 `kind`: `group`, `library`, `native`, `text`, `shape`, `image`, `svg` ou `video` (vídeo requer receita v3). `native` usa o campo `asset`; texto usa `text`; mídia direta usa `source`, caminho local absoluto ou relativo ao JSON. Arquivos remotos e URLs não são baixados. PNG com transparência e SVG compatível com Qt são aceitos. Vídeos locais MP4, MOV, MKV, WebM, AVI e M4V são decodificados em quadros pela mesma composição usada na prévia e exportação. Eles mantêm proporção e preenchem a caixa com corte central; os quadros são processados sob demanda com FFmpeg.
 
+Um vídeo pode incluir `video: {"sourceInSeconds":1.25,"durationFrames":120,"speed":1.5,"crop":{"x":0.1,"y":0.1,"width":0.8,"height":0.8}}`. `sourceInSeconds` começa a leitura nessa posição da fonte (0–3600 s); `durationFrames` define a duração de saída em quadros da timeline (1–18000), incluindo o efeito da velocidade; `speed` controla a velocidade (0.25–4, padrão 1); o recorte normalizado usa origem `x`,`y` e tamanho `width`,`height` entre 0 e 1, dentro da imagem. Se `durationFrames` for omitido, o vídeo ocupa o restante do intervalo do shot/cena. O inspector também permite editar a duração do clipe diretamente na timeline. Sem `video`, o comportamento antigo de início zero, velocidade 1 e enquadramento central permanece. Projetos com trim/fonte, velocidade ou crop personalizado usam schema 10; versões anteriores continuam abrindo.
+
 Propriedades: `x`, `y`, `width`, `height`, `cueProgress` (alternativo a `offsetSeconds`), `color` (#RRGGBB), `secondaryColor`, `fontSize` (8–300), `opacity` (0–1), `rotation`, `scale` (0.01–10), `travelX`, `travelY`, `spinDegrees`, `motion`, `motionFrames` (1–300), `exitFrames` (0–300), `pose`, `cue`, `offsetSeconds`, `span`, `keyframes`, `children`, `assetId`.
 
 Movimentos: `none`, `fade`, `rise`, `slide-left`, `slide-right`, `pop`. Poses: `neutral`, `point`, `wave`, `worried`. Roupas/personagem usam `color`; `secondaryColor` controla a pele. Partes de personagem ainda não são objetos articulados.
@@ -362,13 +364,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v9 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8 e efeitos de Visual Beat usam schema 9.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo, fades e automação de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v10 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9 e controles de fonte de vídeo usam schema 10.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação por pontos e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada com trim de entrada, velocidade e recorte manual, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação por pontos e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, desenho livre de envelopes e ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 

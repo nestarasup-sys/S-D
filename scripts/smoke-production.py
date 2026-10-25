@@ -82,7 +82,11 @@ run([sys.executable, root / "scripts/embed-ai-production-example.py", "--guide",
      "--example", root / "examples/carros-caros-directors-cut-90s.production.json"])
 guide_text = guide.read_text(encoding="utf-8")
 assert all(f"`{item['id']}`" in guide_text for item in catalog["nativeAssets"])
-assert "Catálogo 1 · Receita 3 · Projeto 8" in guide_text
+assert "Catálogo 1 · Receita 3 · Projeto 10" in guide_text
+assert catalog["projectVersion"] == 10
+assert {"video-source-trim", "video-speed-control", "video-normalized-crop"}.issubset(
+    set(catalog["productionCapabilities"]))
+assert '"sourceInSeconds"' in guide_text and '"durationFrames"' in guide_text
 guide_example = re.search(r"<!-- STUDIO-DARK-VALIDATED-EXAMPLE-BEGIN -->\s*```json\s*(.*?)\s*```\s*<!-- STUDIO-DARK-VALIDATED-EXAMPLE-END -->",
                           guide_text, re.DOTALL)
 assert guide_example and json.loads(guide_example.group(1)) == json.loads(
@@ -219,6 +223,40 @@ for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign",
 director_runtime = json.loads((output / "interface-director-90s/runtime.json").read_text(encoding="utf-8"))
 assert director_runtime["page"] == "editor" and director_runtime["hasAudio"]
 
+# Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
+video_source = folder / "video-controls-source.mp4"
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+     "testsrc2=size=320x180:rate=30:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", video_source])
+video_controls_project = {
+    "format": "studio-dark", "schemaVersion": 10, "id": "video-controls-smoke",
+    "name": "Video trim speed crop smoke", "width": 320, "height": 180, "duration": 30,
+    "fps": {"numerator": 30, "denominator": 1}, "nodes": [{
+        "id": "broll", "name": "B-roll", "kind": "video", "source": str(video_source),
+        "color": "#e4f5e9", "secondaryColor": "#f3c49a",
+        "start": 0, "duration": 30, "x": 0, "y": 0, "width": 320, "height": 180,
+        "opacity": 1, "fontSize": 64, "animated": False, "motion": "none",
+        "video": {"sourceInSeconds": 0.25, "speed": 1.5,
+                  "crop": {"x": 0.125, "y": 0.125, "width": 0.75, "height": 0.75}},
+    }]
+}
+video_controls_path = output / "video-controls.studio.json"
+video_controls_path.write_text(json.dumps(video_controls_project, indent=2), encoding="utf-8")
+video_controls_preview = output / "video-controls-preview.png"
+video_controls_export = output / "video-controls.mp4"
+run([bin_dir / "studio_render.exe", "--project", video_controls_path, "--still", 15,
+     "--output", video_controls_preview, "--ffmpeg", ffmpeg])
+run([bin_dir / "studio_render.exe", "--project", video_controls_path,
+     "--output", video_controls_export, "--ffmpeg", ffmpeg], timeout=180)
+video_controls_decode = run([ffmpeg, "-hide_banner", "-i", video_controls_export, "-f", "null", "-"])
+assert re.search(r"frame=\s*30\b", video_controls_decode.stderr)
+video_controls_decoded_frame = output / "video-controls-decoded.png"
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", video_controls_export,
+     "-vf", "select=eq(n\\,15)", "-frames:v", "1", video_controls_decoded_frame])
+video_controls_match = run([ffmpeg, "-hide_banner", "-i", video_controls_preview,
+                            "-i", video_controls_decoded_frame, "-lavfi", "psnr", "-f", "null", "-"])
+video_controls_psnr = re.search(r"average:([0-9.]+|inf)", video_controls_match.stderr)
+assert video_controls_psnr and float(video_controls_psnr.group(1)) > 30
+
 summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "shotsV3Frames": shots_project["duration"], "shotsV3Count": len(ordered_shots), "visualBeatsV3Count": len(shots_project["visualBeats"]), "shotsV3PreviewExportPsnrDb": float(v3_psnr.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "v3 project opens in editor", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4", "v3 independent shots and Visual Beats", "shot coverage and no gaps", "v3 preview/export frame comparison"]}
 summary.update({"director90Frames": director_project["duration"], "director90Shots": len(director_project["shots"]),
                 "director90Beats": len(director_project["visualBeats"]),
@@ -228,5 +266,7 @@ summary["checks"].extend(["90-second 2700-frame director cut", "18 independent s
                           "word-synchronized one-shot audio effect through editable track",
                           "word-aligned scene timing", "director preview/export comparison",
                           "90-second project opens in editor"])
+summary["videoControlsPreviewExportPsnrDb"] = float(video_controls_psnr.group(1))
+summary["checks"].append("video source trim, speed and normalized crop match between preview and MP4")
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(folder), **summary}, indent=2))

@@ -244,6 +244,8 @@ struct CompositionPainter::VideoDecoder {
     std::size_t frameBytes{0};
     int width{0}, height{0};
     QString source;
+    double sourceInSeconds{0}, playbackRate{1}, cropX{0}, cropY{0}, cropWidth{1}, cropHeight{1};
+    bool endOfStream{false};
 };
 
 CompositionPainter::CompositionPainter() = default;
@@ -281,25 +283,48 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         decoder.pending.clear();
         decoder.lastImage = {};
         decoder.decodedFrame = -1;
+        decoder.endOfStream = false;
     };
     if (decoder.source != source || decoder.width != width || decoder.height != height ||
+        decoder.sourceInSeconds != node.videoSourceInSeconds || decoder.playbackRate != node.videoPlaybackRate ||
+        decoder.cropX != node.videoCropX || decoder.cropY != node.videoCropY ||
+        decoder.cropWidth != node.videoCropWidth || decoder.cropHeight != node.videoCropHeight ||
         localFrame < decoder.decodedFrame)
         stopDecoder();
     decoder.source = source;
     decoder.width = width;
     decoder.height = height;
+    decoder.sourceInSeconds = node.videoSourceInSeconds;
+    decoder.playbackRate = node.videoPlaybackRate;
+    decoder.cropX = node.videoCropX;
+    decoder.cropY = node.videoCropY;
+    decoder.cropWidth = node.videoCropWidth;
+    decoder.cropHeight = node.videoCropHeight;
     decoder.frameBytes = frameBytes;
+    if (decoder.endOfStream)
+        return decoder.lastImage;
     if (decoder.process.state() == QProcess::NotRunning) {
         auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG");
         if (ffmpeg.isEmpty())
             ffmpeg = "ffmpeg";
-        const auto scale = QString("scale=%1:%2:force_original_aspect_ratio=decrease,pad=%1:%2:(ow-iw)/2:(oh-ih)/2,fps=%3/%4")
-                               .arg(width).arg(height).arg(project.fps.numerator).arg(project.fps.denominator);
+        QStringList filters;
+        filters << QString("trim=start=%1").arg(QString::number(node.videoSourceInSeconds, 'f', 6));
+        filters << QString("setpts=(PTS-STARTPTS)/%1").arg(QString::number(node.videoPlaybackRate, 'f', 6));
+        if (node.videoCropX != 0 || node.videoCropY != 0 || node.videoCropWidth != 1 ||
+            node.videoCropHeight != 1)
+            filters << QString("crop=iw*%1:ih*%2:iw*%3:ih*%4:exact=1")
+                           .arg(QString::number(node.videoCropWidth, 'f', 6))
+                           .arg(QString::number(node.videoCropHeight, 'f', 6))
+                           .arg(QString::number(node.videoCropX, 'f', 6))
+                           .arg(QString::number(node.videoCropY, 'f', 6));
+        filters << QString("scale=%1:%2:force_original_aspect_ratio=decrease").arg(width).arg(height);
+        filters << QString("pad=%1:%2:(ow-iw)/2:(oh-ih)/2").arg(width).arg(height);
+        filters << QString("fps=%1/%2").arg(project.fps.numerator).arg(project.fps.denominator);
         decoder.process.setProcessChannelMode(QProcess::SeparateChannels);
         decoder.process.start(ffmpeg,
                               {"-nostdin", "-hide_banner", "-loglevel", "error", "-i", source,
-                               "-vf", scale, "-an", "-sn", "-dn", "-f", "rawvideo", "-pix_fmt", "rgba",
-                               "pipe:1"});
+                               "-vf", filters.join(','), "-an", "-sn", "-dn", "-f", "rawvideo",
+                               "-pix_fmt", "rgba", "pipe:1"});
         if (!decoder.process.waitForStarted(5000))
             return {};
     }
@@ -309,7 +334,8 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
                 if (decoder.process.state() != QProcess::NotRunning)
                     decoder.process.kill();
                 decoder.process.waitForFinished(1000);
-                return {};
+                decoder.endOfStream = true;
+                return decoder.lastImage;
             }
             decoder.pending += decoder.process.readAllStandardOutput();
         }

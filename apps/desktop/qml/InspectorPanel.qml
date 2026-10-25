@@ -239,6 +239,23 @@ Rectangle {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540" }
                 Label { text: "TEMPO E MOVIMENTO"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1 }
+                Label { text: "FONTE DE VÍDEO"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.kind === "video" }
+                RowLayout {
+                    visible: panel.node.kind === "video"
+                    Field { caption: "Início da fonte · s"; propertyKey: "videoSourceInSeconds"; currentValue: panel.node.videoSourceInSeconds }
+                    Field { caption: "Velocidade · ×"; propertyKey: "videoPlaybackRate"; currentValue: panel.node.videoPlaybackRate }
+                }
+                RowLayout {
+                    visible: panel.node.kind === "video"
+                    Field { caption: "Recorte X · 0–1"; propertyKey: "videoCropX"; currentValue: panel.node.videoCropX }
+                    Field { caption: "Recorte Y · 0–1"; propertyKey: "videoCropY"; currentValue: panel.node.videoCropY }
+                }
+                RowLayout {
+                    visible: panel.node.kind === "video"
+                    Field { caption: "Largura · 0–1"; propertyKey: "videoCropWidth"; currentValue: panel.node.videoCropWidth }
+                    Field { caption: "Altura · 0–1"; propertyKey: "videoCropHeight"; currentValue: panel.node.videoCropHeight }
+                }
+                Label { text: "O trim de saída é a duração do objeto na timeline. Recorte usa frações da imagem original."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true; visible: panel.node.kind === "video" }
                 RowLayout {
                     Field { caption: "Início · frames"; propertyKey: "start"; currentValue: panel.node.start }
                     Field { caption: "Duração · frames"; propertyKey: "duration"; currentValue: panel.node.duration }

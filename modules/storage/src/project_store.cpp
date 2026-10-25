@@ -64,7 +64,7 @@ QByteArray serialize(const Project &p) {
         for (const auto &word : n.captionWords)
             captionWords.append(QJsonObject{{"text", text(word.text)}, {"start", double(word.start)},
                                             {"end", double(word.end)}});
-        nodes.append(QJsonObject{{"id", text(n.id)},
+        QJsonObject serializedNode{{"id", text(n.id)},
                                  {"parentId", text(n.parentId)},
                                  {"shotId", text(n.shotId)},
                                  {"name", text(n.name)},
@@ -101,7 +101,15 @@ QByteArray serialize(const Project &p) {
                                  {"motionFrames", n.motionFrames},
                                  {"exitFrames", n.exitFrames},
                                  {"keyframes", keyframes},
-                                 {"captionWords", captionWords}});
+                                 {"captionWords", captionWords}};
+        if (p.schemaVersion >= 10 && n.kind == NodeKind::Video)
+            serializedNode["video"] = QJsonObject{{"sourceInSeconds", n.videoSourceInSeconds},
+                                                  {"speed", n.videoPlaybackRate},
+                                                  {"crop", QJsonObject{{"x", n.videoCropX},
+                                                                        {"y", n.videoCropY},
+                                                                        {"width", n.videoCropWidth},
+                                                                        {"height", n.videoCropHeight}}}};
+        nodes.append(serializedNode);
     }
     QJsonArray scenes;
     for (const auto &s : p.scenes)
@@ -208,7 +216,7 @@ LoadResult deserialize(const QByteArray &bytes) {
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
                                          o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
-                                         o["schemaVersion"] != 9))
+                                         o["schemaVersion"] != 9 && o["schemaVersion"] != 10))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -349,6 +357,24 @@ LoadResult deserialize(const QByteArray &bytes) {
         n.text = str(v, "text");
         n.color = str(v, "color");
         n.source = str(v, "source");
+        if (v.contains("video")) {
+            if (p.schemaVersion < 10 || n.kind != NodeKind::Video || !v["video"].isObject())
+                return fail("Controles de vídeo exigem vídeo e schema 10.");
+            const auto video = v["video"].toObject();
+            if (!video["sourceInSeconds"].isDouble() || !video["speed"].isDouble() ||
+                !video["crop"].isObject())
+                return fail("Controles de vídeo incompletos.");
+            const auto crop = video["crop"].toObject();
+            for (const auto *key : {"x", "y", "width", "height"})
+                if (!crop[key].isDouble())
+                    return fail("Recorte de vídeo incompleto.");
+            n.videoSourceInSeconds = video["sourceInSeconds"].toDouble();
+            n.videoPlaybackRate = video["speed"].toDouble();
+            n.videoCropX = crop["x"].toDouble();
+            n.videoCropY = crop["y"].toDouble();
+            n.videoCropWidth = crop["width"].toDouble();
+            n.videoCropHeight = crop["height"].toDouble();
+        }
         n.start = v["start"].toInteger();
         n.duration = v["duration"].toInteger();
         n.x = v["x"].toDouble();

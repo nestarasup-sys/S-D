@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 10;
+        malformed["schemaVersion"] = 11;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -214,6 +214,37 @@ int main(int argc, char **argv) {
         const auto videoFrame15 = videoPainter.frame(videoProject, 15);
         check(!videoFrame0.isNull() && videoFrame0 != videoFrame15,
               "video layer decodes successive moving frames");
+        auto trimmedVideoProject = videoProject;
+        trimmedVideoProject.schemaVersion = 10;
+        trimmedVideoProject.nodes.front().videoSourceInSeconds = .5;
+        trimmedVideoProject.nodes.front().videoPlaybackRate = 2;
+        const auto savedTrimmedVideo = studio::deserialize(studio::serialize(trimmedVideoProject));
+        check(studio::validate(trimmedVideoProject).empty() && savedTrimmedVideo.error.isEmpty() &&
+                  savedTrimmedVideo.project.nodes.front().videoSourceInSeconds == .5 &&
+                  savedTrimmedVideo.project.nodes.front().videoPlaybackRate == 2,
+              "video trim and speed survive schema 10 roundtrip");
+        studio::CompositionPainter trimmedVideoPainter;
+        const auto trimmedFrame0 = trimmedVideoPainter.frame(trimmedVideoProject, 0);
+        const auto trimmedFrame15 = trimmedVideoPainter.frame(trimmedVideoProject, 15);
+        check(!trimmedFrame0.isNull() && !trimmedFrame15.isNull() && trimmedFrame0 == videoFrame15 &&
+                  trimmedFrame15 == videoPainter.frame(videoProject, 45),
+              "video preview applies source trim and playback speed at the project frame rate");
+        auto croppedVideoProject = videoProject;
+        croppedVideoProject.schemaVersion = 10;
+        croppedVideoProject.nodes.front().videoCropX = .25;
+        croppedVideoProject.nodes.front().videoCropY = .25;
+        croppedVideoProject.nodes.front().videoCropWidth = .5;
+        croppedVideoProject.nodes.front().videoCropHeight = .5;
+        studio::CompositionPainter croppedVideoPainter;
+        const auto croppedFrame = croppedVideoPainter.frame(croppedVideoProject, 0);
+        check(studio::validate(croppedVideoProject).empty() && !croppedFrame.isNull() && croppedFrame != videoFrame0,
+              "video preview applies a normalized manual crop");
+        auto invalidCropProject = croppedVideoProject;
+        invalidCropProject.nodes.front().videoCropX = .75;
+        check(!studio::validate(invalidCropProject).empty(), "reject a video crop outside the source image");
+        auto legacyVideoWithTrim = videoProject;
+        legacyVideoWithTrim.nodes.front().videoSourceInSeconds = .5;
+        check(!studio::validate(legacyVideoWithTrim).empty(), "video source controls require schema 10");
         auto missing = p;
         studio::Node image;
         image.id = "missing";

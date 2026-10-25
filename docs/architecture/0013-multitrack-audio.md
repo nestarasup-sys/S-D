@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementada parcialmente em projetos schema 4–9, receita v3, editor e exportador. Efeitos disparados por Visual Beat são especificados na [ADR 0014](0014-visual-beat-sound-effects.md).
+Implementada parcialmente em projetos schema 4–10, receita v3, editor e exportador. Efeitos disparados por Visual Beat são especificados na [ADR 0015](0015-visual-beat-sound-effects.md).
 
 ## Decisão
 

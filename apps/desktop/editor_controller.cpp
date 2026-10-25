@@ -42,7 +42,7 @@ void upsertKeyframe(std::vector<studio::CameraKeyframe> &keys, studio::CameraKey
         keys.insert(it, key);
 }
 QVariantMap map(const studio::Node &n) {
-    return {{"id", q(n.id)},
+    QVariantMap result{{"id", q(n.id)},
             {"name", q(n.name)},
             {"parentId", q(n.parentId)},
             {"keyframeCount", int(n.keyframes.size())},
@@ -73,6 +73,15 @@ QVariantMap map(const studio::Node &n) {
             {"travelX", n.travelX},
             {"travelY", n.travelY},
             {"spinDegrees", n.spinDegrees}};
+    if (n.kind == studio::NodeKind::Video) {
+        result.insert("videoSourceInSeconds", n.videoSourceInSeconds);
+        result.insert("videoPlaybackRate", n.videoPlaybackRate);
+        result.insert("videoCropX", n.videoCropX);
+        result.insert("videoCropY", n.videoCropY);
+        result.insert("videoCropWidth", n.videoCropWidth);
+        result.insert("videoCropHeight", n.videoCropHeight);
+    }
+    return result;
 }
 } // namespace
 EditorController::EditorController(QObject *parent, QString recoveryDirectory) : QObject(parent) {
@@ -306,6 +315,20 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.travelY = value.toDouble();
                 else if (key == "spinDegrees")
                     n.spinDegrees = value.toDouble();
+                else if (key == "videoSourceInSeconds")
+                    n.videoSourceInSeconds = value.toDouble();
+                else if (key == "videoPlaybackRate")
+                    n.videoPlaybackRate = value.toDouble();
+                else if (key == "videoCropX")
+                    n.videoCropX = value.toDouble();
+                else if (key == "videoCropY")
+                    n.videoCropY = value.toDouble();
+                else if (key == "videoCropWidth")
+                    n.videoCropWidth = value.toDouble();
+                else if (key == "videoCropHeight")
+                    n.videoCropHeight = value.toDouble();
+                if (key.startsWith("video"))
+                    p.schemaVersion = std::max(p.schemaVersion, 10);
             }
     });
     if (error.empty())

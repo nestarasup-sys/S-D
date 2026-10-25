@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 9)
+    if (p.schemaVersion < 2 || p.schemaVersion > 10)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -118,6 +118,21 @@ std::string validate(const Project &p) {
             return "Vetor SVG sem arquivo de origem.";
         if (n.kind == NodeKind::Video && n.source.empty())
             return "Vídeo sem arquivo de origem.";
+        const bool hasVideoSettings = n.videoSourceInSeconds != 0 || n.videoPlaybackRate != 1 ||
+                                      n.videoCropX != 0 || n.videoCropY != 0 || n.videoCropWidth != 1 ||
+                                      n.videoCropHeight != 1;
+        if (n.kind == NodeKind::Video &&
+            (!std::isfinite(n.videoSourceInSeconds) || n.videoSourceInSeconds < 0 ||
+             n.videoSourceInSeconds > 3600 || !std::isfinite(n.videoPlaybackRate) ||
+             n.videoPlaybackRate < .25 || n.videoPlaybackRate > 4 || !std::isfinite(n.videoCropX) ||
+             !std::isfinite(n.videoCropY) || !std::isfinite(n.videoCropWidth) ||
+             !std::isfinite(n.videoCropHeight) || n.videoCropX < 0 || n.videoCropY < 0 ||
+             n.videoCropWidth <= 0 || n.videoCropHeight <= 0 || n.videoCropX + n.videoCropWidth > 1 ||
+             n.videoCropY + n.videoCropHeight > 1))
+            return "Trim, velocidade ou recorte de vídeo fora dos limites.";
+        if ((n.kind != NodeKind::Video && hasVideoSettings) ||
+            (p.schemaVersion < 10 && n.kind == NodeKind::Video && hasVideoSettings))
+            return "Controles avançados de vídeo exigem um nó de vídeo e schema 10.";
         if (n.kind == NodeKind::Native && !libraryItem(n.nativeId))
             return "Objeto nativo desconhecido.";
         if (!n.sceneId.empty() && !sceneIds.contains(n.sceneId))

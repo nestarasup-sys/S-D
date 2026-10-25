@@ -36,6 +36,7 @@ struct DirectedCameraKeyframe {
 };
 struct DirectedElement {
     Node node;
+    std::int64_t videoDurationFrames{0};
     int cue{0};
     double progress{0};
     double offsetSeconds{0};

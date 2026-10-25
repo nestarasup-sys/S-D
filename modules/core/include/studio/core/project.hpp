@@ -54,6 +54,8 @@ struct Node {
     bool animated{true};
     std::string nativeId, sceneId, role;
     std::string pose{"neutral"}, motion{"rise"}, secondaryColor{"#f3c49a"};
+    double videoSourceInSeconds{0}, videoPlaybackRate{1};
+    double videoCropX{0}, videoCropY{0}, videoCropWidth{1}, videoCropHeight{1};
     double rotation{0}, scale{1}, travelX{0}, travelY{0}, spinDegrees{0};
     int motionFrames{24}, exitFrames{0};
     std::vector<TransformKeyframe> keyframes;
