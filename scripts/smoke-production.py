@@ -243,6 +243,43 @@ assert (director_runtime["captionTimingControlsVisible"] and
         director_runtime["captionTimingControlCount"] == director_runtime["selectedCaptionWordCount"]), director_runtime
 assert director_runtime["selectedCaptionTrackAvailable"] and director_runtime["selectedTrackIndex"] >= 0, director_runtime
 
+# A real portrait production exercises JSON canvas selection through edit, preview and MP4 output.
+portrait_output = folder / "portrait-1080x1920"
+portrait_recipe = root / "examples/retrato-1080x1920-v3.production.json"
+portrait_run = run([bin_dir / "studio_produce.exe", "--recipe", portrait_recipe,
+                    "--output-dir", portrait_output], timeout=120)
+(folder / "portrait-production.log").write_text(portrait_run.stdout + portrait_run.stderr,
+                                                encoding="utf-8")
+portrait_project_path = portrait_output / "project.studio.json"
+portrait_project = json.loads(portrait_project_path.read_text(encoding="utf-8"))
+portrait_report = json.loads((portrait_output / "production-report.json").read_text(encoding="utf-8"))
+assert portrait_report["status"] == "ready" and portrait_project["width"] == 1080
+assert portrait_project["height"] == 1920 and portrait_report["frameCount"] == portrait_project["duration"]
+portrait_caption = next(node for node in portrait_project["nodes"] if node.get("role") == "caption")
+assert portrait_caption["y"] >= 1700 and portrait_caption["y"] + portrait_caption["height"] <= 1920
+portrait_video = portrait_output / "portrait.mp4"
+run([bin_dir / "studio_render.exe", "--project", portrait_project_path,
+     "--output", portrait_video, "--ffmpeg", ffmpeg], timeout=180)
+portrait_decode = run([ffmpeg, "-hide_banner", "-i", portrait_video, "-f", "null", "-"])
+assert "1080x1920" in portrait_decode.stderr
+assert re.search(rf"frame=\s*{portrait_project['duration']}\b", portrait_decode.stderr)
+portrait_frame = min(30, portrait_project["duration"] - 1)
+portrait_still = output / "portrait-reference.png"
+run([bin_dir / "studio_render.exe", "--project", portrait_project_path, "--still", portrait_frame,
+     "--output", portrait_still])
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", portrait_video,
+     "-vf", f"select=eq(n\\,{portrait_frame})", "-frames:v", "1", output / "portrait-decoded.png"])
+portrait_match = run([ffmpeg, "-hide_banner", "-i", portrait_still, "-i", output / "portrait-decoded.png",
+                      "-lavfi", "psnr", "-f", "null", "-"])
+portrait_psnr = re.search(r"average:([0-9.]+|inf)", portrait_match.stderr)
+assert portrait_psnr and float(portrait_psnr.group(1)) > 30
+portrait_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-portrait",
+                   "--project", portrait_project_path, "--frame", portrait_frame], timeout=30)
+for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign", "Binding loop"):
+    assert marker not in portrait_ui.stderr, portrait_ui.stderr
+portrait_runtime = json.loads((output / "interface-portrait/runtime.json").read_text(encoding="utf-8"))
+assert portrait_runtime["page"] == "editor" and portrait_runtime["hasAudio"]
+
 # Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
 video_source = folder / "video-controls-source.mp4"
 run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
@@ -305,7 +342,7 @@ extracted_track = next(track for track in video_audio_project["audioTracks"] if 
 assert extracted_track["sourceInSeconds"] == 0.25 and extracted_track["playbackRate"] == 1.5
 assert extracted_track["linkedVideoNodeId"] == "broll"
 
-summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "shotsV3Frames": shots_project["duration"], "shotsV3Count": len(ordered_shots), "visualBeatsV3Count": len(shots_project["visualBeats"]), "shotsV3PreviewExportPsnrDb": float(v3_psnr.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "v3 project opens in editor", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4", "v3 independent shots and Visual Beats", "shot coverage and no gaps", "v3 preview/export frame comparison"]}
+summary = {"status": "passed", "voice": report["voice"], "scenes": 6, "nodes": len(project["nodes"]), "frames": project["duration"], "durationSeconds": project["duration"] / 30, "audioRms": rms, "previewExportPsnrDb": float(match.group(1)), "shotsV3Frames": shots_project["duration"], "shotsV3Count": len(ordered_shots), "visualBeatsV3Count": len(shots_project["visualBeats"]), "shotsV3PreviewExportPsnrDb": float(v3_psnr.group(1)), "portraitCanvas": [portrait_project["width"], portrait_project["height"]], "portraitPreviewExportPsnrDb": float(portrait_psnr.group(1)), "elapsedSeconds": round(time.monotonic() - started, 2), "video": str(video), "checks": ["native recipe compiler", "real Windows pt-BR speech", "measured audio timing", "PCM mix", "H264 and AAC decode", "six frame comparisons", "QML window capture", "v3 project opens in editor", "missing voice rejection", "guide/catalogue consistency", "native library contact sheet", "8-second frame-exact production", "cueProgress after TTS", "240-frame MP4", "v3 independent shots and Visual Beats", "shot coverage and no gaps", "v3 preview/export frame comparison", "portrait v3 canvas through production, editable project, preview, QML and MP4"]}
 summary.update({"director90Frames": director_project["duration"], "director90Shots": len(director_project["shots"]),
                 "director90Beats": len(director_project["visualBeats"]),
                 "director90PreviewExportPsnrDb": float(director_psnr.group(1)),

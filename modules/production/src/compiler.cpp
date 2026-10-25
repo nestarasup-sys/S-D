@@ -212,6 +212,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
+    p.width = recipe.width;
+    p.height = recipe.height;
     p.schemaVersion = recipe.version >= 3 ? 7 : 3;
     p.artDirection = recipe.artDirection;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
@@ -227,7 +229,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     }
     std::vector<std::int64_t> transitions;
     int captionIndex = 0;
-    CameraState previousShotCamera{640, 360, 1, 0};
+    CameraState previousShotCamera{p.width / 2.0, p.height / 2.0, 1, 0};
     for (std::size_t sceneIndex = 0; sceneIndex < recipe.scenes.size(); ++sceneIndex) {
         const auto &scene = recipe.scenes[sceneIndex];
         const ArtDirection &sceneArt = scene.artDirection ? *scene.artDirection : recipe.artDirection;
@@ -272,13 +274,15 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             r.subtitles += QString::number(++captionIndex) + "\n" + srtTime(begin) + " --> " + srtTime(end) +
                            "\n" + utterance.text + "\n\n";
             auto start = begin / samplesPerFrame, finish = (end + samplesPerFrame - 1) / samplesPerFrame;
+            const auto captionMargin = sceneThemed ? sceneArt.safeMargin : 80;
+            const auto captionHeight = sceneThemed ? std::max(80., sceneArt.captionSize * 2.5) : 80.;
             auto caption = textNode("caption-" + utterance.id.toStdString(), utterance.text.toStdString(),
-                                    sceneThemed ? sceneArt.safeMargin : 80,
+                                    captionMargin,
                                     sceneThemed && sceneArt.captionPosition == "top"
-                                        ? sceneArt.safeMargin
-                                        : sceneThemed ? 720 - sceneArt.safeMargin - 80 : 620,
-                                    sceneThemed ? 1280 - sceneArt.safeMargin * 2 : 1120,
-                                    80, sceneThemed ? sceneArt.captionSize : 27, start, finish - start);
+                                        ? captionMargin
+                                        : p.height - (sceneThemed ? captionMargin + captionHeight : 100),
+                                    p.width - captionMargin * 2,
+                                    captionHeight, sceneThemed ? sceneArt.captionSize : 27, start, finish - start);
             caption.color = sceneArt.textColor;
             caption.role = "caption";
             caption.sceneId = scene.id.toStdString();
@@ -383,8 +387,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             bg.name = "Cenário";
             bg.x = 0;
             bg.y = 0;
-            bg.width = 1280;
-            bg.height = 720;
+            bg.width = p.width;
+            bg.height = p.height;
             bg.start = sceneStart;
             bg.duration = sceneDuration;
             bg.animated = false;
@@ -396,7 +400,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         if (!scene.kicker.isEmpty()) {
             auto kicker = textNode("kicker-" + scene.id.toStdString(), scene.kicker.toStdString(),
                                    sceneThemed ? sceneArt.safeMargin : 70, 44,
-                                   sceneThemed ? 1280 - sceneArt.safeMargin * 2 : 1140, 35,
+                                   sceneThemed ? p.width - sceneArt.safeMargin * 2 : p.width - 140, 35,
                                    sceneThemed ? sceneArt.bodySize * .55 : 19, sceneStart, sceneDuration);
             kicker.color = sceneThemed ? sceneArt.secondaryColor : "#efb873";
             kicker.sceneId = scene.id.toStdString();
@@ -406,7 +410,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         if (!scene.title.isEmpty()) {
             auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(),
                                   sceneThemed ? sceneArt.safeMargin : 70, 92,
-                                  sceneThemed ? 1280 - sceneArt.safeMargin * 2 : 1140, 140,
+                                  sceneThemed ? p.width - sceneArt.safeMargin * 2 : p.width - 140, 140,
                                   sceneThemed ? sceneArt.titleSize : 58, sceneStart, sceneDuration);
             if (sceneThemed)
                 title.color = sceneArt.textColor;

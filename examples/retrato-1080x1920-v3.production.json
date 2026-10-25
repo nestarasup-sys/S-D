@@ -1,0 +1,45 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Demonstração vertical 9:16",
+  "voice": "auto",
+  "speechRate": 0,
+  "captions": true,
+  "musicGain": 0.02,
+  "effectsGain": 0.02,
+  "canvas": { "width": 1080, "height": 1920 },
+  "artDirection": {
+    "backgroundColor": "#0B1420",
+    "primaryColor": "#55E2C4",
+    "secondaryColor": "#FFCB69",
+    "textColor": "#F4F7FA",
+    "cardColor": "#172838",
+    "captionBackgroundColor": "#0B1420",
+    "fontFamily": "Segoe UI",
+    "titleSize": 68,
+    "bodySize": 40,
+    "captionSize": 28,
+    "captionPosition": "bottom",
+    "safeMargin": 36
+  },
+  "scenes": [
+    {
+      "id": "retrato-demo",
+      "narration": ["O formato vertical mantém a história pronta para celular."] ,
+      "shots": [
+        {
+          "id": "quadro-vertical",
+          "name": "Composição vertical",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": { "zoom": 1 },
+          "elements": [
+            { "id": "fundo-estudio", "kind": "native", "asset": "studio", "x": 0, "y": 0, "width": 1080, "height": 1920, "cue": 0 },
+            { "id": "cartao-retrato", "kind": "shape", "x": 90, "y": 610, "width": 900, "height": 700, "color": "#172838", "cue": 0 },
+            { "id": "titulo-retrato", "kind": "text", "text": "UMA HISTÓRIA\nEM PÉ", "x": 150, "y": 760, "width": 780, "height": 300, "fontSize": 92, "color": "#55E2C4", "cue": 0 }
+          ]
+        }
+      ]
+    }
+  ]
+}

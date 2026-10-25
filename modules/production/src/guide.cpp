@@ -38,6 +38,7 @@ QJsonObject capabilities() {
                         "multi-track-audio", "visual-beat-sound-effects",
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
+                        "landscape-and-portrait-canvas-presets",
                         "word-timed-karaoke-captions", "word-animated-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
@@ -48,6 +49,10 @@ QJsonObject capabilities() {
                         "word-timed-caption-highlights", "word-animated-caption-presets"}},
             {"width", 1280},
             {"height", 720},
+            {"supportedCanvases", QJsonArray{
+                 QJsonObject{{"name", "Paisagem HD"}, {"width", 1280}, {"height", 720}},
+                 QJsonObject{{"name", "Paisagem Full HD"}, {"width", 1920}, {"height", 1080}},
+                 QJsonObject{{"name", "Retrato"}, {"width", 1080}, {"height", 1920}}}},
             {"fps", 30},
             {"nativeAssets", items},
             {"motions", motions},
@@ -86,7 +91,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 - Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
 - `offsetSeconds` varia de 0 a 10; `cueProgress` usa de 0 a 1 para acompanhar a fala final. Sem duração fixa, a duração natural depende da voz pt-BR e só é conhecida depois de sintetizar o WAV.
 - Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, `video`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
-- Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Evite elementos ilegíveis em 1280×720; respeite o limite de oito níveis de grupo.
+- Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Sem `canvas`, use 1280×720; nos outros formatos aceitos, componha elementos dentro das dimensões escolhidas e mantenha margens para legendas. Respeite o limite de oito níveis de grupo.
 - Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
 - Revise antes de responder: JSON parseável, IDs únicos, no máximo 20 cenas, de 1 a 10 falas por cena, propriedades dentro dos limites e narração coerente com os visuais.
 
@@ -177,6 +182,10 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 **Planejamento:** para 90 s, 2700 quadros a 30 FPS. A IA pode planejar mas não conhece a duração de uma voz local ainda não gerada. Evite silêncios excessivos; se o plano não couber, ajuste a narração ou os tempos. O aplicativo não inventa áudio para satisfazer qualquer número.
 
 ## Receita v3 — cenas, shots e Visual Beats
+
+### Formato do quadro
+
+Receitas v1/v2 e receitas v3 sem `canvas` continuam usando 1280×720. Uma receita v3 pode declarar `"canvas":{"width":1080,"height":1920}` para vídeo vertical ou escolher 1280×720 e 1920×1080 para paisagem. `canvas` é um objeto opcional da raiz v3; `width` e `height` são inteiros obrigatórios quando o objeto está presente e nenhum outro campo é aceito. São aceitos somente estes pares: 1280×720 (padrão), 1920×1080 e 1080×1920. Dimensões e coordenadas dos elementos são pixels do quadro escolhido. Câmeras sem centro explícito começam no centro do quadro. O projeto mantém a resolução escolhida na edição, prévia e exportação. Cenários nativos de 16:9 preservam a proporção e são cortados nas laterais para preencher o formato vertical. Exemplo completo: `examples/retrato-1080x1920-v3.production.json`.
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
@@ -391,7 +400,7 @@ A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. 
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Vídeo local como camada com trim de entrada, velocidade e recorte manual, áudio de vídeo local em pista editável com trim/velocidade, direção de arte global/cena/shot, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, seleção múltipla com movimento conjunto na timeline, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação editável graficamente e efeitos sonoros disparados por Visual Beat estão implementados. Continuam pendentes documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, presets visuais nomeados, outros formatos de tela e outras ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
+Vídeo local como camada com trim de entrada, velocidade e recorte manual, áudio de vídeo local em pista editável com trim/velocidade, direção de arte global/cena/shot, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, seleção múltipla com movimento conjunto na timeline, biblioteca vetorial, áudio em várias pistas, ducking, fades, automação editável graficamente, efeitos sonoros disparados por Visual Beat e telas 1280×720, 1920×1080 ou 1080×1920 estão implementados. Continuam pendentes documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, presets visuais nomeados e outras ferramentas avançadas de timeline. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 

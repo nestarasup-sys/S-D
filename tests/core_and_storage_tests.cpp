@@ -62,6 +62,13 @@ int main(int argc, char **argv) {
               "camera ease-out uses cubic interpolation");
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "eased keyframes survive schema 3 roundtrip");
+        auto portraitProject = studio::makeEmpty();
+        portraitProject.width = 1080;
+        portraitProject.height = 1920;
+        const auto portraitRoundTrip = studio::deserialize(studio::serialize(portraitProject));
+        check(studio::validate(portraitProject).empty() && portraitRoundTrip.error.isEmpty() &&
+                  portraitRoundTrip.project.width == 1080 && portraitRoundTrip.project.height == 1920,
+              "vertical project dimensions validate and survive JSON roundtrip");
         auto badCurve = p;
         badCurve.camera[1].easing = "spring-unknown";
         check(!studio::validate(badCurve).empty(), "reject unsupported camera curve");

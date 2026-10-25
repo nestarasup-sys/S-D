@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Entrega implementada: formatos paisagem e retrato
+
+- A criação de projetos oferece paisagem 1280×720, paisagem Full HD 1920×1080 e retrato 1080×1920; o armazenamento preserva as dimensões sem alterar projetos anteriores.
+- Receitas v3 aceitam `canvas` opcional na raiz com `width` e `height` inteiros. Apenas os três pares documentados são válidos; sem o campo, o padrão continua 1280×720. Coordenadas e dimensões dos elementos usam pixels do quadro escolhido, e a câmera sem coordenadas explícitas inicia no centro dele.
+- Compilação de receitas, cenários nativos, legendas, preview compartilhado e render/export usam o mesmo quadro. Fundos nativos 16:9 mantêm a proporção e usam corte central para preencher um projeto vertical.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke.ps1` e `scripts/smoke-workspace.ps1` passaram. `scripts/smoke-production.ps1` sintetizou a receita retrato com Microsoft Maria Desktop, renderizou o MP4 1080×1920 e abriu o projeto na interface; a comparação de still/export marcou 43,96 dB. Os testes cobrem parse, dimensões, câmera padrão, legenda, persistência e opções da tela de novo projeto.
+- Exemplo: [retrato 1080×1920](../examples/retrato-1080x1920-v3.production.json). Decisão: [ADR 0024 — formatos de tela](architecture/0024-canvas-formats.md).
+
 ### Entrega implementada: áudio embutido em clipes de vídeo
 
 - Ao selecionar uma camada de vídeo, **Adicionar áudio do vídeo à timeline** verifica a faixa de áudio local e cria uma pista vinculada ao início, duração, trim e velocidade do clipe. Alterações posteriores na camada mantêm a sincronização; mover/aparar a pista ou editar seu trim/velocidade a desvincula para edição independente. Arquivos sem faixa de áudio reconhecida são recusados com uma mensagem específica.
@@ -153,7 +161,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico de camadas visuais e áudio, incluindo mover e aparar pistas de áudio. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export; faltam outros formatos de tela e otimizações de seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação sincronizados e snapping geométrico de camadas visuais e áudio, incluindo mover e aparar pistas de áudio. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados; faltam otimizações de seek. |
 
 ### Limites confirmados nesta versão
 
@@ -169,7 +177,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Formatos de tela adicionais, começando por retrato 1080×1920 sem alterar projetos horizontais. Depois, otimizar cache/seek de vídeo e preview de áudio. Fontes externas e presets visuais nomeados também continuam pendentes.
+Otimizar cache/seek de vídeo e preview de áudio para produções longas. Depois, presets reutilizáveis de câmera e edição avançada de duração/overlap. Fontes externas e presets visuais nomeados também continuam pendentes.
 
 ---
 
@@ -820,7 +828,7 @@ Se necessário, implemente uma arquitetura que permita muitos eventos temporais 
 
 Os limites só devem ser aumentados quando houver suporte real e testes de desempenho.
 
-Considere também a possibilidade futura de projetos verticais em 1080 × 1920, sem prejudicar o formato horizontal.
+**Implementado nesta rodada:** receitas v3 e novos projetos aceitam 1280×720, 1920×1080 e 1080×1920; 1280×720 continua sendo o padrão e projetos horizontais existentes mantêm suas dimensões. Os limites restantes de cenas, nós, falas, texto e profundidade de grupos continuam iguais e são validados pelo importador. A próxima avaliação desses limites deve usar medições de produções longas, sem aumentá-los por antecipação.
 
 ---
 
@@ -947,7 +955,7 @@ Implementar:
 9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
 10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
 11. [x] Áudio embutido em vídeos locais, com trim e velocidade sincronizados à camada e pista editável.
-12. [ ] Formatos de tela adicionais, incluindo projetos verticais.
+12. [x] Formatos de tela adicionais, incluindo projetos verticais 1080×1920 e Full HD 1920×1080.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 

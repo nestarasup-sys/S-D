@@ -61,7 +61,7 @@ class WorkspaceController : public QObject {
     void setAssetTrash(bool value);
     Q_INVOKABLE void navigate(QString page);
     Q_INVOKABLE void refresh();
-    Q_INVOKABLE bool createProject(QString name);
+    Q_INVOKABLE bool createProject(QString name, int width = 1280, int height = 720);
     Q_INVOKABLE bool openProject(QString id);
     Q_INVOKABLE bool importProject(QUrl path);
     Q_INVOKABLE bool renameProject(QString id, QString name);

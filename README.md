@@ -12,7 +12,7 @@ Para gerar o primeiro episódio completo, clique em **CRIAR-VIDEO-CARROS.bat**. 
 
 ## Tela inicial de projetos
 
-O aplicativo abre em **Projetos**, com cartões, prévias, busca e atalhos para a biblioteca. **Novo projeto** pede um nome, cria uma composição vazia e já salva o arquivo na pasta de dados do aplicativo. **Importar projeto ou JSON** abre qualquer arquivo `.json` (projetos `.studio.json` e receitas `.production.json`); **Importar receita IA** abre diretamente o importador de produção.
+O aplicativo abre em **Projetos**, com cartões, prévias, busca e atalhos para a biblioteca. **Novo projeto** pede um nome e formato — paisagem 1280×720, paisagem Full HD 1920×1080 ou retrato 1080×1920 — e salva a composição vazia na pasta de dados do aplicativo. **Importar projeto ou JSON** abre qualquer arquivo `.json` (projetos `.studio.json` e receitas `.production.json`); **Importar receita IA** abre diretamente o importador de produção.
 
 Cada cartão oferece **Abrir**, **Duplicar**, **Renomear** e **Excluir**. A exclusão move o registro para a **Lixeira**, de onde pode ser restaurado; os arquivos do projeto e suas mídias são mantidos. Projetos gerados anteriormente na pasta de produções do app são reconhecidos na primeira inicialização da coleção.
 
@@ -39,6 +39,8 @@ As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há
 Receita v2 aceita composições sem títulos ou cenários impostos, grupos, keyframes ligados às falas, câmera e referências por ID a itens pessoais ativos. Receitas v1 antigas continuam funcionando. Exemplos: [roteiro sobre carros](examples/ROTEIRO-CARROS-CAROS.md), [receita v1 de carros](examples/carros-caros.production.json) e [composição livre v2](examples/composicao-livre-v2.production.json).
 
 ## Shots e Visual Beats (receita v3)
+
+Receitas v3 aceitam `canvas` opcional: `{ "width": 1080, "height": 1920 }` para retrato ou `{ "width": 1920, "height": 1080 }` para paisagem Full HD. Sem esse objeto, permanece 1280×720. Somente esses três tamanhos são aceitos. O importador usa as dimensões escolhidas para centro padrão da câmera, legendas, prévia e exportação; cenários nativos 16:9 preservam a proporção e são cortados nas laterais em retrato. Projetos horizontais antigos não mudam. Exemplo testável: [produção vertical 1080×1920](examples/retrato-1080x1920-v3.production.json).
 
 Uma cena pode ter vários shots sem quebrar a narração. O início de cada plano é resolvido contra a fala sintetizada; o próximo início encerra o plano anterior, e os planos precisam cobrir a cena sem lacunas. Cada shot tem composição e estado inicial de câmera próprios. `camera.focus` pode enquadrar um elemento ou grupo do próprio shot com margem automática; `follow: true` acompanha o alvo quadro a quadro. `transitionIn` aceita corte seco, fade, dissolve, slide horizontal/vertical e zoom com duração configurável em quadros. No editor, selecione um quadro dentro do shot e ajuste tipo, duração e direção da transição de entrada no inspetor; o primeiro shot da cena permanece sem transição.
 
@@ -134,6 +136,6 @@ A evolução proposta a partir do vídeo de referência está em [Futuro do apli
 
 Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de entrada, PNG/SVG/vídeo local com trim, velocidade e recorte, áudio extraído de vídeo em pista editável, receitas v1/v2/v3, shots e transições editáveis, direção de arte global/por cena/shot, Visual Beats incluindo efeitos sonoros sincronizados, narração pt-BR local, sincronização e animação de palavra nas legendas, trilha/efeitos procedurais, até 32 pistas com ducking/fades/automação por pontos e easing, forma de onda e reprodução audiovisual. Continuam pendentes ferramentas avançadas de timeline. Projetos v1–v13 continuam abrindo, e as receitas v3 continuam compatíveis.
 
-A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas. Também faltam automação de ritmo a partir do conteúdo, curvas Bézier personalizadas/trajetórias e outros formatos de tela.
+A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas. Também faltam automação de ritmo a partir do conteúdo, curvas Bézier personalizadas/trajetórias, presets reutilizáveis de câmera e otimizações de cache/seek.
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.

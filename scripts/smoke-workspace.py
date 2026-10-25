@@ -30,6 +30,7 @@ def capture(page, destination, project=None):
 
 empty = capture("projects", "home-empty")
 assert empty["projects"] == 0 and empty["assets"] == 14 and empty["categories"] == 5
+assert empty["newProjectCanvasOptions"] == 3, empty
 base = json.loads((profile / "demo.studio.json").read_text(encoding="utf-8"))
 fixtures = out / "fixtures"
 fixtures.mkdir()

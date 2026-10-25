@@ -44,7 +44,11 @@ void paintNative(QPainter &p, const Node &n, std::int64_t frame) {
     p.save();
     p.setClipRect(QRectF(0, 0, n.width, n.height), Qt::IntersectClip);
     if (id == "street" || id == "office" || id == "showroom" || id == "studio") {
-        p.scale(n.width / 1280, n.height / 720);
+        // Native backdrops were authored in 16:9. Fill the target canvas without
+        // stretching them; portrait canvases crop the sides while preserving scale.
+        const double scale = std::max(n.width / 1280.0, n.height / 720.0);
+        p.translate((n.width - 1280 * scale) / 2, (n.height - 720 * scale) / 2);
+        p.scale(scale, scale);
         QLinearGradient gradient(0, 0, 1280, 720);
         gradient.setColorAt(0, QColor("#101e2b"));
         gradient.setColorAt(1, QColor("#173d42"));

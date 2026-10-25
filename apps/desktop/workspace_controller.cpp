@@ -217,11 +217,18 @@ QVariantList WorkspaceController::assets() const {
     }
     return result;
 }
-bool WorkspaceController::createProject(QString name) {
+bool WorkspaceController::createProject(QString name, int width, int height) {
     if (busy())
         return false;
+    if (!((width == 1280 && height == 720) || (width == 1920 && height == 1080) ||
+          (width == 1080 && height == 1920))) {
+        notify("Escolha um formato compatível: 1280×720, 1920×1080 ou 1080×1920.");
+        return false;
+    }
     auto p = studio::makeEmpty();
     p.name = name.trimmed().toStdString();
+    p.width = width;
+    p.height = height;
     auto r = store_.createProject(p);
     if (!complete(r, "Projeto criado e salvo.", true))
         return false;

@@ -87,17 +87,34 @@ ApplicationWindow {
         onAccepted: editor.exportVideo(selectedFile)
     }
     Dialog {
-        id: createDialog; anchors.centerIn: parent; width: 470; modal: true; title: "Uma nova história"
-        onOpened: { projectName.text = "Novo projeto"; projectName.forceActiveFocus(); projectName.selectAll() }
+        id: createDialog; anchors.centerIn: parent; width: 500; modal: true; title: "Uma nova história"
+        onOpened: { projectName.text = "Novo projeto"; canvasPicker.currentIndex = 0; projectName.forceActiveFocus(); projectName.selectAll() }
         ColumnLayout {
             width: parent.width; spacing: 16
             Label { text: "Dê um nome ao seu projeto. Ele será salvo automaticamente na sua coleção."; color: "#a4b9c7"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             StudioField { id: projectName; Layout.fillWidth: true; maximumLength: 120; onAccepted: createButton.clicked() }
-            Label { text: "Composição inicial · 1280 × 720 · 30 fps"; color: "#718d9e"; font.pixelSize: 11 }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "Formato"; color: "#a4b9c7" }
+                StudioComboBox {
+                    id: canvasPicker
+                    objectName: "newProjectCanvasPicker"
+                    Layout.fillWidth: true
+                    model: ["Paisagem · 1280 × 720", "Retrato · 1080 × 1920", "Paisagem Full HD · 1920 × 1080"]
+                }
+            }
+            Label { text: "30 fps · o formato pode ser escolhido na receita IA v3 usando canvas."; color: "#718d9e"; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 StudioButton { text: "Cancelar"; onClicked: createDialog.close() }
-                StudioButton { id: createButton; text: "Criar e abrir"; accent: true; onClicked: if (workspace.createProject(projectName.text)) createDialog.close() }
+                StudioButton {
+                    id: createButton; text: "Criar e abrir"; accent: true
+                    onClicked: {
+                        var dimensions = canvasPicker.currentIndex === 1 ? [1080, 1920]
+                                      : canvasPicker.currentIndex === 2 ? [1920, 1080] : [1280, 720]
+                        if (workspace.createProject(projectName.text, dimensions[0], dimensions[1])) createDialog.close()
+                    }
+                }
             }
         }
     }

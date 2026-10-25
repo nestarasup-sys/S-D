@@ -635,12 +635,28 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (version >= 2)
         rootKeys << "captions" << "targetDurationSeconds" << "timingMode" << "preserveVoicePitch";
     if (version >= 3)
-        rootKeys << "editing" << "artDirection" << "wordAnimation";
+        rootKeys << "editing" << "artDirection" << "wordAnimation" << "canvas";
     if (!allowed(o, rootKeys))
         return fail("Receita contém campo desconhecido. Consulte o guia desta versão.");
     ProductionRecipe r;
     r.version = version;
     r.original = o;
+    if (o.contains("canvas")) {
+        if (version < 3 || !o["canvas"].isObject())
+            return fail("canvas exige um objeto em receita v3.");
+        const auto canvas = o["canvas"].toObject();
+        if (!allowed(canvas, {"width", "height"}) || !canvas["width"].isDouble() ||
+            !canvas["height"].isDouble() || std::floor(canvas["width"].toDouble()) != canvas["width"].toDouble() ||
+            std::floor(canvas["height"].toDouble()) != canvas["height"].toDouble())
+            return fail("canvas exige width e height inteiros e não aceita outros campos.");
+        r.width = canvas["width"].toInt();
+        r.height = canvas["height"].toInt();
+        const bool supported = (r.width == 1280 && r.height == 720) ||
+                               (r.width == 1920 && r.height == 1080) ||
+                               (r.width == 1080 && r.height == 1920);
+        if (!supported)
+            return fail("canvas aceita 1280×720, 1920×1080 ou 1080×1920.");
+    }
     if (o.contains("artDirection")) {
         if (version < 3 || !o["artDirection"].isObject())
             return fail("artDirection exige um objeto em receita v3.");
@@ -832,6 +848,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     !shotObject["elements"].isArray())
                     return fail("Shot precisa de id, start e elements válidos.");
                 DirectedShot shot;
+                shot.cameraX = r.width / 2.0;
+                shot.cameraY = r.height / 2.0;
                 ArtDirection shotStyle = sceneStyle;
                 bool shotThemed = sceneThemed;
                 if (shotObject.contains("artDirection")) {

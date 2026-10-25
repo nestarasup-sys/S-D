@@ -179,6 +179,7 @@
         "video-source-trim",
         "video-speed-control",
         "video-normalized-crop",
+        "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions"
     ],
@@ -208,6 +209,23 @@
         "dissolve",
         "slide",
         "zoom"
+    ],
+    "supportedCanvases": [
+        {
+            "height": 720,
+            "name": "Paisagem HD",
+            "width": 1280
+        },
+        {
+            "height": 1080,
+            "name": "Paisagem Full HD",
+            "width": 1920
+        },
+        {
+            "height": 1920,
+            "name": "Retrato",
+            "width": 1080
+        }
     ],
     "width": 1280
 }

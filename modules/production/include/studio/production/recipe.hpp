@@ -96,6 +96,7 @@ struct ProductionRecipe {
     QString timingMode{"natural"};
     double targetDurationSeconds{0};
     bool preserveVoicePitch{true};
+    int width{1280}, height{720};
     int editingIntensity{-1}; // Optional v3 preset for generated, otherwise-unspecified motion defaults.
     QString wordAnimationPreset{"highlight"};
     int wordAnimationDurationFrames{8};

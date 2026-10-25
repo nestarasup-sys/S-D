@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
             auto captionList = rootObject ? rootObject->findChild<QObject *>("captionWordAlignmentList") : nullptr;
             auto timelinePanel = rootObject ? rootObject->findChild<QObject *>("timelinePanelRoot") : nullptr;
             auto videoAudioButton = rootObject ? rootObject->findChild<QObject *>("addVideoAudioButton") : nullptr;
+            auto canvasPicker = rootObject ? rootObject->findChild<QObject *>("newProjectCanvasPicker") : nullptr;
             const auto audioTracks = controller.audioTracks();
             QFile project(directory + "/demo.studio.json");
             ok = ok && project.open(QIODevice::WriteOnly);
@@ -86,6 +87,8 @@ int main(int argc, char **argv) {
                                                          timelinePanel ? timelinePanel->property("selectedTrackIndex").toInt() : -1},
                                                         {"videoAudioActionVisible",
                                                          videoAudioButton && videoAudioButton->property("visible").toBool()},
+                                                        {"newProjectCanvasOptions",
+                                                         canvasPicker ? canvasPicker->property("count").toInt() : -1},
                                                         {"audioTrackCount", audioTracks.size()},
                                                         {"projects", workspace.projectCount()},
                                                         {"assets", workspace.assetCount()},

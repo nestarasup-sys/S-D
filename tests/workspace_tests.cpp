@@ -217,6 +217,10 @@ int main(int argc, char **argv) {
         check(QFile::exists(index + ".previous"), "catalogue previous snapshot retained");
         studio::WorkspaceStore reopened(temp.filePath("workspace"));
         check(reopened.data()["projects"].toArray().size() == 2, "catalogue persists across sessions");
+        check(ui.createProject("Projeto vertical", 1080, 1920) && editor.project().width == 1080 &&
+                  editor.project().height == 1920,
+              "create a managed portrait project with its chosen canvas dimensions");
+        check(!ui.createProject("Formato inválido", 1000, 1000), "reject unsupported new project dimensions");
         auto brokenRoot = temp.filePath("broken");
         QDir().mkpath(brokenRoot);
         QFile broken(brokenRoot + "/catalogue.json");

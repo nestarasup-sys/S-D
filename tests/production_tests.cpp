@@ -173,6 +173,35 @@ int main(int argc, char **argv) {
                   parsedShots.recipe.scenes.front().shots.back().transitionIn == "dissolve" &&
                   parsedShots.recipe.scenes.front().shots.back().transitionDurationFrames == 3,
               "v3 parses independent shots, Visual Beats, and transition timing");
+        QFile portraitFixture(QString(STUDIO_SOURCE_DIR) + "/examples/retrato-1080x1920-v3.production.json");
+        check(portraitFixture.open(QIODevice::ReadOnly), "portrait production example exists");
+        const auto portraitBytes = portraitFixture.readAll();
+        const auto portraitRecipe = studio::parseRecipe(portraitBytes, directory.path());
+        check(portraitRecipe.error.isEmpty() && portraitRecipe.recipe.width == 1080 &&
+                  portraitRecipe.recipe.height == 1920 &&
+                  portraitRecipe.recipe.scenes.front().shots.front().cameraX == 540 &&
+                  portraitRecipe.recipe.scenes.front().shots.front().cameraY == 960,
+              "v3 portrait canvas is parsed and omitted camera coordinates center on its dimensions");
+        auto invalidCanvas = QJsonDocument::fromJson(portraitBytes).object();
+        invalidCanvas["canvas"] = QJsonObject{{"width", 1080}, {"height", 1080}};
+        check(!studio::parseRecipe(QJsonDocument(invalidCanvas).toJson(), directory.path()).error.isEmpty(),
+              "reject unsupported canvas dimensions");
+        auto verticalVoice = QMap<QString, studio::PcmAudio>{};
+        verticalVoice[portraitRecipe.recipe.scenes.front().narration.front().id].samples.resize(96000, .08f);
+        const auto compiledPortrait = studio::compileProduction(portraitRecipe.recipe, verticalVoice,
+                                                               directory.filePath("portrait.wav"));
+        const auto *portraitCaption = studio::findNode(compiledPortrait.project, "caption-retrato-demo-u1");
+        const auto *portraitBackground = studio::findNode(compiledPortrait.project, "fundo-estudio");
+        check(compiledPortrait.error.isEmpty() && studio::validate(compiledPortrait.project).empty() &&
+                  compiledPortrait.project.width == 1080 && compiledPortrait.project.height == 1920 &&
+                  portraitCaption && portraitCaption->y == 1804 && portraitCaption->width == 1008 &&
+                  portraitBackground && portraitBackground->width == 1080 && portraitBackground->height == 1920,
+              "vertical compilation preserves canvas, safe captions, and background dimensions");
+        studio::CompositionPainter portraitPainter;
+        const auto portraitFrame = portraitPainter.frame(compiledPortrait.project, 30);
+        check(portraitFrame.size() == QSize(1080, 1920) &&
+                  portraitFrame.pixelColor(540, 960) != portraitFrame.pixelColor(10, 10),
+              "shared composition renderer paints the vertical frame");
         QFile soundFixture(directory.filePath("beat-chime.wav"));
         check(soundFixture.open(QIODevice::WriteOnly) && soundFixture.write("fixture") == 7,
               "Visual Beat sound fixture exists");
@@ -1037,6 +1066,11 @@ int main(int argc, char **argv) {
               "reject ambiguous cueProgress plus offsetSeconds");
         check(studio::capabilities()["productionCapabilities"].toArray().contains("keyframe-easing-curves"),
               "easing remains advertised");
+        check(studio::capabilities()["supportedCanvases"].toArray().size() == 3 &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains(
+                      "landscape-and-portrait-canvas-presets") &&
+                  studio::aiGuide().contains("\"canvas\":{\"width\":1080,\"height\":1920}"),
+              "capabilities and AI guide expose only the supported vertical and landscape canvases");
         auto g = studio::aiGuide();
         for (const auto &asset : studio::nativeLibrary())
             check(g.contains("`" + QString::fromStdString(asset.id) + "`"),
