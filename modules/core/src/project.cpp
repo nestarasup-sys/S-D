@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 7)
+    if (p.schemaVersion < 2 || p.schemaVersion > 8)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -61,6 +61,10 @@ std::string validate(const Project &p) {
             return track.fadeInFrames != 0 || track.fadeOutFrames != 0;
         }))
         return "Fades de pista de áudio exigem a versão 6 do projeto.";
+    if (p.schemaVersion < 8 && std::any_of(p.audioTracks.begin(), p.audioTracks.end(), [](const auto &track) {
+            return !track.gainAutomation.empty();
+        }))
+        return "Automação de ganho exige a versão 8 do projeto.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
@@ -285,6 +289,16 @@ std::string validate(const Project &p) {
             !std::isfinite(track.gain) || track.gain < 0 || track.gain > 4 ||
             !std::isfinite(track.duckAmount) || track.duckAmount < 0 || track.duckAmount > 1)
             return "Pista de áudio inválida ou fora dos limites.";
+        if (track.gainAutomation.size() > 128)
+            return "Automação de ganho excede 128 pontos por pista.";
+        std::int64_t previousPointFrame = -1;
+        for (const auto &point : track.gainAutomation) {
+            if (point.frame <= previousPointFrame || point.frame < 0 || point.frame >= track.duration ||
+                !std::isfinite(point.value) || point.value < 0 || point.value > 4 ||
+                !supportedEasing(point.easing))
+                return "Ponto de automação de ganho inválido.";
+            previousPointFrame = point.frame;
+        }
     }
     if (std::any_of(p.audioTracks.begin(), p.audioTracks.end(), [](const auto &track) {
             return !track.muted && track.duckUnderVoice;
@@ -357,6 +371,27 @@ Project makeDemo() {
 const Node *findNode(const Project &p, const std::string &id) {
     auto it = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &n) { return n.id == id; });
     return it == p.nodes.end() ? nullptr : &*it;
+}
+double evaluateGainAutomation(const AudioTrack &track, std::int64_t localFrame) {
+    if (track.gainAutomation.empty())
+        return 1;
+    if (localFrame <= track.gainAutomation.front().frame)
+        return track.gainAutomation.front().value;
+    for (std::size_t i = 1; i < track.gainAutomation.size(); ++i) {
+        const auto &previous = track.gainAutomation[i - 1];
+        const auto &current = track.gainAutomation[i];
+        if (localFrame > current.frame)
+            continue;
+        double progress = double(localFrame - previous.frame) / double(current.frame - previous.frame);
+        if (current.easing == "ease-in")
+            progress = progress * progress * progress;
+        else if (current.easing == "ease-out")
+            progress = 1 - std::pow(1 - progress, 3);
+        else if (current.easing == "ease-in-out")
+            progress = progress * progress * (3 - 2 * progress);
+        return previous.value + (current.value - previous.value) * progress;
+    }
+    return track.gainAutomation.back().value;
 }
 bool active(const Node &n, std::int64_t frame) {
     return frame >= n.start && frame < n.start + n.duration;

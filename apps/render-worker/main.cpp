@@ -114,6 +114,28 @@ int main(int argc, char **argv) {
     if (hasMainAudio || !activeTracks.empty()) {
         const double sequenceSeconds = double(p.duration) / p.fps.value();
         const auto seconds = [](double value) { return QString::number(value, 'f', 6); };
+        const auto gainExpression = [&](const studio::AudioTrack &track) {
+            const auto &points = track.gainAutomation;
+            QString expression = seconds(points.back().value);
+            for (std::size_t i = points.size(); i-- > 1;) {
+                const auto &from = points[i - 1];
+                const auto &to = points[i];
+                const auto start = seconds(double(from.frame) / p.fps.value());
+                const auto end = seconds(double(to.frame) / p.fps.value());
+                const auto raw = QString("min(1,max(0,(t-%1)/%2))").arg(start, seconds((to.frame - from.frame) / p.fps.value()));
+                QString progress = raw;
+                if (to.easing == "ease-in")
+                    progress = "pow(" + raw + ",3)";
+                else if (to.easing == "ease-out")
+                    progress = "1-pow(1-" + raw + ",3)";
+                else if (to.easing == "ease-in-out")
+                    progress = "(" + raw + ")*" + raw + "*(3-2*(" + raw + "))";
+                const auto ramp = seconds(from.value) + "+(" + seconds(to.value - from.value) + ")*(" + progress + ")";
+                expression = "if(lt(t," + end + ")," + ramp + "," + expression + ")";
+            }
+            const auto firstTime = seconds(double(points.front().frame) / p.fps.value());
+            return "if(lt(t," + firstTime + ")," + seconds(points.front().value) + "," + expression + ")";
+        };
         QStringList filters, inputs;
         const bool needsSidechain = needsDucking && voiceInput >= 0;
         if (hasMainAudio) {
@@ -140,7 +162,10 @@ int main(int argc, char **argv) {
                                seconds(length - double(track.fadeOutFrames) / p.fps.value()) +
                                ":d=" + seconds(double(track.fadeOutFrames) / p.fps.value());
             trackFilter += ",volume=" + gain + ",adelay=delays=" + QString::number(delay) + "|" +
-                           QString::number(delay) + ":all=1[" + pre + "]";
+                           QString::number(delay) + ":all=1";
+            if (!track.gainAutomation.empty())
+                trackFilter += ",volume='" + gainExpression(track) + "':eval=frame";
+            trackFilter += "[" + pre + "]";
             filters << trackFilter;
             if (track.duckUnderVoice && needsSidechain) {
                 const auto ratio = QString::number(1.0 + track.duckAmount * 19.0, 'f', 4);

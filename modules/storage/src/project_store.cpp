@@ -153,7 +153,11 @@ QByteArray serialize(const Project &p) {
         beats.append(value);
     }
     QJsonArray audioTracks;
-    for (const auto &track : p.audioTracks)
+    for (const auto &track : p.audioTracks) {
+        QJsonArray automation;
+        for (const auto &point : track.gainAutomation)
+            automation.append(QJsonObject{{"frame", double(point.frame)}, {"value", point.value},
+                                          {"easing", text(point.easing)}});
         audioTracks.append(QJsonObject{{"id", text(track.id)},
                                        {"name", text(track.name)},
                                        {"source", text(track.source)},
@@ -164,7 +168,9 @@ QByteArray serialize(const Project &p) {
                                        {"duckUnderVoice", track.duckUnderVoice},
                                        {"duckAmount", track.duckAmount},
                                        {"fadeInFrames", double(track.fadeInFrames)},
-                                       {"fadeOutFrames", double(track.fadeOutFrames)}});
+                                       {"fadeOutFrames", double(track.fadeOutFrames)},
+                                       {"gainAutomation", automation}});
+    }
     QJsonObject document{
         {"format", "studio-dark"},
         {"schemaVersion", p.schemaVersion},
@@ -201,7 +207,7 @@ LoadResult deserialize(const QByteArray &bytes) {
     if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
                                          o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
-                                         o["schemaVersion"] != 7))
+                                         o["schemaVersion"] != 7 && o["schemaVersion"] != 8))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -281,6 +287,19 @@ LoadResult deserialize(const QByteArray &bytes) {
                                      track["gain"].toDouble(), track["muted"].toBool(),
                                      track["duckUnderVoice"].toBool(), track["duckAmount"].toDouble(.65),
                                      track["fadeInFrames"].toInteger(), track["fadeOutFrames"].toInteger()});
+            auto &loadedTrack = p.audioTracks.back();
+            if (track.contains("gainAutomation") && !track["gainAutomation"].isArray())
+                return fail("Lista de automação de ganho inválida.");
+            for (const auto pointValue : track["gainAutomation"].toArray()) {
+                if (!pointValue.isObject())
+                    return fail("Ponto de automação de ganho inválido.");
+                const auto point = pointValue.toObject();
+                if (!integer(point["frame"]) || !point["value"].isDouble() ||
+                    (point.contains("easing") && !point["easing"].isString()))
+                    return fail("Ponto de automação de ganho incompleto.");
+                loadedTrack.gainAutomation.push_back({point["frame"].toInteger(), point["value"].toDouble(),
+                                                       point["easing"].toString("linear").toStdString()});
+            }
         }
     }
     if (o.contains("scenes") && !o["scenes"].isArray())

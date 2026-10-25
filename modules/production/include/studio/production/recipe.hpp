@@ -59,6 +59,7 @@ struct DirectedAudioTrack {
     double gain{1}, duckAmount{0.65};
     bool duckUnderVoice{false};
     int fadeInFrames{0}, fadeOutFrames{0};
+    std::vector<AudioTrack::GainPoint> gainAutomation;
 };
 struct DirectedShot {
     QString id, name, transitionIn{"cut"};

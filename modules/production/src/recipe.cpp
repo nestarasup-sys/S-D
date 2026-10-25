@@ -905,7 +905,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         return fail("Pista de áudio inválida.");
                     const auto trackObject = trackValue.toObject();
                     if (!allowed(trackObject, {"id", "name", "source", "start", "gain", "duckUnderVoice",
-                                               "duckAmount", "fadeInFrames", "fadeOutFrames"}) ||
+                                               "duckAmount", "fadeInFrames", "fadeOutFrames", "gainAutomation"}) ||
                         !trackObject["id"].isString() || !trackObject["source"].isString() ||
                         !trackObject["start"].isObject() ||
                         (trackObject.contains("name") && !trackObject["name"].isString()) ||
@@ -932,6 +932,26 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     track.duckAmount = trackObject["duckAmount"].toDouble(.65);
                     track.fadeInFrames = trackObject["fadeInFrames"].toInt(0);
                     track.fadeOutFrames = trackObject["fadeOutFrames"].toInt(0);
+                    if (trackObject.contains("gainAutomation")) {
+                        if (!trackObject["gainAutomation"].isArray() ||
+                            trackObject["gainAutomation"].toArray().size() > 128)
+                            return fail("gainAutomation aceita até 128 pontos.");
+                        for (const auto pointValue : trackObject["gainAutomation"].toArray()) {
+                            if (!pointValue.isObject())
+                                return fail("Ponto de gainAutomation inválido.");
+                            const auto point = pointValue.toObject();
+                            const auto frame = point["frame"].toInteger(-1);
+                            const auto value = point["value"].toDouble(-1);
+                            const auto easing = point["easing"].toString("linear").toStdString();
+                            if (!point["frame"].isDouble() || std::floor(point["frame"].toDouble()) != point["frame"].toDouble() ||
+                                frame < 0 || !point["value"].isDouble() || !std::isfinite(value) ||
+                                value < 0 || value > 4 || !supportedEasing(easing) ||
+                                (point.contains("easing") && !point["easing"].isString()) ||
+                                (!track.gainAutomation.empty() && frame <= track.gainAutomation.back().frame))
+                                return fail("Pontos de gainAutomation devem ser ordenados, com valor 0–4 e curva válida.");
+                            track.gainAutomation.push_back({frame, value, easing});
+                        }
+                    }
                     if ((trackObject.contains("gain") && !trackObject["gain"].isDouble()) ||
                         (trackObject.contains("duckAmount") && !trackObject["duckAmount"].isDouble()) ||
                         (trackObject.contains("fadeInFrames") &&

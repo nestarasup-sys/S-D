@@ -82,6 +82,13 @@ struct AudioTrack {
     bool muted{false}, duckUnderVoice{false};
     double duckAmount{0.65};
     std::int64_t fadeInFrames{0}, fadeOutFrames{0};
+    struct GainPoint {
+        std::int64_t frame{0};
+        double value{1};
+        std::string easing{"linear"};
+        bool operator==(const GainPoint &) const = default;
+    };
+    std::vector<GainPoint> gainAutomation;
 };
 struct Project {
     std::string id;
@@ -106,6 +113,7 @@ struct CameraState {
     double x{0}, y{0}, zoom{1}, rotation{0};
 };
 bool supportedEasing(const std::string &name);
+double evaluateGainAutomation(const AudioTrack &, std::int64_t localFrame);
 std::string validate(const Project &project);
 Project makeDemo();
 Project makeEmpty();
