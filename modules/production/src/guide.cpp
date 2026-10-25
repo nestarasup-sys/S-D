@@ -32,7 +32,7 @@ QJsonObject capabilities() {
                         "visual-beats-show-hide-transform-camera", "shot-cut-camera",
                         "shot-transitions-fade-dissolve-slide-zoom", "auto-reframe-by-shot-target",
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
-                        "global-art-direction"}},
+                        "global-art-direction", "word-aligned-visual-beats"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
@@ -51,7 +51,8 @@ QJsonObject capabilities() {
             {"maxTransitionDurationFrames", 300},
             {"maxNodes", 200},
             {"maxNarrationCharactersPerCue", 150},
-            {"audio", QJsonArray{"windows-pt-BR-tts", "procedural-bed", "scene-chime"}}};
+            {"audio", QJsonArray{"windows-pt-BR-tts", "windows-sapi-word-boundaries",
+                                 "procedural-bed", "scene-chime"}}};
 }
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
@@ -164,7 +165,7 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
+Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
 Exemplos de transição: `{"type":"fade","durationFrames":18}`, `{"type":"dissolve","durationFrames":12}`, `{"type":"slide","direction":"left","durationFrames":16}` ou `{"type":"zoom","durationFrames":12}`. `durationFrames` aceita de 2 a 300 quadros e precisa caber no shot de entrada. `slide` aceita direção `left`, `right`, `up` ou `down`. `fade` atravessa preto; `dissolve` mistura as imagens; `slide` move o novo shot; `zoom` aproxima o novo shot ao entrar. Prévia e exportação usam o mesmo compositor. A timeline destaca a faixa de transição.
 
@@ -180,7 +181,9 @@ Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuai
 
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera no shot ativo. A edição manual ainda não oferece transições sobrepostas.
 
-Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
+Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
+
+Exemplo de sincronização por palavra: `{"cue":0,"wordIndex":7}`. A posição é medida pelo evento de progresso do sintetizador Windows depois da geração da voz (e ajustada junto com a fala quando há aceleração de duração fixa). Se o sintetizador não emitir timestamps ou o índice não existir, a produção é interrompida com erro; não há estimativa por duração média da palavra. Essa versão aplica a palavra a início de shot e Visual Beat; elementos e keyframes ainda usam `cueProgress`/`offsetSeconds`.
 
 Exemplo curto, válido e coberto por teste automatizado:
 
@@ -215,7 +218,7 @@ Exemplo curto, válido e coberto por teste automatizado:
           "x": 420, "y": 240, "width": 440, "height": 100, "fontSize": 68,
           "cue": 0, "cueProgress": 0.55}],
         "beats": [
-          {"id": "revelar", "at": {"cue": 0, "cueProgress": 0.7},
+          {"id": "revelar", "at": {"cue": 0, "wordIndex": 7},
             "action": "show", "target": "preco"},
           {"id": "aproximar", "at": {"cue": 0, "cueProgress": 0.85},
             "action": "camera", "durationFrames": 8, "zoom": 1.35}

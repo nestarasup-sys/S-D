@@ -90,12 +90,25 @@ bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &er
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
                   const QString &label) {
-    if (!allowed(o, {"cue", "progress", "cueProgress", "offsetSeconds"}) || !o["cue"].isDouble() ||
+    if (!allowed(o, {"cue", "progress", "cueProgress", "offsetSeconds", "wordIndex"}) ||
+        !o["cue"].isDouble() ||
         std::floor(o["cue"].toDouble()) != o["cue"].toDouble()) {
         error = label + " precisa de cue inteiro e campos temporais conhecidos.";
         return false;
     }
     time.cue = o["cue"].toInt();
+    if (o.contains("wordIndex")) {
+        if (!o["wordIndex"].isDouble() || std::floor(o["wordIndex"].toDouble()) != o["wordIndex"].toDouble()) {
+            error = label + " wordIndex precisa ser inteiro.";
+            return false;
+        }
+        time.wordIndex = o["wordIndex"].toInt(-1);
+        if (time.wordIndex < 0 || time.wordIndex >= 150 || o.contains("progress") ||
+            o.contains("cueProgress") || o.contains("offsetSeconds")) {
+            error = label + " use wordIndex de 0 a 149 sozinho, sem progress ou offsetSeconds.";
+            return false;
+        }
+    }
     if (o.contains("progress") && o.contains("cueProgress")) {
         error = label + " use progress ou cueProgress, não ambos.";
         return false;
@@ -117,8 +130,11 @@ bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QStrin
     }
     time.progress = hasProgress ? o[progressField].toDouble() : -1;
     time.offsetSeconds = o["offsetSeconds"].toDouble(0);
-    if (time.cue < 0 || time.cue >= cueCount || !std::isfinite(time.progress) || time.progress < 0 ||
-        time.progress > 1 || !std::isfinite(time.offsetSeconds) || time.offsetSeconds < 0 ||
+    const bool progressValid = time.wordIndex >= 0
+                                   ? time.progress == -1
+                                   : std::isfinite(time.progress) && time.progress >= 0 && time.progress <= 1;
+    if (time.cue < 0 || time.cue >= cueCount || !std::isfinite(time.progress) || !progressValid ||
+        !std::isfinite(time.offsetSeconds) || time.offsetSeconds < 0 ||
         time.offsetSeconds > 10) {
         error = label + " está fora dos limites de cue, progress ou offsetSeconds.";
         return false;

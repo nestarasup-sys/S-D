@@ -209,6 +209,24 @@ int main(int argc, char **argv) {
                       "#fff3d6" &&
                   styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078",
               "v3 global art direction parses, supplies defaults, and preserves element styles");
+        auto wordRecipeJson = shotRecipeJson;
+        auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
+        auto wordShots = wordScene["shots"].toArray();
+        auto wordShot = wordShots.at(1).toObject();
+        auto wordBeats = wordShot["beats"].toArray();
+        auto wordBeat = wordBeats.at(0).toObject();
+        wordBeat["at"] = QJsonObject{{"cue", 0}, {"wordIndex", 3}};
+        wordBeats[0] = wordBeat;
+        wordShot["beats"] = wordBeats;
+        wordShots[1] = wordShot;
+        wordScene["shots"] = wordShots;
+        QJsonArray wordScenes;
+        wordScenes.append(wordScene);
+        wordRecipeJson["scenes"] = wordScenes;
+        const auto wordRecipe = studio::parseRecipe(QJsonDocument(wordRecipeJson).toJson(), directory.path());
+        check(wordRecipe.error.isEmpty() &&
+                  wordRecipe.recipe.scenes.front().shots.back().beats.front().at.wordIndex == 3,
+              "v3 parses word-index timing references for Visual Beats");
         auto highIntensityJson = shotRecipeJson;
         highIntensityJson["editing"] = QJsonObject{{"intensity", 90}};
         const auto highIntensity =
@@ -264,6 +282,19 @@ int main(int argc, char **argv) {
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 4 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
+        const auto missingWordAlignment =
+            studio::compileProduction(wordRecipe.recipe, shotAudio, "word-shots.wav");
+        studio::WordTimingMap wordMap;
+        const auto cueId = wordRecipe.recipe.scenes.front().narration.front().id;
+        wordMap.insert(cueId, {0, 1200, 2400, 4800, 6000, 7200, 8400, 9600, 10800});
+        const auto alignedWordShots =
+            studio::compileProduction(wordRecipe.recipe, shotAudio, "word-shots.wav", nullptr, &wordMap);
+        check(!missingWordAlignment.error.isEmpty() && alignedWordShots.error.isEmpty() &&
+                  std::any_of(alignedWordShots.project.visualBeats.begin(),
+                              alignedWordShots.project.visualBeats.end(), [](const auto &beat) {
+                                  return beat.id == "reveal-price" && beat.frame == 6;
+                              }),
+              "word-index beats require real alignment and resolve to measured word timing");
         const auto persistedShots = studio::deserialize(studio::serialize(compiledShots.project));
         check(persistedShots.error.isEmpty() &&
                   persistedShots.project.shots.back().transitionIn == "dissolve" &&

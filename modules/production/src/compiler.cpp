@@ -10,8 +10,14 @@
 namespace studio {
 namespace {
 std::int64_t cueFrame(const std::pair<std::int64_t, std::int64_t> &cue, double offsetSeconds,
-                      double progress) {
+                      double progress, int wordIndex = -1,
+                      const std::vector<std::int64_t> *wordStarts = nullptr) {
     constexpr std::int64_t spf = ProductionSampleRate / 30;
+    if (wordIndex >= 0) {
+        if (!wordStarts || std::size_t(wordIndex) >= wordStarts->size())
+            return -1;
+        return cue.first / spf + std::llround(double((*wordStarts)[std::size_t(wordIndex)]) / spf);
+    }
     if (progress >= 0) {
         const auto first = cue.first / spf;
         const auto last = std::max(first, (cue.second - 1) / spf);
@@ -95,8 +101,10 @@ bool compileElement(const DirectedElement &directed,
     return true;
 }
 std::int64_t resolveTime(const DirectedTime &time,
-                         const std::vector<std::pair<std::int64_t, std::int64_t>> &cues) {
-    return cueFrame(cues[time.cue], time.offsetSeconds, time.progress);
+                         const std::vector<std::pair<std::int64_t, std::int64_t>> &cues,
+                         const std::vector<std::vector<std::int64_t>> &wordStarts) {
+    const auto *words = time.cue < int(wordStarts.size()) ? &wordStarts[std::size_t(time.cue)] : nullptr;
+    return cueFrame(cues[time.cue], time.offsetSeconds, time.progress, time.wordIndex, words);
 }
 VisualState beatState(const VisualState &current, const DirectedBeat &beat, double baseOpacity) {
     auto next = current;
@@ -175,7 +183,8 @@ bool frameCameraOnTarget(const Project &project, const Node &target, std::int64_
 }
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
-                                const QString &audioOutput, const TimingPlan *timing) {
+                                const QString &audioOutput, const TimingPlan *timing,
+                                const WordTimingMap *wordTimings) {
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
@@ -206,6 +215,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         const auto sceneStart = sceneSample / samplesPerFrame;
         transitions.push_back(sceneSample);
         std::vector<std::pair<std::int64_t, std::int64_t>> cues;
+        std::vector<std::vector<std::int64_t>> wordStarts;
         for (std::size_t cueIndex = 0; cueIndex < scene.narration.size(); ++cueIndex) {
             const auto &utterance = scene.narration[cueIndex];
             const TimedCue *cueTiming = fixed ? &sceneTiming->cues[cueIndex] : nullptr;
@@ -228,6 +238,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             r.voice.samples.insert(r.voice.samples.end(), audio.begin(), audio.end());
             std::int64_t end = r.voice.samples.size();
             cues.push_back({begin, end});
+            wordStarts.push_back(wordTimings && wordTimings->contains(utterance.id)
+                                     ? wordTimings->value(utterance.id)
+                                     : std::vector<std::int64_t>{});
             r.subtitles += QString::number(++captionIndex) + "\n" + srtTime(begin) + " --> " + srtTime(end) +
                            "\n" + utterance.text + "\n\n";
             auto start = begin / samplesPerFrame, finish = (end + samplesPerFrame - 1) / samplesPerFrame;
@@ -324,8 +337,14 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             };
             std::vector<ResolvedShot> shots;
             shots.reserve(scene.shots.size());
-            for (const auto &shot : scene.shots)
-                shots.push_back({&shot, resolveTime(shot.start, cues)});
+            for (const auto &shot : scene.shots) {
+                const auto start = resolveTime(shot.start, cues, wordStarts);
+                if (start < 0) {
+                    r.error = "wordIndex sem timestamp de alinhamento disponível no shot: " + shot.id;
+                    return r;
+                }
+                shots.push_back({&shot, start});
+            }
             std::sort(shots.begin(), shots.end(),
                       [](const auto &a, const auto &b) { return a.start < b.start; });
             if (shots.empty() || shots.front().start != sceneStart) {
@@ -384,11 +403,17 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                 p.camera.push_back({shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
                                     shotCamera.rotation, "linear", directedShot.id.toStdString()});
                 auto beats = directedShot.beats;
+                for (const auto &beat : beats)
+                    if (resolveTime(beat.at, cues, wordStarts) < 0) {
+                        r.error = "wordIndex sem timestamp de alinhamento disponível no Visual Beat: " +
+                                  beat.id;
+                        return r;
+                    }
                 std::sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
-                    return resolveTime(a.at, cues) < resolveTime(b.at, cues);
+                    return resolveTime(a.at, cues, wordStarts) < resolveTime(b.at, cues, wordStarts);
                 });
                 for (const auto &beat : beats) {
-                    const auto beatFrame = resolveTime(beat.at, cues);
+                    const auto beatFrame = resolveTime(beat.at, cues, wordStarts);
                     if (beatFrame < shotStart || beatFrame >= shotEnd ||
                         beat.durationFrames > shotEnd - beatFrame - 1) {
                         r.error = "Visual Beat fica fora do shot: " + beat.id;

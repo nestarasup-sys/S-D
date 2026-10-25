@@ -36,8 +36,8 @@
             { "id": "preco", "kind": "text", "text": "BARATO?", "x": 420, "y": 235, "width": 440, "height": 100, "fontSize": 68, "color": "#b4f078", "cue": 0, "cueProgress": 0.55 }
           ],
           "beats": [
-            { "id": "preco-aparece", "at": { "cue": 0, "cueProgress": 0.7 }, "action": "show", "target": "preco" },
-            { "id": "preco-destaque", "at": { "cue": 0, "cueProgress": 0.82 }, "action": "transform", "target": "preco", "durationFrames": 6, "scale": 1.18 }
+            { "id": "preco-aparece", "at": { "cue": 0, "wordIndex": 5 }, "action": "show", "target": "preco" },
+            { "id": "preco-destaque", "at": { "cue": 0, "wordIndex": 7 }, "action": "transform", "target": "preco", "durationFrames": 6, "scale": 1.18 }
           ]
         },
         {

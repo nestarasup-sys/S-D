@@ -115,6 +115,7 @@ int main(int argc, char **argv) {
     QMap<QString, studio::PcmAudio> utterances;
     QMap<QString, QString> wavPaths;
     QMap<QString, std::int64_t> measuredSamples;
+    studio::WordTimingMap wordTimings;
     for (auto value : manifest["utterances"].toArray()) {
         auto line = value.toObject();
         auto audio = studio::readWave(line["path"].toString());
@@ -124,6 +125,33 @@ int main(int argc, char **argv) {
         wavPaths.insert(line["id"].toString(), line["path"].toString());
         measuredSamples.insert(line["id"].toString(),
                                std::int64_t(utterances[line["id"].toString()].samples.size()));
+        if (!line["words"].isArray() || line["words"].toArray().isEmpty())
+            return fail("A voz pt-BR não forneceu timestamps de palavra para " + line["id"].toString());
+        std::vector<std::int64_t> starts;
+        std::int64_t previousSample = -1;
+        for (const auto wordValue : line["words"].toArray()) {
+            const auto word = wordValue.toObject();
+            const auto sample = word["audioPositionSamples"].toDouble(-1);
+            if (!word["text"].isString() || !word["characterPosition"].isDouble() ||
+                !word["characterCount"].isDouble() || !std::isfinite(sample) || sample < 0 ||
+                sample > utterances[line["id"].toString()].samples.size() * 2.0 || sample < previousSample)
+                return fail("Alinhamento de palavra inválido na fala " + line["id"].toString());
+            previousSample = std::llround(sample);
+            starts.push_back(previousSample);
+        }
+        if (!starts.empty()) {
+            const auto audioSamples = std::int64_t(utterances[line["id"].toString()].samples.size());
+            const auto targetLastStart = std::max<std::int64_t>(
+                0, audioSamples - std::min<std::int64_t>(studio::ProductionSampleRate / 3,
+                                                         audioSamples / std::int64_t(starts.size() * 2)));
+            const double clockCorrection = starts.back() > 0
+                                               ? double(targetLastStart) / double(starts.back())
+                                               : 1.0;
+            for (auto &sample : starts)
+                sample = std::clamp<std::int64_t>(
+                    std::llround(double(sample) * clockCorrection), 0, audioSamples - 1);
+            wordTimings.insert(line["id"].toString(), std::move(starts));
+        }
     }
     if (!parser.value("cancel-file").isEmpty() && QFile::exists(parser.value("cancel-file")))
         return fail("Produção cancelada; projeto anterior preservado.");
@@ -173,13 +201,16 @@ int main(int argc, char **argv) {
                     std::abs(double(adjusted.audio.samples.size()) - cap) > cap * .08)
                     return fail("FFmpeg produziu duração inesperada para a fala " + cue.id);
                 adjusted.audio.samples.resize(std::size_t(cap), 0);
+                if (wordTimings.contains(cue.id))
+                    for (auto &sample : wordTimings[cue.id])
+                        sample = std::llround(double(sample) / tempo);
                 samples = std::move(adjusted.audio.samples);
             }
     }
     report("Montando cenas e sincronizando", 75);
     auto compiled = studio::compileProduction(
         parsed.recipe, utterances, output + "/media/master.wav",
-        parsed.recipe.timingMode == "fit-to-duration" ? &plan : nullptr);
+        parsed.recipe.timingMode == "fit-to-duration" ? &plan : nullptr, &wordTimings);
     if (!compiled.error.isEmpty())
         return fail(compiled.error);
     for (auto pair : {std::pair{output + "/media/narration.wav", &compiled.voice},
@@ -240,6 +271,7 @@ int main(int argc, char **argv) {
                                     {"alignment", parsed.recipe.timingMode == "fit-to-duration"
                                                        ? "measured-speech-and-frame-exact-slots"
                                                        : "measured-utterance-audio"},
+                                    {"wordAlignment", "windows-speech-progress-events"},
                                     {"audio", "voice + procedural music + scene chime"}})
               .toJson());
     report("Pronto", 100);

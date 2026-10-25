@@ -15,6 +15,7 @@ struct DirectedTime {
     int cue{0};
     double progress{-1}; // Relative to the measured speech, or -1 when offsetSeconds is used.
     double offsetSeconds{0};
+    int wordIndex{-1}; // Zero-based word emitted by the selected local voice.
 };
 struct DirectedKeyframe {
     int cue{0};

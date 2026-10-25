@@ -2,6 +2,7 @@
 #include "recipe.hpp"
 #include <QMap>
 #include <QStringList>
+#include <map>
 #include <studio/media/wave.hpp>
 
 namespace studio {
@@ -20,6 +21,7 @@ struct TimingPlan {
     QStringList warnings;
     QString error;
 };
+using WordTimingMap = QMap<QString, std::vector<std::int64_t>>;
 // Run after the voice is measured. Reject requests requiring >15% acceleration.
 TimingPlan planNarrationTiming(const ProductionRecipe &, const QMap<QString, PcmAudio> &utterances);
 struct CompileResult {
@@ -28,5 +30,6 @@ struct CompileResult {
     QString subtitles, error;
 };
 CompileResult compileProduction(const ProductionRecipe &, const QMap<QString, PcmAudio> &utterances,
-                                const QString &audioOutput, const TimingPlan *timing = nullptr);
+                                const QString &audioOutput, const TimingPlan *timing = nullptr,
+                                const WordTimingMap *wordTimings = nullptr);
 } // namespace studio

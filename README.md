@@ -46,9 +46,9 @@ Receitas v3 também aceitam `artDirection` para definir paleta, fonte instalada,
 
 Receitas v3 aceitam `editing.intensity` de 0 a 100 para escolher entradas e saídas padrão apenas quando a IA não especificou movimento ou duração. Sem esse parâmetro, o padrão antigo é mantido.
 
-Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. São convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.
+Visual Beats podem revelar/esconder elementos, alterar transformações ou animar a câmera. O `at` aceita progresso da fala ou `wordIndex` com timestamp real emitido pelo sintetizador pt-BR local. Os eventos são convertidos em keyframes do projeto, preservando a edição manual. A timeline exibe os shots e os eventos; alças de corte movem os planos e seus conteúdos relacionados como um único gesto de desfazer. O projeto gerado usa schema 4; projetos anteriores continuam abrindo.
 
-O guia lista os campos, limites e restrições da v3. Exemplo completo: [shots e Visual Beats](examples/shots-visual-beats-v3.production.json). Veja também a [decisão de arquitetura 0009](docs/architecture/0009-shots-and-visual-beats.md).
+O guia lista os campos, limites e restrições da v3. Exemplo completo: [shots e Visual Beats](examples/shots-visual-beats-v3.production.json). A síntese pt-BR grava limites de palavra e pode usá-los em `wordIndex`; confira a [decisão de arquitetura 0012](docs/architecture/0012-word-aligned-beats.md). Veja também a [decisão de arquitetura 0009](docs/architecture/0009-shots-and-visual-beats.md).
 
 ## Duração fixa e sincronização proporcional à fala
 

@@ -1,6 +1,7 @@
 {
     "audio": [
         "windows-pt-BR-tts",
+        "windows-sapi-word-boundaries",
         "procedural-bed",
         "scene-chime"
     ],
@@ -155,7 +156,8 @@
         "auto-reframe-by-shot-target",
         "continuous-shot-focus-follow",
         "intensity-driven-default-motion",
-        "global-art-direction"
+        "global-art-direction",
+        "word-aligned-visual-beats"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
