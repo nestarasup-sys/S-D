@@ -81,6 +81,11 @@ QVariantMap map(const studio::Node &n) {
             {"travelX", n.travelX},
             {"travelY", n.travelY},
             {"spinDegrees", n.spinDegrees}};
+    QVariantList captionWords;
+    captionWords.reserve(int(n.captionWords.size()));
+    for (const auto &word : n.captionWords)
+        captionWords.append(QVariantMap{{"text", q(word.text)}, {"start", int(word.start)}, {"end", int(word.end)}});
+    result["captionWords"] = captionWords;
     if (n.kind == studio::NodeKind::Video) {
         result.insert("videoSourceInSeconds", n.videoSourceInSeconds);
         result.insert("videoPlaybackRate", n.videoPlaybackRate);
@@ -182,11 +187,6 @@ QVariantMap EditorController::selected() const {
     if (!n)
         return {};
     auto result = map(*n);
-    QVariantList captionWords;
-    captionWords.reserve(int(n->captionWords.size()));
-    for (const auto &word : n->captionWords)
-        captionWords.append(QVariantMap{{"text", q(word.text)}, {"start", int(word.start)}, {"end", int(word.end)}});
-    result["captionWords"] = captionWords;
     if (!n->keyframes.empty()) {
         auto key = std::find_if(n->keyframes.begin(), n->keyframes.end(),
                                 [this](const auto &k) { return k.frame == frame_; });

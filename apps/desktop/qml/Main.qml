@@ -175,7 +175,7 @@ ApplicationWindow {
                     PreviewPanel { Layout.fillWidth: true; Layout.fillHeight: true }
                     InspectorPanel { Layout.preferredWidth: 268; Layout.fillHeight: true }
                 }
-                TimelinePanel { Layout.fillWidth: true; Layout.preferredHeight: 235; onAddAudioRequested: audioDialog.open() }
+                TimelinePanel { Layout.fillWidth: true; Layout.preferredHeight: 340; onAddAudioRequested: audioDialog.open() }
             }
         }
         Rectangle {

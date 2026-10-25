@@ -56,7 +56,9 @@ int main(int argc, char **argv) {
         QTimer::singleShot(1500, &app, [&engine, &controller, &workspace, directory] {
             auto window = qobject_cast<QQuickWindow *>(engine.rootObjects().value(0));
             bool ok = window && window->grabWindow().save(directory + "/desktop.png");
-            auto captionList = engine.rootObjects().value(0)->findChild<QObject *>("captionWordAlignmentList");
+            auto rootObject = engine.rootObjects().value(0);
+            auto captionList = rootObject ? rootObject->findChild<QObject *>("captionWordAlignmentList") : nullptr;
+            auto timelinePanel = rootObject ? rootObject->findChild<QObject *>("timelinePanelRoot") : nullptr;
             QFile project(directory + "/demo.studio.json");
             ok = ok && project.open(QIODevice::WriteOnly);
             if (ok)
@@ -74,6 +76,10 @@ int main(int argc, char **argv) {
                                                          captionList && captionList->property("visible").toBool()},
                                                         {"captionTimingControlCount",
                                                          captionList ? captionList->property("count").toInt() : -1},
+                                                        {"selectedCaptionTrackAvailable",
+                                                         timelinePanel && timelinePanel->property("selectedCaptionTrackAvailable").toBool()},
+                                                        {"selectedTrackIndex",
+                                                         timelinePanel ? timelinePanel->property("selectedTrackIndex").toInt() : -1},
                                                         {"projects", workspace.projectCount()},
                                                         {"assets", workspace.assetCount()},
                                                         {"categories", workspace.categories().size()}})

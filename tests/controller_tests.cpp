@@ -253,8 +253,19 @@ int main(int argc, char **argv) {
                   studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 45,
               "caption timing boundary edit is undoable as one edit");
         c.redo();
+        c.beginGesture();
+        c.setCaptionWordBoundary(1, "start", 52);
+        c.setCaptionWordBoundary(1, "start", 55);
+        c.endGesture();
+        check(studio::findNode(c.project(), "shot-caption")->captionWords[0].end == 55 &&
+                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 55,
+              "dragging a caption boundary updates its live snapped frame");
+        c.undo();
+        check(studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 50,
+              "an entire caption boundary drag is one undoable gesture");
+        c.redo();
         check(!c.setCaptionWordBoundary(1, "start", 120) &&
-                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 50,
+                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 55,
               "caption timing rejects boundaries that would erase a word interval");
         c.updateSelected("wordAnimationPreset", "pop-rise");
         c.updateSelected("wordAnimationDurationFrames", 6);

@@ -18,6 +18,7 @@
 class EditorController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QAbstractItemModel *nodes READ nodeModel CONSTANT)
+    Q_PROPERTY(QVariantList nodeItems READ nodes NOTIFY documentChanged)
     Q_PROPERTY(QAbstractItemModel *audioTrackModel READ audioTrackModel CONSTANT)
     Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectedChanged)
     Q_PROPERTY(QVariantMap camera READ camera NOTIFY cameraChanged)

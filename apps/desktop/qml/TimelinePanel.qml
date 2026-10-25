@@ -4,21 +4,54 @@ import QtQuick.Layouts
 
 Rectangle {
     id: root
+    objectName: "timelinePanelRoot"
     signal addAudioRequested()
     color: "#141c24"
     property real timelineZoom: 1
     property real timelineOffset: 0
+    property bool selectedCaptionTrackAvailable: {
+        const rows = editor.nodeItems
+        for (let i = 0; i < rows.length; ++i)
+            if (rows[i].id === editor.selectedId && rows[i].role === "caption" && rows[i].wordAligned)
+                return true
+        return false
+    }
+    property int selectedTrackIndex: {
+        const rows = editor.nodeItems
+        for (let i = 0; i < rows.length; ++i)
+            if (rows[i].id === editor.selectedId)
+                return i
+        return -1
+    }
     function visibleFrames() { return Math.max(1, (editor.duration - 1) / timelineZoom) }
     function maxStartFrame() { return Math.max(0, (editor.duration - 1) - visibleFrames()) }
     function viewStartFrame() { return timelineOffset * maxStartFrame() }
     function frameToX(frame, width) { return (frame - viewStartFrame()) / visibleFrames() * width }
     function xToFrame(x, width) { return viewStartFrame() + x / Math.max(1, width) * visibleFrames() }
+    function revealSelectedTrack() {
+        const rows = editor.nodeItems
+        for (let i = 0; i < rows.length; ++i)
+            if (rows[i].id === editor.selectedId) {
+                tracks.positionViewAtIndex(i, ListView.Contain)
+                return
+            }
+    }
     function setZoomAt(value, x, width) {
         const ratio = Math.max(0, Math.min(1, x / Math.max(1, width)))
         const anchorFrame = viewStartFrame() + ratio * visibleFrames()
         timelineZoom = Math.max(1, Math.min(8, value))
         const nextStart = Math.max(0, Math.min(maxStartFrame(), anchorFrame - ratio * visibleFrames()))
         timelineOffset = maxStartFrame() > 0 ? nextStart / maxStartFrame() : 0
+    }
+    Timer {
+        id: revealSelectedTrackTimer
+        interval: 100; repeat: false
+        onTriggered: root.revealSelectedTrack()
+    }
+    Component.onCompleted: revealSelectedTrackTimer.start()
+    Connections {
+        target: editor
+        function onSelectedChanged() { revealSelectedTrackTimer.restart() }
     }
     Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#2f3c48" }
     ColumnLayout {
@@ -62,7 +95,8 @@ Rectangle {
                 Layout.preferredWidth: 175; Layout.minimumWidth: 175; Layout.maximumWidth: 175; Layout.fillHeight: true; spacing: 8
                 Label { text: editor.shots.length ? "SHOTS + CAMADAS" : "CAMADAS VISUAIS"; color: "#677e90"; font.pixelSize: 9; Layout.preferredHeight: 25 }
                 ListView {
-                    id: trackLabels; Layout.fillWidth: true; Layout.fillHeight: true; clip: true; interactive: false
+                    id: trackLabels; Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.topMargin: editor.shots.length ? 27 : 0; clip: true; interactive: false
                     model: editor.nodes; spacing: 6
                     contentY: tracks.contentY
                     delegate: Label {
@@ -124,18 +158,85 @@ Rectangle {
                                 color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#4c673b" : track.modelData.kind === "text" ? "#2f4956" : "#384440"
                                 border.width: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? 2 : 1
                                 border.color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#b4f078" : "#526874"
-                                Label { anchors.fill: parent; anchors.leftMargin: 10; text: (track.modelData.parentId ? "↳ " : "") + track.modelData.name; color: "#dce8ed"; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; font.pixelSize: 10 }
+                                Label { anchors.fill: parent; anchors.leftMargin: 10; text: (track.modelData.parentId ? "↳ " : "") + track.modelData.name; color: "#dce8ed"; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; font.pixelSize: 10; z: 1 }
+                                Repeater {
+                                    model: track.modelData.captionWords || []
+                                    delegate: Item {
+                                        required property var modelData
+                                        required property int index
+                                        x: (modelData.start - track.modelData.start) / root.visibleFrames() * track.width
+                                        width: Math.max(1, (modelData.end - modelData.start) / root.visibleFrames() * track.width)
+                                        height: clip.height; z: 2
+                                        Rectangle {
+                                            x: 0; y: parent.height - 4; width: parent.width; height: 3
+                                            color: editor.frame >= modelData.start && editor.frame < modelData.end ? "#b4f078" : "#82bebd"
+                                            opacity: editor.frame >= modelData.start && editor.frame < modelData.end ? 1 : 0.72
+                                        }
+                                        Rectangle {
+                                            x: -3; y: 12; width: 7; height: 11; radius: 2
+                                            color: index === 0 ? "#d6e8e0" : "#b4f078"
+                                            border.width: 1; border.color: "#20352e"
+                                            ToolTip.visible: boundaryHint.containsMouse
+                                            ToolTip.text: index === 0 ? "Arraste para ajustar o início desta legenda" : "Arraste para alinhar as duas palavras vizinhas"
+                                            MouseArea { id: boundaryHint; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+                                        }
+                                        Rectangle {
+                                            visible: index === track.modelData.captionWords.length - 1
+                                            x: parent.width - 3; y: 12; width: 7; height: 11; radius: 2
+                                            color: "#d6e8e0"; border.width: 1; border.color: "#20352e"
+                                            ToolTip.visible: lastBoundaryHint.containsMouse
+                                            ToolTip.text: "Arraste para ajustar o fim desta legenda"
+                                            MouseArea { id: lastBoundaryHint; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+                                        }
+                                    }
+                                }
                                 MouseArea {
                                     anchors.fill: parent
+                                    property bool captionBoundaryEnabled: editor.selected.id === track.modelData.id && track.modelData.role === "caption" && track.modelData.wordAligned
+                                    objectName: captionBoundaryEnabled ? "captionWordBoundaryDrag" : ""
                                     property real originX: 0
                                     property int startFrame: 0
                                     property bool selectionClick: false
+                                    property int boundaryWordIndex: -1
+                                    property string boundaryEdge: ""
+                                    property int boundaryMinimum: 0
+                                    property int boundaryMaximum: 0
+                                    function boundaryAt(localX) {
+                                        if (!captionBoundaryEnabled)
+                                            return null
+                                        const words = editor.selected.captionWords
+                                        if (!words || !words.length)
+                                            return null
+                                        let nearest = null
+                                        for (let i = 0; i < words.length; ++i) {
+                                            const word = words[i]
+                                            const x = (word.start - track.modelData.start) / root.visibleFrames() * track.width
+                                            const distance = Math.abs(localX - x)
+                                            if (distance <= 9 && (!nearest || distance < nearest.distance))
+                                                nearest = {index: i, edge: "start", minimum: i === 0 ? track.modelData.start : words[i - 1].start + 1,
+                                                           maximum: word.end - 1, distance: distance}
+                                        }
+                                        const last = words.length - 1
+                                        const endX = (words[last].end - track.modelData.start) / root.visibleFrames() * track.width
+                                        const endDistance = Math.abs(localX - endX)
+                                        if (endDistance <= 9 && (!nearest || endDistance < nearest.distance))
+                                            nearest = {index: last, edge: "end", minimum: words[last].start + 1,
+                                                       maximum: track.modelData.start + track.modelData.duration, distance: endDistance}
+                                        return nearest
+                                    }
                                     onPressed: function(mouse) {
                                         track.forceActiveFocus()
                                         if (editor.playing) editor.togglePlayback()
                                         selectionClick = (mouse.modifiers & Qt.ControlModifier) !== 0
                                         if (selectionClick) {
                                             editor.toggleNodeSelection(track.modelData.id)
+                                            return
+                                        }
+                                        const boundary = boundaryAt(mouse.x)
+                                        if (boundary) {
+                                            boundaryWordIndex = boundary.index; boundaryEdge = boundary.edge
+                                            boundaryMinimum = boundary.minimum; boundaryMaximum = boundary.maximum
+                                            editor.beginGesture()
                                             return
                                         }
                                         originX = mapToItem(track, mouse.x, mouse.y).x
@@ -147,12 +248,25 @@ Rectangle {
                                     onPositionChanged: function(mouse) {
                                         if (pressed && !selectionClick) {
                                             const currentX = mapToItem(track, mouse.x, mouse.y).x
-                                            editor.moveSelectedClips(track.modelData.id, startFrame,
-                                                startFrame + Math.round((currentX - originX) / track.width * root.visibleFrames()))
+                                            if (boundaryWordIndex >= 0) {
+                                                const pointerX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
+                                                const frame = Math.max(boundaryMinimum, Math.min(boundaryMaximum,
+                                                    Math.round(root.xToFrame(pointerX, shotTrackArea.width))))
+                                                editor.setCaptionWordBoundary(boundaryWordIndex, boundaryEdge, frame)
+                                            } else {
+                                                editor.moveSelectedClips(track.modelData.id, startFrame,
+                                                    startFrame + Math.round((currentX - originX) / track.width * root.visibleFrames()))
+                                            }
                                         }
                                     }
-                                    onReleased: { if (!selectionClick) editor.endGesture(); selectionClick = false }
-                                    onCanceled: { if (!selectionClick) editor.endGesture(); selectionClick = false }
+                                    onReleased: {
+                                        if (!selectionClick) editor.endGesture()
+                                        selectionClick = false; boundaryWordIndex = -1; boundaryEdge = ""
+                                    }
+                                    onCanceled: {
+                                        if (!selectionClick) editor.endGesture()
+                                        selectionClick = false; boundaryWordIndex = -1; boundaryEdge = ""
+                                    }
                                 }
                             }
                         }
@@ -250,10 +364,11 @@ Rectangle {
         ListView {
             visible: editor.audioTracks.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(234, editor.audioTracks.length * 108)
+            Layout.preferredHeight: Math.min(108, editor.audioTracks.length * 108)
             Layout.minimumHeight: Layout.preferredHeight
             Layout.maximumHeight: Layout.preferredHeight
             clip: true
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
             model: editor.audioTrackModel
             delegate: ColumnLayout {
                 id: audioTrackRow

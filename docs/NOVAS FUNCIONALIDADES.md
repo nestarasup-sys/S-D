@@ -20,11 +20,12 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Entrega implementada: correção manual dos tempos de palavra
 
-- Legendas com alinhamento real agora exibem no inspetor início e fim de cada palavra em quadros absolutos do projeto, com entrada numérica e incremento unitário.
-- Ajustar uma borda compartilhada atualiza as duas palavras adjacentes; cada palavra conserva pelo menos um quadro e os limites permanecem dentro da legenda. Edições inválidas são recusadas; a ação pode ser desfeita/refeita.
+- Legendas com alinhamento real agora exibem no inspetor início e fim de cada palavra em quadros absolutos do projeto, com entrada numérica e incremento unitário. Na faixa da legenda na timeline, os limites podem ser arrastados e ajustam-se ao quadro mais próximo.
+- Ajustar uma borda compartilhada atualiza as duas palavras adjacentes; cada palavra conserva pelo menos um quadro e os limites permanecem dentro da legenda. O arraste inteiro é uma ação; edições inválidas são recusadas e a ação pode ser desfeita/refeita.
+- Selecionar uma camada rola a timeline até a faixa correspondente. A lista de áudio rola separadamente, preservando espaço visível para shots e camadas mesmo em produções com várias pistas.
 - Os intervalos continuam no campo `captionWords` e no schema 7; nenhuma propriedade nova foi acrescentada à receita. O guia da IA esclarece que a correção ocorre no projeto compilado.
-- Verificação: `scripts/build.ps1 -Test` passou (4/4), `scripts/smoke-workspace.ps1` passou e `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. O smoke abriu uma legenda real com alinhamento e confirmou a lista editável, além de renderizar o Director's Cut de 2700 quadros. `scripts/update-ai-guide.ps1` regenerou o guia e o catálogo.
-- Continua pendente a edição visual/arrastável desse alinhamento diretamente na timeline, junto com snapping de clipes.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4), `scripts/smoke-workspace.ps1` passou e `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. O smoke abriu uma legenda real de 13 palavras na cena ativa, confirmou a faixa selecionada e os controles QML, e renderizou o Director's Cut de 2700 quadros com preview/export em 42,46 dB. O teste do controlador verifica drag com frames sucessivos agrupados em um undo. `scripts/update-ai-guide.ps1` regenerou o guia e o catálogo.
+- Continua pendente snapping de clipes e outras ferramentas de alinhamento geométrico na timeline.
 
 ### Entrega implementada: zoom temporal e navegação da timeline
 
@@ -113,7 +114,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Os testes cobrem receita, timestamp e resolução em shot, beat, elemento e keyframe. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
 - Legendas de narração têm destaque da palavra falada pela cor primária; seus tempos ficam gravados no schema 7. A camada de legenda usa layout por métricas de fonte e respeita quebra de linha.
 - O inspetor permite corrigir início/fim de cada palavra alinhada em quadros depois da compilação. Mover um limite compartilhado ajusta as duas palavras vizinhas; intervalos inválidos são recusados e cada ajuste entra no histórico undo/redo. Os timestamps corrigidos continuam persistidos no projeto schema 7.
-- Ainda falta escolha de uma cor de destaque independente da direção de arte e edição visual do alinhamento diretamente na timeline. A importação de uma produção precisa sintetizar a mesma fala com a voz local para obter tempos confiáveis.
+- A correção visual do alinhamento em quadros já está disponível no inspetor e nas alças da faixa de legenda na timeline. Ainda falta escolher uma cor de destaque independente da direção de arte. A importação de uma produção precisa sintetizar a mesma fala com a voz local para obter tempos confiáveis.
 
 ### Controle de intensidade no editor
 
@@ -136,13 +137,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; o inspetor agora corrige tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis e zoom/navegação sincronizados. Faltam alinhamento visual direto na timeline, snapping de clipes, áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline agora corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis e zoom/navegação sincronizados. Faltam snapping de clipes, áudio embutido nos vídeos, outros formatos de tela e otimizações de seek. |
 
 ### Limites confirmados nesta versão
 
 - `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. O inspetor permite ajustar tipo, duração e direção no shot atual. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
 - Beats aceitam `show`, `hide`, `transform`, `camera` e `sound`. Um beat `sound` cria uma pista local de uma execução, vinculada ao quadro sincronizado; a fonte não é copiada para o JSON e precisa continuar acessível no computador.
-- Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Legendas alinhadas podem ter cada limite de palavra corrigido em quadros no inspetor; arrastar limites diretamente na timeline continua pendente.
+- Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Legendas alinhadas podem ter cada limite de palavra corrigido numericamente no inspetor ou arrastado na faixa correspondente da timeline, com snapping por quadro.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
@@ -150,7 +151,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Avançar para alinhamento visual de palavras na timeline e snapping de clipes com ajuste frame a frame. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
+Avançar para snapping de clipes e alinhamento frame a frame de áudio e elementos na timeline. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo, formatos de tela adicionais e cache/seek seguem como pendências.
 
 ---
 
@@ -601,7 +602,7 @@ Funcionalidades desejadas:
 - Animação de números e informações.
 - Integração com o alinhamento da narração.
 
-**Já implementado:** quando há timestamps reais da voz pt-BR, o compositor destaca a palavra correspondente por quadro e salva o alinhamento no projeto schema 7. Sem alinhamento real, mantém a legenda estática. Permanecem pendentes animações tipográficas por palavra com escala/movimento, presets de texto e edição manual do alinhamento.
+**Já implementado:** quando há timestamps reais da voz pt-BR, o compositor destaca a palavra correspondente por quadro e salva o alinhamento no projeto schema 7. Presets por palavra incluem `highlight`, `none`, `pop`, `rise`, `fade` e `pop-rise`; duração, escala inicial e deslocamento são editáveis no inspetor. O alinhamento de início/fim pode ser corrigido em quadros no inspetor ou arrastado na faixa da timeline. Sem alinhamento real, mantém a legenda estática. Permanecem pendentes presets reutilizáveis para títulos/textos e uma cor de destaque independente da direção de arte.
 
 Garantir que o texto permaneça legível e não invada regiões importantes da composição.
 
@@ -924,7 +925,7 @@ Implementar:
 5. [x] Seleção múltipla e movimento conjunto de clipes na timeline com undo/redo atômico.
 6. [x] Envelopes gráficos de áudio editáveis diretamente na timeline.
 7. [x] Zoom temporal de 1× a 8× e navegação horizontal sincronizados com régua, shots, beats, camadas e áudio.
-8. [ ] Snapping de clipes e edição visual de alinhamento na timeline (a correção numérica dos tempos de palavra no inspetor já está implementada).
+8. [ ] Snapping geométrico de clipes na timeline (o alinhamento visual de palavras por quadro já está implementado).
 9. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
 10. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
 11. [ ] Áudio embutido em vídeo e formatos de tela adicionais.

@@ -226,10 +226,12 @@ director_comparison = run([ffmpeg, "-hide_banner", "-i", output / "director-refe
                            output / "director-decoded-%d.png", "-lavfi", "psnr", "-f", "null", "-"])
 director_psnr = re.search(r"average:([0-9.]+|inf)", director_comparison.stderr)
 assert director_psnr and float(director_psnr.group(1)) > 30, "90-second shot/beat frames differ from the preview"
+director_caption = next(node for node in director_project["nodes"]
+                        if node.get("role") == "caption" and node.get("captionWords") and
+                        node["start"] <= 1350 < node["start"] + node["duration"])
 director_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-director-90s",
                    "--project", director_project_path, "--frame", 1350, "--select",
-                   next(node["id"] for node in director_project["nodes"]
-                        if node.get("role") == "caption" and node.get("captionWords"))], timeout=30)
+                   director_caption["id"]], timeout=30)
 (folder / "directors-cut-90s-desktop.log").write_text(director_ui.stderr, encoding="utf-8")
 for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign", "Binding loop"):
     assert marker not in director_ui.stderr, director_ui.stderr
@@ -238,6 +240,7 @@ assert director_runtime["page"] == "editor" and director_runtime["hasAudio"]
 assert director_runtime["selectedCaptionWordCount"] > 0, director_runtime
 assert (director_runtime["captionTimingControlsVisible"] and
         director_runtime["captionTimingControlCount"] == director_runtime["selectedCaptionWordCount"]), director_runtime
+assert director_runtime["selectedCaptionTrackAvailable"] and director_runtime["selectedTrackIndex"] >= 0, director_runtime
 
 # Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
 video_source = folder / "video-controls-source.mp4"
@@ -281,7 +284,8 @@ summary.update({"director90Frames": director_project["duration"], "director90Sho
 summary["checks"].extend(["90-second 2700-frame director cut", "18 independent shots and 20 Visual Beats",
                           "word-synchronized one-shot audio effect through editable track",
                           "word-aligned scene timing", "director preview/export comparison",
-                          "90-second project opens in editor", "word timing controls open for a generated caption"])
+                          "90-second project opens in editor", "word timing controls open for a generated caption",
+                          "selected caption track is revealed in the timeline"])
 summary["videoControlsPreviewExportPsnrDb"] = float(video_controls_psnr.group(1))
 summary["checks"].append("video source trim, speed and normalized crop match between preview and MP4")
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
