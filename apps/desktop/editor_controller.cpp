@@ -51,6 +51,7 @@ QVariantMap map(const studio::Node &n) {
                      : n.kind == studio::NodeKind::Shape  ? "shape"
                      : n.kind == studio::NodeKind::Native ? "native"
                      : n.kind == studio::NodeKind::Svg    ? "svg"
+                     : n.kind == studio::NodeKind::Video  ? "video"
                                                           : "image"},
             {"text", q(n.text)},
             {"color", q(n.color)},
@@ -493,6 +494,24 @@ void EditorController::addNode(QString kind, QUrl source) {
         n.height = std::clamp(640. * size.height() / size.width(), 1., 720.);
         n.x = 320;
         n.y = 100;
+    } else if (kind == "video") {
+        const auto path = source.toLocalFile();
+        const auto suffix = QFileInfo(path).suffix().toLower();
+        static const QSet<QString> formats{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+        if (!formats.contains(suffix) || !QFileInfo(path).isFile() || QFileInfo(path).size() <= 0) {
+            notify("Escolha um vídeo local MP4, MOV, MKV, WebM, AVI ou M4V.");
+            return;
+        }
+        n.kind = studio::NodeKind::Video;
+        n.name = QFileInfo(path).fileName().toStdString();
+        n.source = path.toStdString();
+        n.width = canvasWidth();
+        n.height = canvasHeight();
+        n.x = 0;
+        n.y = 0;
+        n.animated = false;
+        n.motion = "none";
+        n.exitFrames = 0;
     } else if (const auto item = studio::libraryItem(kind.toStdString())) {
         n.kind = studio::NodeKind::Native;
         n.nativeId = item->id;
@@ -530,6 +549,8 @@ bool EditorController::insertLibraryNode(studio::Node n) {
         n.animated = false;
     }
     auto error = editor_.execute([&](studio::Project &p) {
+        if (n.kind == studio::NodeKind::Video)
+            p.schemaVersion = 5;
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
         else

@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion != 2 && p.schemaVersion != 3 && p.schemaVersion != 4)
+    if (p.schemaVersion != 2 && p.schemaVersion != 3 && p.schemaVersion != 4 && p.schemaVersion != 5)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -54,6 +54,9 @@ std::string validate(const Project &p) {
         return "Projeto excede os limites deste protótipo.";
     if (p.schemaVersion < 4 && !p.audioTracks.empty())
         return "Pistas de áudio exigem a versão 4 do projeto.";
+    if (p.schemaVersion < 5 && std::any_of(p.nodes.begin(), p.nodes.end(),
+                                           [](const auto &node) { return node.kind == NodeKind::Video; }))
+        return "Camadas de vídeo exigem a versão 5 do projeto.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
@@ -92,6 +95,8 @@ std::string validate(const Project &p) {
             return "Imagem sem arquivo de origem.";
         if (n.kind == NodeKind::Svg && n.source.empty())
             return "Vetor SVG sem arquivo de origem.";
+        if (n.kind == NodeKind::Video && n.source.empty())
+            return "Vídeo sem arquivo de origem.";
         if (n.kind == NodeKind::Native && !libraryItem(n.nativeId))
             return "Objeto nativo desconhecido.";
         if (!n.sceneId.empty() && !sceneIds.contains(n.sceneId))

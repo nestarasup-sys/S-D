@@ -18,7 +18,7 @@ struct ArtDirection {
     double titleSize{58}, bodySize{44}, captionSize{27};
     int safeMargin{32};
 };
-enum class NodeKind { Text, Shape, Image, Native, Svg, Group };
+enum class NodeKind { Text, Shape, Image, Native, Svg, Video, Group };
 struct TransformKeyframe {
     std::int64_t frame{0};
     double x{0}, y{0}, rotation{0}, scale{1}, opacity{1};

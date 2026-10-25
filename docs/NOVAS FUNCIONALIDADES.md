@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Camadas de vídeo implementadas nesta rodada
+
+- O compositor compartilhado entre prévia e render agora decodifica quadros de vídeo local sob demanda usando o FFmpeg configurado pelo aplicativo. A imagem mantém proporção e preenche sua caixa com corte central.
+- O editor oferece **Adicionar vídeo à composição** e reconhece MP4, MOV, MKV, WebM, AVI e M4V. A camada aparece como objeto selecionável e usa os controles de duração, posição e escala existentes.
+- Projetos schema 5 persistem a camada sem alterar a leitura dos projetos anteriores. Receitas v3 aceitam `kind: "video"` com `source` local relativo ao JSON ou absoluto; links remotos não são aceitos.
+- Guia IA, catálogo de capacidades e README descrevem formatos, comportamento e dependência de arquivo local/FFmpeg. Teste automatizado gera um clipe curto e verifica persistência e diferença entre quadros consecutivos.
+- Limites atuais: o áudio embutido no clipe não entra automaticamente na mixagem; importe-o como uma pista de áudio. A caixa usa corte central sem controles de ponto de entrada, velocidade, recorte manual ou waveform. Em prévia, buscar para trás reinicia a decodificação do clipe.
+
 ### Concluído nesta rodada
 
 - O modelo de projeto schema 4 grava e valida shots, Visual Beats e a associação de elementos a seus shots. Projetos anteriores continuam migrando e abrindo.
@@ -56,7 +64,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e transições fade/dissolve/slide/zoom implementados. Falta controle global de intensidade no editor, decisões de ritmo guiadas pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas de áudio com ducking implementadas na receita/projeto/exportação. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
-| 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat. Falta vídeo/B-roll como camada, timeline avançada e outros formatos de tela. |
+| 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat; vídeo/B-roll local já entra na composição e no render. Falta levar timestamps de palavra até keyframes/legendas destacadas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
@@ -64,13 +72,13 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
 - Shot e Visual Beat podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Elementos/keyframes ainda usam `cueProgress`/`offsetSeconds`; não há alinhamento fonético reutilizável após a importação.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
-- Vídeo como camada e mídia remota automática ainda não existem. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
+- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. Não gera cortes ou efeitos a partir do significado da fala e ainda não pode ser ajustado por um controle global do editor.
 
 ### Próxima entrega recomendada
 
-Adicionar controles de intensidade e direção de arte no editor; integrar ducking com fades/automação manual e testar projetos com muitas pistas. Depois construir o decodificador de vídeo como camada e ampliar alinhamento de palavra a objetos/keyframes. A validação de SAPI→WAV→compilador, a edição/exportação multifaixa e os cortes/transições precisam continuar cobertos pelos smokes automatizados.
+Adicionar controles de intensidade e direção de arte no editor; integrar ducking com fades/automação manual e testar projetos com muitas pistas. Em seguida, acrescentar entrada/velocidade/recorte de vídeo e ampliar alinhamento de palavra a elementos, keyframes e legendas destacadas. A validação de SAPI→WAV→compilador, as camadas em prévia/exportação, a edição/exportação multifaixa e os cortes/transições precisam continuar cobertos pelos smokes automatizados.
 
 ---
 

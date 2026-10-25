@@ -27,6 +27,8 @@ int main(int argc, char **argv) {
     for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still"})
         parser.addOption({key, key, key});
     parser.process(app);
+    if (parser.isSet("ffmpeg"))
+        qputenv("STUDIO_FFMPEG", parser.value("ffmpeg").toUtf8());
     auto loaded = studio::loadProject(parser.value("project"));
     auto fail = [](QString message) {
         report(0, message);
@@ -59,6 +61,9 @@ int main(int argc, char **argv) {
             if (!svg.isValid())
                 return fail("SVG ausente ou inválido: " + QString::fromStdString(n.source));
         }
+    for (const auto &n : loaded.project.nodes)
+        if (n.kind == studio::NodeKind::Video && !QFile::exists(QString::fromStdString(n.source)))
+            return fail("Arquivo de vídeo ausente: " + QString::fromStdString(n.source));
     if (!loaded.project.audioSource.empty() &&
         !QFile::exists(QString::fromStdString(loaded.project.audioSource)))
         return fail("Arquivo de áudio ausente.");

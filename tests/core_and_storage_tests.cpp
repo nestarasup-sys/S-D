@@ -1,5 +1,6 @@
 #include <QFile>
 #include <QGuiApplication>
+#include <QProcess>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
@@ -72,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 5;
+        malformed["schemaVersion"] = 6;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -131,6 +132,39 @@ int main(int argc, char **argv) {
         check(first.size() == QSize(p.width, p.height) && first != later, "animated frames differ");
         auto same = painter.frame(p, 90);
         check(same == later, "frame evaluation deterministic");
+        const auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg");
+        const auto videoPath = directory.filePath("moving-test.mp4");
+        QProcess videoEncoder;
+        videoEncoder.start(ffmpeg, {"-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+                                    "testsrc2=size=64x64:rate=30:duration=2", "-c:v", "libx264", "-pix_fmt",
+                                    "yuv420p", videoPath});
+        check(videoEncoder.waitForStarted(5000) && videoEncoder.waitForFinished(15000) &&
+                  videoEncoder.exitCode() == 0,
+              "generate moving video fixture");
+        auto videoProject = studio::makeEmpty();
+        videoProject.schemaVersion = 5;
+        videoProject.width = 128;
+        videoProject.height = 128;
+        videoProject.duration = 60;
+        studio::Node video;
+        video.id = "video-layer";
+        video.kind = studio::NodeKind::Video;
+        video.source = videoPath.toStdString();
+        video.width = 128;
+        video.height = 128;
+        video.duration = 60;
+        video.animated = false;
+        videoProject.nodes.push_back(video);
+        check(studio::validate(videoProject).empty(), "video layer project validates");
+        const auto savedVideoProject = studio::deserialize(studio::serialize(videoProject));
+        check(savedVideoProject.error.isEmpty() && savedVideoProject.project.schemaVersion == 5 &&
+                  savedVideoProject.project.nodes.front().kind == studio::NodeKind::Video,
+              "video layer survives schema 5 roundtrip");
+        studio::CompositionPainter videoPainter;
+        const auto videoFrame0 = videoPainter.frame(videoProject, 0);
+        const auto videoFrame15 = videoPainter.frame(videoProject, 15);
+        check(!videoFrame0.isNull() && videoFrame0 != videoFrame15,
+              "video layer decodes successive moving frames");
         auto missing = p;
         studio::Node image;
         image.id = "missing";

@@ -298,14 +298,24 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     } else if (kind == "shape") {
         n.kind = NodeKind::Shape;
         n.name = "Forma";
-    } else if (kind == "image" || kind == "svg") {
-        n.kind = kind == "svg" ? NodeKind::Svg : NodeKind::Image;
+    } else if (kind == "image" || kind == "svg" || (kind == "video" && version >= 3)) {
+        n.kind = kind == "svg" ? NodeKind::Svg : kind == "video" ? NodeKind::Video : NodeKind::Image;
         const auto source = e["source"].toString();
         if (source.isEmpty() || source.contains("://") || source.startsWith("//") ||
             source.startsWith("\\\\"))
             return fail("Mídia deve ser um arquivo local.");
         n.source = QDir(baseDirectory).absoluteFilePath(source).toStdString();
         n.name = source.toStdString();
+        if (kind == "video") {
+            const QFileInfo mediaInfo(QString::fromStdString(n.source));
+            static const QStringList videoFormats{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+            if (!mediaInfo.isFile() || mediaInfo.size() <= 0 ||
+                !videoFormats.contains(mediaInfo.suffix().toLower()))
+                return fail("Vídeo local ausente ou em formato não suportado.");
+            n.animated = false;
+            n.motion = "none";
+            n.exitFrames = 0;
+        }
     } else
         return fail("Tipo de elemento desconhecido.");
 
@@ -411,8 +421,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
         return fail("Campo asset só vale para elementos native.");
     if (e.contains("assetId") && kind != "library")
         return fail("Campo assetId só vale para elementos library.");
-    if (e.contains("source") && kind != "image" && kind != "svg")
-        return fail("Campo source só vale para imagem ou SVG.");
+    if (e.contains("source") && kind != "image" && kind != "svg" && kind != "video")
+        return fail("Campo source só vale para imagem, SVG ou vídeo.");
     if (e.contains("text") && kind != "text")
         return fail("Campo text só vale para elementos de texto.");
     if (e.contains("children") && kind != "group")

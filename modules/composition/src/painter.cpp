@@ -2,9 +2,14 @@
 #include <QFont>
 #include <QImageReader>
 #include <QLinearGradient>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QSvgRenderer>
 #include <algorithm>
+#include <functional>
 #include <optional>
+#include <QCoreApplication>
+#include <QDir>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
 #include <vector>
@@ -28,7 +33,8 @@ void paintBackground(QPainter &painter, const Project &project, bool black = fal
 }
 
 void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
-                const std::optional<std::string> &shotId, NodePass pass, QCache<QString, QImage> &images) {
+                const std::optional<std::string> &shotId, NodePass pass, QCache<QString, QImage> &images,
+                const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
     const auto camera = evaluateCamera(project, frame);
     painter.save();
     painter.translate(project.width / 2.0, project.height / 2.0);
@@ -88,6 +94,23 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
             QSvgRenderer svg(QString::fromStdString(node.source));
             if (svg.isValid())
                 svg.render(&painter, bounds);
+        } else if (node.kind == NodeKind::Video) {
+            const auto image = videoFrame(node, frame);
+            if (!image.isNull()) {
+                QSizeF size = image.size();
+                size.scale(bounds.size(), Qt::KeepAspectRatioByExpanding);
+                const QRectF target((node.width - size.width()) / 2.0, (node.height - size.height()) / 2.0,
+                                    size.width(), size.height());
+                painter.save();
+                painter.setClipRect(bounds);
+                painter.drawImage(target, image);
+                painter.restore();
+            } else {
+                painter.fillRect(bounds, QColor("#18232b"));
+                painter.setPen(Qt::white);
+                painter.drawText(bounds, Qt::AlignCenter, "Vídeo indisponível\n" +
+                                                            QFileInfo(QString::fromStdString(node.source)).fileName());
+            }
         } else if (node.kind == NodeKind::Text) {
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
@@ -139,7 +162,8 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
 }
 
 QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &shot,
-                 QCache<QString, QImage> &images) {
+                 QCache<QString, QImage> &images,
+                 const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
     QImage image(project.width, project.height, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
     QPainter painter(&image);
@@ -147,12 +171,98 @@ QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &s
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     paintBackground(painter, project);
-    paintNodes(painter, project, frame, shot.id, NodePass::ShotComposition, images);
+    paintNodes(painter, project, frame, shot.id, NodePass::ShotComposition, images, videoFrame);
     painter.end();
     return image;
 }
 
 } // namespace
+
+struct CompositionPainter::VideoDecoder {
+    QProcess process;
+    QByteArray pending;
+    QImage lastImage;
+    std::int64_t decodedFrame{-1};
+    std::size_t frameBytes{0};
+    int width{0}, height{0};
+    QString source;
+};
+
+CompositionPainter::CompositionPainter() = default;
+CompositionPainter::~CompositionPainter() = default;
+
+void CompositionPainter::clearCache() {
+    images_.clear();
+    for (auto &[id, decoder] : videoDecoders_) {
+        Q_UNUSED(id);
+        if (decoder->process.state() != QProcess::NotRunning) {
+            decoder->process.kill();
+            decoder->process.waitForFinished(1000);
+        }
+    }
+    videoDecoders_.clear();
+}
+
+QImage CompositionPainter::videoFrame(const Node &node, const Project &project, std::int64_t frameNumber) {
+    const auto localFrame = frameNumber - node.start;
+    if (localFrame < 0 || localFrame >= node.duration)
+        return {};
+    auto &slot = videoDecoders_[node.id];
+    if (!slot)
+        slot = std::make_unique<VideoDecoder>();
+    auto &decoder = *slot;
+    const QString source = QString::fromStdString(node.source);
+    const int width = std::clamp(qCeil(node.width), 2, 1920);
+    const int height = std::clamp(qCeil(node.height), 2, 1080);
+    const auto frameBytes = std::size_t(width) * std::size_t(height) * 4;
+    const auto stopDecoder = [&] {
+        if (decoder.process.state() != QProcess::NotRunning) {
+            decoder.process.kill();
+            decoder.process.waitForFinished(1000);
+        }
+        decoder.pending.clear();
+        decoder.lastImage = {};
+        decoder.decodedFrame = -1;
+    };
+    if (decoder.source != source || decoder.width != width || decoder.height != height ||
+        localFrame < decoder.decodedFrame)
+        stopDecoder();
+    decoder.source = source;
+    decoder.width = width;
+    decoder.height = height;
+    decoder.frameBytes = frameBytes;
+    if (decoder.process.state() == QProcess::NotRunning) {
+        auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG");
+        if (ffmpeg.isEmpty())
+            ffmpeg = "ffmpeg";
+        const auto scale = QString("scale=%1:%2:force_original_aspect_ratio=decrease,pad=%1:%2:(ow-iw)/2:(oh-ih)/2,fps=%3/%4")
+                               .arg(width).arg(height).arg(project.fps.numerator).arg(project.fps.denominator);
+        decoder.process.setProcessChannelMode(QProcess::SeparateChannels);
+        decoder.process.start(ffmpeg,
+                              {"-nostdin", "-hide_banner", "-loglevel", "error", "-i", source,
+                               "-vf", scale, "-an", "-sn", "-dn", "-f", "rawvideo", "-pix_fmt", "rgba",
+                               "pipe:1"});
+        if (!decoder.process.waitForStarted(5000))
+            return {};
+    }
+    while (decoder.decodedFrame < localFrame) {
+        while (decoder.pending.size() < qsizetype(frameBytes)) {
+            if (decoder.process.bytesAvailable() == 0 && !decoder.process.waitForReadyRead(15000)) {
+                if (decoder.process.state() != QProcess::NotRunning)
+                    decoder.process.kill();
+                decoder.process.waitForFinished(1000);
+                return {};
+            }
+            decoder.pending += decoder.process.readAllStandardOutput();
+        }
+        QByteArray bytes = decoder.pending.left(qsizetype(frameBytes));
+        decoder.pending.remove(0, qsizetype(frameBytes));
+        decoder.lastImage = QImage(reinterpret_cast<const uchar *>(bytes.constData()), width, height,
+                                   width * 4, QImage::Format_RGBA8888).copy();
+        ++decoder.decodedFrame;
+    }
+    return decoder.lastImage;
+}
 
 void CompositionPainter::paint(QPainter &painter, const Project &project, std::int64_t frame) {
     painter.setRenderHint(QPainter::Antialiasing);
@@ -160,7 +270,10 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     if (project.shots.empty()) {
         paintBackground(painter, project);
-        paintNodes(painter, project, frame, std::nullopt, NodePass::All, images_);
+        paintNodes(painter, project, frame, std::nullopt, NodePass::All, images_,
+                   [this, &project](const Node &node, std::int64_t number) {
+                       return videoFrame(node, project, number);
+                   });
         return;
     }
 
@@ -171,7 +284,10 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
             currentShot = &shot;
     if (!currentShot) {
         paintBackground(painter, project);
-        paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_);
+        paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_,
+                   [this, &project](const Node &node, std::int64_t number) {
+                       return videoFrame(node, project, number);
+                   });
         return;
     }
 
@@ -185,11 +301,17 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
 
     if (!previousShot || currentShot->transitionIn == "cut") {
         paintBackground(painter, project);
-        paintNodes(painter, project, frame, currentShot->id, NodePass::ShotComposition, images_);
+        paintNodes(painter, project, frame, currentShot->id, NodePass::ShotComposition, images_,
+                   [this, &project](const Node &node, std::int64_t number) {
+                       return videoFrame(node, project, number);
+                   });
     } else {
         const auto previousFrame = previousShot->start + previousShot->duration - 1;
-        const auto outgoing = shotLayer(project, previousFrame, *previousShot, images_);
-        const auto incoming = shotLayer(project, frame, *currentShot, images_);
+        const auto decoder = [this, &project](const Node &node, std::int64_t number) {
+            return videoFrame(node, project, number);
+        };
+        const auto outgoing = shotLayer(project, previousFrame, *previousShot, images_, decoder);
+        const auto incoming = shotLayer(project, frame, *currentShot, images_, decoder);
         const double progress = std::clamp(double(frame - currentShot->start) /
                                                std::max(1, currentShot->transitionDurationFrames - 1),
                                            0.0, 1.0);
@@ -238,7 +360,10 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
                 incoming);
         }
     }
-    paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_);
+    paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_,
+               [this, &project](const Node &node, std::int64_t number) {
+                   return videoFrame(node, project, number);
+               });
 }
 
 QImage CompositionPainter::frame(const Project &project, std::int64_t frameNumber) {

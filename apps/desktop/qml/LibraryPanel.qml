@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Rectangle {
     color: "#151c23"
     signal importImage()
+    signal importVideo()
     signal loadDemo()
     signal recover()
     signal carExample()
@@ -15,6 +16,7 @@ Rectangle {
         Label { text: "Sua matéria-prima"; font.pixelSize: 18; font.weight: Font.DemiBold; color: "#e1e8ed" }
         StudioButton { text: "▶   Criar vídeo: carros caros"; Layout.fillWidth: true; accent: true; enabled: !editor.producing && !editor.exporting; onClicked: carExample() }
         StudioButton { text: "+   Importar PNG / SVG"; Layout.fillWidth: true; onClicked: importImage() }
+        StudioButton { text: "+   Adicionar vídeo à composição"; Layout.fillWidth: true; onClicked: importVideo() }
         RowLayout {
             StudioButton { text: "T   Texto"; Layout.fillWidth: true; onClicked: editor.addNode("text") }
             StudioButton { text: "▰   Forma"; Layout.fillWidth: true; onClicked: editor.addNode("shape") }
@@ -34,7 +36,7 @@ Rectangle {
                 border.color: editor.selectedId === modelData.id ? "#557445" : "#2a3540"
                 RowLayout {
                     anchors.fill: parent; anchors.margins: 9; spacing: 9
-                    Label { text: modelData.kind === "group" ? "▱" : modelData.kind === "text" ? "T" : modelData.kind === "image" ? "▧" : "▰"; color: modelData.color; font.pixelSize: 19; Layout.preferredWidth: 22 }
+                    Label { text: modelData.kind === "group" ? "▱" : modelData.kind === "text" ? "T" : modelData.kind === "video" ? "▶" : modelData.kind === "image" ? "▧" : "▰"; color: modelData.color; font.pixelSize: 19; Layout.preferredWidth: 22 }
                     ColumnLayout {
                         spacing: 2; Layout.fillWidth: true
                         Label { text: (modelData.parentId ? "↳ " : "") + modelData.name; color: "#d5dfe6"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }

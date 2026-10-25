@@ -70,6 +70,10 @@ ApplicationWindow {
         onAccepted: editor.addNode(selectedFile.toString().toLowerCase().endsWith(".svg") ? "svg" : "image", selectedFile)
     }
     FileDialog {
+        id: videoDialog; title: "Adicionar vídeo como camada"; nameFilters: ["Vídeos (*.mp4 *.mov *.mkv *.webm *.avi *.m4v)"]
+        onAccepted: editor.addNode("video", selectedFile)
+    }
+    FileDialog {
         id: audioDialog; title: "Adicionar pista de áudio"; nameFilters: ["Áudio (*.wav *.mp3 *.m4a *.aac *.ogg *.flac *.wma)"]
         onAccepted: editor.addAudioTrack(selectedFile)
     }
@@ -163,7 +167,7 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true; Layout.fillHeight: true; spacing: 1
-                    LibraryPanel { Layout.preferredWidth: 226; Layout.fillHeight: true; onImportImage: imageDialog.open(); onLoadDemo: window.guard("demo"); onRecover: window.guard("recover"); onCarExample: window.guard("car-example"); onLatest: window.guard("latest") }
+                    LibraryPanel { Layout.preferredWidth: 226; Layout.fillHeight: true; onImportImage: imageDialog.open(); onImportVideo: videoDialog.open(); onLoadDemo: window.guard("demo"); onRecover: window.guard("recover"); onCarExample: window.guard("car-example"); onLatest: window.guard("latest") }
                     PreviewPanel { Layout.fillWidth: true; Layout.fillHeight: true }
                     InspectorPanel { Layout.preferredWidth: 268; Layout.fillHeight: true }
                 }

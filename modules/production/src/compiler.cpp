@@ -530,6 +530,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         }
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;
+    if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.kind == NodeKind::Video; }))
+        p.schemaVersion = 5;
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

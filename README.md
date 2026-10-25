@@ -44,6 +44,8 @@ Uma cena pode ter vários shots sem quebrar a narração. O início de cada plan
 
 Receitas v3 também aceitam `artDirection` para definir paleta, fonte instalada, tamanhos tipográficos, posição das legendas e margem segura como estilo global. Esses valores funcionam como padrões para elementos, títulos gerados e legendas; propriedades de elemento explicitamente definidas continuam prevalecendo. Estilos de arte por cena e arquivos de fonte próprios ainda estão pendentes.
 
+Receitas v3 aceitam `kind: "video"` com um caminho local em `source` para inserir vídeo/B-roll como camada editável da composição. O vídeo toca na prévia e entra no MP4 exportado, mantém a proporção com corte central e usa a duração do elemento. Formatos aceitos: MP4, MOV, MKV, WebM, AVI e M4V. A máquina que abrir/exportar o projeto precisa ter acesso ao arquivo e ao FFmpeg configurado pelo app. O projeto sobe para schema 5 quando contém vídeo; schemas anteriores continuam compatíveis.
+
 Projetos schema 4 e receitas v3 aceitam até 32 pistas de áudio independentes. Na timeline, importe áudio local, ajuste início/duração/ganho, silencie, remova ou ative ducking durante a voz. A prévia toca as pistas sincronizadas e o exportador mistura todas usando FFmpeg; receitas de produção podem apontar para WAVs locais relativos ao JSON e sincronizar o início com fala/progresso/palavra. Veja o guia da IA e a [decisão de arquitetura 0013](docs/architecture/0013-multitrack-audio.md).
 
 Receitas v3 aceitam `editing.intensity` de 0 a 100 para escolher entradas e saídas padrão apenas quando a IA não especificou movimento ou duração. Sem esse parâmetro, o padrão antigo é mantido.
@@ -73,7 +75,7 @@ O botão **Logs** no topo abre os arquivos locais de diagnóstico de importaçõ
 1. A demonstração começa com texto e forma animados em uma composição de 12 segundos.
 2. Reproduza, navegue pela régua e selecione um objeto na biblioteca ou na prévia.
 3. Arraste o objeto na prévia ou ajuste posição, dimensões, texto, cor e tempo no inspetor.
-4. Adicione texto, forma, PNG/SVG ou um dos 14 objetos/cenários nativos. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline; para liberar espaço, reduza a duração pelo inspetor.
+4. Adicione texto, forma, PNG/SVG, vídeo local ou um dos 14 objetos/cenários nativos. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline; para liberar espaço, reduza a duração pelo inspetor.
 5. Use desfazer/refazer, salve com um nome novo e reabra o projeto.
 6. Em uma produção gerada, escolha a cena no seletor abaixo da prévia. A biblioteca e a timeline mostram os objetos daquela cena. O áudio permanece fixo enquanto você ajusta visuais.
 7. Exporte MP4 com nome novo. Produções geradas incluem narração, trilha e efeitos; projetos visuais sem master de áudio continuam exportando sem som.

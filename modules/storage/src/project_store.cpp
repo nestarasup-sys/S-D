@@ -69,6 +69,7 @@ QByteArray serialize(const Project &p) {
                                           : n.kind == NodeKind::Shape  ? "shape"
                                           : n.kind == NodeKind::Native ? "native"
                                           : n.kind == NodeKind::Svg    ? "svg"
+                                          : n.kind == NodeKind::Video  ? "video"
                                                                        : "image"},
                                  {"text", text(n.text)},
                                  {"color", text(n.color)},
@@ -191,7 +192,8 @@ LoadResult deserialize(const QByteArray &bytes) {
         return fail("Arquivo de projeto inválido.");
     auto o = document.object();
     if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
-                                         o["schemaVersion"] != 3 && o["schemaVersion"] != 4))
+                                         o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
+                                         o["schemaVersion"] != 5))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -287,7 +289,7 @@ LoadResult deserialize(const QByteArray &bytes) {
         Node n;
         auto kind = v["kind"].toString();
         if (kind != "text" && kind != "shape" && kind != "image" && kind != "native" && kind != "svg" &&
-            kind != "group")
+            kind != "video" && kind != "group")
             return fail("Tipo de objeto não suportado.");
         for (auto key : {"start", "duration"})
             if (!integer(v[key]))
@@ -302,6 +304,7 @@ LoadResult deserialize(const QByteArray &bytes) {
                  : kind == "shape"  ? NodeKind::Shape
                  : kind == "native" ? NodeKind::Native
                  : kind == "svg"    ? NodeKind::Svg
+                 : kind == "video"  ? NodeKind::Video
                                     : NodeKind::Image;
         n.id = str(v, "id");
         if (v.contains("parentId") && !v["parentId"].isString())

@@ -24,7 +24,13 @@
         "jpeg",
         "webp",
         "bmp",
-        "svg"
+        "svg",
+        "mp4",
+        "mov",
+        "mkv",
+        "webm",
+        "avi",
+        "m4v"
     ],
     "motions": [
         "none",
@@ -162,7 +168,8 @@
         "global-art-direction",
         "word-aligned-visual-beats",
         "multi-track-audio",
-        "voice-sidechain-ducking"
+        "voice-sidechain-ducking",
+        "video-layer-broll"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -172,9 +179,10 @@
         "keyframe-easing-curves",
         "shot-ownership",
         "visual-beat-markers",
-        "audio-tracks"
+        "audio-tracks",
+        "video-layers"
     ],
-    "projectVersion": 4,
+    "projectVersion": 5,
     "shotTransitionTypes": [
         "cut",
         "fade",
