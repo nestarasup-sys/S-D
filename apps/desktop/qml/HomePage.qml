@@ -48,7 +48,8 @@ Rectangle {
             }
             Item { Layout.fillWidth: true }
             StudioButton { text: "+  Novo projeto"; accent: true; implicitHeight: 42; onClicked: createRequested() }
-            StudioButton { text: "Importar projeto"; implicitHeight: 42; onClicked: importRequested() }
+            StudioButton { text: "Importar projeto ou JSON"; implicitHeight: 42; onClicked: importRequested() }
+            StudioButton { text: "Importar receita IA"; implicitHeight: 42; onClicked: productionRequested() }
         }
         RowLayout {
             Layout.fillWidth: true; spacing: 16
@@ -125,7 +126,6 @@ Rectangle {
                     visible: !workspace.projectTrash; Layout.alignment: Qt.AlignHCenter; spacing: 12
                     StudioButton { text: "+  Criar projeto"; accent: true; onClicked: createRequested() }
                     StudioButton { text: "Testar vídeo de carros"; onClicked: exampleRequested() }
-                    StudioButton { text: "Importar produção IA"; onClicked: productionRequested() }
                 }
             }
         }

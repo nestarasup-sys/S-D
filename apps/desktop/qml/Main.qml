@@ -48,7 +48,8 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+Z"; enabled: workspace.page === "editor"; onActivated: editor.undo() }
     Shortcut { sequence: "Ctrl+Shift+Z"; enabled: workspace.page === "editor"; onActivated: editor.redo() }
     FileDialog {
-        id: productionDialog; title: "Importar plano de produção da IA"; nameFilters: ["Produção IA (*.production.json)", "JSON (*.json)"]
+        id: productionDialog; title: "Importar plano de produção da IA"; nameFilters: ["Arquivos JSON (*.json)", "Todos os arquivos (*)"]
+        fileMode: FileDialog.OpenFile
         onAccepted: { editor.importProduction(selectedFile); workspace.navigate("editor") }
     }
     FileDialog {
@@ -59,12 +60,8 @@ ApplicationWindow {
     FileDialog {
         id: openDialog
         title: "Importar projeto ou receita JSON"
-        nameFilters: [
-            "Arquivos Studio Dark (*.production.json *.studio.json *.json)",
-            "Receitas de produção IA (*.production.json)",
-            "Projetos Studio Dark (*.studio.json)",
-            "Todos os arquivos (*)"
-        ]
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Arquivos JSON (*.json)", "Todos os arquivos (*)"]
         onAccepted: workspace.importProject(selectedFile)
     }
     FileDialog {

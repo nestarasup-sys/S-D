@@ -12,6 +12,7 @@ Erros de importação e da síntese local eram exibidos apenas na barra de statu
 - O arquivo registra um JSON compacto por linha com `format`, `timestamp`, `event`, `detail` e `progress` quando disponível.
 - Incluir erros de acesso, sintaxe (linha/coluna), validação prévia, eventos do worker, pedido de cancelamento, erro do processo e código/estado de saída.
 - Expor o botão **Logs** no cabeçalho para abrir a pasta no explorador; preservar os 30 arquivos mais recentes, sem exportação ou upload automático.
+- Na tela inicial, manter uma ação explícita **Importar receita IA** e fazer os seletores de projeto/receita usarem um filtro `.json` simples, com alternativa para todos os arquivos. O importador identifica uma receita pelo campo `format`, não pela extensão composta do arquivo.
 - Nunca copiar a receita bruta, o roteiro nem WAV para o log. Uma mensagem devolvida pelo worker pode conter nomes, caminhos ou informação pessoal incidental; orientar o usuário a revisar antes de compartilhar.
 - O diagnóstico não substitui o relatório `production-report.json` de uma produção bem-sucedida, e neste corte não cobre todos os eventos de editor/render.
 
