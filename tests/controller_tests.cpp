@@ -75,6 +75,25 @@ int main(int argc, char **argv) {
         check(c.nodeModel()->rowCount() == count && c.selected().isEmpty(), "deleting clears selection");
         c.undo();
         check(c.nodeModel()->rowCount() == count + 1, "undo deletion restores object");
+        c.applyEditingIntensity(80);
+        check(studio::findNode(c.project(), "title")->motion == "pop" &&
+                  studio::findNode(c.project(), "title")->motionFrames == 16 &&
+                  studio::findNode(c.project(), "title")->exitFrames == 6,
+              "global intensity applies a validated motion profile to the scene");
+        c.undo();
+        const bool intensityUndoRestored = studio::findNode(c.project(), "title")->motion != "pop";
+        c.redo();
+        check(intensityUndoRestored && studio::findNode(c.project(), "title")->motion == "pop",
+              "global intensity is one undoable editing action");
+        c.updateArtDirection("backgroundColor", "#17202a");
+        c.updateArtDirection("captionPosition", "top");
+        check(c.artDirection()["backgroundColor"] == "#17202a" &&
+                  c.artDirection()["captionPosition"] == "top",
+              "global art direction inspector updates project styling");
+        const auto artBeforeInvalid = studio::serialize(c.project());
+        c.updateArtDirection("backgroundColor", "not-a-color");
+        check(studio::serialize(c.project()) == artBeforeInvalid,
+              "invalid global art direction preserves the project");
         auto path = QUrl::fromLocalFile(directory.filePath("saved.studio.json"));
         check(c.save(path) && !c.dirty(), "save controller project");
         c.selectNode("title");
@@ -83,7 +102,10 @@ int main(int argc, char **argv) {
         c.newProject();
         check(c.nodeModel()->rowCount() == 0, "new blank project");
         c.open(path);
-        check(studio::findNode(c.project(), "title")->text == "edited title", "reopen retains content");
+        check(studio::findNode(c.project(), "title")->text == "edited title" &&
+                  c.project().artDirection.backgroundColor == "#17202a" &&
+                  c.project().artDirection.captionPosition == "top",
+              "reopen retains content and global art direction");
         c.selectNode("title");
         c.updateSelected("text", "recovered title");
         QElapsedTimer elapsed;

@@ -188,6 +188,22 @@ QVariantMap EditorController::camera() const {
             {"shotId", currentShotId()},
             {"keyframeEasing", curve}};
 }
+QVariantMap EditorController::artDirection() const {
+    const auto &art = project().artDirection;
+    return {{"backgroundColor", q(art.backgroundColor)},
+            {"glowColor", q(art.glowColor)},
+            {"primaryColor", q(art.primaryColor)},
+            {"secondaryColor", q(art.secondaryColor)},
+            {"textColor", q(art.textColor)},
+            {"cardColor", q(art.cardColor)},
+            {"captionBackgroundColor", q(art.captionBackgroundColor)},
+            {"fontFamily", q(art.fontFamily)},
+            {"captionPosition", q(art.captionPosition)},
+            {"titleSize", art.titleSize},
+            {"bodySize", art.bodySize},
+            {"captionSize", art.captionSize},
+            {"safeMargin", art.safeMargin}};
+}
 QString EditorController::title() const {
     return q(project().name);
 }
@@ -771,6 +787,68 @@ void EditorController::updateCamera(QString property, double value) {
             state.rotation = value;
         upsertKeyframe(p.camera, {frame_, state.x, state.y, state.zoom, state.rotation, "linear", shotId});
         p.schemaVersion = std::max(p.schemaVersion, 3);
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
+void EditorController::updateArtDirection(QString property, QVariant value) {
+    const auto error = editor_.execute([&](studio::Project &p) {
+        auto &art = p.artDirection;
+        const auto key = property.toStdString();
+        if (key == "backgroundColor") art.backgroundColor = value.toString().toStdString();
+        else if (key == "glowColor") art.glowColor = value.toString().toStdString();
+        else if (key == "primaryColor") art.primaryColor = value.toString().toStdString();
+        else if (key == "secondaryColor") art.secondaryColor = value.toString().toStdString();
+        else if (key == "textColor") art.textColor = value.toString().toStdString();
+        else if (key == "cardColor") art.cardColor = value.toString().toStdString();
+        else if (key == "captionBackgroundColor")
+            art.captionBackgroundColor = value.toString().toStdString();
+        else if (key == "fontFamily") art.fontFamily = value.toString().toStdString();
+        else if (key == "captionPosition") art.captionPosition = value.toString().toStdString();
+        else if (key == "titleSize") art.titleSize = value.toDouble();
+        else if (key == "bodySize") art.bodySize = value.toDouble();
+        else if (key == "captionSize") art.captionSize = value.toDouble();
+        else if (key == "safeMargin") art.safeMargin = value.toInt();
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
+void EditorController::applyEditingIntensity(int intensity) {
+    if (intensity < 0 || intensity > 100) {
+        notify("A intensidade precisa ficar entre 0 e 100.");
+        return;
+    }
+    const auto sceneId = currentSceneId().toStdString();
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &node : p.nodes) {
+            if (node.kind == studio::NodeKind::Group || node.kind == studio::NodeKind::Video ||
+                (!sceneId.empty() && !node.sceneId.empty() && node.sceneId != sceneId))
+                continue;
+            if (intensity == 0) {
+                node.motion = "none";
+                node.animated = false;
+                node.exitFrames = 0;
+            } else {
+                node.motion = intensity <= 30 ? "fade" : intensity <= 70 ? "rise" : "pop";
+                node.animated = true;
+                if (intensity <= 30)
+                    node.motionFrames = int(std::lround(48.0 - intensity * 18.0 / 30.0));
+                else if (intensity <= 70)
+                    node.motionFrames = int(std::lround(30.0 - (intensity - 30) * 10.0 / 40.0));
+                else
+                    node.motionFrames = int(std::lround(20.0 - (intensity - 70) * 12.0 / 30.0));
+                if (intensity <= 30)
+                    node.exitFrames = int(std::lround(20.0 - intensity * 8.0 / 30.0));
+                else if (intensity <= 70)
+                    node.exitFrames = int(std::lround(12.0 - (intensity - 30) * 4.0 / 40.0));
+                else
+                    node.exitFrames = int(std::lround(8.0 - (intensity - 70) * 5.0 / 30.0));
+            }
+        }
     });
     if (error.empty())
         changed();

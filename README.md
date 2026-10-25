@@ -44,6 +44,8 @@ Uma cena pode ter vários shots sem quebrar a narração. O início de cada plan
 
 Receitas v3 também aceitam `artDirection` para definir paleta, fonte instalada, tamanhos tipográficos, posição das legendas e margem segura como estilo global. Esses valores funcionam como padrões para elementos, títulos gerados e legendas; propriedades de elemento explicitamente definidas continuam prevalecendo. Estilos de arte por cena e arquivos de fonte próprios ainda estão pendentes.
 
+No inspetor, **Direção de arte global** edita as cores, a fonte, a tipografia, a margem segura e a posição das legendas. **Intensidade de edição** aplica à cena atual um perfil de entrada/saída entre 0 e 100; a ação inteira pode ser desfeita de uma vez. Ajustes finos continuam disponíveis por objeto.
+
 Receitas v3 aceitam `kind: "video"` com um caminho local em `source` para inserir vídeo/B-roll como camada editável da composição. O vídeo toca na prévia e entra no MP4 exportado, mantém a proporção com corte central e usa a duração do elemento. Formatos aceitos: MP4, MOV, MKV, WebM, AVI e M4V. A máquina que abrir/exportar o projeto precisa ter acesso ao arquivo e ao FFmpeg configurado pelo app. O projeto sobe para schema 5 quando contém vídeo; schemas anteriores continuam compatíveis.
 
 Projetos schema 4 e receitas v3 aceitam até 32 pistas de áudio independentes. Na timeline, importe áudio local, ajuste início/duração/ganho, silencie, remova ou ative ducking durante a voz. A prévia toca as pistas sincronizadas e o exportador mistura todas usando FFmpeg; receitas de produção podem apontar para WAVs locais relativos ao JSON e sincronizar o início com fala/progresso/palavra. Veja o guia da IA e a [decisão de arquitetura 0013](docs/architecture/0013-multitrack-audio.md).

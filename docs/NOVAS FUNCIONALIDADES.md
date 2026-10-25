@@ -37,8 +37,9 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 - Receitas v3 aceitam `artDirection` para paleta global, fonte instalada, tamanhos de título/texto/legenda, posição das legendas e margem segura.
 - A receita fornece defaults a elementos sem estilo explícito; `color`, `secondaryColor` e `fontSize` explícitos permanecem preservados. Fundo, cabeçalhos gerados e legendas usam o estilo global.
-- Projetos schema 2–4 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte e cartão de legenda na prévia/exportação.
-- Ainda falta uma tela de edição da direção de arte, controles por cena/shot, carregar fontes externas e suporte a elementos de vídeo.
+- Projetos schema 2–5 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte e cartão de legenda na prévia/exportação.
+- O inspetor permite alterar cores, fonte instalada, tamanhos de título/texto/legenda, margem segura e posição da legenda; as alterações validam e entram no histórico de undo.
+- Ainda faltam estilos por cena/shot, carregar fontes externas e pré-visualização de tema por paleta.
 - Validação desta etapa: compilação e quatro testes automatizados passaram; os smokes de app, workspace e produção passaram. A produção sintetizou voz pt-BR, gerou 6 cenas/1517 quadros, e o exemplo v3 de 3 shots/3 beats teve comparação prévia/exportação de 43,82 dB.
 
 ### Sincronização por palavra implementada parcialmente
@@ -48,6 +49,12 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Índices sem alinhamento real são rejeitados. Quando o plano de duração fixa acelera uma fala, as posições acompanham o mesmo fator temporal.
 - Os eventos SAPI podem ficar ligeiramente fora do tamanho final do WAV devido à diferença entre o relógio reportado e o arquivo; o worker calibra a sequência para o intervalo audível real, preservando a ordem e deixando espaço para o fim da última palavra.
 - Os testes cobrem receita, timestamp e resolução de beat. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
+
+### Controle de intensidade no editor
+
+- O inspetor aplica um perfil de intensidade 0–100 aos elementos visuais da cena atual, calculando tipo/duração de entrada e saída com a mesma escala adotada pela receita v3.
+- O comando entra no histórico como uma edição única e pode ser desfeito/refeito. Intensidade zero desliga movimentos automáticos; camadas de vídeo e grupos não são modificados.
+- Na receita, a intensidade continua sendo a forma de configurar o perfil automaticamente antes da compilação. No editor, a aplicação é explícita para não substituir movimentos sem ação do usuário.
 
 ### Áudio em múltiplas pistas implementado parcialmente
 
@@ -62,7 +69,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e transições fade/dissolve/slide/zoom implementados. Falta controle global de intensidade no editor, decisões de ritmo guiadas pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e editor, e transições fade/dissolve/slide/zoom implementados. Falta decisão de ritmo guiada pelo conteúdo, presets de câmera e transição selecionável/editável diretamente no editor. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas de áudio com ducking implementadas na receita/projeto/exportação. Falta interface para editar o tema, estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
 | 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR validado no fluxo de produção para shot/Visual Beat; vídeo/B-roll local já entra na composição e no render. Falta levar timestamps de palavra até keyframes/legendas destacadas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
@@ -74,7 +81,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo e preserva os keyframes ao mover o corte.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
-- `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. Não gera cortes ou efeitos a partir do significado da fala e ainda não pode ser ajustado por um controle global do editor.
+- `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
 
 ### Próxima entrega recomendada
 

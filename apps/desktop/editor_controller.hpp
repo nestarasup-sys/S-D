@@ -18,6 +18,7 @@ class EditorController : public QObject {
     Q_PROPERTY(QAbstractItemModel *nodes READ nodeModel CONSTANT)
     Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectedChanged)
     Q_PROPERTY(QVariantMap camera READ camera NOTIFY cameraChanged)
+    Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY documentChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
     Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
@@ -82,6 +83,7 @@ class EditorController : public QObject {
     }
     QVariantMap selected() const;
     QVariantMap camera() const;
+    QVariantMap artDirection() const;
     QString title() const;
     QString selectedId() const {
         return selectedId_;
@@ -141,6 +143,8 @@ class EditorController : public QObject {
     Q_INVOKABLE void setSelectedKeyframeEasing(QString easing);
     Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
     Q_INVOKABLE void updateCamera(QString property, double value);
+    Q_INVOKABLE void updateArtDirection(QString property, QVariant value);
+    Q_INVOKABLE void applyEditingIntensity(int intensity);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
     Q_INVOKABLE void setFrame(int frame);

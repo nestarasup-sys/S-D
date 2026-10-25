@@ -57,6 +57,32 @@ Rectangle {
             }
         }
     }
+    component StyleField: ColumnLayout {
+        id: styleField
+        property string caption
+        property string propertyKey
+        property var currentValue
+        property bool number: false
+        spacing: 5
+        Layout.fillWidth: true
+        Label { text: styleField.caption; color: "#8193a2"; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
+        TextField {
+            id: styleInput
+            Layout.fillWidth: true; implicitHeight: 32
+            Binding { target: styleInput; property: "text"; value: styleField.currentValue === undefined ? "" : String(styleField.currentValue); when: !styleInput.activeFocus; restoreMode: Binding.RestoreNone }
+            color: "#dce6ee"; font.pixelSize: 12; selectByMouse: true
+            background: Rectangle { color: "#10171e"; radius: 5; border.color: styleInput.activeFocus ? "#b4f078" : "#303e49" }
+            onEditingFinished: {
+                const value = styleField.number ? Number(text) : text.trim()
+                if ((styleField.number && (!text.trim() || !isFinite(value))) || (!styleField.number && !value)) {
+                    text = String(styleField.currentValue)
+                    return
+                }
+                editor.updateArtDirection(styleField.propertyKey, value)
+                text = String(editor.artDirection[styleField.propertyKey])
+            }
+        }
+    }
     ScrollView {
         anchors.fill: parent; anchors.margins: 17; clip: true
         contentWidth: availableWidth
@@ -65,6 +91,48 @@ Rectangle {
             Label { text: "INSPETOR"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
+            Label { text: "DIREÇÃO DE ARTE GLOBAL"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            RowLayout {
+                StyleField { caption: "Fundo · #RRGGBB"; propertyKey: "backgroundColor"; currentValue: editor.artDirection.backgroundColor }
+                StyleField { caption: "Luz · #RRGGBB"; propertyKey: "glowColor"; currentValue: editor.artDirection.glowColor }
+            }
+            RowLayout {
+                StyleField { caption: "Primária · #RRGGBB"; propertyKey: "primaryColor"; currentValue: editor.artDirection.primaryColor }
+                StyleField { caption: "Secundária · #RRGGBB"; propertyKey: "secondaryColor"; currentValue: editor.artDirection.secondaryColor }
+            }
+            RowLayout {
+                StyleField { caption: "Texto · #RRGGBB"; propertyKey: "textColor"; currentValue: editor.artDirection.textColor }
+                StyleField { caption: "Cartões · #RRGGBB"; propertyKey: "cardColor"; currentValue: editor.artDirection.cardColor }
+            }
+            RowLayout {
+                StyleField { caption: "Legenda · #RRGGBB"; propertyKey: "captionBackgroundColor"; currentValue: editor.artDirection.captionBackgroundColor }
+                StyleField { caption: "Fonte instalada"; propertyKey: "fontFamily"; currentValue: editor.artDirection.fontFamily }
+            }
+            RowLayout {
+                StyleField { caption: "Título · px"; propertyKey: "titleSize"; currentValue: editor.artDirection.titleSize; number: true }
+                StyleField { caption: "Texto · px"; propertyKey: "bodySize"; currentValue: editor.artDirection.bodySize; number: true }
+            }
+            RowLayout {
+                StyleField { caption: "Legenda · px"; propertyKey: "captionSize"; currentValue: editor.artDirection.captionSize; number: true }
+                StyleField { caption: "Margem · px"; propertyKey: "safeMargin"; currentValue: editor.artDirection.safeMargin; number: true }
+            }
+            Label { text: "Posição das legendas"; color: "#8193a2"; font.pixelSize: 10 }
+            StudioComboBox {
+                Layout.fillWidth: true; model: ["bottom", "top"]
+                currentIndex: Math.max(0, model.indexOf(editor.artDirection.captionPosition))
+                onActivated: editor.updateArtDirection("captionPosition", currentText)
+            }
+            Label { text: "Os estilos são salvos junto ao projeto e afetam a prévia e a exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: "INTENSIDADE DE EDIÇÃO · CENA ATUAL"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
+            Slider { id: intensitySlider; Layout.fillWidth: true; from: 0; to: 100; stepSize: 1; value: 50 }
+            Label { text: Math.round(intensitySlider.value) + " / 100 · " + (intensitySlider.value === 0 ? "sem movimento automático" : intensitySlider.value <= 30 ? "movimento discreto" : intensitySlider.value <= 70 ? "movimento moderado" : "movimento intenso"); color: "#708393"; font.pixelSize: 10 }
+            StudioButton {
+                text: "Aplicar intensidade aos objetos da cena"
+                Layout.fillWidth: true
+                quiet: true
+                onClicked: editor.applyEditingIntensity(Math.round(intensitySlider.value))
+            }
+            Label { text: "Esta ação ajusta os movimentos de entrada e saída da cena atual em uma única edição reversível."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { text: editor.camera.shotId ? "CÂMERA 2D · SHOT " + editor.camera.shotId : "CÂMERA 2D"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8; elide: Text.ElideRight; Layout.fillWidth: true }
             RowLayout {
                 CameraField { caption: "Centro X"; propertyKey: "x"; currentValue: editor.camera.x }
