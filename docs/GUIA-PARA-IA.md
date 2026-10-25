@@ -65,7 +65,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 
 Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; `speechRate` vai de -3 a 3.
 
-`captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`.
+`captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.primaryColor` (ou a cor primária padrão). O projeto guarda os intervalos em quadros no schema 7; isso não exige um campo adicional na receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
 ## Plano temporal: voz sincronizada e duração fixa
 
@@ -100,7 +100,7 @@ A receita v2 permite dois modos. **Natural** (padrão para projetos antigos): si
 
 O Studio Dark sintetiza cada áudio primeiro, mede amostras a 24 kHz e depois planeja intervalos inteiros de quadros (30 FPS). O `atempo` do FFmpeg acelera apenas a fala que não cabe, buscando preservar seu tom, com limite rígido de **1,15×**. Quando sobra tempo, insere silêncio como pausa; não estica a voz para preencher. Se a fala precisar acelerar mais de 15%, o app **rejeita o plano** e apresenta ID e duração mínima. Requer FFmpeg e voz pt-BR local no Windows.
 
-Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. Isso não é alinhamento palavra por palavra.
+Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. A receita v3 também aceita `wordIndex` onde documentado abaixo; a resolução vem dos eventos reais da voz pt-BR.
 
 **Planejamento:** para 90 s, 2700 quadros a 30 FPS. A IA pode planejar mas não conhece a duração de uma voz local ainda não gerada. Evite silêncios excessivos; se o plano não couber, ajuste a narração ou os tempos. O aplicativo não inventa áudio para satisfazer qualquer número.
 
@@ -108,7 +108,7 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como sidechain e reduz a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource` como referência. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking, configurar fades e remover. A prévia acompanha os fades e o sidechain é aplicado na exportação.
+Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como referência para reduzir a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource`. A prévia calcula uma redução suavizada a partir do RMS dessa referência quando ela é WAV; a exportação aplica sidechaincompress de FFmpeg. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking, configurar fades e remover.
 
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
@@ -232,13 +232,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats e camadas de vídeo. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v4 continuam abrindo; produções com vídeo são salvas em schema 5.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v7 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6 e legendas com destaque sincronizado por palavra usam schema 7.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, eventos por palavra, trajetórias/curvas Bézier personalizadas, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial e áudio em várias pistas estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, efeitos sonoros disparados por beat e edição gráfica de automação de ganho. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 
@@ -416,7 +416,8 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "multi-track-audio",
         "voice-sidechain-ducking",
         "audio-track-fades",
-        "video-layer-broll"
+        "video-layer-broll",
+        "word-timed-karaoke-captions"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -428,9 +429,10 @@ Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores a
         "visual-beat-markers",
         "audio-tracks",
         "video-layers",
-        "audio-track-fades"
+        "audio-track-fades",
+        "word-timed-caption-highlights"
     ],
-    "projectVersion": 6,
+    "projectVersion": 7,
     "shotTransitionTypes": [
         "cut",
         "fade",

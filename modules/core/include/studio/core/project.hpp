@@ -32,6 +32,11 @@ struct CameraKeyframe {
     std::string shotId; // Allows a cut and its camera events to move as one edit.
     bool operator==(const CameraKeyframe &) const = default;
 };
+struct CaptionWordCue {
+    std::string text;
+    std::int64_t start{0}, end{0};
+    bool operator==(const CaptionWordCue &) const = default;
+};
 struct Node {
     std::string id;
     std::string parentId; // Empty for composition roots; children use parent-local coordinates.
@@ -52,6 +57,7 @@ struct Node {
     double rotation{0}, scale{1}, travelX{0}, travelY{0}, spinDegrees{0};
     int motionFrames{24}, exitFrames{0};
     std::vector<TransformKeyframe> keyframes;
+    std::vector<CaptionWordCue> captionWords;
     bool operator==(const Node &) const = default;
 };
 struct SceneMarker {

@@ -5,6 +5,8 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSvgRenderer>
+#include <QFontMetricsF>
+#include <QRegularExpression>
 #include <algorithm>
 #include <functional>
 #include <optional>
@@ -112,6 +114,7 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                                                             QFileInfo(QString::fromStdString(node.source)).fileName());
             }
         } else if (node.kind == NodeKind::Text) {
+            const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds;
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
                 auto captionBackground = QColor(QString::fromStdString(project.artDirection.captionBackgroundColor));
@@ -123,11 +126,66 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
             font.setPixelSize(qRound(node.fontSize));
             font.setWeight(QFont::DemiBold);
             painter.setFont(font);
-            painter.setPen(QColor(QString::fromStdString(node.color)));
-            painter.drawText(node.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds,
-                             (node.role == "caption" ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignTop) |
-                                 Qt::TextWordWrap,
-                             QString::fromStdString(node.text));
+            if (node.role == "caption" && !node.captionWords.empty()) {
+                struct CaptionPart {
+                    QString text;
+                    QColor color;
+                    qreal width;
+                };
+                struct CaptionLine {
+                    std::vector<CaptionPart> parts;
+                    qreal width{0};
+                };
+                const QFontMetricsF metrics(font);
+                const auto baseColor = QColor(QString::fromStdString(node.color));
+                const auto highlightColor = QColor(QString::fromStdString(project.artDirection.primaryColor));
+                const auto words = QString::fromStdString(node.text).split(QRegularExpression("\\s+"),
+                                                                           Qt::SkipEmptyParts);
+                std::vector<CaptionLine> lines(1);
+                std::size_t cueIndex = 0;
+                const qreal wordGap = metrics.horizontalAdvance(QLatin1Char(' '));
+                for (const auto &word : words) {
+                    const bool highlighted = cueIndex < node.captionWords.size() &&
+                                             frame >= node.captionWords[cueIndex].start &&
+                                             frame < node.captionWords[cueIndex].end;
+                    const qreal width = metrics.horizontalAdvance(word);
+                    auto *line = &lines.back();
+                    const qreal addedWidth = width + (line->parts.empty() ? 0 : wordGap);
+                    if (!line->parts.empty() && line->width + addedWidth > textBounds.width()) {
+                        lines.emplace_back();
+                        line = &lines.back();
+                    }
+                    if (!line->parts.empty())
+                        line->width += wordGap;
+                    line->parts.push_back({word, highlighted ? highlightColor : baseColor, width});
+                    line->width += width;
+                    if (cueIndex < node.captionWords.size())
+                        ++cueIndex;
+                }
+                const qreal lineHeight = metrics.height();
+                const qreal totalHeight = lineHeight * lines.size();
+                qreal baseline = textBounds.y() + std::max<qreal>(metrics.ascent(),
+                                                                  (textBounds.height() - totalHeight) / 2 +
+                                                                      metrics.ascent());
+                painter.save();
+                for (const auto &line : lines) {
+                    qreal x = textBounds.x() + (textBounds.width() - line.width) / 2;
+                    for (std::size_t part = 0; part < line.parts.size(); ++part) {
+                        if (part > 0)
+                            x += wordGap;
+                        painter.setPen(line.parts[part].color);
+                        painter.drawText(QPointF(x, baseline), line.parts[part].text);
+                        x += line.parts[part].width;
+                    }
+                    baseline += lineHeight;
+                }
+                painter.restore();
+            } else {
+                painter.setPen(QColor(QString::fromStdString(node.color)));
+                painter.drawText(textBounds, (node.role == "caption" ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignTop) |
+                                                  Qt::TextWordWrap,
+                                 QString::fromStdString(node.text));
+            }
         } else {
             const auto path = QString::fromStdString(node.source);
             if (!images.contains(path)) {

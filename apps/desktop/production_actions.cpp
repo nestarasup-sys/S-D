@@ -273,7 +273,7 @@ void EditorController::setAudioTrackFades(QString id, int fadeInFrames, int fade
                 track.fadeOutFrames = fadeOutFrames;
             }
         if (fadeInFrames > 0 || fadeOutFrames > 0)
-            p.schemaVersion = 6;
+            p.schemaVersion = std::max(p.schemaVersion, 6);
     });
     if (!error.empty()) {
         notify(QString::fromStdString(error));

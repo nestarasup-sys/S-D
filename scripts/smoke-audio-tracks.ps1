@@ -11,7 +11,11 @@ foreach ($StudioPair in @(
     & $StudioEncoder -nostdin -y -hide_banner -loglevel error -f lavfi -i "sine=frequency=$($StudioPair.Freq):duration=$($StudioPair.Duration)" -af "volume=$($StudioPair.Gain)" -ar 24000 -ac 1 -c:a pcm_s16le $StudioPair.Path
     if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar as fontes do teste de áudio.' }
 }
-& $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioVoice -af 'volume=0.95' -ar 24000 -ac 1 -c:a pcm_s16le $StudioMain
+$StudioVoiceSource = Join-Path $StudioSmokeDir 'voice-padded.wav'
+& $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioVoice -af 'apad=pad_dur=1' -t 2 -ar 24000 -ac 1 -c:a pcm_s16le $StudioVoiceSource
+if ($LASTEXITCODE -ne 0) { throw 'Não foi possível preparar o stem de voz com trecho de silêncio.' }
+$StudioVoice = $StudioVoiceSource
+& $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioVoice -af 'volume=0.95,apad=pad_dur=1' -ar 24000 -ac 1 -c:a pcm_s16le $StudioMain
 if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar a mix base do teste.' }
 $StudioBase = @{
     format = 'studio-dark'; schemaVersion = 6; id = 'audio-smoke'; name = 'Audio smoke'

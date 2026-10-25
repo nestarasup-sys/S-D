@@ -4,6 +4,12 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Sincronização visual por palavra concluída nesta rodada
+
+- Legendas geradas a partir da narração agora guardam intervalos de palavra resolvidos pelos eventos reais do sintetizador pt-BR. A palavra ativa usa a cor primária da direção de arte e o mesmo compositor desenha prévia e exportação.
+- Projetos schema 7 persistem esses intervalos; schemas 1–6 continuam aceitos e sem destaque sincronizado. Se duas palavras começarem no mesmo quadro de vídeo, o quadro destaca a última palavra daquele intervalo, devido à resolução temporal do vídeo.
+- O teste automatizado cobre a resolução de oito palavras, salvamento/reabertura do projeto e mudança visual entre quadros de palavra.
+
 ### Camadas de vídeo implementadas nesta rodada
 
 - O compositor compartilhado entre prévia e render agora decodifica quadros de vídeo local sob demanda usando o FFmpeg configurado pelo aplicativo. A imagem mantém proporção e preenche sua caixa com corte central.
@@ -37,7 +43,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 - Receitas v3 aceitam `artDirection` para paleta global, fonte instalada, tamanhos de título/texto/legenda, posição das legendas e margem segura.
 - A receita fornece defaults a elementos sem estilo explícito; `color`, `secondaryColor` e `fontSize` explícitos permanecem preservados. Fundo, cabeçalhos gerados e legendas usam o estilo global.
-- Projetos schema 2–5 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte e cartão de legenda na prévia/exportação.
+- Projetos schema 2–7 salvam a direção e mantêm defaults compatíveis ao carregar arquivos antigos. O compositor compartilhado aplica fundo, fonte, cartão e destaque de palavra na legenda em prévia/exportação.
 - O inspetor permite alterar cores, fonte instalada, tamanhos de título/texto/legenda, margem segura e posição da legenda; as alterações validam e entram no histórico de undo.
 - Ainda faltam estilos por cena/shot, carregar fontes externas e pré-visualização de tema por paleta.
 - Validação desta etapa: compilação e quatro testes automatizados passaram; os smokes de app, workspace e produção passaram. A produção sintetizou voz pt-BR, gerou 6 cenas/1517 quadros, e o exemplo v3 de 3 shots/3 beats teve comparação prévia/exportação de 43,82 dB.
@@ -49,6 +55,8 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - Índices sem alinhamento real são rejeitados. Quando o plano de duração fixa acelera uma fala, as posições acompanham o mesmo fator temporal.
 - Os eventos SAPI podem ficar ligeiramente fora do tamanho final do WAV devido à diferença entre o relógio reportado e o arquivo; o worker calibra a sequência para o intervalo audível real, preservando a ordem e deixando espaço para o fim da última palavra.
 - Os testes cobrem receita, timestamp e resolução em shot, beat, elemento e keyframe. O exemplo v3 usa `wordIndex`; o smoke de produção passou com voz Microsoft Maria Desktop e renderizou os três shots e três beats, incluindo os eventos acionados por palavra. Prévia/exportação do exemplo v3: 43,82 dB.
+- Legendas de narração têm destaque da palavra falada pela cor primária; seus tempos ficam gravados no schema 7. A camada de legenda usa layout por métricas de fonte e respeita quebra de linha.
+- Ainda faltam edição manual do alinhamento depois da compilação e estilos de destaque configuráveis. A importação de uma produção precisa sintetizar a mesma fala com a voz local para obter tempos confiáveis.
 
 ### Controle de intensidade no editor
 
@@ -58,7 +66,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Áudio em múltiplas pistas implementado parcialmente
 
-- Projetos schema 4–6 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute e ducking configurável. Fades não zerados exigem schema 6; os arquivos antigos continuam carregando sem migração destrutiva.
+- Projetos schema 4–7 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute e ducking configurável. Fades não zerados exigem schema 6 ou superior; os arquivos antigos continuam carregando sem migração destrutiva.
 - A timeline importa, remove, silencia, reposiciona, altera duração/ganho, liga ducking e permite definir fades lineares de entrada/saída. Na prévia, cada pista toca sincronizada com o playhead e segue os fades.
 - A prévia calcula ducking suavizado a partir do RMS do stem WAV de voz por frame; a exportação usa sidechaincompress do FFmpeg. Arquivos sem stem dedicado usam `audioSource` como referência.
 - Receitas v3 podem declarar pistas por cena com fonte local, sincronizar início por cue/progresso/wordIndex e definir `fadeInFrames`/`fadeOutFrames` até 1800 quadros cada, limitados ao intervalo da pista. Projetos com fades usam schema 6; os fades também são aplicados no render por FFmpeg.
@@ -69,23 +77,23 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Parcialmente concluída | Expandir cenários automatizados para muitas cenas/shots, cortes próximos ao início/fim e movimentos de câmera sobrepostos. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, perfil de intensidade na receita e editor, e transições fade/dissolve/slide/zoom editáveis no inspetor implementados. Falta decisão de ritmo guiada pelo conteúdo, presets de câmera e uma edição de sobreposição/duração total de sequência mais avançada. |
-| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global tem controles no inspetor; pistas de áudio com ducking funcionam na receita/projeto/exportação. Faltam estilos por cena/shot, presets visuais avançados, tipografia animada, efeitos acionados por beat e fades/automação de volume das trilhas. |
-| 4 — Recursos avançados | Parcialmente concluída | Alinhamento por palavra pt-BR em shot, Visual Beat, início de elemento e keyframe; vídeo/B-roll local já entra na composição e no render. Falta destaque de palavra sincronizado nas legendas, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
+| 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global e pistas com ducking/fades estão implementadas. Faltam estilos por cena/shot, fontes externas, presets visuais, tipografia animada, efeitos acionados por beat e automação de ganho por pontos/easing. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, entrada/velocidade/recorte fino de vídeo e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
 - `transitionIn` aceita a string legada `cut` ou um objeto com `type`, `durationFrames` e, para slide, `direction`. O inspetor permite ajustar tipo, duração e direção no shot atual. A sobreposição é visual e não prolonga a duração do áudio/cena; o shot de saída congela no último quadro durante a transição. Fade atravessa preto intencionalmente.
-- Beats aceitam `show`, `hide`, `transform` e `camera`. Não disparam áudio e não destacam palavras.
-- Shot, Visual Beat, início de elemento e keyframe podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros no projeto. Ainda não há alinhamento fonético reutilizável após a importação nem destaque de palavra nas legendas.
+- Beats aceitam `show`, `hide`, `transform` e `camera`. Ainda não disparam efeitos de áudio.
+- Shot, Visual Beat, início de elemento, keyframe e destaque de legenda podem usar `wordIndex`, resolvido pelos eventos SAPI da voz local e guardado como quadros/intervalos no projeto. Ainda não há editor manual de alinhamento fonético reutilizável após a importação.
 - A timeline mostra e permite navegar pelos shots/beats; as alças movem o corte com ajuste dos conteúdos e um único undo. O inspetor grava câmera no shot ativo, edita a transição de entrada e preserva os keyframes ao mover o corte.
-- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking existe; direção de arte global e intensidade básica existem na receita, mas controle de intensidade no editor e uma tela de direção de arte ainda faltam.
+- Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte global e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot; presets reutilizáveis e trajetórias Bézier continuam pendentes.
 - `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
 
 ### Próxima entrega recomendada
 
-Adicionar controles de intensidade e direção de arte no editor; integrar ducking com fades/automação manual e testar projetos com muitas pistas. Em seguida, acrescentar entrada/velocidade/recorte de vídeo e ampliar alinhamento de palavra a elementos, keyframes e legendas destacadas. A validação de SAPI→WAV→compilador, as camadas em prévia/exportação, a edição/exportação multifaixa e os cortes/transições precisam continuar cobertos pelos smokes automatizados.
+Adicionar automação de ganho por pontos com easing, depois edição de entrada/velocidade/recorte para vídeo e estilos de direção de arte por cena/shot. Aumentar a bateria de testes para sequências longas, manter SAPI→WAV→compilador coberto pelo smoke de produção e comparar prévia/exportação para cada novo caminho visual.
 
 ---
 
@@ -536,9 +544,7 @@ Funcionalidades desejadas:
 - Animação de números e informações.
 - Integração com o alinhamento da narração.
 
-Quando o alinhamento por palavra estiver disponível, permitir legendas com destaque progressivo.
-
-Quando não estiver, utilizar os tempos medidos por fala.
+**Já implementado:** quando há timestamps reais da voz pt-BR, o compositor destaca a palavra correspondente por quadro e salva o alinhamento no projeto schema 7. Sem alinhamento real, mantém a legenda estática. Permanecem pendentes animações tipográficas por palavra com escala/movimento, presets de texto e edição manual do alinhamento.
 
 Garantir que o texto permaneça legível e não invada regiões importantes da composição.
 
@@ -811,13 +817,14 @@ Trabalhe por etapas.
 
 Prioridade máxima:
 
-1. Analisar a arquitetura atual.
-2. Criar a hierarquia de cenas, shots e Visual Beats.
-3. Implementar um modelo temporal consistente.
-4. Sincronizar os shots com a narração real.
-5. Implementar cortes entre shots.
-6. Integrar os planos ao editor.
-7. Manter compatibilidade com as receitas antigas.
+1. [x] Analisar e documentar a arquitetura atual.
+2. [x] Criar cenas, shots independentes e Visual Beats.
+3. [x] Resolver um modelo temporal por quadros, com validação de intervalos.
+4. [x] Sincronizar shots com a fala sintetizada e com `wordIndex` real.
+5. [x] Implementar cortes entre shots.
+6. [x] Integrar shots/beats à timeline, inspetor e histórico de desfazer.
+7. [x] Preservar a leitura de receitas e projetos anteriores.
+8. [ ] Ampliar testes para produções longas com muitos shots, cortes no limite e eventos concorrentes.
 
 Resultado esperado: conseguir criar várias composições e cortes dentro de uma mesma cena narrativa.
 
@@ -825,12 +832,12 @@ Resultado esperado: conseguir criar várias composições e cortes dentro de uma
 
 Implementar:
 
-1. Dynamic Edit Engine.
-2. Controle de intensidade.
-3. Auto Reframe.
-4. Transições.
-5. Animações proporcionais à fala.
-6. Melhorias nos movimentos de câmera.
+1. [x] Motor de edição dinâmica com intensidade configurável na receita e no editor.
+2. [x] Auto Reframe por alvo, inclusive acompanhamento quadro a quadro.
+3. [x] Transições fade, dissolve, slide e zoom editáveis.
+4. [x] Sincronização temporal de animações com fala/progresso/palavra.
+5. [ ] Cortes e ritmo escolhidos automaticamente com base no conteúdo da narração.
+6. [ ] Presets reutilizáveis de câmera e edição avançada de duração/overlap da sequência.
 
 Resultado esperado: criar vídeos com ritmo de edição profissional usando os elementos já existentes.
 
@@ -838,13 +845,13 @@ Resultado esperado: criar vídeos com ritmo de edição profissional usando os e
 
 Implementar:
 
-1. Tipografia animada.
-2. Destaque de palavras quando houver alinhamento.
-3. Efeitos sonoros.
-4. Trilhas importadas.
-5. Ducking.
-6. Direção de arte global.
-7. Presets avançados.
+1. [ ] Tipografia animada com presets de movimento/escala e controle por palavra.
+2. [x] Destaque de palavra sincronizado quando existe alinhamento real de voz.
+3. [ ] Efeitos sonoros disparados por Visual Beat.
+4. [x] Trilhas importadas em múltiplas pistas, com fades e ducking.
+5. [x] Direção de arte global com paleta, fonte instalada e parâmetros de legenda.
+6. [ ] Estilos/presets por cena e shot, carregamento de fontes externas e presets visuais avançados.
+7. [ ] Automação de ganho por pontos com easing.
 
 Resultado esperado: produções com identidade visual e sonora consistente.
 
@@ -852,13 +859,13 @@ Resultado esperado: produções com identidade visual e sonora consistente.
 
 Implementar:
 
-1. Vídeo como camada.
-2. B-roll.
-3. Alinhamento preciso de palavras, se viável.
-4. Duração-alvo com ajuste seguro da voz.
-5. Timeline mais avançada.
-6. Otimizações de renderização.
-7. Suporte a outros formatos de tela, conforme viabilidade.
+1. [x] Vídeo local como camada visual editável.
+2. [x] B-roll local decodificado na prévia e exportação.
+3. [x] Alinhamento real de palavra em shots, beats, elementos, keyframes e legendas.
+4. [x] Duração-alvo com aceleração segura e preservação aproximada de tom.
+5. [ ] Timeline avançada com envelopes, seleção múltipla e edição mais precisa.
+6. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
+7. [ ] Trim de entrada, velocidade, recorte manual, áudio embutido e formatos de tela adicionais.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 
@@ -903,6 +910,7 @@ Use um roteiro que tenha mudanças de composição suficientes para demonstrar o
 - As legendas acompanham o áudio.
 - A timeline continua editável.
 - O resultado exportado corresponde à prévia.
+- A produção demonstrativa atual cobre 50,6 segundos e a receita v3 cobre 10,7 segundos; o roteiro audiovisual de aproximadamente 90 segundos com efeitos sonoros ainda não foi produzido.
 
 Adicione testes automatizados sempre que possível, além da validação visual.
 

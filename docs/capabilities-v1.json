@@ -171,7 +171,8 @@
         "multi-track-audio",
         "voice-sidechain-ducking",
         "audio-track-fades",
-        "video-layer-broll"
+        "video-layer-broll",
+        "word-timed-karaoke-captions"
     ],
     "productionVersion": 3,
     "projectCapabilities": [
@@ -183,9 +184,10 @@
         "visual-beat-markers",
         "audio-tracks",
         "video-layers",
-        "audio-track-fades"
+        "audio-track-fades",
+        "word-timed-caption-highlights"
     ],
-    "projectVersion": 6,
+    "projectVersion": 7,
     "shotTransitionTypes": [
         "cut",
         "fade",

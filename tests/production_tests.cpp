@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
         shortSpeech.samples.resize(4800, .1f);
         shotAudio.insert(parsedShots.recipe.scenes.front().narration.front().id, shortSpeech);
         auto compiledShots = studio::compileProduction(parsedShots.recipe, shotAudio, "shots.wav");
-        check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 4 &&
+        check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 7 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
         const auto missingWordAlignment =
@@ -325,6 +325,44 @@ int main(int argc, char **argv) {
                                   return beat.id == "reveal-price" && beat.frame == 6;
                               }),
               "word-index beats require real alignment and resolve to measured word timing");
+        studio::WordTimingMap captionWordMap;
+        captionWordMap.insert(cueId, {0, 800, 1600, 2400, 3200, 4000, 4800, 5600});
+        auto captionAudio = shotAudio;
+        captionAudio[cueId].samples.resize(6400, .1f);
+        const auto timedCaptions = studio::compileProduction(parsedShots.recipe, captionAudio, "word-captions.wav",
+                                                             nullptr, &captionWordMap);
+        const auto *timedCaption = studio::findNode(timedCaptions.project, "caption-car-story-u1");
+        check(timedCaptions.error.isEmpty() && timedCaption && timedCaption->captionWords.size() == 8 &&
+                  timedCaption->captionWords[3].start == 3 && timedCaption->captionWords[3].end > 3,
+              "measured speech alignment compiles into per-word caption highlight intervals");
+        const auto savedTimedCaptions = studio::deserialize(studio::serialize(timedCaptions.project));
+        check(savedTimedCaptions.error.isEmpty() &&
+                  studio::findNode(savedTimedCaptions.project, "caption-car-story-u1")->captionWords ==
+                      timedCaption->captionWords,
+              "word-highlight timings survive project save and load");
+        auto karaokeProject = studio::makeEmpty();
+        karaokeProject.schemaVersion = 7;
+        karaokeProject.duration = 10;
+        auto karaokeCaption = *timedCaption;
+        karaokeCaption.start = 0;
+        karaokeCaption.duration = 8;
+        karaokeProject.nodes.push_back(karaokeCaption);
+        studio::CompositionPainter karaokePainter;
+        const auto firstSpokenWord = karaokePainter.frame(karaokeProject, 0);
+        const auto fourthSpokenWord = karaokePainter.frame(karaokeProject, 3);
+        const auto highlightedPixels = [](const QImage &image) {
+            int count = 0;
+            for (int y = 610; y < 710; ++y)
+                for (int x = 70; x < image.width() - 70; ++x) {
+                    const auto color = image.pixelColor(x, y);
+                    if (color.red() > 150 && color.green() > 210 && color.blue() < 155)
+                        ++count;
+                }
+            return count;
+        };
+        check(!firstSpokenWord.isNull() && highlightedPixels(firstSpokenWord) > 0 &&
+                  highlightedPixels(firstSpokenWord) != highlightedPixels(fourthSpokenWord),
+              "caption painter changes the active word color on its measured frame");
         auto alignedWordElement = studio::compileProduction(wordRecipe.recipe, shotAudio, "word-elements.wav",
                                                             nullptr, &wordMap);
         const auto *wordTimedPrice = studio::findNode(alignedWordElement.project, "price");
@@ -340,7 +378,7 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 6 &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 7 &&
                   styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
                   studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078" &&

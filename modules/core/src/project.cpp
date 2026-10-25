@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 6)
+    if (p.schemaVersion < 2 || p.schemaVersion > 7)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -95,6 +95,19 @@ std::string validate(const Project &p) {
             return "Cor inválida; use #RRGGBB.";
         if (n.text.size() > 4000 || n.name.size() > 240 || n.source.size() > 4096)
             return "Texto ou caminho excede o limite.";
+        if (n.captionWords.size() > 300)
+            return "Legenda excede 300 intervalos de palavra.";
+        if (!n.captionWords.empty() && p.schemaVersion < 7)
+            return "Alinhamento de palavras da legenda exige schema 7.";
+        if (!n.captionWords.empty() && n.role != "caption")
+            return "Alinhamento de palavras só pode pertencer a uma legenda.";
+        std::int64_t priorWordEnd = n.start;
+        for (const auto &word : n.captionWords) {
+            if (word.text.empty() || word.text.size() > 128 || word.start < priorWordEnd ||
+                word.end <= word.start || word.end > n.start + n.duration)
+                return "Tempos das palavras da legenda inválidos.";
+            priorWordEnd = word.end;
+        }
         if (n.kind == NodeKind::Image && n.source.empty())
             return "Imagem sem arquivo de origem.";
         if (n.kind == NodeKind::Svg && n.source.empty())

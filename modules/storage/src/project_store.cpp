@@ -60,6 +60,10 @@ QByteArray serialize(const Project &p) {
                                          {"scale", key.scale},
                                          {"opacity", key.opacity},
                                          {"easing", text(key.easing)}});
+        QJsonArray captionWords;
+        for (const auto &word : n.captionWords)
+            captionWords.append(QJsonObject{{"text", text(word.text)}, {"start", double(word.start)},
+                                            {"end", double(word.end)}});
         nodes.append(QJsonObject{{"id", text(n.id)},
                                  {"parentId", text(n.parentId)},
                                  {"shotId", text(n.shotId)},
@@ -96,7 +100,8 @@ QByteArray serialize(const Project &p) {
                                  {"spinDegrees", n.spinDegrees},
                                  {"motionFrames", n.motionFrames},
                                  {"exitFrames", n.exitFrames},
-                                 {"keyframes", keyframes}});
+                                 {"keyframes", keyframes},
+                                 {"captionWords", captionWords}});
     }
     QJsonArray scenes;
     for (const auto &s : p.scenes)
@@ -195,7 +200,8 @@ LoadResult deserialize(const QByteArray &bytes) {
     auto o = document.object();
     if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
-                                         o["schemaVersion"] != 5 && o["schemaVersion"] != 6))
+                                         o["schemaVersion"] != 5 && o["schemaVersion"] != 6 &&
+                                         o["schemaVersion"] != 7))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -357,6 +363,17 @@ LoadResult deserialize(const QByteArray &bytes) {
                 return fail("Duração da animação inválida.");
         n.motionFrames = v["motionFrames"].toInt(24);
         n.exitFrames = v["exitFrames"].toInt(0);
+        if (v.contains("captionWords") && !v["captionWords"].isArray())
+            return fail("Lista de tempos de legenda inválida.");
+        for (auto wordValue : v["captionWords"].toArray()) {
+            if (!wordValue.isObject())
+                return fail("Tempo de palavra da legenda inválido.");
+            const auto word = wordValue.toObject();
+            if (!word["text"].isString() || !integer(word["start"]) || !integer(word["end"]))
+                return fail("Tempo de palavra da legenda incompleto.");
+            n.captionWords.push_back({word["text"].toString().toStdString(), word["start"].toInteger(),
+                                      word["end"].toInteger()});
+        }
         if (v.contains("keyframes") && !v["keyframes"].isArray())
             return fail("Lista de keyframes inválida.");
         for (auto keyValue : v["keyframes"].toArray()) {

@@ -1,4 +1,5 @@
 #include <QPointF>
+#include <QRegularExpression>
 #include <QUuid>
 #include <algorithm>
 #include <array>
@@ -204,7 +205,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     CompileResult r;
     auto &p = r.project;
     p = makeEmpty();
-    p.schemaVersion = recipe.version >= 3 ? 4 : 3;
+    p.schemaVersion = recipe.version >= 3 ? 7 : 3;
     p.artDirection = recipe.artDirection;
     p.id = QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
     p.name = recipe.title.toStdString();
@@ -274,6 +275,27 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             caption.sceneId = scene.id.toStdString();
             caption.animated = false;
             caption.motion = "none";
+            const auto &cueWords = wordStarts.back();
+            const auto captionWords = QString::fromStdString(caption.text).split(QRegularExpression("\\s+"),
+                                                                                 Qt::SkipEmptyParts);
+            if (captionWords.size() == int(cueWords.size())) {
+                for (int wordIndex = 0; wordIndex < captionWords.size(); ++wordIndex) {
+                    const auto wordStart = begin / samplesPerFrame +
+                                           std::llround(double(cueWords[std::size_t(wordIndex)]) / samplesPerFrame);
+                    if (wordStart < finish) {
+                        if (!caption.captionWords.empty() && caption.captionWords.back().start == wordStart)
+                            caption.captionWords.back().text = captionWords[wordIndex].toStdString();
+                        else
+                            caption.captionWords.push_back({captionWords[wordIndex].toStdString(), wordStart, 0});
+                    }
+                }
+                for (std::size_t wordIndex = 0; wordIndex < caption.captionWords.size(); ++wordIndex)
+                    caption.captionWords[wordIndex].end =
+                        wordIndex + 1 < caption.captionWords.size() ? caption.captionWords[wordIndex + 1].start
+                                                                    : finish;
+                if (!caption.captionWords.empty())
+                    p.schemaVersion = std::max(p.schemaVersion, 7);
+            }
             if (recipe.renderCaptions)
                 p.nodes.push_back(caption);
             if (fixed) {
@@ -319,7 +341,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                      directedTrack.duckAmount, directedTrack.fadeInFrames,
                                      directedTrack.fadeOutFrames});
             if (directedTrack.fadeInFrames > 0 || directedTrack.fadeOutFrames > 0)
-                p.schemaVersion = 6;
+                p.schemaVersion = std::max(p.schemaVersion, 6);
         }
         if (!scene.background.isEmpty()) {
             Node bg;
@@ -550,7 +572,7 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
     }
     p.duration = r.voice.samples.size() / samplesPerFrame;
     if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.kind == NodeKind::Video; }))
-        p.schemaVersion = 5;
+        p.schemaVersion = std::max(p.schemaVersion, 5);
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

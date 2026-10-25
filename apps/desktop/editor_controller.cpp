@@ -566,7 +566,7 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     }
     auto error = editor_.execute([&](studio::Project &p) {
         if (n.kind == studio::NodeKind::Video)
-            p.schemaVersion = 5;
+            p.schemaVersion = std::max(p.schemaVersion, 5);
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
         else

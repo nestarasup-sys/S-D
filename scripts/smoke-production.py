@@ -35,7 +35,8 @@ project_path = output / "project.studio.json"
 project = json.loads(project_path.read_text(encoding="utf-8"))
 report = json.loads((output / "production-report.json").read_text(encoding="utf-8"))
 assert report["status"] == "ready" and len(project["scenes"]) == 6
-assert project["schemaVersion"] == 3 and report["frameCount"] == project["duration"]
+assert project["schemaVersion"] == 7 and report["frameCount"] == project["duration"]
+assert any(node.get("role") == "caption" and node.get("captionWords") for node in project["nodes"])
 with wave.open(str(output / "media/master.wav"), "rb") as audio:
     assert audio.getframerate() == 24000 and audio.getnchannels() == 1
     samples = array.array("h", audio.readframes(audio.getnframes()))
@@ -121,7 +122,7 @@ shots_run = run([bin_dir / "studio_produce.exe", "--recipe",
 (folder / "shots-v3.log").write_text(shots_run.stdout + shots_run.stderr, encoding="utf-8")
 shots_project_path = shots_output / "project.studio.json"
 shots_project = json.loads(shots_project_path.read_text(encoding="utf-8"))
-assert shots_project["schemaVersion"] == 4
+assert shots_project["schemaVersion"] == 7
 assert len(shots_project["scenes"]) == 1 and len(shots_project["shots"]) == 3
 assert len(shots_project["visualBeats"]) == 3
 ordered_shots = sorted(shots_project["shots"], key=lambda shot: shot["start"])

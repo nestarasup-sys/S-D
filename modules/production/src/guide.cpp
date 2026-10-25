@@ -23,7 +23,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 6},
+            {"projectVersion", 7},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -34,11 +34,12 @@ QJsonObject capabilities() {
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
                         "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
                         "multi-track-audio",
-                        "voice-sidechain-ducking", "audio-track-fades", "video-layer-broll"}},
+                        "voice-sidechain-ducking", "audio-track-fades", "video-layer-broll",
+                        "word-timed-karaoke-captions"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
-                        "video-layers", "audio-track-fades"}},
+                        "video-layers", "audio-track-fades", "word-timed-caption-highlights"}},
             {"width", 1280},
             {"height", 720},
             {"fps", 30},
@@ -128,7 +129,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 
 Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; `speechRate` vai de -3 a 3.
 
-`captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`.
+`captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.primaryColor` (ou a cor primária padrão). O projeto guarda os intervalos em quadros no schema 7; isso não exige um campo adicional na receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
 ## Plano temporal: voz sincronizada e duração fixa
 
@@ -163,7 +164,7 @@ A receita v2 permite dois modos. **Natural** (padrão para projetos antigos): si
 
 O Studio Dark sintetiza cada áudio primeiro, mede amostras a 24 kHz e depois planeja intervalos inteiros de quadros (30 FPS). O `atempo` do FFmpeg acelera apenas a fala que não cabe, buscando preservar seu tom, com limite rígido de **1,15×**. Quando sobra tempo, insere silêncio como pausa; não estica a voz para preencher. Se a fala precisar acelerar mais de 15%, o app **rejeita o plano** e apresenta ID e duração mínima. Requer FFmpeg e voz pt-BR local no Windows.
 
-Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. Isso não é alinhamento palavra por palavra.
+Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no elemento, keyframe ou câmera. `cueProgress` vai de 0 (início da fala) a 1 (último quadro audível); 0,5 significa a metade temporal da **fala ajustada**, não da cena nem de sua pausa. Não misture `cueProgress` e `offsetSeconds` no mesmo objeto. O `offsetSeconds` de 0 a 10 continua disponível para deslocamentos absolutos. A receita v3 também aceita `wordIndex` onde documentado abaixo; a resolução vem dos eventos reais da voz pt-BR.
 
 **Planejamento:** para 90 s, 2700 quadros a 30 FPS. A IA pode planejar mas não conhece a duração de uma voz local ainda não gerada. Evite silêncios excessivos; se o plano não couber, ajuste a narração ou os tempos. O aplicativo não inventa áudio para satisfazer qualquer número.
 
@@ -349,13 +350,13 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v6 continuam abrindo; camadas de vídeo usam schema 5 e fades de pista não nulos usam schema 6.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v7 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6 e legendas com destaque sincronizado por palavra usam schema 7.
 
 ## Checklist de limites e publicação
 
 O app não baixa mídias da Internet nem gera automaticamente imagens ou vídeos a partir de um prompt. Caminhos relativos de `source` são relativos ao arquivo `.production.json`, em UTF-8. `sources` com URLs HTTPS guarda **referências editoriais**, não verifica fatos nem cria citações visuais. Confira direitos de uso e dados antes de publicar.
 
-Ainda não existem vídeo como camada, documentos/PDF com regiões, conectores ancorados, eventos por palavra, trajetórias/curvas Bézier personalizadas, efeitos sonoros disparados por beat, trilhas importadas ou pistas de áudio editáveis. Narração e legendas visuais automáticas usam tempos medidos por fala, não alinhamento palavra a palavra. Não descreva essas funções como disponíveis no JSON.
+Vídeo local como camada, sincronização por palavra em shots/beats/elementos/keyframes e destaque palavra a palavra nas legendas, biblioteca vetorial e áudio em várias pistas estão implementados. Continuam pendentes extração automática do áudio embutido no vídeo, trim/velocidade/recorte manual de clipes, documentos/PDF com regiões, conectores ancorados, trajetórias Bézier personalizadas, efeitos sonoros disparados por beat e edição gráfica de automação de ganho. Não descreva essas funções pendentes como disponíveis no JSON.
 
 ## Capacidades em JSON
 

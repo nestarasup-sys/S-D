@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementada parcialmente em projetos schema 4–6, receita v3, editor e exportador.
+Implementada parcialmente em projetos schema 4–7, receita v3, editor e exportador.
 
 ## Decisão
 
