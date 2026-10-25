@@ -316,14 +316,40 @@ Rectangle {
                             Rectangle {
                                 visible: modelData.transitionIn !== "cut"
                                 x: 0; y: 0
-                                width: Math.min(parent.width, modelData.transitionDurationFrames / root.visibleFrames() * shotTrackArea.width)
+                                width: Math.max(8, Math.min(parent.width, modelData.transitionDurationFrames / root.visibleFrames() * shotTrackArea.width))
                                 height: parent.height
                                 color: "#d8b46b"
                                 opacity: 0.35
                                 z: 1
                                 ToolTip.visible: transitionArea.containsMouse
-                                ToolTip.text: modelData.transitionIn + " · " + modelData.transitionDurationFrames + " quadros · " + modelData.transitionDirection
+                                ToolTip.text: modelData.transitionIn + " · sobreposição de " + modelData.transitionDurationFrames + " quadros · arraste a alça âmbar para ajustar"
                                 MouseArea { id: transitionArea; anchors.fill: parent; hoverEnabled: true }
+                                Rectangle {
+                                    x: parent.width - width / 2; y: 0; width: 8; height: parent.height
+                                    color: resizeTransitionArea.containsMouse || resizeTransitionArea.pressed ? "#ffe0a0" : "#e8bd70"
+                                    z: 3
+                                    MouseArea {
+                                        id: resizeTransitionArea
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeHorCursor
+                                        property real originX: 0
+                                        property int originDuration: 0
+                                        onPressed: function(mouse) {
+                                            if (editor.playing) editor.togglePlayback()
+                                            originX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
+                                            originDuration = modelData.transitionDurationFrames
+                                            editor.beginGesture()
+                                        }
+                                        onPositionChanged: function(mouse) {
+                                            if (pressed) {
+                                                const currentX = mapToItem(shotTrackArea, mouse.x, mouse.y).x
+                                                const nextDuration = originDuration + Math.round((currentX - originX) / shotTrackArea.width * root.visibleFrames())
+                                                editor.resizeShotTransition(modelData.id, nextDuration)
+                                            }
+                                        }
+                                        onReleased: editor.endGesture()
+                                        onCanceled: editor.endGesture()
+                                    }
+                                }
                             }
                             MouseArea {
                                 anchors.fill: parent

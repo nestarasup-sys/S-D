@@ -180,6 +180,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void applyEditingIntensity(int intensity);
     Q_INVOKABLE void updateShotTransition(QString shotId, QString type, int durationFrames,
                                           QString direction);
+    Q_INVOKABLE void resizeShotTransition(QString shotId, int durationFrames);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
     Q_INVOKABLE void setFrame(int frame);

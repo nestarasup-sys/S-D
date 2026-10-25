@@ -4,6 +4,13 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Entrega implementada: ajuste de cortes e sobreposição na timeline
+
+- A alça verde de um shot move o corte compartilhado entre dois planos e atualiza a duração dos dois shots vizinhos, elementos, beats e keyframes associados.
+- A faixa âmbar da transição ganhou uma alça de redimensionamento: arraste para ajustar o overlap visual de 2 a 300 quadros, limitado à duração do shot de entrada. Corte e overlap formam uma única ação de desfazer/refazer por gesto.
+- O projeto mantém cobertura contínua da cena; transições continuam sem acrescentar tempo à narração nem ao vídeo. A regra funciona nos projetos existentes e usa o campo de transição já persistido.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4), incluindo limites e undo/redo do gesto; `scripts/smoke-workspace.ps1` passou sem erros QML. A captura do editor com a receita v3 exibiu os três shots, a faixa dissolve e sua alça de overlap.
+
 ### Entrega implementada: ritmo de cortes guiado pela narração
 
 - Receitas v3 aceitam `editing.rhythm: "narration"` e omitem `start` em todos os shots. O compilador usa timestamps reais das palavras sintetizadas, pontuação e pivôs textuais comuns para escolher cortes e equilibrar a duração dos planos conforme a intensidade.
@@ -183,7 +190,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom, presets de câmera e ritmo de cortes guiado por alinhamento real, pontuação e pivôs de frase estão implementados. Falta edição avançada de duração/overlap da sequência. |
+| 2 — Edição dinâmica | Concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom, presets de câmera, ritmo de cortes guiado pela narração e edição de duração/overlap na timeline estão implementados. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
 | 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render, com cache de quadros limitado e seek direto validado contra exportação. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação e snapping geométrico. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados. |
 
@@ -201,7 +208,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Implementar edição avançada de duração/overlap da sequência. Fontes externas e presets visuais nomeados também continuam pendentes.
+Implementar carregamento de fontes externas e presets visuais nomeados reutilizáveis. A Fase 2 está concluída.
 
 ---
 
@@ -946,7 +953,7 @@ Implementar:
 4. [x] Sincronização temporal de animações com fala/progresso/palavra.
 5. [x] Cortes e ritmo escolhidos automaticamente com base na narração, usando timestamps reais de palavras, pontuação, pivôs textuais e intensidade para equilibrar as durações dos shots.
 6. [x] Presets reutilizáveis de trajetórias de câmera definidos na receita v3 e aplicados a um ou mais shots.
-7. [ ] Edição avançada de duração/overlap da sequência no editor.
+7. [x] Edição avançada de duração/overlap da sequência no editor, com movimento de corte, resize gráfico de overlap e undo/redo por gesto.
 
 Resultado esperado: criar vídeos com ritmo de edição profissional usando os elementos já existentes.
 

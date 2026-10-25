@@ -320,6 +320,16 @@ int main(int argc, char **argv) {
         check(c.project().shots[1].transitionIn == "dissolve" &&
                   c.project().shots[1].transitionDurationFrames == 15,
               "shot inspector updates a validated incoming transition");
+        c.beginGesture();
+        c.resizeShotTransition("detail", 1);
+        c.resizeShotTransition("detail", 28);
+        c.endGesture();
+        check(c.project().shots[1].transitionDurationFrames == 28,
+              "timeline overlap resize clamps to valid frame durations");
+        c.undo();
+        check(c.project().shots[1].transitionDurationFrames == 15,
+              "transition overlap drag undoes as one gesture");
+        c.redo();
         c.selectNode("detail-node");
         c.groupSelected();
         const auto groupedShotNode = studio::findNode(c.project(), c.selectedId().toStdString());

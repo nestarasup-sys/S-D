@@ -1327,6 +1327,26 @@ void EditorController::updateShotTransition(QString shotId, QString type, int du
     else
         notify(q(error));
 }
+void EditorController::resizeShotTransition(QString shotId, int durationFrames) {
+    const auto id = shotId.toStdString();
+    const auto found = std::find_if(project().shots.begin(), project().shots.end(),
+                                    [&](const auto &shot) { return shot.id == id; });
+    if (found == project().shots.end() || found->transitionIn == "cut" || found->duration < 2)
+        return;
+    const auto maximum = int(std::min<std::int64_t>(300, found->duration));
+    const auto resolved = std::clamp(durationFrames, 2, maximum);
+    if (resolved == found->transitionDurationFrames)
+        return;
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &shot : p.shots)
+            if (shot.id == id)
+                shot.transitionDurationFrames = resolved;
+    });
+    if (error.empty())
+        changed();
+    else
+        notify(q(error));
+}
 void EditorController::undo() {
     if (editor_.undo())
         changed();
