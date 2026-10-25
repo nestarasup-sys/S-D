@@ -11,6 +11,8 @@
 #include <QUuid>
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <limits>
 #include <studio/core/library.hpp>
 #include <studio/media/wave.hpp>
 #include <unordered_map>
@@ -271,15 +273,54 @@ void EditorController::changed() {
     emit cameraChanged();
 }
 void EditorController::selectNode(QString id) {
+    if (id == selectedId_ && selectedIds_.size() == 1 && selectedIds_.front() == id)
+        return;
     selectedId_ = std::move(id);
+    selectedIds_ = selectedId_.isEmpty() ? QStringList{} : QStringList{selectedId_};
+    emit documentChanged();
+    emit selectedChanged();
+}
+void EditorController::toggleNodeSelection(QString id) {
+    if (!studio::findNode(project(), id.toStdString()))
+        return;
+    const auto at = selectedIds_.indexOf(id);
+    if (at >= 0) {
+        selectedIds_.removeAt(at);
+        if (selectedId_ == id)
+            selectedId_ = selectedIds_.isEmpty() ? QString{} : selectedIds_.back();
+    } else {
+        selectedIds_.append(id);
+        selectedId_ = id;
+    }
     emit documentChanged();
     emit selectedChanged();
 }
 void EditorController::beginGesture() {
     editor_.beginGesture();
+    gestureClipIds_.clear();
+    gestureClipOrigins_.clear();
+    gestureClipAppliedDelta_ = 0;
+    std::function<void(const QString &)> includeNode = [&](const QString &id) {
+        if (gestureClipOrigins_.contains(id))
+            return;
+        const auto *node = studio::findNode(project(), id.toStdString());
+        if (!node)
+            return;
+        gestureClipIds_.append(id);
+        gestureClipOrigins_.insert(id, int(node->start));
+        if (node->kind == studio::NodeKind::Group)
+            for (const auto &child : project().nodes)
+                if (child.parentId == node->id)
+                    includeNode(q(child.id));
+    };
+    for (const auto &id : selectedIds_)
+        includeNode(id);
 }
 void EditorController::endGesture() {
     editor_.endGesture();
+    gestureClipIds_.clear();
+    gestureClipOrigins_.clear();
+    gestureClipAppliedDelta_ = 0;
     emit documentChanged();
 }
 void EditorController::updateSelected(QString key, QVariant value) {
@@ -448,6 +489,45 @@ void EditorController::moveClip(QString id, int start) {
     if (error.empty())
         changed();
     else
+        notify(q(error));
+}
+void EditorController::moveSelectedClips(QString anchorId, int originStart, int requestedStart) {
+    if (gestureClipIds_.isEmpty() || !gestureClipOrigins_.contains(anchorId))
+        return;
+    const auto desiredDelta = requestedStart - originStart;
+    int lowerDelta = std::numeric_limits<int>::min();
+    int upperDelta = std::numeric_limits<int>::max();
+    for (const auto &id : gestureClipIds_) {
+        const auto *node = studio::findNode(project(), id.toStdString());
+        if (!node)
+            continue;
+        const int start = gestureClipOrigins_.value(id);
+        lowerDelta = std::max(lowerDelta, -start);
+        upperDelta = std::min(upperDelta, duration() - start - int(node->duration));
+        for (const auto &scene : project().scenes)
+            if (scene.id == node->sceneId) {
+                lowerDelta = std::max(lowerDelta, int(scene.start) - start);
+                upperDelta = std::min(upperDelta, int(scene.start + scene.duration) - start - int(node->duration));
+            }
+    }
+    if (lowerDelta > upperDelta)
+        return;
+    const int targetDelta = std::clamp(desiredDelta, lowerDelta, upperDelta);
+    const int step = targetDelta - gestureClipAppliedDelta_;
+    if (step == 0)
+        return;
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &node : p.nodes)
+            if (gestureClipOrigins_.contains(q(node.id))) {
+                node.start += step;
+                for (auto &key : node.keyframes)
+                    key.frame += step;
+            }
+    });
+    if (error.empty()) {
+        gestureClipAppliedDelta_ = targetDelta;
+        changed();
+    } else
         notify(q(error));
 }
 void EditorController::moveShotBoundary(QString rightShotId, int requestedFrame) {
@@ -653,6 +733,7 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     });
     if (error.empty()) {
         selectedId_ = q(n.id);
+        selectedIds_ = {selectedId_};
         changed();
         notify("Objeto adicionado. Edite no inspetor ou arraste na prévia.");
         return true;
@@ -706,6 +787,7 @@ bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
         return false;
     }
     selectedId_ = q(rootId);
+    selectedIds_ = {selectedId_};
     changed();
     notify("Composição reutilizada com filhos e keyframes; uma ação de desfazer.");
     return true;
@@ -727,6 +809,7 @@ void EditorController::removeSelected() {
         });
     });
     selectedId_.clear();
+    selectedIds_.clear();
     changed();
 }
 void EditorController::groupSelected() {
@@ -767,6 +850,7 @@ void EditorController::groupSelected() {
     });
     if (error.empty()) {
         selectedId_ = q(group.id);
+        selectedIds_ = {selectedId_};
         changed();
         notify("Grupo criado. O objeto filho continua editável na lista da cena.");
     } else
@@ -1015,6 +1099,7 @@ void EditorController::presentFrame(int frame) {
     emit selectedChanged();
     if (oldScene != currentSceneId()) {
         selectedId_.clear();
+        selectedIds_.clear();
         emit documentChanged();
         emit selectedChanged();
     }
@@ -1075,6 +1160,7 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
     revision_ = std::move(revision);
     savedDocument_ = studio::serialize(project());
     selectedId_.clear();
+    selectedIds_.clear();
     frame_ = 0;
     audioPlayer_.setSource(project().audioSource.empty() ? QUrl{}
                                                          : QUrl::fromLocalFile(q(project().audioSource)));

@@ -60,6 +60,36 @@ int main(int argc, char **argv) {
         check(c.selected()["x"].toDouble() == previous && !c.dirty(), "undo gesture restores saved state");
         c.redo();
         check(c.selected()["x"].toDouble() == previous + 15, "redo controller gesture");
+        c.selectNode("title");
+        c.toggleNodeSelection("subtitle");
+        check(c.selectedIds().size() == 2 && c.selectedId() == "subtitle",
+              "timeline supports a primary item plus additive selection");
+        c.beginGesture();
+        c.moveSelectedClips("title", 15, 5);
+        c.endGesture();
+        check(studio::findNode(c.project(), "title")->start == 5 &&
+                  studio::findNode(c.project(), "subtitle")->start == 35,
+              "multi-selection moves clips together while preserving their offset");
+        c.undo();
+        check(studio::findNode(c.project(), "title")->start == 15 &&
+                  studio::findNode(c.project(), "subtitle")->start == 45,
+              "one undo restores all moved clips");
+        c.redo();
+        check(studio::findNode(c.project(), "title")->start == 5 &&
+                  studio::findNode(c.project(), "subtitle")->start == 35,
+              "one redo reapplies the complete multi-clip move");
+        c.beginGesture();
+        c.moveSelectedClips("title", 5, -1000);
+        c.endGesture();
+        check(studio::findNode(c.project(), "title")->start == 0 &&
+                  studio::findNode(c.project(), "subtitle")->start == 30,
+              "multi-selection clamps to the tightest clip boundary without changing offsets");
+        c.undo();
+        check(studio::findNode(c.project(), "title")->start == 5 &&
+                  studio::findNode(c.project(), "subtitle")->start == 35,
+              "undo restores the multi-selection from its clamped boundary");
+        c.redo();
+        c.selectNode("title");
         auto doc = studio::serialize(c.project());
         c.updateSelected("duration", -10);
         check(studio::serialize(c.project()) == doc, "invalid inspector edit preserves document");

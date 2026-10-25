@@ -14,7 +14,12 @@ Rectangle {
             Label { text: "TIMELINE"; color: "#b9c7d1"; font.pixelSize: 11; font.letterSpacing: 1.5; font.bold: true }
             Label { text: " /   SEQUÊNCIA 01"; color: "#5e7485"; font.pixelSize: 10 }
             Item { Layout.fillWidth: true }
-            Label { text: "Arraste um clipe para mover  ·  Clique na régua para navegar"; color: "#7b91a1"; font.pixelSize: 10 }
+            Label {
+                text: editor.selectedIds.length > 1
+                      ? editor.selectedIds.length + " selecionados · Arraste para mover juntos · Ctrl+clique para alterar seleção"
+                      : "Ctrl+clique para selecionar vários clipes · Arraste para mover · Clique na régua para navegar"
+                color: "#7b91a1"; font.pixelSize: 10
+            }
             StudioButton { text: "+ Áudio"; onClicked: root.addAudioRequested() }
             Label { text: (editor.duration / editor.fps).toFixed(1) + " s"; color: "#b4f078"; font.pixelSize: 12; Layout.leftMargin: 15 }
         }
@@ -30,7 +35,7 @@ Rectangle {
                     delegate: Label {
                         required property var modelData
                         width: ListView.view.width; height: 35; text: (modelData.parentId ? "↳ " : "") + modelData.name; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
-                        color: editor.selectedId === modelData.id ? "#b4f078" : "#9baebb"; font.pixelSize: 11
+                        color: editor.selectedIds.indexOf(modelData.id) >= 0 ? "#b4f078" : "#9baebb"; font.pixelSize: 11
                     }
                 }
             }
@@ -68,29 +73,38 @@ Rectangle {
                                 id: clip
                                 x: track.modelData.start / editor.duration * track.width
                                 width: Math.max(4, track.modelData.duration / editor.duration * track.width); height: 35; radius: 5
-                                color: editor.selectedId === track.modelData.id ? "#4c673b" : track.modelData.kind === "text" ? "#2f4956" : "#384440"
-                                border.width: 1; border.color: editor.selectedId === track.modelData.id ? "#b4f078" : "#526874"
+                                color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#4c673b" : track.modelData.kind === "text" ? "#2f4956" : "#384440"
+                                border.width: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? 2 : 1
+                                border.color: editor.selectedIds.indexOf(track.modelData.id) >= 0 ? "#b4f078" : "#526874"
                                 Label { anchors.fill: parent; anchors.leftMargin: 10; text: (track.modelData.parentId ? "↳ " : "") + track.modelData.name; color: "#dce8ed"; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight; font.pixelSize: 10 }
                                 MouseArea {
                                     anchors.fill: parent
                                     property real originX: 0
                                     property int startFrame: 0
+                                    property bool selectionClick: false
                                     onPressed: function(mouse) {
                                         track.forceActiveFocus()
                                         if (editor.playing) editor.togglePlayback()
+                                        selectionClick = (mouse.modifiers & Qt.ControlModifier) !== 0
+                                        if (selectionClick) {
+                                            editor.toggleNodeSelection(track.modelData.id)
+                                            return
+                                        }
                                         originX = mapToItem(track, mouse.x, mouse.y).x
                                         startFrame = track.modelData.start
-                                        editor.selectNode(track.modelData.id)
+                                        if (editor.selectedIds.indexOf(track.modelData.id) < 0)
+                                            editor.selectNode(track.modelData.id)
                                         editor.beginGesture()
                                     }
                                     onPositionChanged: function(mouse) {
-                                        if (pressed) {
+                                        if (pressed && !selectionClick) {
                                             const currentX = mapToItem(track, mouse.x, mouse.y).x
-                                            editor.moveClip(track.modelData.id, startFrame + Math.round((currentX - originX) / track.width * editor.duration))
+                                            editor.moveSelectedClips(track.modelData.id, startFrame,
+                                                startFrame + Math.round((currentX - originX) / track.width * editor.duration))
                                         }
                                     }
-                                    onReleased: editor.endGesture()
-                                    onCanceled: editor.endGesture()
+                                    onReleased: { if (!selectionClick) editor.endGesture(); selectionClick = false }
+                                    onCanceled: { if (!selectionClick) editor.endGesture(); selectionClick = false }
                                 }
                             }
                         }

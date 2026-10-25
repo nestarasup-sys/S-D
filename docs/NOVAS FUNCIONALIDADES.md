@@ -4,7 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
-### Rodada atual: tipografia animada por palavra
+### Rodada atual: seleção múltipla na timeline
+
+- Ctrl+clique adiciona ou remove clipes da seleção. O inspetor continua editando o item principal da seleção.
+- Arrastar um clipe selecionado desloca o conjunto pelo mesmo delta, preserva os espaçamentos e respeita os limites da sequência e de cada cena. Grupos movem seus filhos e keyframes como parte do mesmo conjunto.
+- Uma operação de movimento usa um único passo de desfazer/refazer. Os limites são calculados sobre a posição original do gesto para evitar deriva enquanto o ponteiro se move.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-workspace.ps1` passou, com a tela do editor aberta e sem erros QML. O teste do controlador cobre seleção aditiva, preservação de espaçamento, limite no início da sequência e undo/redo do conjunto. `scripts/update-ai-guide.ps1` regenerou o guia sem adicionar campos fictícios ao JSON.
+
+### Entrega anterior: tipografia animada por palavra
 
 - Receitas v3 aceitam `wordAnimation` com os presets `highlight`, `none`, `pop`, `rise`, `fade` e `pop-rise`. Escala inicial, deslocamento vertical e duração são configuráveis e usam timestamps reais da voz para cada palavra.
 - O editor permite alterar o preset e os parâmetros em cada legenda alinhada. O projeto schema 12 persiste esses ajustes; o compositor compartilhado aplica os mesmos movimentos na prévia, still e exportação.
@@ -107,7 +114,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
 | 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor e transições fade/dissolve/slide/zoom editáveis estão implementados. Falta ritmo guiado por conteúdo, presets de câmera e edição avançada de sobreposição/duração total. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
-| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. Faltam edição posterior de alinhamento, timeline avançada, áudio embutido nos vídeos e outros formatos de tela. |
+| 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; vídeo/B-roll local com trim, velocidade e recorte entra na composição/render. A timeline permite seleção múltipla e movimento conjunto com undo atômico. Faltam edição posterior de alinhamento, envelopes gráficos de áudio, áudio embutido nos vídeos e outros formatos de tela. |
 
 ### Limites confirmados nesta versão
 
@@ -121,7 +128,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 ### Próxima entrega recomendada
 
-Avançar para seleção múltipla e envelopes gráficos de áudio na timeline. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo e formatos de tela adicionais seguem como pendências da fase 4.
+Avançar para envelopes gráficos de áudio na timeline, incluindo pontos de automação editáveis diretamente sobre a forma de onda. Depois, tratar fontes externas e presets visuais nomeados; áudio embutido em vídeo e formatos de tela adicionais seguem como pendências da fase 4.
 
 ---
 
@@ -892,10 +899,12 @@ Implementar:
 2. [x] B-roll local decodificado na prévia e exportação.
 3. [x] Alinhamento real de palavra em shots, beats, elementos, keyframes e legendas.
 4. [x] Duração-alvo com aceleração segura e preservação aproximada de tom.
-5. [ ] Timeline avançada com envelopes, seleção múltipla e edição mais precisa.
-6. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
-7. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
-8. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
+5. [x] Seleção múltipla e movimento conjunto de clipes na timeline com undo/redo atômico.
+6. [ ] Envelopes gráficos de áudio editáveis diretamente na timeline.
+7. [ ] Edição mais precisa na timeline, incluindo navegação e posicionamento detalhados.
+8. [ ] Otimizações de cache/seek para vídeos longos e áudio de preview.
+9. [x] Trim de entrada, velocidade, duração de saída e recorte manual de vídeos locais.
+10. [ ] Áudio embutido em vídeo e formatos de tela adicionais.
 
 Resultado esperado: ampliar as possibilidades criativas para produções mais elaboradas.
 

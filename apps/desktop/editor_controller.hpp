@@ -7,6 +7,8 @@
 #include <QProcess>
 #include <QTimer>
 #include <QUrl>
+#include <QHash>
+#include <QStringList>
 #include <QVariantList>
 #include <memory>
 #include <vector>
@@ -22,6 +24,7 @@ class EditorController : public QObject {
     Q_PROPERTY(QString artDirectionScope READ artDirectionScope NOTIFY artDirectionScopeChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
     Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
+    Q_PROPERTY(QVariantList selectedIds READ selectedIds NOTIFY documentChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
     Q_PROPERTY(int duration READ duration NOTIFY documentChanged)
     Q_PROPERTY(double fps READ fps NOTIFY documentChanged)
@@ -90,6 +93,13 @@ class EditorController : public QObject {
     QString selectedId() const {
         return selectedId_;
     }
+    QVariantList selectedIds() const {
+        QVariantList result;
+        result.reserve(selectedIds_.size());
+        for (const auto &id : selectedIds_)
+            result.append(id);
+        return result;
+    }
     int frame() const {
         return frame_;
     }
@@ -126,11 +136,13 @@ class EditorController : public QObject {
     }
     bool recoveryAvailable() const;
     Q_INVOKABLE void selectNode(QString id);
+    Q_INVOKABLE void toggleNodeSelection(QString id);
     Q_INVOKABLE void updateSelected(QString key, QVariant value);
     Q_INVOKABLE void beginGesture();
     Q_INVOKABLE void endGesture();
     Q_INVOKABLE void moveSelected(double x, double y);
     Q_INVOKABLE void moveClip(QString id, int start);
+    Q_INVOKABLE void moveSelectedClips(QString anchorId, int originStart, int requestedStart);
     Q_INVOKABLE void moveShotBoundary(QString rightShotId, int frame);
     Q_INVOKABLE void addNode(QString kind, QUrl source = {});
     Q_INVOKABLE void removeSelected();
@@ -207,6 +219,9 @@ class EditorController : public QObject {
     QString currentShotId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
+    QStringList selectedIds_{"title"}, gestureClipIds_;
+    QHash<QString, int> gestureClipOrigins_;
+    int gestureClipAppliedDelta_{0};
     QString artDirectionScope_{"global"};
     QByteArray savedDocument_, revision_, recoveryRevision_, renderBuffer_;
     QString recoveryPath_, renderSnapshot_, cancelPath_;

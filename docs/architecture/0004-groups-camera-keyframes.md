@@ -17,7 +17,7 @@ A próxima direção do produto pede que a IA combine elementos e conduza o olha
 
 ## Limites desta primeira entrega
 
-O editor permite envolver um elemento por vez em um grupo, gravar/editar keyframes no playhead e definir keyframes de câmera pelo inspetor. Filhos são identificados na lista; arrastar o grupo na timeline desloca a hierarquia e as chaves no tempo; excluir um grupo exclui toda sua árvore. Ainda não há multi seleção, editor de curvas Bézier personalizadas, âncoras visuais ou alvos semânticos. Presets completos de composição foram implementados na ADR 0006. A atualização do contrato da receita para IA não faz parte deste marco; receitas v1 continuam compilando seus objetos planos no mesmo projeto editável.
+O editor permite envolver um elemento por vez em um grupo, gravar/editar keyframes no playhead e definir keyframes de câmera pelo inspetor. Filhos são identificados na lista; arrastar o grupo na timeline desloca a hierarquia e as chaves no tempo; excluir um grupo exclui toda sua árvore. A seleção múltipla e o movimento conjunto de clipes estão detalhados na ADR 0018. Ainda faltam edição de curvas Bézier personalizadas, âncoras visuais e alvos semânticos. Presets completos de composição foram implementados na ADR 0006. A atualização do contrato da receita para IA não faz parte deste marco; receitas v1 continuam compilando seus objetos planos no mesmo projeto editável.
 
 O renderer permanece baseado em QPainter. Esta entrega não conclui o benchmark entre QPainter, Qt Quick Scene Graph e RenderControl proposto em `FUTURO-DO-APP.md`. O compositor aplica hierarquia por quadro; desempenho deve ser medido antes de elevar limites ou adicionar efeitos custosos.
 
