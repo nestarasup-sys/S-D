@@ -1,6 +1,9 @@
+#include <QPointF>
 #include <QUuid>
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <studio/production/compiler.hpp>
 
@@ -112,6 +115,63 @@ VisualState beatState(const VisualState &current, const DirectedBeat &beat, doub
     if (beat.opacity)
         next.opacity = *beat.opacity;
     return next;
+}
+bool frameCameraOnTarget(const Project &project, const Node &target, std::int64_t frame, double padding,
+                         CameraState &camera) {
+    std::vector<const Node *> chain{&target};
+    auto parentId = target.parentId;
+    while (!parentId.empty()) {
+        auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
+                                   [&](const auto &node) { return node.id == parentId; });
+        if (parent == project.nodes.end())
+            return false;
+        chain.push_back(&*parent);
+        parentId = parent->parentId;
+    }
+    const auto mapToWorld = [&](QPointF point) {
+        for (const auto *part : chain) {
+            const auto state = evaluate(*part, frame);
+            const double angle = state.rotation * 3.14159265358979323846 / 180.0;
+            const double dx = (point.x() - part->width / 2.0) * state.scale;
+            const double dy = (point.y() - part->height / 2.0) * state.scale;
+            point = {state.x + part->width / 2.0 + dx * std::cos(angle) - dy * std::sin(angle),
+                     state.y + part->height / 2.0 + dx * std::sin(angle) + dy * std::cos(angle)};
+        }
+        return point;
+    };
+    const std::array<QPointF, 4> corners{mapToWorld({0, 0}), mapToWorld({target.width, 0}),
+                                         mapToWorld({0, target.height}),
+                                         mapToWorld({target.width, target.height})};
+    double left = corners.front().x(), right = left, top = corners.front().y(), bottom = top;
+    for (const auto &corner : corners) {
+        left = std::min(left, corner.x());
+        right = std::max(right, corner.x());
+        top = std::min(top, corner.y());
+        bottom = std::max(bottom, corner.y());
+    }
+    camera.x = (left + right) / 2.0;
+    camera.y = (top + bottom) / 2.0;
+    const double cameraAngle = camera.rotation * 3.14159265358979323846 / 180.0;
+    double cameraLeft = std::numeric_limits<double>::infinity();
+    double cameraRight = -cameraLeft;
+    double cameraTop = cameraLeft;
+    double cameraBottom = -cameraLeft;
+    for (const auto &corner : corners) {
+        const double dx = corner.x() - camera.x;
+        const double dy = corner.y() - camera.y;
+        const double x = dx * std::cos(cameraAngle) + dy * std::sin(cameraAngle);
+        const double y = -dx * std::sin(cameraAngle) + dy * std::cos(cameraAngle);
+        cameraLeft = std::min(cameraLeft, x);
+        cameraRight = std::max(cameraRight, x);
+        cameraTop = std::min(cameraTop, y);
+        cameraBottom = std::max(cameraBottom, y);
+    }
+    const double boundsWidth = std::max(1.0, cameraRight - cameraLeft);
+    const double boundsHeight = std::max(1.0, cameraBottom - cameraTop);
+    camera.zoom = std::clamp(
+        std::min(project.width / (boundsWidth * padding), project.height / (boundsHeight * padding)), 0.1,
+        10.0);
+    return std::isfinite(camera.x) && std::isfinite(camera.y) && std::isfinite(camera.zoom);
 }
 } // namespace
 CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QString, PcmAudio> &utterances,
@@ -275,6 +335,18 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
 
                 CameraState shotCamera{directedShot.cameraX, directedShot.cameraY, directedShot.cameraZoom,
                                        directedShot.cameraRotation};
+                if (!directedShot.focusTargetId.isEmpty()) {
+                    auto focusTarget = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const auto &node) {
+                        return node.id == directedShot.focusTargetId.toStdString() &&
+                               node.shotId == directedShot.id.toStdString();
+                    });
+                    if (focusTarget == p.nodes.end() ||
+                        !frameCameraOnTarget(p, *focusTarget, shotStart, directedShot.focusPadding,
+                                             shotCamera)) {
+                        r.error = "Não foi possível enquadrar o alvo da câmera no shot: " + directedShot.id;
+                        return r;
+                    }
+                }
                 if (shotStart > 0)
                     p.camera.push_back({shotStart - 1, previousShotCamera.x, previousShotCamera.y,
                                         previousShotCamera.zoom, previousShotCamera.rotation, "linear",

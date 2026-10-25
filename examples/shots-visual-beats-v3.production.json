@@ -20,7 +20,7 @@
           "name": "Apresentação do carro",
           "start": { "cue": 0, "cueProgress": 0 },
           "transitionIn": "cut",
-          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "carro", "padding": 2.4 } },
           "elements": [
             { "id": "carro", "kind": "native", "asset": "car", "x": 360, "y": 290, "width": 460, "height": 210, "cue": 0 }
           ]
@@ -30,7 +30,7 @@
           "name": "Revelação do preço",
           "start": { "cue": 0, "cueProgress": 0.55 },
           "transitionIn": "cut",
-          "camera": { "x": 640, "y": 360, "zoom": 1.12, "rotation": 0 },
+          "camera": { "x": 640, "y": 360, "zoom": 1.12, "rotation": 0, "focus": { "target": "preco", "padding": 1.2 } },
           "elements": [
             { "id": "preco", "kind": "text", "text": "BARATO?", "x": 420, "y": 235, "width": 440, "height": 100, "fontSize": 68, "color": "#b4f078", "cue": 0, "cueProgress": 0.55 }
           ],
@@ -44,7 +44,7 @@
           "name": "Despesas escondidas",
           "start": { "cue": 1, "cueProgress": 0 },
           "transitionIn": "cut",
-          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "documento", "padding": 1.4 } },
           "elements": [
             { "id": "documento", "kind": "native", "asset": "document", "x": 500, "y": 200, "width": 200, "height": 250, "cue": 1 },
             { "id": "aviso", "kind": "text", "text": "SEGURO · TAXAS · MANUTENÇÃO", "x": 250, "y": 505, "width": 780, "height": 70, "fontSize": 32, "color": "#efb873", "cue": 1 }

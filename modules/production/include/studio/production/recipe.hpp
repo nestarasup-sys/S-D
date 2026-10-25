@@ -53,6 +53,8 @@ struct DirectedShot {
     QString id, name, transitionIn{"cut"};
     DirectedTime start;
     double cameraX{640}, cameraY{360}, cameraZoom{1}, cameraRotation{0};
+    QString focusTargetId;
+    double focusPadding{1.25};
     std::vector<DirectedElement> elements;
     std::vector<DirectedBeat> beats;
 };

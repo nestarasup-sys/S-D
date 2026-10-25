@@ -149,7 +149,8 @@
         "pitch-preserving-atempo",
         "independent-shots",
         "visual-beats-show-hide-transform-camera",
-        "shot-cut-camera"
+        "shot-cut-camera",
+        "auto-reframe-by-shot-target"
     ],
     "productionVersion": 3,
     "projectCapabilities": [

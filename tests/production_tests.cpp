@@ -3,6 +3,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -89,57 +90,62 @@ int main(int argc, char **argv) {
         mutedRecipe.effectsGain = 0;
         auto muted = studio::compileProduction(mutedRecipe, speech, directory.filePath("muted.wav"));
         check(muted.mix.samples == muted.voice.samples, "zero gains mute procedural soundtrack");
+        const QJsonObject priceElement{{"id", "price"}, {"kind", "text"}, {"text", "BARATO?"},
+                                       {"x", 100},      {"y", 50},        {"width", 400},
+                                       {"height", 100}, {"fontSize", 64}};
+        const QJsonObject detailGroup{{"id", "detail-group"},
+                                      {"kind", "group"},
+                                      {"x", 300},
+                                      {"y", 100},
+                                      {"width", 800},
+                                      {"height", 300},
+                                      {"children", QJsonArray{priceElement}}};
+        const QJsonObject wideShot{
+            {"id", "wide"},
+            {"name", "Plano aberto"},
+            {"start", QJsonObject{{"cue", 0}, {"progress", 0}}},
+            {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}},
+            {"elements", QJsonArray{QJsonObject{{"id", "car-shape"},
+                                                {"kind", "shape"},
+                                                {"x", 140},
+                                                {"y", 300},
+                                                {"width", 500},
+                                                {"height", 180},
+                                                {"color", "#b4f078"}}}}};
+        const QJsonObject detailShot{
+            {"id", "price-cut"},
+            {"name", "Revelação do preço"},
+            {"start", QJsonObject{{"cue", 0}, {"progress", 0.5}}},
+            {"camera", QJsonObject{{"x", 650},
+                                   {"y", 350},
+                                   {"zoom", 1.25},
+                                   {"rotation", 30},
+                                   {"focus", QJsonObject{{"target", "price"}, {"padding", 1.2}}}}},
+            {"elements", QJsonArray{detailGroup}},
+            {"beats", QJsonArray{QJsonObject{{"id", "reveal-price"},
+                                             {"at", QJsonObject{{"cue", 0}, {"progress", 0.7}}},
+                                             {"action", "show"},
+                                             {"target", "price"}},
+                                 QJsonObject{{"id", "emphasize-price"},
+                                             {"at", QJsonObject{{"cue", 0}, {"progress", 0.8}}},
+                                             {"action", "transform"},
+                                             {"target", "price"},
+                                             {"durationFrames", 2},
+                                             {"scale", 1.2}},
+                                 QJsonObject{{"id", "camera-push"},
+                                             {"at", QJsonObject{{"cue", 0}, {"progress", 0.9}}},
+                                             {"action", "camera"},
+                                             {"durationFrames", 2},
+                                             {"zoom", 1.4}}}}};
         QJsonObject shotRecipeJson{
             {"format", "studio-dark-production"},
             {"version", 3},
             {"catalogVersion", 1},
             {"title", "Cortes no mesmo trecho"},
-            {"scenes",
-             QJsonArray{QJsonObject{
-                 {"id", "car-story"},
-                 {"narration", QJsonArray{"O carro parecia barato, mas havia uma surpresa."}},
-                 {"shots",
-                  QJsonArray{
-                      QJsonObject{
-                          {"id", "wide"},
-                          {"name", "Plano aberto"},
-                          {"start", QJsonObject{{"cue", 0}, {"progress", 0}}},
-                          {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}},
-                          {"elements", QJsonArray{QJsonObject{{"id", "car-shape"},
-                                                              {"kind", "shape"},
-                                                              {"x", 140},
-                                                              {"y", 300},
-                                                              {"width", 500},
-                                                              {"height", 180},
-                                                              {"color", "#b4f078"}}}}},
-                      QJsonObject{
-                          {"id", "price-cut"},
-                          {"name", "Revelação do preço"},
-                          {"start", QJsonObject{{"cue", 0}, {"progress", 0.5}}},
-                          {"camera", QJsonObject{{"x", 650}, {"y", 350}, {"zoom", 1.25}, {"rotation", 0}}},
-                          {"elements", QJsonArray{QJsonObject{{"id", "price"},
-                                                              {"kind", "text"},
-                                                              {"text", "BARATO?"},
-                                                              {"x", 500},
-                                                              {"y", 250},
-                                                              {"width", 400},
-                                                              {"height", 100},
-                                                              {"fontSize", 64}}}},
-                          {"beats", QJsonArray{QJsonObject{{"id", "reveal-price"},
-                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.7}}},
-                                                           {"action", "show"},
-                                                           {"target", "price"}},
-                                               QJsonObject{{"id", "emphasize-price"},
-                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.8}}},
-                                                           {"action", "transform"},
-                                                           {"target", "price"},
-                                                           {"durationFrames", 2},
-                                                           {"scale", 1.2}},
-                                               QJsonObject{{"id", "camera-push"},
-                                                           {"at", QJsonObject{{"cue", 0}, {"progress", 0.9}}},
-                                                           {"action", "camera"},
-                                                           {"durationFrames", 2},
-                                                           {"zoom", 1.4}}}}}}}}}}};
+            {"scenes", QJsonArray{QJsonObject{
+                           {"id", "car-story"},
+                           {"narration", QJsonArray{"O carro parecia barato, mas havia uma surpresa."}},
+                           {"shots", QJsonArray{wideShot, detailShot}}}}}};
         auto parsedShots = studio::parseRecipe(QJsonDocument(shotRecipeJson).toJson(), directory.path());
         check(parsedShots.error.isEmpty() && parsedShots.recipe.scenes.front().shots.size() == 2 &&
                   parsedShots.recipe.scenes.front().shots.back().beats.size() == 3,
@@ -162,6 +168,14 @@ int main(int argc, char **argv) {
                   studio::findNode(compiledShots.project, "price")->shotId == "price-cut" &&
                   studio::findNode(compiledShots.project, "price")->keyframes.size() >= 2,
               "beat transforms compile into shot-owned editable keyframes");
+        const auto priceShot =
+            std::find_if(compiledShots.project.shots.begin(), compiledShots.project.shots.end(),
+                         [](const auto &shot) { return shot.id == "price-cut"; });
+        const auto framedPrice = studio::evaluateCamera(compiledShots.project, priceShot->start);
+        check(std::abs(framedPrice.x - 600) < .001 && std::abs(framedPrice.y - 256) < .001 &&
+                  framedPrice.zoom > 2.0 && framedPrice.zoom < 2.2 &&
+                  std::abs(framedPrice.rotation - 30) < .001,
+              "auto reframe resolves the world bounds of a nested group element");
         check(studio::evaluateCamera(compiledShots.project, 7).zoom >= 1.4,
               "camera Visual Beat produces a timed zoom after its event");
         auto missing = speech;

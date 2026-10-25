@@ -29,7 +29,8 @@ QJsonObject capabilities() {
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
                         "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
                         "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
-                        "visual-beats-show-hide-transform-camera", "shot-cut-camera"}},
+                        "visual-beats-show-hide-transform-camera", "shot-cut-camera",
+                        "auto-reframe-by-shot-target"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers"}},
@@ -159,7 +160,9 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` atualmente aceita somente `cut`, que troca composição e câmera em um corte seco. Câmera do shot exige `x`, `y`, `zoom` e `rotation`; não há foco por ID nesta versão.
+Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível) ou `offsetSeconds` (0–10). O tempo é resolvido sobre o áudio medido. `transitionIn` atualmente aceita somente `cut`, que troca composição e câmera em um corte seco. `camera` aceita `x`, `y`, `zoom` e `rotation`; quando omitidos, o centro é 640×360, o zoom é 1 e a rotação é 0.
+
+Para enquadrar automaticamente um elemento ou grupo, adicione `"focus":{"target":"ID-DO-ELEMENTO","padding":1.25}` dentro de `camera`. O alvo deve pertencer ao mesmo shot. O aplicativo transforma os limites locais através de todos os grupos ancestrais, centraliza a câmera nesse retângulo e calcula o zoom para mantê-lo dentro do quadro com a margem solicitada. `padding` aceita 1–4 e assume 1.25. Quando `focus` está presente, ele substitui o centro e o zoom explícitos; a rotação continua sendo usada.
 
 Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuais editáveis no projeto. Sem referência temporal explícita, começam no início do shot. Os elementos e grupos continuam usando os tipos e propriedades documentados abaixo.
 

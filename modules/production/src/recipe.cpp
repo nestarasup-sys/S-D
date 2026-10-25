@@ -67,6 +67,12 @@ bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QStrin
     }
     return true;
 }
+bool containsDirectedElement(const DirectedElement &element, const QString &id) {
+    if (QString::fromStdString(element.node.id) == id)
+        return true;
+    return std::any_of(element.children.begin(), element.children.end(),
+                       [&](const auto &child) { return containsDirectedElement(child, id); });
+}
 QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
     for (const auto &value : library["assets"].toArray()) {
         const auto asset = value.toObject();
@@ -584,13 +590,24 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     return fail(timeError);
                 if (shotObject["camera"].isObject()) {
                     const auto camera = shotObject["camera"].toObject();
-                    if (!allowed(camera, {"x", "y", "zoom", "rotation"}) ||
+                    if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus"}) ||
                         !number(camera, "x", shot.cameraX) || !number(camera, "y", shot.cameraY) ||
                         !number(camera, "zoom", shot.cameraZoom) ||
                         !number(camera, "rotation", shot.cameraRotation) || shot.cameraZoom < .1 ||
                         shot.cameraZoom > 10 || std::abs(shot.cameraX) > 10000 ||
                         std::abs(shot.cameraY) > 10000 || std::abs(shot.cameraRotation) > 360)
                         return fail("Câmera inicial do shot inválida.");
+                    if (camera.contains("focus")) {
+                        if (!camera["focus"].isObject())
+                            return fail("focus da câmera deve indicar target e padding.");
+                        const auto focus = camera["focus"].toObject();
+                        if (!allowed(focus, {"target", "padding"}) || !focus["target"].isString() ||
+                            focus["target"].toString().isEmpty() ||
+                            !number(focus, "padding", shot.focusPadding) || shot.focusPadding < 1 ||
+                            shot.focusPadding > 4)
+                            return fail("focus da câmera exige um target do shot e padding entre 1 e 4.");
+                        shot.focusTargetId = focus["target"].toString();
+                    }
                 } else
                     return fail("Cada shot precisa declarar sua câmera inicial.");
                 for (const auto elementValue : shotObject["elements"].toArray()) {
@@ -603,6 +620,12 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }
+                if (!shot.focusTargetId.isEmpty() &&
+                    std::none_of(shot.elements.begin(), shot.elements.end(), [&](const auto &element) {
+                        return containsDirectedElement(element, shot.focusTargetId);
+                    }))
+                    return fail("focus da câmera aponta para elemento que não pertence ao shot: " +
+                                shot.focusTargetId);
                 if (shotObject.contains("beats")) {
                     if (!shotObject["beats"].isArray() || shotObject["beats"].toArray().size() > 512)
                         return fail("Visual Beats devem ser uma lista de até 512 eventos por shot.");

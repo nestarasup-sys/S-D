@@ -16,14 +16,15 @@ Uma cena narrativa precisava aceitar vários cortes sem duplicar nem interromper
 - Projetos schema 4 guardam marcadores de shots/beats, a associação `Node.shotId` e a associação `CameraKeyframe.shotId`. Projetos v1/v2/v3 continuam legíveis; composições antigas mantêm o caminho de compilação anterior.
 - Arrastar uma alça de corte ajusta as durações adjacentes, desloca os elementos, beats e keyframes de câmera do shot seguinte e agrupa o gesto como uma ação de undo. O corte não atravessa elementos, beats ou keyframes do plano anterior.
 - Os controles de câmera existentes no inspetor passam a gravar keyframes com o ID do shot ativo; esses estados acompanham o plano ao mover o corte.
+- A receita v3 pode declarar `camera.focus` com um ID de elemento do mesmo shot e uma margem. Na compilação, os limites locais passam pelas transformações do elemento e de seus grupos ancestrais; o centro e o zoom resultantes definem a câmera no primeiro quadro do shot, mantendo sua rotação.
 
 ## Consequências
 
 - Uma cena pode conter vários planos visuais com uma única faixa de narração e legenda.
 - A duração dos planos se adapta à fala realmente sintetizada, inclusive em receitas de duração fixa já suportadas.
 - O editor pode modificar o corte sem destruir IDs; a movimentação do plano seguinte preserva seus offsets temporais.
-- Elementos da v3 ainda não viram faixas de áudio ou vídeo, e não há efeitos por beat, transições com sobreposição, eventos por palavra ou câmera focada por ID.
-- O inspetor edita posição, zoom e rotação da câmera no quadro atual. Foco por ID e presets de movimento reutilizáveis ainda estão pendentes.
+- Elementos da v3 ainda não viram faixas de áudio ou vídeo, e não há efeitos por beat, transições com sobreposição ou eventos por palavra.
+- `camera.focus` é um cálculo inicial de enquadramento, não rastreamento contínuo. Movimentos de foco durante a fala usam beats/câmera explícitos; presets de movimento reutilizáveis ainda estão pendentes.
 
 ## Verificação
 
