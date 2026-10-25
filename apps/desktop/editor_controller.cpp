@@ -966,6 +966,28 @@ void EditorController::reset(studio::Project p, QString path, QByteArray revisio
                                                          : QUrl::fromLocalFile(q(project().audioSource)));
     refreshAudioTracks();
     waveform_.clear();
+    sidechainEnvelope_.clear();
+    smoothedSidechainLevel_ = 0;
+    const QString sidechainPath = !project().voiceDuckingSource.empty()
+                                      ? q(project().voiceDuckingSource)
+                                      : q(project().audioSource);
+    if (!sidechainPath.isEmpty()) {
+        const auto sidechain = studio::readWave(sidechainPath);
+        if (sidechain.error.isEmpty() && !sidechain.audio.samples.empty()) {
+            sidechainEnvelope_.resize(std::size_t(project().duration), 0);
+            for (std::int64_t f = 0; f < project().duration; ++f) {
+                const auto begin = std::min<std::size_t>(sidechain.audio.samples.size(),
+                                                         std::size_t(qRound64(double(f) * studio::ProductionSampleRate / fps())));
+                const auto end = std::min<std::size_t>(sidechain.audio.samples.size(),
+                    std::size_t(qRound64(double(f + 1) * studio::ProductionSampleRate / fps())));
+                double sum = 0;
+                for (auto at = begin; at < end; ++at)
+                    sum += double(sidechain.audio.samples[at]) * sidechain.audio.samples[at];
+                if (end > begin)
+                    sidechainEnvelope_[std::size_t(f)] = float(std::sqrt(sum / (end - begin)));
+            }
+        }
+    }
     if (hasAudio()) {
         auto wave = studio::readWave(q(project().audioSource));
         if (wave.error.isEmpty())
@@ -1006,6 +1028,13 @@ void EditorController::refreshAudioTracks() {
     }
 }
 void EditorController::syncAudioTrackPlayback(int frame) {
+    if (std::size_t(std::max(0, frame)) < sidechainEnvelope_.size()) {
+        const double rms = sidechainEnvelope_[std::size_t(frame)];
+        const double target = std::clamp((rms - .012) / .09, 0.0, 1.0);
+        const double response = target > smoothedSidechainLevel_ ? .65 : .18;
+        smoothedSidechainLevel_ += (target - smoothedSidechainLevel_) * response;
+    } else
+        smoothedSidechainLevel_ += (0.0 - smoothedSidechainLevel_) * .18;
     for (std::size_t i = 0; i < project().audioTracks.size() && i < audioTrackPlayers_.size(); ++i) {
         const auto &track = project().audioTracks[i];
         const bool shouldPlay = !track.muted && frame >= track.start && frame < track.start + track.duration;
@@ -1015,7 +1044,10 @@ void EditorController::syncAudioTrackPlayback(int frame) {
             fade = std::min(fade, double(localFrame) / track.fadeInFrames);
         if (track.fadeOutFrames > 0)
             fade = std::min(fade, double(track.duration - localFrame) / track.fadeOutFrames);
-        audioTrackOutputs_[i]->setVolume(shouldPlay ? std::clamp(track.gain * .9 * fade, 0.0, 1.0) : 0);
+        double duckGain = 1.0;
+        if (track.duckUnderVoice && !sidechainEnvelope_.empty())
+            duckGain = 1.0 - track.duckAmount * smoothedSidechainLevel_;
+        audioTrackOutputs_[i]->setVolume(shouldPlay ? std::clamp(track.gain * .9 * fade * duckGain, 0.0, 1.0) : 0);
         if (shouldPlay && !audioTrackPlaybackActive_[i]) {
             const auto offset = std::max<std::int64_t>(0, frame - track.start);
             audioTrackPlayers_[i]->setPosition(qRound64(double(offset) * 1000. / fps()));

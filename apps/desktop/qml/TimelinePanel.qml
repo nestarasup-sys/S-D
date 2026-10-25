@@ -233,7 +233,7 @@ Rectangle {
                 CheckBox {
                     text: "duck na voz"; checked: modelData.duckUnderVoice
                     onToggled: editor.setAudioTrackDucking(modelData.id, checked)
-                    ToolTip.text: "Reduz esta pista durante a narração na exportação"; ToolTip.visible: hovered
+                    ToolTip.text: "Reduz esta pista durante a fala na prévia e na exportação"; ToolTip.visible: hovered
                 }
                 CheckBox {
                     text: "mudo"; checked: modelData.muted

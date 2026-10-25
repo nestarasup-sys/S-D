@@ -213,6 +213,8 @@ class EditorController : public QObject {
     std::vector<std::unique_ptr<QMediaPlayer>> audioTrackPlayers_;
     std::vector<std::unique_ptr<QAudioOutput>> audioTrackOutputs_;
     std::vector<bool> audioTrackPlaybackActive_;
+    std::vector<float> sidechainEnvelope_;
+    double smoothedSidechainLevel_{0};
     QVariantList waveform_;
     QProcess production_;
     QByteArray productionBuffer_, productionBaseline_;

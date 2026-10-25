@@ -60,9 +60,9 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 
 - Projetos schema 4–6 salvam até 32 faixas independentes com caminho local, início/duração em frames, ganho, mute e ducking configurável. Fades não zerados exigem schema 6; os arquivos antigos continuam carregando sem migração destrutiva.
 - A timeline importa, remove, silencia, reposiciona, altera duração/ganho, liga ducking e permite definir fades lineares de entrada/saída. Na prévia, cada pista toca sincronizada com o playhead e segue os fades.
-- A exportação usa FFmpeg para misturar as faixas com o áudio base. Quando há stem isolado da narração, `duckUnderVoice` usa a voz como sidechain; arquivos editados sem stem usam `audioSource` como referência.
+- A prévia calcula ducking suavizado a partir do RMS do stem WAV de voz por frame; a exportação usa sidechaincompress do FFmpeg. Arquivos sem stem dedicado usam `audioSource` como referência.
 - Receitas v3 podem declarar pistas por cena com fonte local, sincronizar início por cue/progresso/wordIndex e definir `fadeInFrames`/`fadeOutFrames` até 1800 quadros cada, limitados ao intervalo da pista. Projetos com fades usam schema 6; os fades também são aplicados no render por FFmpeg.
-- O smoke compara mix sem/ com ducking: RMS durante a voz caiu de 0,0414 para 0,0349, e após a fala os dois voltaram a 0,0324. O teste de fades mediu 0,0064 no começo e 0,0071 no fim, contra 0,0324 no trecho estável. Faltam curvas de automação com pontos/easing e monitoramento sidechain em tempo real na prévia.
+- O smoke compara mix sem/ com ducking: RMS durante a voz caiu de 0,0414 para 0,0349, e após a fala os dois voltaram a 0,0324. O teste de fades mediu 0,0064 no começo e 0,0071 no fim, contra 0,0324 no trecho estável. Ainda faltam curvas de automação com pontos/easing; a prévia usa análise RMS do WAV, enquanto a exportação aplica a compressão real do FFmpeg.
 
 ### Situação por fase
 
