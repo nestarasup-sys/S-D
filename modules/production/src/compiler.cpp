@@ -1,11 +1,13 @@
 #include <QPointF>
 #include <QRegularExpression>
+#include <QSet>
 #include <QUuid>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <studio/production/compiler.hpp>
 
 namespace studio {
@@ -52,7 +54,8 @@ Node textNode(std::string id, std::string text, double x, double y, double width
 bool compileElement(const DirectedElement &directed,
                     const std::vector<std::pair<std::int64_t, std::int64_t>> &cues,
                     const std::vector<std::vector<std::int64_t>> &wordStarts, std::int64_t sceneStart,
-                    std::int64_t sceneEnd, const std::string &sceneId, const std::string &shotId,
+                    std::int64_t shotStart, std::int64_t sceneEnd, const std::string &sceneId,
+                    const std::string &shotId,
                     std::int64_t samplesPerFrame, Project &project, QString &error) {
     auto node = directed.node;
     const auto cue = cues[directed.cue];
@@ -62,7 +65,9 @@ bool compileElement(const DirectedElement &directed,
                 QString::fromStdString(node.id);
         return false;
     }
-    const auto anchor = cueFrame(cue, directed.offsetSeconds, directed.cueProgress, directed.wordIndex, words);
+    const auto anchor = directed.shotRelative
+                            ? shotStart
+                            : cueFrame(cue, directed.offsetSeconds, directed.cueProgress, directed.wordIndex, words);
     node.start = anchor + (directed.presetTiming ? node.start : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
@@ -118,8 +123,8 @@ bool compileElement(const DirectedElement &directed,
         }
     project.nodes.push_back(node);
     for (const auto &child : directed.children)
-        if (!compileElement(child, cues, wordStarts, sceneStart, sceneEnd, sceneId, shotId, samplesPerFrame, project,
-                            error))
+        if (!compileElement(child, cues, wordStarts, sceneStart, shotStart, sceneEnd, sceneId, shotId,
+                            samplesPerFrame, project, error))
             return false;
     Q_UNUSED(sceneStart);
     return true;
@@ -129,6 +134,121 @@ std::int64_t resolveTime(const DirectedTime &time,
                          const std::vector<std::vector<std::int64_t>> &wordStarts) {
     const auto *words = time.cue < int(wordStarts.size()) ? &wordStarts[std::size_t(time.cue)] : nullptr;
     return cueFrame(cues[time.cue], time.offsetSeconds, time.progress, time.wordIndex, words);
+}
+bool wordEndsPhrase(const QString &word, double &weight) {
+    if (word.endsWith('.') || word.endsWith('?') || word.endsWith('!')) {
+        weight = 3.0;
+        return true;
+    }
+    if (word.endsWith(';') || word.endsWith(':')) {
+        weight = 2.0;
+        return true;
+    }
+    if (word.endsWith(',')) {
+        weight = 0.75;
+        return true;
+    }
+    return false;
+}
+QString normalizedWord(QString word) {
+    word = word.toLower();
+    while (!word.isEmpty() && !word.front().isLetterOrNumber())
+        word.remove(0, 1);
+    while (!word.isEmpty() && !word.back().isLetterOrNumber())
+        word.chop(1);
+    return word;
+}
+bool narrationShotStarts(const DirectedScene &scene,
+                         const std::vector<std::pair<std::int64_t, std::int64_t>> &cues,
+                         const std::vector<std::vector<std::int64_t>> &wordStarts,
+                         std::int64_t sceneStart, std::int64_t sceneEnd, int editingIntensity,
+                         std::vector<std::int64_t> &starts, QString &error) {
+    constexpr std::int64_t samplesPerFrame = ProductionSampleRate / 30;
+    if (scene.shots.size() < 2) {
+        starts = {sceneStart};
+        return true;
+    }
+    std::map<std::int64_t, double> candidates;
+    const QSet<QString> semanticPivots{"mas", "porém", "contudo", "entretanto", "agora", "então",
+                                      "portanto", "porque", "enquanto", "quando", "depois", "antes",
+                                      "logo", "afinal", "todavia", "senão"};
+    QString previousLastWord;
+    for (std::size_t cueIndex = 0; cueIndex < scene.narration.size(); ++cueIndex) {
+        const auto tokens = scene.narration[cueIndex].text.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        if (cueIndex >= wordStarts.size() || tokens.isEmpty() ||
+            wordStarts[cueIndex].size() != std::size_t(tokens.size())) {
+            error = "editing.rhythm narration exige timestamps reais para cada palavra da fala " +
+                    scene.narration[cueIndex].id + ". Use uma voz que forneça alinhamento de palavras.";
+            return false;
+        }
+        const auto cueStart = cues[cueIndex].first / samplesPerFrame;
+        const auto addCandidate = [&](std::int64_t frame, double score) {
+            if (frame <= sceneStart || frame >= sceneEnd)
+                return;
+            auto [it, inserted] = candidates.emplace(frame, score);
+            if (!inserted)
+                it->second = std::max(it->second, score);
+        };
+        if (cueIndex > 0) {
+            double punctuation = 0;
+            wordEndsPhrase(previousLastWord, punctuation);
+            addCandidate(cueStart, 1.5 + punctuation);
+        }
+        for (int wordIndex = 1; wordIndex < tokens.size(); ++wordIndex) {
+            double score = 0.05;
+            wordEndsPhrase(tokens[wordIndex - 1], score);
+            const auto nextWord = normalizedWord(tokens[wordIndex]);
+            if (semanticPivots.contains(nextWord))
+                score += 1.25;
+            const auto frame = cueStart + std::llround(
+                double(wordStarts[cueIndex][std::size_t(wordIndex)]) / samplesPerFrame);
+            addCandidate(frame, score);
+        }
+        previousLastWord = tokens.back();
+    }
+    const int intensity = std::clamp(editingIntensity < 0 ? 50 : editingIntensity, 0, 100);
+    const auto minimumShotFrames = std::max(6, 18 - int(std::lround(intensity * .12)));
+    std::vector<std::int64_t> minimum(scene.shots.size(), minimumShotFrames);
+    for (std::size_t i = 0; i < scene.shots.size(); ++i)
+        minimum[i] = std::max<std::int64_t>(minimum[i], scene.shots[i].transitionDurationFrames);
+    const auto required = std::accumulate(minimum.begin(), minimum.end(), std::int64_t{0});
+    if (required > sceneEnd - sceneStart) {
+        error = "A duração da cena é curta demais para distribuir os shots com editing.rhythm narration.";
+        return false;
+    }
+    starts.clear();
+    starts.reserve(scene.shots.size());
+    starts.push_back(sceneStart);
+    std::int64_t previous = sceneStart;
+    const double targetDuration = double(sceneEnd - sceneStart) / scene.shots.size();
+    const double timeWeight = .75 + intensity * .0225;
+    const double phraseWeight = 2.5 - intensity * .015;
+    for (std::size_t cut = 1; cut < scene.shots.size(); ++cut) {
+        const auto lower = previous + minimum[cut - 1];
+        const auto remaining = std::accumulate(minimum.begin() + std::ptrdiff_t(cut), minimum.end(),
+                                               std::int64_t{0});
+        const auto upper = sceneEnd - remaining;
+        const auto ideal = sceneStart + std::llround(targetDuration * cut);
+        auto chosen = candidates.end();
+        double bestScore = -std::numeric_limits<double>::infinity();
+        for (auto it = candidates.lower_bound(lower); it != candidates.end() && it->first <= upper; ++it) {
+            const double timingCost = std::abs(double(it->first - ideal)) / std::max(1.0, targetDuration);
+            const double score = it->second * phraseWeight - timingCost * timeWeight;
+            if (score > bestScore || (score == bestScore && chosen != candidates.end() &&
+                                      std::abs(it->first - ideal) < std::abs(chosen->first - ideal))) {
+                chosen = it;
+                bestScore = score;
+            }
+        }
+        if (chosen == candidates.end()) {
+            error = "Não há pontos de fala suficientes para distribuir os shots sem cortes rápidos demais. "
+                    "Reduza a quantidade de shots ou aumente a duração da cena.";
+            return false;
+        }
+        starts.push_back(chosen->first);
+        previous = chosen->first;
+    }
+    return true;
 }
 VisualState beatState(const VisualState &current, const DirectedBeat &beat, double baseOpacity) {
     auto next = current;
@@ -425,8 +545,19 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             };
             std::vector<ResolvedShot> shots;
             shots.reserve(scene.shots.size());
-            for (const auto &shot : scene.shots) {
-                const auto start = resolveTime(shot.start, cues, wordStarts);
+            std::vector<std::int64_t> automaticStarts;
+            if (recipe.editingRhythm == "narration" &&
+                !narrationShotStarts(scene, cues, wordStarts, sceneStart, sceneStart + sceneDuration,
+                                     recipe.editingIntensity, automaticStarts, r.error))
+                return r;
+            if (!automaticStarts.empty() && automaticStarts.size() != scene.shots.size()) {
+                r.error = "A distribuição automática não corresponde à quantidade de shots.";
+                return r;
+            }
+            for (std::size_t shotIndex = 0; shotIndex < scene.shots.size(); ++shotIndex) {
+                const auto &shot = scene.shots[shotIndex];
+                const auto start = shot.autoStart ? automaticStarts[shotIndex]
+                                                  : resolveTime(shot.start, cues, wordStarts);
                 if (start < 0) {
                     r.error = "wordIndex sem timestamp de alinhamento disponível no shot: " + shot.id;
                     return r;
@@ -463,8 +594,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     p.schemaVersion = std::max(p.schemaVersion, 11);
                 }
                 for (const auto &element : directedShot.elements)
-                    if (!compileElement(element, cues, wordStarts, shotStart, shotEnd, scene.id.toStdString(),
-                                        directedShot.id.toStdString(), samplesPerFrame, p, r.error))
+                    if (!compileElement(element, cues, wordStarts, shotStart, shotStart, shotEnd,
+                                        scene.id.toStdString(), directedShot.id.toStdString(), samplesPerFrame, p,
+                                        r.error))
                         return r;
 
                 CameraState shotCamera{directedShot.cameraX, directedShot.cameraY, directedShot.cameraZoom,
@@ -634,8 +766,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             }
         } else {
             for (const auto &directed : scene.elements) {
-                if (!compileElement(directed, cues, wordStarts, sceneStart, sceneStart + sceneDuration,
-                                    scene.id.toStdString(), {}, samplesPerFrame, p, r.error))
+                if (!compileElement(directed, cues, wordStarts, sceneStart, sceneStart,
+                                    sceneStart + sceneDuration, scene.id.toStdString(), {}, samplesPerFrame, p,
+                                    r.error))
                     return r;
             }
         }

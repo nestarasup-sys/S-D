@@ -132,8 +132,12 @@ assert re.search(r"frame=\s*240\b", decoded.stderr), "MP4 must encode exactly 24
 
 # End-to-end v3: several visual shots and timed beats inside one narration scene.
 shots_output = folder / "shots-v3"
+shots_recipe_path = root / "examples/shots-visual-beats-v3.production.json"
+shots_recipe = json.loads(shots_recipe_path.read_text(encoding="utf-8"))
+assert shots_recipe["editing"]["rhythm"] == "narration"
+assert all("start" not in shot for scene in shots_recipe["scenes"] for shot in scene["shots"])
 shots_run = run([bin_dir / "studio_produce.exe", "--recipe",
-                 root / "examples/shots-visual-beats-v3.production.json",
+                 shots_recipe_path,
                  "--output-dir", shots_output], timeout=360)
 (folder / "shots-v3.log").write_text(shots_run.stdout + shots_run.stderr, encoding="utf-8")
 shots_project_path = shots_output / "project.studio.json"
@@ -146,6 +150,8 @@ assert len(camera_preset_keys) >= 2 and any(abs(key["zoom"] - 1.28) < 1e-6 for k
 ordered_shots = sorted(shots_project["shots"], key=lambda shot: shot["start"])
 scene = shots_project["scenes"][0]
 assert ordered_shots[0]["start"] == scene["start"]
+reveal_beat = next(beat for beat in shots_project["visualBeats"] if beat["id"] == "preco-aparece")
+assert scene["start"] < ordered_shots[1]["start"] < reveal_beat["frame"]
 assert ordered_shots[-1]["start"] + ordered_shots[-1]["duration"] == scene["start"] + scene["duration"]
 assert all(left["start"] + left["duration"] == right["start"]
            for left, right in zip(ordered_shots, ordered_shots[1:]))

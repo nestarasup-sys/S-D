@@ -49,6 +49,7 @@ struct DirectedElement {
     double cueProgress{-1};
     int wordIndex{-1};
     bool utteranceOnly{false};
+    bool shotRelative{false};
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     std::vector<DirectedKeyframe> keyframes;
     std::vector<DirectedElement> children;
@@ -73,6 +74,7 @@ struct DirectedAudioTrack {
 };
 struct DirectedShot {
     QString id, name, transitionIn{"cut"}, cameraPreset;
+    bool autoStart{false};
     QString transitionDirection{"left"};
     int transitionDurationFrames{0};
     DirectedTime start;
@@ -104,6 +106,7 @@ struct ProductionRecipe {
     bool preserveVoicePitch{true};
     int width{1280}, height{720};
     int editingIntensity{-1}; // Optional v3 preset for generated, otherwise-unspecified motion defaults.
+    QString editingRhythm{"manual"};
     QString wordAnimationPreset{"highlight"};
     int wordAnimationDurationFrames{8};
     double wordAnimationStartScale{0.82}, wordAnimationTravelY{12};

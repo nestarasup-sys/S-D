@@ -159,7 +159,7 @@ QJsonObject libraryAsset(const QJsonObject &library, const QString &id) {
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
                   QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1,
-                  const ArtDirection *artDirection = nullptr) {
+                  const ArtDirection *artDirection = nullptr, bool shotStartDeferred = false) {
     auto fail = [&](QString message) {
         error = std::move(message);
         return false;
@@ -401,6 +401,9 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (e.contains("progress") && e.contains("cueProgress"))
         return fail("Use progress ou cueProgress no elemento, não ambos.");
     element.cue = e["cue"].toInt(defaultStart.cue);
+    element.shotRelative = shotStartDeferred &&
+                           !e.contains("cue") && !e.contains("progress") && !e.contains("cueProgress") &&
+                           !e.contains("offsetSeconds") && !e.contains("wordIndex");
     element.progress = e["progress"].toDouble(e.contains("cue") ? 0 : std::max(0.0, defaultStart.progress));
     element.offsetSeconds = e["offsetSeconds"].toDouble(e.contains("cue") ? 0 : defaultStart.offsetSeconds);
     element.cueProgress = e["cueProgress"].toDouble(
@@ -545,8 +548,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             DirectedElement parsedChild;
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
-                              {element.cue, element.cueProgress, element.offsetSeconds, element.wordIndex}, editingIntensity,
-                              artDirection))
+                              {element.cue, element.cueProgress, element.offsetSeconds, element.wordIndex},
+                              editingIntensity, artDirection, element.shotRelative))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -741,11 +744,21 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         if (!o["editing"].isObject())
             return fail("editing precisa ser um objeto.");
         const auto editing = o["editing"].toObject();
-        if (!allowed(editing, {"intensity"}) || !editing["intensity"].isDouble() ||
-            std::floor(editing["intensity"].toDouble()) != editing["intensity"].toDouble() ||
-            editing["intensity"].toInt(-1) < 0 || editing["intensity"].toInt(-1) > 100)
-            return fail("editing.intensity deve ser um inteiro entre 0 e 100.");
-        r.editingIntensity = editing["intensity"].toInt();
+        if (!allowed(editing, {"intensity", "rhythm"}))
+            return fail("editing contém um campo desconhecido.");
+        if (editing.contains("intensity")) {
+            if (!editing["intensity"].isDouble() ||
+                std::floor(editing["intensity"].toDouble()) != editing["intensity"].toDouble() ||
+                editing["intensity"].toInt(-1) < 0 || editing["intensity"].toInt(-1) > 100)
+                return fail("editing.intensity deve ser um inteiro entre 0 e 100.");
+            r.editingIntensity = editing["intensity"].toInt();
+        }
+        if (editing.contains("rhythm")) {
+            if (!editing["rhythm"].isString() ||
+                (editing["rhythm"] != "manual" && editing["rhythm"] != "narration"))
+                return fail("editing.rhythm deve ser manual ou narration.");
+            r.editingRhythm = editing["rhythm"].toString();
+        }
     }
     if (o.contains("timingMode") && !o["timingMode"].isString())
         return fail("timingMode deve ser natural ou fit-to-duration.");
@@ -880,6 +893,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         if (version == 3) {
             if (!s["shots"].isArray() || s["shots"].toArray().isEmpty() || s["shots"].toArray().size() > 64)
                 return fail("Cada cena v3 precisa de 1 a 64 shots visuais.");
+            bool hasAutoShotStart = false, hasExplicitShotStart = false;
             for (const auto shotValue : s["shots"].toArray()) {
                 if (!shotValue.isObject())
                     return fail("Shot visual inválido.");
@@ -888,10 +902,16 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                              {"id", "name", "start", "transitionIn", "camera", "elements", "beats",
                               "artDirection", "cameraPreset"}))
                     return fail("Shot contém campo desconhecido.");
-                if (!shotObject["id"].isString() || !shotObject["start"].isObject() ||
+                const bool autoStart = !shotObject.contains("start");
+                if (!shotObject["id"].isString() ||
+                    (autoStart && r.editingRhythm != "narration") ||
+                    (!autoStart && !shotObject["start"].isObject()) ||
                     !shotObject["elements"].isArray())
-                    return fail("Shot precisa de id, start e elements válidos.");
+                    return fail("Shot precisa de id, start e elements válidos; sem start use editing.rhythm narration.");
                 DirectedShot shot;
+                shot.autoStart = autoStart;
+                hasAutoShotStart |= autoStart;
+                hasExplicitShotStart |= !autoStart;
                 shot.cameraX = r.width / 2.0;
                 shot.cameraY = r.height / 2.0;
                 ArtDirection shotStyle = sceneStyle;
@@ -963,9 +983,11 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     return fail("ID ou nome de shot inválido ou duplicado.");
                 ids.insert(shot.id);
                 QString timeError;
-                if (!parseTimeRef(shotObject["start"].toObject(), int(scene.narration.size()), shot.start,
-                                  timeError, "start do shot"))
-                    return fail(timeError);
+                if (!shot.autoStart) {
+                    if (!parseTimeRef(shotObject["start"].toObject(), int(scene.narration.size()), shot.start,
+                                      timeError, "start do shot"))
+                        return fail(timeError);
+                }
                 if (shotObject["camera"].isObject()) {
                     const auto camera = shotObject["camera"].toObject();
                     if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus"}) ||
@@ -996,7 +1018,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                                       int(scene.narration.size()), ids, elementCount, element, elementError,
                                       0, shot.start, r.editingIntensity,
-                                      shotThemed ? &shotStyle : nullptr))
+                                      shotThemed ? &shotStyle : nullptr, shot.autoStart))
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }
@@ -1106,6 +1128,9 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 if (++totalShots > 256 || totalBeats > 4096)
                     return fail("Produção excede 256 shots ou 4096 Visual Beats.");
             }
+            if ((hasAutoShotStart && hasExplicitShotStart) ||
+                (hasAutoShotStart != (r.editingRhythm == "narration")))
+                return fail("editing.rhythm narration exige que todos os shots da cena omitam start; no modo manual, todos devem declará-lo.");
             if (s.contains("audioTracks")) {
                 if (!s["audioTracks"].isArray() || s["audioTracks"].toArray().size() > 32)
                     return fail("Cada cena pode declarar até 32 pistas de áudio.");

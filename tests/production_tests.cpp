@@ -206,6 +206,38 @@ int main(int argc, char **argv) {
                   parsedCameraPreset.recipe.cameraPresets.contains("steady-push") &&
                   parsedCameraPreset.recipe.scenes.front().shots.back().cameraPreset == "steady-push",
               "v3 validates named camera presets and shot references");
+        auto automaticRhythmJson = shotRecipeJson;
+        automaticRhythmJson["editing"] = QJsonObject{{"intensity", 50}, {"rhythm", "narration"}};
+        auto automaticScenes = automaticRhythmJson["scenes"].toArray();
+        auto automaticScene = automaticScenes[0].toObject();
+        auto automaticShots = automaticScene["shots"].toArray();
+        for (int i = 0; i < automaticShots.size(); ++i) {
+            auto shot = automaticShots[i].toObject();
+            shot.remove("start");
+            automaticShots[i] = shot;
+        }
+        automaticScene["shots"] = automaticShots;
+        automaticScenes[0] = automaticScene;
+        automaticRhythmJson["scenes"] = automaticScenes;
+        const auto parsedAutomaticRhythm =
+            studio::parseRecipe(QJsonDocument(automaticRhythmJson).toJson(), directory.path());
+        check(parsedAutomaticRhythm.error.isEmpty() && parsedAutomaticRhythm.recipe.editingRhythm == "narration" &&
+                  std::all_of(parsedAutomaticRhythm.recipe.scenes.front().shots.begin(),
+                              parsedAutomaticRhythm.recipe.scenes.front().shots.end(),
+                              [](const auto &shot) { return shot.autoStart; }),
+              "v3 narration rhythm accepts omitted shot starts as an explicit automatic direction");
+        auto mixedRhythmJson = automaticRhythmJson;
+        auto mixedScenes = mixedRhythmJson["scenes"].toArray();
+        auto mixedScene = mixedScenes[0].toObject();
+        auto mixedShots = mixedScene["shots"].toArray();
+        auto mixedShot = mixedShots[1].toObject();
+        mixedShot["start"] = QJsonObject{{"cue", 0}, {"cueProgress", .5}};
+        mixedShots[1] = mixedShot;
+        mixedScene["shots"] = mixedShots;
+        mixedScenes[0] = mixedScene;
+        mixedRhythmJson["scenes"] = mixedScenes;
+        check(!studio::parseRecipe(QJsonDocument(mixedRhythmJson).toJson(), directory.path()).error.isEmpty(),
+              "reject mixing automatic rhythm with manually timed shots");
         auto missingCameraPreset = cameraPresetJson;
         auto missingPresetScenes = missingCameraPreset["scenes"].toArray();
         auto missingPresetScene = missingPresetScenes[0].toObject();
@@ -631,6 +663,32 @@ int main(int argc, char **argv) {
         studio::PcmAudio shortSpeech;
         shortSpeech.samples.resize(4800, .1f);
         shotAudio.insert(parsedShots.recipe.scenes.front().narration.front().id, shortSpeech);
+        auto automaticRhythmAudio = shotAudio;
+        automaticRhythmAudio[parsedAutomaticRhythm.recipe.scenes.front().narration.front().id].samples.resize(48000,
+                                                                                                               .1f);
+        studio::WordTimingMap automaticRhythmWords;
+        automaticRhythmWords.insert(parsedAutomaticRhythm.recipe.scenes.front().narration.front().id,
+                                    {0, 6000, 12000, 18000, 24000, 30000, 36000, 42000});
+        const auto missingAutomaticRhythmWords =
+            studio::compileProduction(parsedAutomaticRhythm.recipe, automaticRhythmAudio, "auto-rhythm-no-words.wav");
+        const auto compiledAutomaticRhythm = studio::compileProduction(
+            parsedAutomaticRhythm.recipe, automaticRhythmAudio, "auto-rhythm.wav", nullptr,
+            &automaticRhythmWords);
+        const auto autoGroup = std::find_if(compiledAutomaticRhythm.project.nodes.begin(),
+                                            compiledAutomaticRhythm.project.nodes.end(),
+                                            [](const auto &node) { return node.id == "detail-group"; });
+        const auto autoPrice = std::find_if(compiledAutomaticRhythm.project.nodes.begin(),
+                                            compiledAutomaticRhythm.project.nodes.end(),
+                                            [](const auto &node) { return node.id == "price"; });
+        check(!missingAutomaticRhythmWords.error.isEmpty() && compiledAutomaticRhythm.error.isEmpty() &&
+                  compiledAutomaticRhythm.project.shots.size() == 2 &&
+                  compiledAutomaticRhythm.project.shots.front().start == 0 &&
+                  compiledAutomaticRhythm.project.shots.back().start == 30 &&
+                  compiledAutomaticRhythm.project.shots.back().duration == 41 &&
+                  autoGroup != compiledAutomaticRhythm.project.nodes.end() && autoGroup->start == 30 &&
+                  autoPrice != compiledAutomaticRhythm.project.nodes.end() && autoPrice->start == 30 &&
+                  studio::validate(compiledAutomaticRhythm.project).empty(),
+              "narration rhythm uses measured phrase pivots and anchors implicit shot elements to the cut");
         auto compiledShots = studio::compileProduction(parsedShots.recipe, shotAudio, "shots.wav");
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 7 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,

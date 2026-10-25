@@ -161,6 +161,7 @@
         "independent-shots",
         "visual-beats-show-hide-transform-camera-sound",
         "shot-cut-camera",
+        "narration-content-shot-rhythm",
         "shot-transitions-fade-dissolve-slide-zoom",
         "auto-reframe-by-shot-target",
         "continuous-shot-focus-follow",

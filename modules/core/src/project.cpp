@@ -232,7 +232,13 @@ std::string validate(const Project &p) {
             if (shot == shotsById.end() || shot->second->sceneId != node.sceneId ||
                 node.start < shot->second->start ||
                 node.start + node.duration > shot->second->start + shot->second->duration)
-                return "Elemento aponta para um shot inexistente ou excede seu intervalo.";
+                return "Elemento '" + node.id + "' aponta para o shot '" + node.shotId +
+                       "' ou excede seu intervalo (elemento " + std::to_string(node.start) + "–" +
+                       std::to_string(node.start + node.duration) + ", shot " +
+                       (shot == shotsById.end() ? std::string("inexistente")
+                                                : std::to_string(shot->second->start) + "–" +
+                                                      std::to_string(shot->second->start + shot->second->duration)) +
+                       ").";
         }
     std::unordered_set<std::string> soundTracksByBeat;
     for (const auto &beat : p.visualBeats) {

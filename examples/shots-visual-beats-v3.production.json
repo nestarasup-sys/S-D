@@ -5,7 +5,7 @@
   "title": "Por que o carro parecia barato",
   "voice": "auto",
   "captions": true,
-  "editing": { "intensity": 50 },
+  "editing": { "intensity": 50, "rhythm": "narration" },
   "musicGain": 0.025,
   "effectsGain": 0.035,
   "cameraPresets": {
@@ -25,7 +25,6 @@
         {
           "id": "carro-aberto",
           "name": "Apresentação do carro",
-          "start": { "cue": 0, "cueProgress": 0 },
           "transitionIn": "cut",
           "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "carro", "padding": 2.4, "follow": true } },
           "elements": [
@@ -35,12 +34,11 @@
         {
           "id": "preco-detalhe",
           "name": "Revelação do preço",
-          "start": { "cue": 0, "cueProgress": 0.55 },
           "transitionIn": { "type": "dissolve", "durationFrames": 12 },
           "cameraPreset": "push-price",
           "camera": { "x": 640, "y": 360, "zoom": 1.12, "rotation": 0, "focus": { "target": "preco", "padding": 1.2 } },
           "elements": [
-            { "id": "preco", "kind": "text", "text": "BARATO?", "x": 420, "y": 235, "width": 440, "height": 100, "fontSize": 68, "color": "#b4f078", "cue": 0, "cueProgress": 0.55 }
+            { "id": "preco", "kind": "text", "text": "BARATO?", "x": 420, "y": 235, "width": 440, "height": 100, "fontSize": 68, "color": "#b4f078" }
           ],
           "beats": [
             { "id": "preco-aparece", "at": { "cue": 0, "wordIndex": 5 }, "action": "show", "target": "preco" },
@@ -50,7 +48,6 @@
         {
           "id": "despesas",
           "name": "Despesas escondidas",
-          "start": { "cue": 1, "cueProgress": 0 },
           "transitionIn": "cut",
           "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0, "focus": { "target": "documento", "padding": 1.4 } },
           "elements": [

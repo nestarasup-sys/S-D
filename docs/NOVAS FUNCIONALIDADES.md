@@ -4,6 +4,14 @@
 
 Este quadro separa o que foi verificado no código do que continua planejado. O plano completo permanece aberto.
 
+### Entrega implementada: ritmo de cortes guiado pela narração
+
+- Receitas v3 aceitam `editing.rhythm: "narration"` e omitem `start` em todos os shots. O compilador usa timestamps reais das palavras sintetizadas, pontuação e pivôs textuais comuns para escolher cortes e equilibrar a duração dos planos conforme a intensidade.
+- O cálculo respeita durações mínimas e transições. Elementos sem tempo explícito, incluindo filhos de grupos, começam junto ao corte escolhido; tempos explícitos de elementos, beats e keyframes continuam preservados e precisam caber no shot. O modo falha com uma mensagem clara se faltar alinhamento real ou espaço temporal.
+- O ritmo é determinístico e baseado em sinais de texto; não substitui uma avaliação semântica livre por IA. Receitas manuais existentes e projetos antigos continuam preservados.
+- Verificação: `scripts/build.ps1 -Test` passou (4/4); `scripts/smoke-production.ps1` passou com Microsoft Maria Desktop. A receita v3 de exemplo gerou 3 shots e 3 Visual Beats, abriu no editor e comparou preview/export em 44,27 dB. `scripts/update-ai-guide.ps1` regenerou o guia e `docs/capabilities-v1.json`.
+- Decisão arquitetural: [ADR 0027 — ritmo de cortes guiado pela narração](architecture/0027-content-driven-shot-rhythm.md).
+
 ### Entrega implementada: cache de quadros e seek em vídeos
 
 - O compositor mantém até 64 MiB de quadros de vídeo decodificados em cache LRU. A chave considera arquivo, revisão, tamanho do quadro, trim, velocidade, recorte, FPS e número do quadro; alterações nesses dados não reutilizam imagens antigas.
@@ -175,7 +183,7 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 | Fase | Situação | O que falta para fechar |
 |---|---|---|
 | 1 — Fundação | Concluída | Teste temporal cobre 20 cenas, 120 shots, 240 beats concorrentes e cortes de borda; smoke de produção valida receita v3 e projeto editável. |
-| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom e presets reutilizáveis de trajetória de câmera na receita v3 estão implementados. Faltam ritmo guiado pelo conteúdo e edição avançada de duração/overlap da sequência. |
+| 2 — Edição dinâmica | Parcialmente concluída | Auto reframe contínuo, intensidade na receita/editor, transições fade/dissolve/slide/zoom, presets de câmera e ritmo de cortes guiado por alinhamento real, pontuação e pivôs de frase estão implementados. Falta edição avançada de duração/overlap da sequência. |
 | 3 — Acabamento audiovisual | Parcialmente concluída | Direção de arte global/por cena/shot, tipografia animada por palavra, pistas com ducking/fades, automação por pontos/easing e efeitos sonoros disparados por Visual Beat estão implementados. Faltam fontes externas e presets visuais nomeados. |
 | 4 — Recursos avançados | Parcialmente concluída | Sincronização por palavra cobre shots, beats, elementos, keyframes e destaque nas legendas; inspetor e timeline corrigem tempos de palavras depois da compilação. Vídeo/B-roll local com trim, velocidade e recorte entra na composição/render, com cache de quadros limitado e seek direto validado contra exportação. A timeline permite seleção múltipla, movimento conjunto com undo atômico, envelopes editáveis, zoom/navegação e snapping geométrico. Áudio embutido em vídeo está integrado, vinculado à camada e validado em preview/export. Formatos 1280×720, 1920×1080 e 1080×1920 estão implementados. |
 
@@ -189,11 +197,11 @@ Este quadro separa o que foi verificado no código do que continua planejado. O 
 - A alça ↔ no início do envelope move a pista; a alça direita altera o fim/duração por frame. Ambas usam as mesmas referências de snap e cada gesto tem um único undo. Efeitos de som ligados a Visual Beats acompanham a mudança do início.
 - Vídeo local como camada já existe, com quadros sincronizados à sequência. Áudio próprio do vídeo não é importado automaticamente e mídias remotas não são baixadas. Áudio em múltiplas pistas/ducking, direção de arte por escopo e controles de intensidade já existem; continuam faltando recursos avançados descritos na tabela de fases.
 - Auto reframe por ID pode acompanhar o alvo em todos os quadros do shot usando `follow:true`. Esse modo gera keyframes de câmera e é incompatível com Visual Beats de câmera no mesmo shot. Presets de trajetória reutilizáveis já são aceitos em `cameraPresets`; trajetórias Bézier personalizadas continuam pendentes.
-- `editing.intensity` só orienta entradas/saídas automáticas quando a receita omite esses campos. No editor, o comando aplica o perfil explicitamente à cena atual. Nenhum dos modos gera cortes ou efeitos a partir do significado da fala.
+- `editing.intensity` orienta entradas/saídas automáticas quando a receita omite esses campos e ajusta o equilíbrio temporal/semântico do modo `editing.rhythm:"narration"`. Esse modo escolhe entre timestamps reais de palavras, favorecendo pontuação e pivôs textuais; não faz interpretação semântica livre. No editor, o comando de intensidade aplica o perfil explicitamente à cena atual.
 
 ### Próxima entrega recomendada
 
-Implementar ritmo de corte guiado pelo conteúdo da narração e edição avançada de duração/overlap. Fontes externas e presets visuais nomeados também continuam pendentes.
+Implementar edição avançada de duração/overlap da sequência. Fontes externas e presets visuais nomeados também continuam pendentes.
 
 ---
 
@@ -936,7 +944,7 @@ Implementar:
 2. [x] Auto Reframe por alvo, inclusive acompanhamento quadro a quadro.
 3. [x] Transições fade, dissolve, slide e zoom editáveis.
 4. [x] Sincronização temporal de animações com fala/progresso/palavra.
-5. [ ] Cortes e ritmo escolhidos automaticamente com base no conteúdo da narração.
+5. [x] Cortes e ritmo escolhidos automaticamente com base na narração, usando timestamps reais de palavras, pontuação, pivôs textuais e intensidade para equilibrar as durações dos shots.
 6. [x] Presets reutilizáveis de trajetórias de câmera definidos na receita v3 e aplicados a um ou mais shots.
 7. [ ] Edição avançada de duração/overlap da sequência no editor.
 
