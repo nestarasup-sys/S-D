@@ -142,6 +142,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void selectNode(QString id);
     Q_INVOKABLE void toggleNodeSelection(QString id);
     Q_INVOKABLE void updateSelected(QString key, QVariant value);
+    Q_INVOKABLE bool setCaptionWordBoundary(int wordIndex, QString edge, int frame);
     Q_INVOKABLE void beginGesture();
     Q_INVOKABLE void endGesture();
     Q_INVOKABLE void moveSelected(double x, double y);

@@ -247,6 +247,57 @@ Rectangle {
                 Field { caption: "Subida · px"; propertyKey: "wordAnimationTravelY"; currentValue: panel.node.wordAnimationTravelY; visible: panel.node.role === "caption" && panel.node.wordAligned && (panel.node.wordAnimationPreset === "rise" || panel.node.wordAnimationPreset === "pop-rise") }
                 Label { text: "Esta legenda tem alinhamento real por palavra. A animação acompanha a voz na prévia e na exportação."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true; visible: panel.node.role === "caption" && panel.node.wordAligned }
                 Label { text: "Esta legenda não tem timestamps reais por palavra; importe uma voz que forneça alinhamento para animá-la."; color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true; visible: panel.node.role === "caption" && !panel.node.wordAligned }
+                Label {
+                    text: "ALINHAMENTO MANUAL · QUADROS"
+                    color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 4
+                    visible: panel.node.role === "caption" && panel.node.wordAligned
+                }
+                Label {
+                    text: "Ajuste os limites com precisão de um quadro. Cada limite compartilhado move as duas palavras juntas."
+                    color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                    visible: panel.node.role === "caption" && panel.node.wordAligned
+                }
+                RowLayout {
+                    visible: panel.node.role === "caption" && panel.node.wordAligned
+                    Layout.fillWidth: true; spacing: 8
+                    Label { text: "PALAVRA"; color: "#708393"; font.pixelSize: 9; Layout.fillWidth: true }
+                    Label { text: "INÍCIO"; color: "#708393"; font.pixelSize: 9; Layout.preferredWidth: 68; horizontalAlignment: Text.AlignHCenter }
+                    Label { text: "FIM"; color: "#708393"; font.pixelSize: 9; Layout.preferredWidth: 68; horizontalAlignment: Text.AlignHCenter }
+                }
+                ListView {
+                    id: captionWordList
+                    objectName: "captionWordAlignmentList"
+                    visible: panel.node.role === "caption" && panel.node.wordAligned
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Math.min(240, contentHeight)
+                    clip: true; spacing: 2
+                    model: panel.node.captionWords || []
+                    delegate: Rectangle {
+                        required property var modelData
+                        required property int index
+                        width: captionWordList.width; height: 36; radius: 4
+                        color: editor.frame >= modelData.start && editor.frame < modelData.end ? "#22342d" : "transparent"
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 5; anchors.rightMargin: 3; spacing: 8
+                            Label { text: modelData.text; color: "#dce6ee"; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                            SpinBox {
+                                Layout.preferredWidth: 68; implicitHeight: 30; editable: true
+                                from: index === 0 ? panel.node.start : panel.node.captionWords[index - 1].start + 1
+                                to: modelData.end - 1; value: modelData.start
+                                onValueModified: editor.setCaptionWordBoundary(index, "start", value)
+                            }
+                            SpinBox {
+                                Layout.preferredWidth: 68; implicitHeight: 30; editable: true
+                                from: modelData.start + 1
+                                to: index + 1 < panel.node.captionWords.length
+                                    ? panel.node.captionWords[index + 1].end - 1
+                                    : panel.node.start + panel.node.duration
+                                value: modelData.end
+                                onValueModified: editor.setCaptionWordBoundary(index, "end", value)
+                            }
+                        }
+                    }
+                }
                 Label { text: "Conteúdo"; color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
                 TextArea {
                     id: textEditor

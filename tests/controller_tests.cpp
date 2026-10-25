@@ -239,6 +239,23 @@ int main(int argc, char **argv) {
         c.selectNode("shot-caption");
         check(c.selected()["role"] == "caption" && c.selected()["wordAligned"].toBool(),
               "inspector identifies generated captions with real word timings");
+        const auto wordsBeforeEdit = c.selected()["captionWords"].toList();
+        check(wordsBeforeEdit.size() == 2 && wordsBeforeEdit[0].toMap()["start"].toInt() == 0 &&
+                  wordsBeforeEdit[0].toMap()["end"].toInt() == 45 &&
+                  wordsBeforeEdit[1].toMap()["start"].toInt() == 45,
+              "inspector exposes absolute frame intervals for aligned caption words");
+        check(c.setCaptionWordBoundary(1, "start", 50) &&
+                  studio::findNode(c.project(), "shot-caption")->captionWords[0].end == 50 &&
+                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 50,
+              "moving a caption word start snaps the shared neighboring boundary together");
+        c.undo();
+        check(studio::findNode(c.project(), "shot-caption")->captionWords[0].end == 45 &&
+                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 45,
+              "caption timing boundary edit is undoable as one edit");
+        c.redo();
+        check(!c.setCaptionWordBoundary(1, "start", 120) &&
+                  studio::findNode(c.project(), "shot-caption")->captionWords[1].start == 50,
+              "caption timing rejects boundaries that would erase a word interval");
         c.updateSelected("wordAnimationPreset", "pop-rise");
         c.updateSelected("wordAnimationDurationFrames", 6);
         c.updateSelected("wordAnimationStartScale", .72);

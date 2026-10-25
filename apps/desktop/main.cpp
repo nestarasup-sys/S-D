@@ -31,6 +31,9 @@ int main(int argc, char **argv) {
     int frameArgument = args.indexOf("--frame");
     if (frameArgument >= 0 && frameArgument + 1 < args.size())
         controller.setFrame(args[frameArgument + 1].toInt());
+    int selectionArgument = args.indexOf("--select");
+    if (selectionArgument >= 0 && selectionArgument + 1 < args.size())
+        controller.selectNode(args[selectionArgument + 1]);
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("editor", &controller);
     engine.rootContext()->setContextProperty("workspace", &workspace);
@@ -53,6 +56,7 @@ int main(int argc, char **argv) {
         QTimer::singleShot(1500, &app, [&engine, &controller, &workspace, directory] {
             auto window = qobject_cast<QQuickWindow *>(engine.rootObjects().value(0));
             bool ok = window && window->grabWindow().save(directory + "/desktop.png");
+            auto captionList = engine.rootObjects().value(0)->findChild<QObject *>("captionWordAlignmentList");
             QFile project(directory + "/demo.studio.json");
             ok = ok && project.open(QIODevice::WriteOnly);
             if (ok)
@@ -63,6 +67,13 @@ int main(int argc, char **argv) {
                                                         {"playing", controller.playing()},
                                                         {"hasAudio", controller.hasAudio()},
                                                         {"page", workspace.page()},
+                                                        {"selectedId", controller.selectedId()},
+                                                        {"selectedCaptionWordCount",
+                                                         controller.selected()["captionWords"].toList().size()},
+                                                        {"captionTimingControlsVisible",
+                                                         captionList && captionList->property("visible").toBool()},
+                                                        {"captionTimingControlCount",
+                                                         captionList ? captionList->property("count").toInt() : -1},
                                                         {"projects", workspace.projectCount()},
                                                         {"assets", workspace.assetCount()},
                                                         {"categories", workspace.categories().size()}})

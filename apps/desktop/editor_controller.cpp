@@ -182,6 +182,11 @@ QVariantMap EditorController::selected() const {
     if (!n)
         return {};
     auto result = map(*n);
+    QVariantList captionWords;
+    captionWords.reserve(int(n->captionWords.size()));
+    for (const auto &word : n->captionWords)
+        captionWords.append(QVariantMap{{"text", q(word.text)}, {"start", int(word.start)}, {"end", int(word.end)}});
+    result["captionWords"] = captionWords;
     if (!n->keyframes.empty()) {
         auto key = std::find_if(n->keyframes.begin(), n->keyframes.end(),
                                 [this](const auto &k) { return k.frame == frame_; });
@@ -428,6 +433,56 @@ void EditorController::updateSelected(QString key, QVariant value) {
         changed();
     else
         notify(q(error));
+}
+bool EditorController::setCaptionWordBoundary(int wordIndex, QString edge, int frame) {
+    const auto *node = studio::findNode(project(), selectedId_.toStdString());
+    if (!node || node->role != "caption" || node->captionWords.empty() ||
+        wordIndex < 0 || wordIndex >= int(node->captionWords.size()) ||
+        (edge != "start" && edge != "end")) {
+        notify("Selecione uma legenda alinhada e um limite de palavra válido.");
+        return false;
+    }
+
+    const auto &word = node->captionWords[std::size_t(wordIndex)];
+    std::int64_t minimum = word.start + 1;
+    std::int64_t maximum = word.end - 1;
+    if (edge == "start") {
+        minimum = wordIndex == 0 ? node->start : node->captionWords[std::size_t(wordIndex - 1)].start + 1;
+        maximum = word.end - 1;
+    } else {
+        minimum = word.start + 1;
+        maximum = wordIndex + 1 < int(node->captionWords.size())
+                      ? node->captionWords[std::size_t(wordIndex + 1)].end - 1
+                      : node->start + node->duration;
+    }
+    if (frame < minimum || frame > maximum) {
+        notify(QString("O limite precisa ficar entre os quadros %1 e %2.").arg(minimum).arg(maximum));
+        return false;
+    }
+
+    auto error = editor_.execute([&](studio::Project &p) {
+        auto caption = std::find_if(p.nodes.begin(), p.nodes.end(), [this](const auto &candidate) {
+            return q(candidate.id) == selectedId_;
+        });
+        if (caption == p.nodes.end())
+            return;
+        auto &words = caption->captionWords;
+        if (edge == "start") {
+            words[std::size_t(wordIndex)].start = frame;
+            if (wordIndex > 0)
+                words[std::size_t(wordIndex - 1)].end = frame;
+        } else {
+            words[std::size_t(wordIndex)].end = frame;
+            if (wordIndex + 1 < int(words.size()))
+                words[std::size_t(wordIndex + 1)].start = frame;
+        }
+    });
+    if (!error.empty()) {
+        notify(q(error));
+        return false;
+    }
+    changed();
+    return true;
 }
 void EditorController::moveSelected(double x, double y) {
     auto n = studio::findNode(project(), selectedId_.toStdString());

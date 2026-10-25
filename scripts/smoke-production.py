@@ -227,12 +227,17 @@ director_comparison = run([ffmpeg, "-hide_banner", "-i", output / "director-refe
 director_psnr = re.search(r"average:([0-9.]+|inf)", director_comparison.stderr)
 assert director_psnr and float(director_psnr.group(1)) > 30, "90-second shot/beat frames differ from the preview"
 director_ui = run([bin_dir / "studio_dark.exe", "--smoke", output / "interface-director-90s",
-                   "--project", director_project_path, "--frame", 1350], timeout=30)
+                   "--project", director_project_path, "--frame", 1350, "--select",
+                   next(node["id"] for node in director_project["nodes"]
+                        if node.get("role") == "caption" and node.get("captionWords"))], timeout=30)
 (folder / "directors-cut-90s-desktop.log").write_text(director_ui.stderr, encoding="utf-8")
 for marker in ("failed to load", "ReferenceError", "TypeError", "Cannot assign", "Binding loop"):
     assert marker not in director_ui.stderr, director_ui.stderr
 director_runtime = json.loads((output / "interface-director-90s/runtime.json").read_text(encoding="utf-8"))
 assert director_runtime["page"] == "editor" and director_runtime["hasAudio"]
+assert director_runtime["selectedCaptionWordCount"] > 0, director_runtime
+assert (director_runtime["captionTimingControlsVisible"] and
+        director_runtime["captionTimingControlCount"] == director_runtime["selectedCaptionWordCount"]), director_runtime
 
 # Trim, playback speed and source crop use the same FFmpeg composition for preview and export.
 video_source = folder / "video-controls-source.mp4"
@@ -276,7 +281,7 @@ summary.update({"director90Frames": director_project["duration"], "director90Sho
 summary["checks"].extend(["90-second 2700-frame director cut", "18 independent shots and 20 Visual Beats",
                           "word-synchronized one-shot audio effect through editable track",
                           "word-aligned scene timing", "director preview/export comparison",
-                          "90-second project opens in editor"])
+                          "90-second project opens in editor", "word timing controls open for a generated caption"])
 summary["videoControlsPreviewExportPsnrDb"] = float(video_controls_psnr.group(1))
 summary["checks"].append("video source trim, speed and normalized crop match between preview and MP4")
 (folder / "verification.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
