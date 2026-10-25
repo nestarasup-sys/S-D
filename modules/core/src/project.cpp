@@ -30,7 +30,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) {
-    if (p.schemaVersion != 2 && p.schemaVersion != 3 && p.schemaVersion != 4 && p.schemaVersion != 5)
+    if (p.schemaVersion < 2 || p.schemaVersion > 6)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -57,6 +57,10 @@ std::string validate(const Project &p) {
     if (p.schemaVersion < 5 && std::any_of(p.nodes.begin(), p.nodes.end(),
                                            [](const auto &node) { return node.kind == NodeKind::Video; }))
         return "Camadas de vídeo exigem a versão 5 do projeto.";
+    if (p.schemaVersion < 6 && std::any_of(p.audioTracks.begin(), p.audioTracks.end(), [](const auto &track) {
+            return track.fadeInFrames != 0 || track.fadeOutFrames != 0;
+        }))
+        return "Fades de pista de áudio exigem a versão 6 do projeto.";
     std::unordered_set<std::string> ids;
     std::unordered_set<std::string> parentIds;
     std::unordered_set<std::string> sceneIds;
@@ -262,6 +266,9 @@ std::string validate(const Project &p) {
         if (track.id.empty() || !audioTrackIds.insert(track.id).second || track.name.empty() ||
             track.name.size() > 120 || track.source.empty() || track.source.size() > 4096 || track.start < 0 ||
             track.duration < 1 || track.start >= p.duration || track.duration > p.duration - track.start ||
+            track.fadeInFrames < 0 || track.fadeOutFrames < 0 ||
+            track.fadeInFrames + track.fadeOutFrames > track.duration || track.fadeInFrames > 1800 ||
+            track.fadeOutFrames > 1800 ||
             !std::isfinite(track.gain) || track.gain < 0 || track.gain > 4 ||
             !std::isfinite(track.duckAmount) || track.duckAmount < 0 || track.duckAmount > 1)
             return "Pista de áudio inválida ou fora dos limites.";

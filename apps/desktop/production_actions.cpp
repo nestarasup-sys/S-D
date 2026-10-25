@@ -130,7 +130,9 @@ QVariantList EditorController::audioTracks() const {
                                 {"gain", track.gain},
                                 {"muted", track.muted},
                                 {"duckUnderVoice", track.duckUnderVoice},
-                                {"duckAmount", track.duckAmount}});
+                                {"duckAmount", track.duckAmount},
+                                {"fadeInFrames", int(track.fadeInFrames)},
+                                {"fadeOutFrames", int(track.fadeOutFrames)}});
     return list;
 }
 void EditorController::addAudioTrack(QUrl source) {
@@ -155,7 +157,7 @@ void EditorController::addAudioTrack(QUrl source) {
     track.duration = duration() - frame_;
     track.duckUnderVoice = hasMainAudio();
     const auto error = editor_.execute([&](studio::Project &p) {
-        p.schemaVersion = 4;
+        p.schemaVersion = std::max(p.schemaVersion, 4);
         p.audioTracks.push_back(track);
     });
     if (!error.empty()) {
@@ -239,6 +241,12 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
             if (track.id == id.toStdString()) {
                 track.start = start;
                 track.duration = length;
+                if (track.fadeInFrames + track.fadeOutFrames > length)
+                    track.fadeOutFrames = std::max<std::int64_t>(0, length - track.fadeInFrames);
+                if (track.fadeInFrames > length) {
+                    track.fadeInFrames = length;
+                    track.fadeOutFrames = 0;
+                }
             }
     });
     if (!error.empty()) {
@@ -246,6 +254,31 @@ void EditorController::setAudioTrackTiming(QString id, int start, int length) {
         return;
     }
     refreshAudioTracks();
+    changed();
+}
+void EditorController::setAudioTrackFades(QString id, int fadeInFrames, int fadeOutFrames) {
+    const auto found = std::find_if(project().audioTracks.begin(), project().audioTracks.end(),
+                                    [&](const auto &track) { return track.id == id.toStdString(); });
+    if (found == project().audioTracks.end())
+        return;
+    if (fadeInFrames < 0 || fadeOutFrames < 0 || fadeInFrames + fadeOutFrames > found->duration ||
+        fadeInFrames > 1800 || fadeOutFrames > 1800) {
+        notify("Os fades precisam caber na duração da pista e ter no máximo 60 segundos.");
+        return;
+    }
+    const auto error = editor_.execute([&](studio::Project &p) {
+        for (auto &track : p.audioTracks)
+            if (track.id == id.toStdString()) {
+                track.fadeInFrames = fadeInFrames;
+                track.fadeOutFrames = fadeOutFrames;
+            }
+        if (fadeInFrames > 0 || fadeOutFrames > 0)
+            p.schemaVersion = 6;
+    });
+    if (!error.empty()) {
+        notify(QString::fromStdString(error));
+        return;
+    }
     changed();
 }
 void EditorController::setupProduction() {

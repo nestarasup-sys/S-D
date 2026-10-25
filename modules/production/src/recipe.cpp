@@ -905,7 +905,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         return fail("Pista de áudio inválida.");
                     const auto trackObject = trackValue.toObject();
                     if (!allowed(trackObject, {"id", "name", "source", "start", "gain", "duckUnderVoice",
-                                               "duckAmount"}) ||
+                                               "duckAmount", "fadeInFrames", "fadeOutFrames"}) ||
                         !trackObject["id"].isString() || !trackObject["source"].isString() ||
                         !trackObject["start"].isObject() ||
                         (trackObject.contains("name") && !trackObject["name"].isString()) ||
@@ -930,10 +930,23 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     track.gain = trackObject["gain"].toDouble(1);
                     track.duckUnderVoice = trackObject["duckUnderVoice"].toBool(false);
                     track.duckAmount = trackObject["duckAmount"].toDouble(.65);
+                    track.fadeInFrames = trackObject["fadeInFrames"].toInt(0);
+                    track.fadeOutFrames = trackObject["fadeOutFrames"].toInt(0);
                     if ((trackObject.contains("gain") && !trackObject["gain"].isDouble()) ||
                         (trackObject.contains("duckAmount") && !trackObject["duckAmount"].isDouble()) ||
+                        (trackObject.contains("fadeInFrames") &&
+                         (!trackObject["fadeInFrames"].isDouble() ||
+                          std::floor(trackObject["fadeInFrames"].toDouble()) !=
+                              trackObject["fadeInFrames"].toDouble())) ||
+                        (trackObject.contains("fadeOutFrames") &&
+                         (!trackObject["fadeOutFrames"].isDouble() ||
+                          std::floor(trackObject["fadeOutFrames"].toDouble()) !=
+                              trackObject["fadeOutFrames"].toDouble())) ||
                         track.gain < 0 || track.gain > 4 || track.duckAmount < 0 || track.duckAmount > 1)
                         return fail("Ganho aceita 0–4 e duckAmount 0–1.");
+                    if (track.fadeInFrames < 0 || track.fadeOutFrames < 0 || track.fadeInFrames > 1800 ||
+                        track.fadeOutFrames > 1800)
+                        return fail("Fades de pista devem ser inteiros entre 0 e 1800 quadros.");
                     scene.audioTracks.push_back(std::move(track));
                 }
             }

@@ -131,8 +131,17 @@ int main(int argc, char **argv) {
             const auto gain = QString::number(track.gain, 'f', 6);
             const auto pre = QString("pre%1").arg(i);
             const auto out = QString("track%1").arg(i);
-            filters << QString("[%1:a:0]atrim=duration=%2,asetpts=PTS-STARTPTS,volume=%3,adelay=delays=%4|%4:all=1[%5]")
-                           .arg(input).arg(seconds(length), gain).arg(delay).arg(pre);
+            QString trackFilter = "[" + QString::number(input) + ":a:0]atrim=duration=" +
+                                  seconds(length) + ",asetpts=PTS-STARTPTS";
+            if (track.fadeInFrames > 0)
+                trackFilter += ",afade=t=in:st=0:d=" + seconds(double(track.fadeInFrames) / p.fps.value());
+            if (track.fadeOutFrames > 0)
+                trackFilter += ",afade=t=out:st=" +
+                               seconds(length - double(track.fadeOutFrames) / p.fps.value()) +
+                               ":d=" + seconds(double(track.fadeOutFrames) / p.fps.value());
+            trackFilter += ",volume=" + gain + ",adelay=delays=" + QString::number(delay) + "|" +
+                           QString::number(delay) + ":all=1[" + pre + "]";
+            filters << trackFilter;
             if (track.duckUnderVoice && needsSidechain) {
                 const auto ratio = QString::number(1.0 + track.duckAmount * 19.0, 'f', 4);
                 filters << QString("[%1][sidechain]sidechaincompress=threshold=0.025:ratio=%2:attack=20:release=280[%3]")

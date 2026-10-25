@@ -58,6 +58,7 @@ struct DirectedAudioTrack {
     DirectedTime start;
     double gain{1}, duckAmount{0.65};
     bool duckUnderVoice{false};
+    int fadeInFrames{0}, fadeOutFrames{0};
 };
 struct DirectedShot {
     QString id, name, transitionIn{"cut"};

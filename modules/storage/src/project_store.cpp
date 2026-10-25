@@ -157,7 +157,9 @@ QByteArray serialize(const Project &p) {
                                        {"gain", track.gain},
                                        {"muted", track.muted},
                                        {"duckUnderVoice", track.duckUnderVoice},
-                                       {"duckAmount", track.duckAmount}});
+                                       {"duckAmount", track.duckAmount},
+                                       {"fadeInFrames", double(track.fadeInFrames)},
+                                       {"fadeOutFrames", double(track.fadeOutFrames)}});
     QJsonObject document{
         {"format", "studio-dark"},
         {"schemaVersion", p.schemaVersion},
@@ -193,7 +195,7 @@ LoadResult deserialize(const QByteArray &bytes) {
     auto o = document.object();
     if (o["format"] != "studio-dark" || (o["schemaVersion"] != 1 && o["schemaVersion"] != 2 &&
                                          o["schemaVersion"] != 3 && o["schemaVersion"] != 4 &&
-                                         o["schemaVersion"] != 5))
+                                         o["schemaVersion"] != 5 && o["schemaVersion"] != 6))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -258,6 +260,9 @@ LoadResult deserialize(const QByteArray &bytes) {
             for (const auto *field : {"start", "duration"})
                 if (!integer(track[field]))
                     return fail("Tempo da pista de áudio inválido.");
+            for (const auto *field : {"fadeInFrames", "fadeOutFrames"})
+                if (track.contains(field) && !integer(track[field]))
+                    return fail("Duração de fade da pista de áudio inválida.");
             for (const auto *field : {"gain", "duckAmount"})
                 if (!track[field].isDouble())
                     return fail("Volume de pista de áudio inválido.");
@@ -268,7 +273,8 @@ LoadResult deserialize(const QByteArray &bytes) {
             p.audioTracks.push_back({str(track, "id"), str(track, "name"), str(track, "source"),
                                      track["start"].toInteger(), track["duration"].toInteger(),
                                      track["gain"].toDouble(), track["muted"].toBool(),
-                                     track["duckUnderVoice"].toBool(), track["duckAmount"].toDouble(.65)});
+                                     track["duckUnderVoice"].toBool(), track["duckAmount"].toDouble(.65),
+                                     track["fadeInFrames"].toInteger(), track["fadeOutFrames"].toInteger()});
         }
     }
     if (o.contains("scenes") && !o["scenes"].isArray())

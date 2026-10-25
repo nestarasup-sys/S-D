@@ -316,7 +316,10 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             p.audioTracks.push_back({directedTrack.id.toStdString(), directedTrack.name.toStdString(),
                                      directedTrack.source.toStdString(), trackStart, sceneEnd - trackStart,
                                      directedTrack.gain, false, directedTrack.duckUnderVoice,
-                                     directedTrack.duckAmount});
+                                     directedTrack.duckAmount, directedTrack.fadeInFrames,
+                                     directedTrack.fadeOutFrames});
+            if (directedTrack.fadeInFrames > 0 || directedTrack.fadeOutFrames > 0)
+                p.schemaVersion = 6;
         }
         if (!scene.background.isEmpty()) {
             Node bg;

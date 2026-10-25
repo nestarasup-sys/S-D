@@ -14,12 +14,12 @@ foreach ($StudioPair in @(
 & $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioVoice -af 'volume=0.95' -ar 24000 -ac 1 -c:a pcm_s16le $StudioMain
 if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar a mix base do teste.' }
 $StudioBase = @{
-    format = 'studio-dark'; schemaVersion = 4; id = 'audio-smoke'; name = 'Audio smoke'
+    format = 'studio-dark'; schemaVersion = 6; id = 'audio-smoke'; name = 'Audio smoke'
     width = 640; height = 360; fps = @{ numerator = 30; denominator = 1 }; duration = 60
     nodes = @(); scenes = @(); shots = @(); visualBeats = @(); camera = @()
     audioSource = $StudioMain; artDirection = @{}
     voiceDuckingSource = $StudioVoice
-    audioTracks = @(@{ id = 'bed'; name = 'Music bed'; source = $StudioBed; start = 0; duration = 60; gain = 0.8; muted = $false; duckUnderVoice = $true; duckAmount = 0.85 })
+    audioTracks = @(@{ id = 'bed'; name = 'Music bed'; source = $StudioBed; start = 0; duration = 60; gain = 0.8; muted = $false; duckUnderVoice = $true; duckAmount = 0.85; fadeInFrames = 0; fadeOutFrames = 0 })
 }
 $StudioOutputs = @()
 foreach ($StudioDuck in @($false, $true)) {
@@ -52,8 +52,27 @@ $StudioPlainTail = Get-StudioRms $StudioOutputs[0] 1.2 1.8
 $StudioDuckedTail = Get-StudioRms $StudioOutputs[1] 1.2 1.8
 if ($StudioDuckedActive -ge $StudioPlainActive * 0.92) { throw 'Ducking não reduziu a trilha durante o áudio principal.' }
 if ([Math]::Abs($StudioDuckedTail - $StudioPlainTail) -gt 0.025) { throw 'A trilha não retornou ao volume após o áudio principal.' }
+$StudioBase.audioSource = ''
+$StudioBase.voiceDuckingSource = ''
+$StudioBase.audioTracks[0].duckUnderVoice = $false
+$StudioBase.audioTracks[0].fadeInFrames = 15
+$StudioBase.audioTracks[0].fadeOutFrames = 15
+$StudioFadeProject = Join-Path $StudioSmokeDir 'project-fades.json'
+$StudioFadeMovie = Join-Path $StudioSmokeDir 'mix-fades.mp4'
+$StudioFadeWave = Join-Path $StudioSmokeDir 'mix-fades.wav'
+[System.IO.File]::WriteAllText($StudioFadeProject, ($StudioBase | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+$StudioFadeLog = & (Join-Path $StudioBin 'studio_render.exe') --project $StudioFadeProject --output $StudioFadeMovie --ffmpeg $StudioEncoder 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Exportação com fades falhou: $($StudioFadeLog -join "`n")" }
+& $StudioEncoder -nostdin -y -hide_banner -loglevel error -i $StudioFadeMovie -vn -ar 24000 -ac 1 -c:a pcm_s16le $StudioFadeWave
+if ($LASTEXITCODE -ne 0) { throw 'Não foi possível decodificar o áudio com fades.' }
+$StudioFadeStart = Get-StudioRms $StudioFadeWave 0.05 0.15
+$StudioFadeMiddle = Get-StudioRms $StudioFadeWave 0.8 1.2
+$StudioFadeEnd = Get-StudioRms $StudioFadeWave 1.85 1.95
+if ($StudioFadeStart -ge $StudioFadeMiddle * 0.6 -or $StudioFadeEnd -ge $StudioFadeMiddle * 0.6) { throw 'Fade de entrada/saída não reduziu o volume nos extremos da pista.' }
 [pscustomobject]@{
     status = 'passed'; artifacts = $StudioSmokeDir
     plainActiveRms = [Math]::Round($StudioPlainActive, 4); duckedActiveRms = [Math]::Round($StudioDuckedActive, 4)
     plainTailRms = [Math]::Round($StudioPlainTail, 4); duckedTailRms = [Math]::Round($StudioDuckedTail, 4)
+    fadeStartRms = [Math]::Round($StudioFadeStart, 4); fadeMiddleRms = [Math]::Round($StudioFadeMiddle, 4)
+    fadeEndRms = [Math]::Round($StudioFadeEnd, 4)
 } | ConvertTo-Json

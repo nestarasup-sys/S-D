@@ -170,6 +170,7 @@
         "word-aligned-elements-keyframes",
         "multi-track-audio",
         "voice-sidechain-ducking",
+        "audio-track-fades",
         "video-layer-broll"
     ],
     "productionVersion": 3,
@@ -181,9 +182,10 @@
         "shot-ownership",
         "visual-beat-markers",
         "audio-tracks",
-        "video-layers"
+        "video-layers",
+        "audio-track-fades"
     ],
-    "projectVersion": 5,
+    "projectVersion": 6,
     "shotTransitionTypes": [
         "cut",
         "fade",

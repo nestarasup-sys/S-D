@@ -197,6 +197,8 @@ int main(int argc, char **argv) {
                                                             {"source", "music-track.wav"},
                                                             {"start", QJsonObject{{"cue", 0}, {"progress", 0.1}}},
                                                             {"gain", 0.4},
+                                                            {"fadeInFrames", 2},
+                                                            {"fadeOutFrames", 3},
                                                             {"duckUnderVoice", true},
                                                             {"duckAmount", 0.8}}};
         auto styledShots = styledScene["shots"].toArray();
@@ -220,7 +222,9 @@ int main(int argc, char **argv) {
                       "#fff3d6" &&
                   styledRecipe.recipe.scenes.front().shots.front().elements.front().node.color == "#b4f078" &&
                   styledRecipe.recipe.scenes.front().audioTracks.size() == 1 &&
-                  styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice,
+                  styledRecipe.recipe.scenes.front().audioTracks.front().duckUnderVoice &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().fadeInFrames == 2 &&
+                  styledRecipe.recipe.scenes.front().audioTracks.front().fadeOutFrames == 3,
               "v3 parses global art direction and independent, voice-ducked audio tracks");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
@@ -336,11 +340,14 @@ int main(int argc, char **argv) {
         const auto styledAudio =
             studio::compileProduction(styledRecipe.recipe, shotAudio, "styled-shots.wav", nullptr, nullptr,
                                       "voice-stem.wav");
-        check(styledAudio.error.isEmpty() && styledAudio.project.artDirection.backgroundColor == "#101820" &&
+        check(styledAudio.error.isEmpty() && styledAudio.project.schemaVersion == 6 &&
+                  styledAudio.project.artDirection.backgroundColor == "#101820" &&
                   studio::findNode(styledAudio.project, "caption-car-story-u1")->y == 40 &&
                   studio::findNode(styledAudio.project, "car-shape")->color == "#b4f078" &&
                   styledAudio.project.audioTracks.size() == 1 &&
                   styledAudio.project.audioTracks.front().duckUnderVoice &&
+                  styledAudio.project.audioTracks.front().fadeInFrames == 2 &&
+                  styledAudio.project.audioTracks.front().fadeOutFrames == 3 &&
                   styledAudio.project.audioTracks.front().gain == .4 &&
                   styledAudio.project.voiceDuckingSource == "voice-stem.wav",
               "global art direction and audio track settings reach the compiled project");

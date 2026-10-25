@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 6;
+        malformed["schemaVersion"] = 7;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -105,6 +105,18 @@ int main(int argc, char **argv) {
                   persistedShots.project.audioTracks.front().gain == .45 &&
                   persistedShots.project.voiceDuckingSource == "C:/media/voice-stem.wav",
               "shots, beats and independent audio tracks survive schema 4 roundtrip");
+        auto fadedProject = shotProject;
+        fadedProject.schemaVersion = 6;
+        fadedProject.audioTracks.front().fadeInFrames = 12;
+        fadedProject.audioTracks.front().fadeOutFrames = 18;
+        const auto persistedFades = studio::deserialize(studio::serialize(fadedProject));
+        check(studio::validate(fadedProject).empty() && persistedFades.error.isEmpty() &&
+                  persistedFades.project.audioTracks.front().fadeInFrames == 12 &&
+                  persistedFades.project.audioTracks.front().fadeOutFrames == 18,
+              "audio track fades survive schema 6 roundtrip");
+        auto overlappingFades = fadedProject;
+        overlappingFades.audioTracks.front().fadeOutFrames = 109;
+        check(!studio::validate(overlappingFades).empty(), "audio fades cannot exceed the track duration");
         auto noVoiceDucking = shotProject;
         noVoiceDucking.audioSource.clear();
         noVoiceDucking.voiceDuckingSource.clear();

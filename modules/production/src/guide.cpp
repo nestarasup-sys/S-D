@@ -23,7 +23,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 5},
+            {"projectVersion", 6},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -34,11 +34,11 @@ QJsonObject capabilities() {
                         "continuous-shot-focus-follow", "intensity-driven-default-motion",
                         "global-art-direction", "word-aligned-visual-beats", "word-aligned-elements-keyframes",
                         "multi-track-audio",
-                        "voice-sidechain-ducking", "video-layer-broll"}},
+                        "voice-sidechain-ducking", "audio-track-fades", "video-layer-broll"}},
             {"projectCapabilities",
              QJsonArray{"group-hierarchy", "transform-keyframes-linear", "camera-2d-keyframes",
                         "keyframe-easing-curves", "shot-ownership", "visual-beat-markers", "audio-tracks",
-                        "video-layers"}},
+                        "video-layers", "audio-track-fades"}},
             {"width", 1280},
             {"height", 720},
             {"fps", 30},
@@ -63,7 +63,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 5 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 6 · Native Lab 0.4
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -171,7 +171,7 @@ Para sincronizar com fala ajustada, use `{"cue":0,"cueProgress":0.5}` no element
 
 Uma cena narrativa pode conter vários shots sem repetir nem interromper a narração. A versão 3 aceita as configurações globais da v2 e substitui `elements` e `camera` da cena por `shots`. Cada cena v3 exige de 1 a 64 shots; a produção aceita até 256 shots e 4096 Visual Beats. O primeiro shot começa junto ao início da cena. O início do shot seguinte encerra o anterior; o último termina com a cena. Assim, os planos cobrem a cena sem lacunas ou sobreposições.
 
-Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como sidechain e reduz a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource` como referência. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking e remover. O preview toca as pistas sincronizadas; o sidechain é aplicado na exportação.
+Cada cena v3 também pode declarar `audioTracks` (até 32 no projeto). Uma pista usa `id`, `source` (arquivo de áudio local relativo ao JSON ou absoluto), `start` (a mesma referência a cue/progresso/wordIndex), `gain` (0–4), `duckUnderVoice` e `duckAmount` (0–1). `name` é opcional. `fadeInFrames` e `fadeOutFrames` são opcionais (0–1800) e aplicam fades lineares ao começo/fim da pista; a soma deve caber no intervalo disponível. A pista começa no ponto indicado e segue até o fim da cena. `duckUnderVoice:true` usa o WAV de voz isolado como sidechain e reduz a pista durante a fala; ao editar um projeto sem stem de voz, usa `audioSource` como referência. Pistas ficam editáveis no projeto, e a timeline permite importar arquivo, alterar ganho, ligar ducking, configurar fades e remover. A prévia acompanha os fades e o sidechain é aplicado na exportação.
 
 Cada shot exige `id`, `start`, `camera` e `elements`; `name` e `transitionIn` são opcionais. IDs são únicos em toda a receita. `start` usa `cue` e um único campo entre `cueProgress` (0–1), `progress` (alias compatível), `offsetSeconds` (0–10) ou `wordIndex` (índice da palavra, começando em zero). `wordIndex` usa os eventos de progresso emitidos pela voz Windows pt-BR e não pode ser combinado com outros deslocamentos. O tempo é resolvido sobre o áudio medido. `transitionIn` pode ser a string legada `cut` ou um objeto de transição. O primeiro shot da cena sempre começa sem transição. Transições sobrepõem visualmente o último quadro do shot anterior e o novo shot, sem alterar a duração da narração nem o tempo total da cena.
 
@@ -187,7 +187,7 @@ Elementos declarados dentro do shot pertencem apenas a ele e viram faixas visuai
 
 `artDirection` é opcional na raiz da receita v3 e define o estilo global: `backgroundColor`, `glowColor`, `primaryColor`, `secondaryColor`, `textColor`, `cardColor` e `captionBackgroundColor` usam `#RRGGBB`; `fontFamily` aceita nome de fonte instalado (até 120 caracteres); `titleSize` e `bodySize` aceitam 8–160 px; `captionSize` aceita 8–120 px; `captionPosition` aceita `top` ou `bottom`; `safeMargin` aceita 0–300 px. Cores/tamanho/fonte são aplicados como defaults a objetos e texto, e elementos com `color`, `secondaryColor` ou `fontSize` explícitos mantêm sua direção individual. A direção também estiliza fundo, títulos gerados e legendas. Arquivos de fonte e estilos por cena ainda não são carregados.
 
-Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera no shot ativo. A edição manual ainda não oferece transições sobrepostas.
+Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. Clique para ir ao início do plano/evento. Arraste a alça verde à esquerda de um shot para mover o corte. Os elementos, beats e keyframes de câmera do plano seguinte acompanham o corte; uma operação de arraste é desfeita em um único passo. O inspetor grava keyframes de câmera e edita transição/duração no shot ativo.
 
 Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
 
@@ -349,7 +349,7 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats e camadas de vídeo. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v4 continuam abrindo; produções com vídeo são salvas em schema 5.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, camadas de vídeo e fades de áudio. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v6 continuam abrindo; camadas de vídeo usam schema 5 e fades de pista não nulos usam schema 6.
 
 ## Checklist de limites e publicação
 

@@ -75,6 +75,7 @@ struct AudioTrack {
     double gain{1};
     bool muted{false}, duckUnderVoice{false};
     double duckAmount{0.65};
+    std::int64_t fadeInFrames{0}, fadeOutFrames{0};
 };
 struct Project {
     std::string id;

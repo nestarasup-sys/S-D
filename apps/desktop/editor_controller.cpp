@@ -1009,6 +1009,13 @@ void EditorController::syncAudioTrackPlayback(int frame) {
     for (std::size_t i = 0; i < project().audioTracks.size() && i < audioTrackPlayers_.size(); ++i) {
         const auto &track = project().audioTracks[i];
         const bool shouldPlay = !track.muted && frame >= track.start && frame < track.start + track.duration;
+        const auto localFrame = std::clamp<std::int64_t>(frame - track.start, 0, track.duration);
+        double fade = 1.0;
+        if (track.fadeInFrames > 0)
+            fade = std::min(fade, double(localFrame) / track.fadeInFrames);
+        if (track.fadeOutFrames > 0)
+            fade = std::min(fade, double(track.duration - localFrame) / track.fadeOutFrames);
+        audioTrackOutputs_[i]->setVolume(shouldPlay ? std::clamp(track.gain * .9 * fade, 0.0, 1.0) : 0);
         if (shouldPlay && !audioTrackPlaybackActive_[i]) {
             const auto offset = std::max<std::int64_t>(0, frame - track.start);
             audioTrackPlayers_[i]->setPosition(qRound64(double(offset) * 1000. / fps()));

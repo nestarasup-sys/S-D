@@ -140,6 +140,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void setAudioTrackDucking(QString id, bool enabled);
     Q_INVOKABLE void setAudioTrackMuted(QString id, bool muted);
     Q_INVOKABLE void setAudioTrackTiming(QString id, int start, int length);
+    Q_INVOKABLE void setAudioTrackFades(QString id, int fadeInFrames, int fadeOutFrames);
     Q_INVOKABLE void setSelectedKeyframeEasing(QString easing);
     Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
     Q_INVOKABLE void updateCamera(QString property, double value);

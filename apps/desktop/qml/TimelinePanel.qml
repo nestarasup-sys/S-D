@@ -187,14 +187,14 @@ Rectangle {
         ListView {
             visible: editor.audioTracks.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(96, editor.audioTracks.length * 32)
+            Layout.preferredHeight: Math.min(162, editor.audioTracks.length * 54)
             Layout.minimumHeight: Layout.preferredHeight
             Layout.maximumHeight: Layout.preferredHeight
             clip: true
             model: editor.audioTracks
             delegate: RowLayout {
                 required property var modelData
-                width: ListView.view.width; height: 30; spacing: 8
+                width: ListView.view.width; height: 52; spacing: 6
                 Label { text: modelData.name; color: "#91b4c2"; Layout.preferredWidth: 135; elide: Text.ElideRight; font.pixelSize: 10 }
                 Label { text: "in"; color: "#718d9e"; font.pixelSize: 9 }
                 SpinBox {
@@ -216,6 +216,20 @@ Rectangle {
                     ToolTip.visible: hovered; ToolTip.text: "Ganho da pista"
                 }
                 Label { text: Math.round(modelData.gain * 100) + "%"; color: "#9baebb"; Layout.preferredWidth: 40; font.pixelSize: 9 }
+                Label { text: "fade in"; color: "#718d9e"; font.pixelSize: 9 }
+                SpinBox {
+                    from: 0; to: Math.min(1800, modelData.duration); value: modelData.fadeInFrames
+                    editable: true; Layout.preferredWidth: 72
+                    onValueModified: editor.setAudioTrackFades(modelData.id, value, modelData.fadeOutFrames)
+                    ToolTip.visible: hovered; ToolTip.text: "Fade de entrada em frames"
+                }
+                Label { text: "out"; color: "#718d9e"; font.pixelSize: 9 }
+                SpinBox {
+                    from: 0; to: Math.min(1800, modelData.duration); value: modelData.fadeOutFrames
+                    editable: true; Layout.preferredWidth: 72
+                    onValueModified: editor.setAudioTrackFades(modelData.id, modelData.fadeInFrames, value)
+                    ToolTip.visible: hovered; ToolTip.text: "Fade de saída em frames"
+                }
                 CheckBox {
                     text: "duck na voz"; checked: modelData.duckUnderVoice
                     onToggled: editor.setAudioTrackDucking(modelData.id, checked)
