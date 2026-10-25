@@ -205,6 +205,25 @@ int main(int argc, char **argv) {
         check(studio::saveProject(shotPath.toLocalFile(), shotProject, {}).error.isEmpty() &&
                   c.open(shotPath),
               "open a schema 9 project with independent shots and a linked sound beat");
+        check(c.audioTracks().front().toMap()["gainEnvelope"].toList().size() == 97,
+              "audio track model exposes a sampled envelope for the timeline");
+        int audioTrackResets = 0;
+        QObject::connect(c.audioTrackModel(), &QAbstractItemModel::modelReset,
+                         [&] { ++audioTrackResets; });
+        c.beginGesture();
+        c.setAudioTrackGainPointAt("sfx-detail-chime", 10, .4, "ease-out");
+        c.setAudioTrackGainPointAt("sfx-detail-chime", 15, .9, "ease-in");
+        c.endGesture();
+        check(c.project().audioTracks.front().gainAutomation.size() == 2 &&
+                  c.project().audioTracks.front().gainAutomation[0].frame == 10 &&
+                  c.project().audioTracks.front().gainAutomation[0].easing == "ease-out" &&
+                  c.project().audioTracks.front().gainAutomation[1].frame == 15 &&
+                  audioTrackResets == 0,
+              "timeline envelope edits store sorted points without resetting the active audio row");
+        c.undo();
+        check(c.project().audioTracks.front().gainAutomation.empty(),
+              "one envelope drag gesture is one undoable edit");
+        c.redo();
         c.setFrame(80);
         c.setArtDirectionScope("scene");
         c.updateArtDirection("backgroundColor", "#112233");

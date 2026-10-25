@@ -95,6 +95,7 @@ QVariantMap map(const studio::Node &n) {
 EditorController::EditorController(QObject *parent, QString recoveryDirectory) : QObject(parent) {
     savedDocument_ = studio::serialize(project());
     nodeModel_.sync(nodes());
+    audioTrackModel_.sync(audioTracks());
     diagnosticsDirectory_ =
         (recoveryDirectory.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
                                      : recoveryDirectory) +
@@ -108,7 +109,10 @@ EditorController::EditorController(QObject *parent, QString recoveryDirectory) :
             notify("Áudio na prévia: " + text);
         }
     });
-    connect(this, &EditorController::documentChanged, this, [this] { nodeModel_.sync(nodes()); });
+    connect(this, &EditorController::documentChanged, this, [this] {
+        nodeModel_.sync(nodes());
+        audioTrackModel_.sync(audioTracks());
+    });
     auto data = recoveryDirectory.isEmpty()
                     ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
                     : recoveryDirectory;

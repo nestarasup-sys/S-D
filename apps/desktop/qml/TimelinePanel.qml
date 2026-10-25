@@ -202,16 +202,18 @@ Rectangle {
         ListView {
             visible: editor.audioTracks.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(234, editor.audioTracks.length * 78)
+            Layout.preferredHeight: Math.min(234, editor.audioTracks.length * 108)
             Layout.minimumHeight: Layout.preferredHeight
             Layout.maximumHeight: Layout.preferredHeight
             clip: true
-            model: editor.audioTracks
+            model: editor.audioTrackModel
             delegate: ColumnLayout {
+                id: audioTrackRow
                 required property var modelData
                 property real automationValue: 1
                 property string automationEasing: "linear"
-                width: ListView.view.width; height: 76; spacing: 0
+                width: ListView.view.width; height: 106; spacing: 1
+                onModelDataChanged: envelopeCanvas.requestPaint()
                 RowLayout {
                     Layout.fillWidth: true; Layout.preferredHeight: 48; spacing: 6
                 Label { text: modelData.name; color: "#91b4c2"; Layout.preferredWidth: 135; elide: Text.ElideRight; font.pixelSize: 10 }
@@ -261,10 +263,106 @@ Rectangle {
                 Item { Layout.fillWidth: true }
                 StudioButton { text: "Remover"; onClicked: editor.removeAudioTrack(modelData.id) }
                 }
+                Item {
+                    Layout.fillWidth: true; Layout.preferredHeight: 30
+                    Rectangle {
+                        id: envelopeLane
+                        x: modelData.start / editor.duration * parent.width
+                        width: Math.min(Math.max(1, parent.width - x),
+                                        Math.max(24, modelData.duration / editor.duration * parent.width))
+                        height: parent.height; radius: 3; color: "#102129"; clip: true
+                        Canvas {
+                            id: envelopeCanvas
+                            anchors.fill: parent
+                            onPaint: {
+                                const context = getContext("2d")
+                                context.clearRect(0, 0, width, height)
+                                context.strokeStyle = "#29404a"
+                                context.lineWidth = 1
+                                context.beginPath()
+                                const unityY = height - 4 - (height - 8) / 4
+                                context.moveTo(0, unityY)
+                                context.lineTo(width, unityY)
+                                context.stroke()
+                                const samples = audioTrackRow.modelData.gainEnvelope
+                                if (!samples || samples.length < 2)
+                                    return
+                                context.strokeStyle = "#82bebd"
+                                context.lineWidth = 2
+                                context.beginPath()
+                                for (let i = 0; i < samples.length; ++i) {
+                                    const px = i * width / (samples.length - 1)
+                                    const py = height - 4 - Math.max(0, Math.min(4, samples[i])) * (height - 8) / 4
+                                    if (i === 0) context.moveTo(px, py)
+                                    else context.lineTo(px, py)
+                                }
+                                context.stroke()
+                            }
+                        }
+                        Repeater {
+                            model: audioTrackRow.modelData.gainAutomation
+                            delegate: Rectangle {
+                                required property var modelData
+                                x: modelData.frame / Math.max(1, audioTrackRow.modelData.duration - 1) * (parent.width - width)
+                                y: parent.height - 4 - modelData.value * (parent.height - 8) / 4 - height / 2
+                                width: 8; height: 8; radius: 4; color: "#b4f078"
+                                border.width: 1; border.color: "#142027"
+                            }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            property int editedPointFrame: 0
+                            property string editedPointEasing: "linear"
+                            function updatePoint(mouseX, mouseY) {
+                                const value = Math.max(0, Math.min(4,
+                                    (height - 4 - mouseY) * 4 / Math.max(1, height - 8)))
+                                editor.setAudioTrackGainPointAt(audioTrackRow.modelData.id, editedPointFrame,
+                                                                 value, editedPointEasing)
+                            }
+                            onPressed: function(mouse) {
+                                let nearest = -1
+                                let nearestDistance = 12
+                                const points = audioTrackRow.modelData.gainAutomation
+                                for (let i = 0; i < points.length; ++i) {
+                                    const point = points[i]
+                                    const pointX = point.frame / Math.max(1, audioTrackRow.modelData.duration - 1) * width
+                                    const pointY = height - 4 - point.value * (height - 8) / 4
+                                    const distance = Math.hypot(mouse.x - pointX, mouse.y - pointY)
+                                    if (distance < nearestDistance) {
+                                        nearest = i
+                                        nearestDistance = distance
+                                    }
+                                }
+                                editedPointFrame = nearest >= 0 ? points[nearest].frame
+                                    : Math.max(0, Math.min(audioTrackRow.modelData.duration - 1,
+                                        Math.round(mouse.x / Math.max(1, width) * (audioTrackRow.modelData.duration - 1))))
+                                editedPointEasing = nearest >= 0 ? points[nearest].easing
+                                    : audioTrackRow.automationEasing
+                                editor.beginGesture()
+                                updatePoint(mouse.x, mouse.y)
+                            }
+                            onPositionChanged: function(mouse) {
+                                if (pressed)
+                                    updatePoint(mouse.x, mouse.y)
+                            }
+                            onReleased: editor.endGesture()
+                            onCanceled: editor.endGesture()
+                            hoverEnabled: true
+                            ToolTip.visible: containsMouse
+                            ToolTip.text: "Clique para criar um ponto ou arraste um ponto para ajustar tempo e ganho · escala ×0–×4"
+                        }
+                    }
+                    Label {
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        leftPadding: 5; text: "Envelope ×0–×4"; color: "#78919d"; font.pixelSize: 8
+                        visible: envelopeLane.width < 80
+                    }
+                }
                 RowLayout {
                     Layout.fillWidth: true; Layout.preferredHeight: 28; spacing: 8
                     Label {
-                        text: "Automação · " + modelData.gainAutomation.length + " pontos"
+                        text: "Envelope · " + modelData.gainAutomation.length + " pontos"
                         color: "#82bebd"; font.pixelSize: 9; Layout.preferredWidth: 135
                     }
                     Slider {

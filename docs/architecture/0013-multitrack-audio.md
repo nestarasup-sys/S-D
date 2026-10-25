@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementada parcialmente em projetos schema 4–10, receita v3, editor e exportador. Efeitos disparados por Visual Beat são especificados na [ADR 0015](0015-visual-beat-sound-effects.md).
+Implementada em projetos schema 4–10, receita v3, editor e exportador, com edição gráfica do envelope na timeline (ADR 0019). Efeitos disparados por Visual Beat são especificados na [ADR 0015](0015-visual-beat-sound-effects.md).
 
 ## Decisão
 
@@ -19,6 +19,6 @@ Implementada parcialmente em projetos schema 4–10, receita v3, editor e export
 ## Limitações
 
 - Referências que não sejam WAV PCM mono a 24 kHz usam o sidechain nativo do FFmpeg na exportação; a prévia só calcula RMS em WAV compatível. Converta a voz para WAV PCM mono a 24 kHz para obter a mesma envoltória nos dois caminhos.
-- Modo de looping e desenho gráfico livre dos envelopes continuam pendentes; os pontos são editados no playhead e ajustados pela lista da pista.
+- Modo de looping continua pendente. A edição gráfica direta de pontos do envelope foi implementada na timeline e está detalhada na [ADR 0019](0019-graphical-audio-envelopes.md).
 - Cada faixa começa no início da própria fonte; não há trim-offset de entrada nem waveform individual ainda.
 - Fontes são locais; não há busca ou download remoto de música.

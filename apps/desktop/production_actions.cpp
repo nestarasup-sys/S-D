@@ -126,6 +126,12 @@ QVariantList EditorController::audioTracks() const {
         for (const auto &point : track.gainAutomation)
             automation.append(QVariantMap{{"frame", int(point.frame)}, {"value", point.value},
                                           {"easing", QString::fromStdString(point.easing)}});
+        QVariantList envelope;
+        constexpr int envelopeSamples = 96;
+        for (int sample = 0; sample <= envelopeSamples; ++sample) {
+            const auto frame = qRound64(double(track.duration - 1) * sample / envelopeSamples);
+            envelope.append(studio::evaluateGainAutomation(track, frame));
+        }
         list.append(QVariantMap{{"id", QString::fromStdString(track.id)},
                                 {"name", QString::fromStdString(track.name)},
                                 {"source", QFileInfo(QString::fromStdString(track.source)).fileName()},
@@ -137,6 +143,7 @@ QVariantList EditorController::audioTracks() const {
                                 {"duckAmount", track.duckAmount},
                                 {"fadeInFrames", int(track.fadeInFrames)},
                                 {"fadeOutFrames", int(track.fadeOutFrames)},
+                                {"gainEnvelope", envelope},
                                 {"gainAutomation", automation}});
     }
     return list;
@@ -304,13 +311,27 @@ void EditorController::setAudioTrackGainPoint(QString id, double value, QString 
     if (found == project().audioTracks.end())
         return;
     const auto localFrame = std::int64_t(frame_) - found->start;
-    if (localFrame < 0 || localFrame >= found->duration || !std::isfinite(value) || value < 0 || value > 4 ||
-        !studio::supportedEasing(easing.toStdString())) {
+    if (localFrame < 0 || localFrame >= found->duration) {
         notify("Posicione o playhead dentro da pista e use um nível de 0 a 4 e uma curva válida.");
+        return;
+    }
+    setAudioTrackGainPointAt(std::move(id), int(localFrame), value, std::move(easing));
+}
+void EditorController::setAudioTrackGainPointAt(QString id, int requestedFrame, double value, QString easing) {
+    const auto found = std::find_if(project().audioTracks.begin(), project().audioTracks.end(),
+                                    [&](const auto &track) { return track.id == id.toStdString(); });
+    if (found == project().audioTracks.end())
+        return;
+    const auto localFrame = std::clamp<std::int64_t>(requestedFrame, 0, found->duration - 1);
+    if (!std::isfinite(value) || value < 0 || value > 4 || !studio::supportedEasing(easing.toStdString())) {
+        notify("Use um nível de 0 a 4 e uma curva válida para o envelope.");
         return;
     }
     const auto existingPoint = std::find_if(found->gainAutomation.begin(), found->gainAutomation.end(),
                                              [&](const auto &point) { return point.frame == localFrame; });
+    if (existingPoint != found->gainAutomation.end() && existingPoint->value == value &&
+        existingPoint->easing == easing.toStdString())
+        return;
     if (found->gainAutomation.size() >= 128 && existingPoint == found->gainAutomation.end()) {
         notify("Cada pista aceita até 128 pontos de automação.");
         return;

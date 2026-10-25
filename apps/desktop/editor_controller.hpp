@@ -18,6 +18,7 @@
 class EditorController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QAbstractItemModel *nodes READ nodeModel CONSTANT)
+    Q_PROPERTY(QAbstractItemModel *audioTrackModel READ audioTrackModel CONSTANT)
     Q_PROPERTY(QVariantMap selected READ selected NOTIFY selectedChanged)
     Q_PROPERTY(QVariantMap camera READ camera NOTIFY cameraChanged)
     Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY artDirectionChanged)
@@ -84,6 +85,9 @@ class EditorController : public QObject {
     }
     QAbstractItemModel *nodeModel() {
         return &nodeModel_;
+    }
+    QAbstractItemModel *audioTrackModel() {
+        return &audioTrackModel_;
     }
     QVariantMap selected() const;
     QVariantMap camera() const;
@@ -156,6 +160,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void setAudioTrackTiming(QString id, int start, int length);
     Q_INVOKABLE void setAudioTrackFades(QString id, int fadeInFrames, int fadeOutFrames);
     Q_INVOKABLE void setAudioTrackGainPoint(QString id, double value, QString easing);
+    Q_INVOKABLE void setAudioTrackGainPointAt(QString id, int localFrame, double value, QString easing);
     Q_INVOKABLE void clearAudioTrackGainAutomation(QString id);
     Q_INVOKABLE void setSelectedKeyframeEasing(QString easing);
     Q_INVOKABLE void setCameraKeyframeEasing(QString easing);
@@ -230,7 +235,7 @@ class EditorController : public QObject {
     int frame_{60}, playStart_{0}, exportProgress_{0};
     bool playing_{false}, autosaveEnabled_{false};
     QProcess render_;
-    NodeListModel nodeModel_{this};
+    NodeListModel nodeModel_{this}, audioTrackModel_{this};
     QMediaPlayer audioPlayer_;
     QAudioOutput audioOutput_;
     std::vector<std::unique_ptr<QMediaPlayer>> audioTrackPlayers_;

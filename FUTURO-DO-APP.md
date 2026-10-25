@@ -2,7 +2,7 @@
 
 Data: 24/10/2026. Referência analisada: **Gravação de Tela 2026-10-24 170027.mp4**, enviada pelo usuário.
 
-**Estado deste documento: plano vivo de produto e implementação.** O panorama abaixo separa o que já existe no código do que continua planejado. Atualizado em 24/10/2026 após as entregas de grupos/câmera e receita de produção v2.
+**Estado deste documento: visão de produto com snapshot histórico.** O andamento de implementação é mantido em [`docs/NOVAS FUNCIONALIDADES.md`](docs/NOVAS%20FUNCIONALIDADES.md), que é a referência atual para o que já existe e o que continua pendente. Atualizado em 25/10/2026 para registrar a seleção múltipla na timeline.
 
 ## Resumo executivo
 
@@ -22,13 +22,13 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 ### Em andamento
 
 - Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
-- Etapa 1: composição livre e presets agrupados já estão no código; o editor ainda agrupa um elemento por vez e não tem multi seleção.
+- Etapa 1: composição livre, presets agrupados e seleção múltipla/movimento conjunto na timeline já estão no código; o editor ainda agrupa um elemento por vez e não tem componentes vinculados.
 - Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
 - Etapa 5 (IA externa): guia, receitas v2, duração-alvo por quadro e referência proporcional à fala estão implementados em código; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
 
 ### Falta
 
-- Multi seleção, componentes vinculados com propriedades expostas e kits de identidade.
+- Componentes vinculados com propriedades expostas e kits de identidade.
 - Conectores/âncoras, trajetórias e editor de curvas Bézier personalizadas (easing básico já implementado).
 - Vídeo como camada, documentos/PDF com regiões destacáveis, dados com fonte/unidade e pistas de áudio editáveis.
 - Pacote de dependências portátil, kits visuais e otimização/benchmark de produção longa.
@@ -36,7 +36,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 ### Próximos cortes
 
 1. Fechar a etapa 0 com benchmark comparativo e decisão documentada de renderização.
-2. Verificar os presets agrupados em produção real e então avançar para multi seleção e componentes.
+2. Verificar os presets agrupados em produção real e então avançar para componentes vinculados.
 3. Adicionar conectores ancorados e transições de câmera; validar no piloto visual.
 4. Só então expandir para documentos e vídeo, que exigem estratégia de decode, seek e empacotamento de mídia.
 
@@ -340,7 +340,7 @@ Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora 
 | Etapa | Estado | Entrega concreta | Critério de passagem |
 | --- | --- | --- |
 | 0 — Prova da fundação | Parcial | Modelo de grupos, câmera e animação existe; falta comparação de renderizadores com cena de teste e métricas. | Composição salva/reaberta, enquadramentos reproduzíveis, medições registradas e caminho escolhido. |
-| 1 — Composição livre | Parcial | Grupos, keyframes, receita v2 e presets compostos existem; faltam âncoras, multi seleção e componentes parametrizados. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
+| 1 — Composição livre | Parcial | Grupos, keyframes, receita v2, presets compostos e seleção múltipla de timeline existem; faltam âncoras e componentes parametrizados. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
 | 2 — Câmera e conexões | Parcial | Pan/zoom/rotação explícitos existem; faltam alvo, transições e conectores acompanhando objetos. | Mostrar detalhe e quadro completo sem perder relações ou identidade. |
 | 3 — Documentos e vídeo | Não iniciado | Vídeo com trecho de origem; páginas, crop, máscara e regiões destacadas. | Palestra em cartão e aproximação de frase funcionam na prévia e no MP4. |
 | 4 — Dados e som | Não iniciado | Gráficos com valores/unidades, contadores, linha do tempo e pistas de áudio. | Valores consistentes, fontes relacionadas e mix ajustável. |
@@ -395,7 +395,7 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 
 ### Limites atuais / trabalho restante
 
-- O editor agrupa um elemento por vez; multi seleção e componentes vinculados ainda faltam. Presets de grupos com keyframes já são suportados.
+- O editor agrupa um elemento por vez; componentes vinculados ainda faltam. A timeline permite selecionar vários clipes e movê-los juntos; veja a ADR 0018. Presets de grupos com keyframes já são suportados.
 - `kind: library` aceita mídia, presets simples e grupos animados; o JSON continua dependente do catálogo local e não empacota mídia.
 - `timingMode: fit-to-duration` aloca frames fixos por cena e fala depois do TTS, com `cueProgress` e filtro do FFmpeg. Só acelera até 15%, preserva o tom e adiciona pausas; alvo inviável é rejeitado.
 - Benchmark entre renderizadores, curvas Bézier personalizadas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
