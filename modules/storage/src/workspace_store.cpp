@@ -4,17 +4,21 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
 #include <QMap>
 #include <QSaveFile>
 #include <QRegularExpression>
+#include <QResource>
 #include <QSet>
 #include <QUuid>
 #include <studio/core/library.hpp>
 #include <studio/storage/project_store.hpp>
 #include <studio/storage/workspace_store.hpp>
+
+static void initializePremiumManifestResources() { Q_INIT_RESOURCE(premium_manifests); }
 
 namespace studio {
 namespace {
@@ -57,6 +61,117 @@ bool categoryExists(const QJsonObject &data, const QString &id) {
         if (v.toObject()["id"] == id)
             return true;
     return false;
+}
+QString string(std::string_view value) {
+    return QString::fromUtf8(value.data(), int(value.size()));
+}
+QString manifestKind(NodeKind kind) {
+    switch (kind) {
+    case NodeKind::Group: return "group";
+    case NodeKind::Shape: return "shape";
+    case NodeKind::Text: return "text";
+    case NodeKind::Native: return "native";
+    case NodeKind::Image: return "image";
+    case NodeKind::Svg: return "svg";
+    case NodeKind::Video: return "video";
+    }
+    return {};
+}
+QString workspacePremiumCategory(std::string_view category) {
+    if (category == "technology") return "technology";
+    if (category == "data") return "data";
+    if (category == "communication" || category == "typography") return "communication";
+    return "uncategorized";
+}
+struct PremiumRegistry {
+    QJsonArray assets;
+    QString error;
+};
+const PremiumRegistry &premiumRegistry() {
+    static const PremiumRegistry registry = [] {
+        initializePremiumManifestResources();
+        PremiumRegistry result;
+        for (const auto &definition : premiumLibrary()) {
+            QFile file(":/studio/premium/" + string(definition.manifestResource));
+            if (!file.open(QIODevice::ReadOnly) || file.size() > 512 * 1024) {
+                result.error = "Manifesto premium embutido ausente: " + string(definition.id);
+                break;
+            }
+            QJsonParseError parse;
+            const auto document = QJsonDocument::fromJson(file.readAll(), &parse);
+            if (parse.error != QJsonParseError::NoError || !document.isObject()) {
+                result.error = "Manifesto premium embutido inválido: " + string(definition.id);
+                break;
+            }
+            const auto manifest = document.object();
+            const auto manifestError = validatePremiumManifest(manifest, {});
+            const auto nodes = definition.build(1280, 720);
+            if (!manifestError.isEmpty() || manifest["id"].toString() != string(definition.id) ||
+                manifest["name"].toString() != string(definition.name) ||
+                manifest["type"].toString() != string(definition.type) ||
+                manifest["layers"].toArray().size() != int(nodes.size()) || nodes.empty() ||
+                manifest["rootNodeId"].toString() != QString::fromStdString(nodes.front().id)) {
+                result.error = "Manifesto e definição premium divergiram: " + string(definition.id) +
+                               (manifestError.isEmpty() ? QString{} : " — " + manifestError);
+                break;
+            }
+            QMap<QString, const Node *> nodesById;
+            for (const auto &node : nodes)
+                nodesById.insert(QString::fromStdString(node.id), &node);
+            bool layersMatch = true;
+            for (const auto &value : manifest["layers"].toArray()) {
+                const auto layer = value.toObject();
+                const auto id = layer["id"].toString();
+                const auto node = nodesById.value(id);
+                const auto declaredKind = layer["kind"].toString();
+                const bool compatibleKind = node &&
+                    (declaredKind == manifestKind(node->kind) ||
+                     (declaredKind == "shape-or-image" &&
+                      (node->kind == NodeKind::Shape || node->kind == NodeKind::Image)));
+                if (!node || !compatibleKind ||
+                    layer["parentId"].toString() != QString::fromStdString(node->parentId)) {
+                    layersMatch = false;
+                    break;
+                }
+            }
+            for (const auto &value : manifest["slots"].toArray()) {
+                const auto slot = value.toObject();
+                const auto node = nodesById.value(slot["nodeId"].toString());
+                if (!node || slot["role"].toString() != QString::fromStdString(node->role) ||
+                    !premiumSlotRole(node->role)) {
+                    layersMatch = false;
+                    break;
+                }
+                const auto kind = slot["kind"].toString();
+                if ((kind == "text" && node->kind != NodeKind::Text) ||
+                    (kind == "image" && node->kind != NodeKind::Shape && node->kind != NodeKind::Image) ||
+                    (kind == "video" && node->kind != NodeKind::Video)) {
+                    layersMatch = false;
+                    break;
+                }
+            }
+            auto project = makeEmpty();
+            project.name = string(definition.name).toStdString();
+            project.nodes = nodes;
+            if (!layersMatch || !validate(project).empty()) {
+                result.error = "Camadas, slots ou projeto premium divergiram do manifesto: " +
+                               string(definition.id);
+                break;
+            }
+            QJsonArray roles;
+            for (const auto &slot : manifest["slots"].toArray())
+                roles.append(slot.toObject()["role"]);
+            result.assets.append(QJsonObject{
+                {"id", string(definition.id)}, {"name", string(definition.name)}, {"kind", "premium"},
+                {"premiumType", string(definition.type)}, {"manifestVersion", manifest["manifestVersion"]},
+                {"manifest", manifest},
+                {"preset", QJsonDocument::fromJson(serialize(project)).object()},
+                {"categoryId", workspacePremiumCategory(definition.category)}, {"deleted", false},
+                {"builtin", true}, {"slots", roles}, {"createdAt", "2026-10-26T00:00:00.000Z"}});
+        }
+        return result;
+    }();
+    return registry;
 }
 QJsonObject find(const QJsonObject &data, const char *key, const QString &id) {
     for (auto v : data[key].toArray())
@@ -133,17 +248,8 @@ QJsonObject defaults() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
-    auto premium = makeEmpty();
-    premium.name = "Smartphone premium";
-    premium.duration = 360;
-    premium.nodes = makePremiumSmartphone();
-    assets.append(QJsonObject{{"id", "premium:smartphone-premium-01"},
-                              {"name", "Smartphone premium"},
-                              {"kind", "premium"}, {"premiumType", "object"},
-                              {"manifestVersion", 1}, {"preset", QJsonDocument::fromJson(serialize(premium)).object()},
-                              {"categoryId", "technology"}, {"deleted", false}, {"builtin", true},
-                              {"slots", QJsonArray{"text:screen-title", "text:notification", "image:screen"}},
-                              {"createdAt", "2026-10-26T00:00:00.000Z"}});
+    for (const auto &asset : premiumRegistry().assets)
+        assets.append(asset);
     return {{"format", "studio-dark-workspace"},
             {"version", 1},
             {"projects", QJsonArray{}},
@@ -281,6 +387,10 @@ WorkspaceStore::WorkspaceStore(QString directory) : root_(QDir(directory).absolu
     reload();
 }
 bool WorkspaceStore::reload() {
+    if (!premiumRegistry().error.isEmpty()) {
+        error_ = premiumRegistry().error;
+        return false;
+    }
     auto path = root_ + "/catalogue.json";
     if (!QFile::exists(path)) {
         data_ = defaults();
@@ -328,19 +438,9 @@ bool WorkspaceStore::reload() {
                                   {"builtin", true},
                                   {"createdAt", now()}});
     }
-    if (!known.contains("premium:smartphone-premium-01")) {
-        auto premium = makeEmpty();
-        premium.name = "Smartphone premium";
-        premium.duration = 360;
-        premium.nodes = makePremiumSmartphone();
-        assets.append(QJsonObject{{"id", "premium:smartphone-premium-01"},
-                                  {"name", "Smartphone premium"}, {"kind", "premium"},
-                                  {"premiumType", "object"}, {"manifestVersion", 1},
-                                  {"preset", QJsonDocument::fromJson(serialize(premium)).object()},
-                                  {"categoryId", "technology"}, {"deleted", false}, {"builtin", true},
-                                  {"slots", QJsonArray{"text:screen-title", "text:notification", "image:screen"}},
-                                  {"createdAt", "2026-10-26T00:00:00.000Z"}});
-    }
+    for (const auto &premium : premiumRegistry().assets)
+        if (!known.contains(premium.toObject()["id"].toString()))
+            assets.append(premium);
     data_["assets"] = assets;
     revision_ = hash(bytes);
     error_.clear();
@@ -646,6 +746,36 @@ WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &c
         d["assets"] = list;
         return WorkspaceResult{id, {}};
     });
+}
+WorkspaceResult WorkspaceStore::importSlotMedia(const QString &source) {
+    const auto path = QFileInfo(source).canonicalFilePath();
+    const QFileInfo info(path);
+    const auto extension = info.suffix().toLower();
+    if (path.isEmpty() || !info.isFile() ||
+        !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(extension))
+        return {{}, "O slot aceita um arquivo PNG, JPEG, WebP ou BMP existente."};
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 32 * 1024 * 1024)
+        return {{}, "A imagem do slot deve ter entre 1 byte e 32 MiB."};
+    QImageReader reader(path);
+    const auto size = reader.size();
+    if (!reader.canRead() || size.isEmpty() || qint64(size.width()) * size.height() > 40000000 ||
+        reader.read().isNull())
+        return {{}, "A imagem não pôde ser decodificada ou excede 40 megapixels."};
+    if (!file.seek(0))
+        return {{}, "Não foi possível reler a imagem selecionada."};
+    const auto bytes = file.readAll();
+    const auto destination = root_ + "/library/media/" +
+                             QString::fromLatin1(hash(bytes)) + "." + extension;
+    if (!QDir().mkpath(root_ + "/library/media"))
+        return {{}, "Não foi possível preparar o armazenamento de mídia do workspace."};
+    if (QFile::exists(destination)) {
+        QFile existing(destination);
+        if (!existing.open(QIODevice::ReadOnly) || existing.readAll() != bytes)
+            return {{}, "O arquivo existente no armazenamento gerenciado não corresponde ao hash."};
+    } else if (!write(destination, bytes))
+        return {{}, "Não foi possível copiar a imagem para o armazenamento gerenciado."};
+    return {destination, {}};
 }
 WorkspaceResult WorkspaceStore::addFont(const QString &family, const QString &source) {
     const auto name = family.trimmed();

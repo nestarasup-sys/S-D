@@ -29,7 +29,7 @@ def capture(page, destination, project=None):
 
 
 empty = capture("projects", "home-empty")
-assert empty["projects"] == 0 and empty["assets"] == 73 and empty["categories"] == 11
+assert empty["projects"] == 0 and empty["assets"] == 75 and empty["categories"] == 11
 assert empty["newProjectCanvasOptions"] == 3, empty
 base = json.loads((profile / "demo.studio.json").read_text(encoding="utf-8"))
 fixtures = out / "fixtures"
@@ -44,9 +44,9 @@ for index, name in enumerate(("Histórias que merecem espaço", "Identidade do m
     filled = capture("projects", "home-projects", path)
 assert filled["projects"] == 2
 library = capture("library", "asset-library", path)
-assert library["assets"] == 73 and library["categories"] == 11 and library["projects"] == 2
+assert library["assets"] == 75 and library["categories"] == 11 and library["projects"] == 2
 editor = capture("editor", "editor-navigation", path)
 assert editor["projects"] == 2
-report = {"status": "passed", "projects": 2, "nativeAssets": 72, "premiumAssets": 1, "libraryItems": 73, "categories": 11, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "complete 72-item native library plus first premium asset", "font and visual-style library categories", "editor navigation", "QML error-free captures"]}
+report = {"status": "passed", "projects": 2, "nativeAssets": 72, "premiumAssets": 3, "libraryItems": 75, "categories": 11, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "complete 72-item native library plus three registered premium assets", "font and visual-style library categories", "editor navigation", "QML error-free captures"]}
 (out / "verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(out), **report}, indent=2))

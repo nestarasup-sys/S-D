@@ -69,11 +69,26 @@ bool compileElement(const DirectedElement &directed,
     const auto anchor = directed.shotRelative
                             ? shotStart
                             : cueFrame(cue, directed.offsetSeconds, directed.cueProgress, directed.wordIndex, words);
-    node.start = anchor + (directed.presetTiming ? node.start : 0);
+    const auto presetLocalStart = node.start;
+    const auto presetDuration = std::max<std::int64_t>(1, node.duration);
+    node.start = anchor + (directed.presetTiming ? presetLocalStart : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
-    auto end =
-        directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
+    auto end = directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
+    if (directed.premiumTemplate && directed.presetTiming && end > node.start &&
+        end - node.start < presetDuration) {
+        const auto availableDuration = end - node.start;
+        const double timeScale = double(availableDuration) / double(presetDuration);
+        node.start = anchor + std::llround(double(presetLocalStart) * timeScale);
+        node.duration = availableDuration;
+        end = node.start + node.duration;
+        for (auto &key : node.keyframes)
+            key.frame = std::llround(double(key.frame) * timeScale);
+        node.motionFrames = std::max(1, int(std::llround(double(node.motionFrames) * timeScale)));
+        node.exitFrames = node.exitFrames == 0
+                              ? 0
+                              : std::max(1, int(std::llround(double(node.exitFrames) * timeScale)));
+    }
     if (node.kind == NodeKind::Video && directed.videoDurationFrames > 0) {
         if (directed.videoDurationFrames > availableEnd - node.start) {
             error = "video.durationFrames ultrapassa o intervalo disponível: " + QString::fromStdString(node.id);

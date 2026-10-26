@@ -43,20 +43,44 @@ int main(int argc, char **argv) {
         WorkspaceController ui(&editor, temp.filePath("workspace"));
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
         check(ui.projectCount() == 0 &&
-                  ui.assetCount() == int(studio::nativeLibrary().size()) + 1 &&
+                  ui.assetCount() == int(studio::nativeLibrary().size()) + int(studio::premiumLibrary().size()) &&
                   ui.categories().size() == 11 &&
                   !named(ui.categories(), "Tecnologia").isEmpty() &&
                   !named(ui.categories(), "Comunicação").isEmpty() &&
                   !named(ui.categories(), "Finanças").isEmpty() &&
                   !named(ui.categories(), "Ciência").isEmpty(),
-              "initial complete native library and categories");
+              ("initial complete native library and categories: " + ui.message().toStdString() +
+               ", assets=" + std::to_string(ui.assetCount())).c_str());
         const auto premium = named(ui.assets(), "Smartphone premium");
         check(premium["id"] == "premium:smartphone-premium-01" &&
                   premium["kind"] == "premium" && !premium["thumbnail"].toString().isEmpty(),
               "versioned smartphone premium is visible with generated preview");
         ui.setAssetTypeFilter("premium");
-        check(ui.assets().size() == 1 && ui.assets().front().toMap()["kind"] == "premium",
-              "top-level premium category filter preserves thematic categories");
+        const auto premiumAssets = ui.assets();
+        check(premiumAssets.size() == 3, "all three registered premium assets appear in the library");
+        for (const auto &entryValue : premiumAssets) {
+            const auto entry = entryValue.toMap();
+            const QImage thumbnail(QUrl(entry["thumbnail"].toString()).toLocalFile());
+            check(!thumbnail.isNull() && thumbnail.width() <= 480 && thumbnail.height() <= 270,
+                  "every registered premium asset has a real generated library thumbnail");
+            const auto assetId = entry["id"].toString().toStdString();
+            const auto &definition = studio::premiumAsset(assetId)->build;
+            auto project = studio::makeEmpty();
+            project.nodes = definition(1280, 720);
+            check(!studio::validate(project).size(), "registered premium factory produces a valid project");
+            const auto manifest = QJsonObject::fromVariantMap(entry["manifest"].toMap());
+            const auto nodes = project.nodes;
+            check(manifest["layers"].toArray().size() == int(nodes.size()),
+                  "manifest layer count agrees with registered template");
+            for (const auto &slotValue : manifest["slots"].toArray()) {
+                const auto slot = slotValue.toObject();
+                check(std::any_of(nodes.begin(), nodes.end(), [&](const auto &node) {
+                          return node.id == slot["nodeId"].toString().toStdString() &&
+                                 node.role == slot["role"].toString().toStdString();
+                      }),
+                      "every manifest slot resolves to a real editable layer role");
+            }
+        }
         ui.setAssetTypeFilter("basic");
         check(ui.assets().size() == int(studio::nativeLibrary().size()), "basic native category filter retains all 72 items");
         ui.setAssetTypeFilter("media");
@@ -66,6 +90,9 @@ int main(int argc, char **argv) {
         check(ui.createProject("Minha história"), "create managed project");
         check(ui.hasDocument() && ui.page() == "editor" && !editor.dirty(),
               "creation opens an already saved blank document");
+        const auto primaryProject = named(ui.projects(), "Minha história");
+        const auto firstId = primaryProject["id"].toString();
+        const auto path = primaryProject["path"].toString();
         check(ui.useAsset("premium:smartphone-premium-01") && editor.project().nodes.size() >= 15,
               "premium smartphone inserts its editable vector hierarchy");
         const auto slotText = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
@@ -87,9 +114,21 @@ int main(int argc, char **argv) {
         const auto imageSlotId = QString::fromStdString(imageSlot->id);
         editor.selectNode(imageSlotId);
         editor.updateSelected("source", imagePath);
+        check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Shape &&
+                  editor.message().contains("gerenciada"),
+              "direct external paths are rejected for premium image slots");
+        const auto managedImage = ui.importSlotMedia(QUrl::fromLocalFile(imagePath));
+        check(!managedImage.isEmpty() && managedImage != imagePath &&
+                  managedImage.startsWith(temp.filePath("workspace/library/media")),
+              "slot image is copied under the managed workspace media root");
+        editor.updateSelected("source", managedImage);
         check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Image &&
-                  studio::findNode(editor.project(), imageSlotId.toStdString())->source == imagePath.toStdString(),
-              "image slot substitutes image while keeping its transform and hierarchy");
+                  studio::findNode(editor.project(), imageSlotId.toStdString())->source == managedImage.toStdString(),
+              "image slot substitutes managed media while keeping its transform and hierarchy");
+        QFile::remove(imagePath);
+        check(QFile::exists(managedImage), "moving or deleting the source file does not break the workspace copy");
+        const auto sameManagedImage = ui.importSlotMedia(QUrl::fromLocalFile(managedImage));
+        check(sameManagedImage == managedImage, "hash-addressed slot media is reused without another copy");
         const auto premiumRoundTrip = studio::deserialize(studio::serialize(editor.project()));
         check(premiumRoundTrip.error.isEmpty() && premiumRoundTrip.project.nodes.size() == editor.project().nodes.size() &&
                   std::any_of(premiumRoundTrip.project.nodes.begin(), premiumRoundTrip.project.nodes.end(),
@@ -98,6 +137,10 @@ int main(int argc, char **argv) {
         editor.undo();
         check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Shape,
               "premium image replacement can be undone");
+        editor.redo();
+        check(studio::findNode(editor.project(), imageSlotId.toStdString())->source == managedImage.toStdString(),
+              "premium image replacement can be redone");
+        editor.undo();
         editor.undo();
         check(studio::findNode(editor.project(), slotId.toStdString())->text != "Oferta atualizada",
               "premium text edit can be undone");
@@ -105,6 +148,64 @@ int main(int argc, char **argv) {
         check(std::none_of(editor.project().nodes.begin(), editor.project().nodes.end(),
                            [](const auto &n) { return n.role.starts_with("premium:"); }),
               "premium insertion is one history action");
+        for (const auto &premiumId : {QStringLiteral("premium:title-reveal-01"),
+                                      QStringLiteral("premium:comparison-pack-01")}) {
+            check(ui.useAsset(premiumId), "registered cinematic premium can be inserted");
+            const auto expectedSlots = premiumId.endsWith("title-reveal-01") ? 3 : 6;
+            const auto slotCount = std::count_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                [&](const auto &n) {
+                    return n.role.starts_with("premium:") &&
+                           (n.role.rfind("premium:title:", 0) == 0 ||
+                            n.role.rfind("premium:comparison:", 0) == 0);
+                });
+            check(slotCount == expectedSlots, "inserted cinematic template exposes its declared editable slots");
+            if (premiumId.endsWith("comparison-pack-01")) {
+                auto rightValue = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                    [](const auto &n) { return n.role == "premium:comparison:right-value"; });
+                check(rightValue != editor.project().nodes.end(), "Comparison Pack has a labeled right-value slot");
+                const auto id = QString::fromStdString(rightValue->id);
+                editor.selectNode(id);
+                editor.updateSelected("text", "Valor verificado");
+                check(studio::findNode(editor.project(), id.toStdString())->text == "Valor verificado",
+                      "comparison slots use normal editable and undoable project text");
+                editor.undo();
+            }
+            editor.undo();
+        }
+        check(ui.useAsset("premium:smartphone-premium-01"), "smartphone premium can be reinserted as a fresh instance");
+        const auto reinsertedSlot = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+            [](const auto &n) { return n.role == "premium:image:screen"; });
+        check(reinsertedSlot != editor.project().nodes.end(), "reinserted smartphone recreates its image slot");
+        editor.selectNode(QString::fromStdString(reinsertedSlot->id));
+        editor.updateSelected("source", managedImage);
+        const auto savedPremiumProject = temp.filePath("premium-workspace-media.studio.json");
+        const auto savedPremium = studio::saveProject(savedPremiumProject, editor.project(), {});
+        const auto reopenedPremium = studio::loadProject(savedPremiumProject);
+        check(savedPremium.error.isEmpty() && reopenedPremium.error.isEmpty() &&
+                  std::any_of(reopenedPremium.project.nodes.begin(), reopenedPremium.project.nodes.end(),
+                      [&](const auto &n) {
+                          return n.role == "premium:image:screen" && n.kind == studio::NodeKind::Image &&
+                                 n.source == managedImage.toStdString() && QFile::exists(QString::fromStdString(n.source));
+                      }),
+              "saved and reopened projects retain the managed premium image reference");
+        auto missingProject = reopenedPremium.project;
+        const auto missingPath = temp.filePath("workspace/library/media/deleted-image.png");
+        for (auto &n : missingProject.nodes)
+            if (n.role == "premium:image:screen")
+                n.source = missingPath.toStdString();
+        const auto missingProjectPath = temp.filePath("premium-missing-media.studio.json");
+        EditorController missingMediaEditor(nullptr, temp.filePath("missing-media-recovery"));
+        WorkspaceController missingMediaWorkspace(&missingMediaEditor, temp.filePath("missing-media-workspace"));
+        check(studio::saveProject(missingProjectPath, missingProject, {}).error.isEmpty() &&
+                  missingMediaEditor.open(QUrl::fromLocalFile(missingProjectPath)),
+              "a legacy project with missing slot media still opens without overwriting it");
+        const auto missingSlot = std::find_if(missingMediaEditor.project().nodes.begin(), missingMediaEditor.project().nodes.end(),
+            [](const auto &n) { return n.role == "premium:image:screen"; });
+        missingMediaEditor.selectNode(QString::fromStdString(missingSlot->id));
+        check(missingMediaEditor.selected()["mediaMissing"].toBool(),
+              "inspector selection reports missing workspace slot media for replacement");
+        check(editor.open(QUrl::fromLocalFile(path)) && editor.project().nodes.empty(),
+              "premium slot fixtures leave the main legacy project test isolated");
         const auto videoPath = temp.filePath("library-video.mp4");
         QProcess videoEncoder;
         videoEncoder.start(qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg"),
@@ -143,9 +244,16 @@ int main(int argc, char **argv) {
                       studio::NodeKind::Video,
               "v3 AI recipe resolves a real catalogued video through kind library");
         ui.setAssetTypeFilter("");
-        check(ui.useAsset(importedVideo["id"].toString()) && editor.project().schemaVersion >= 10 &&
-                  editor.project().nodes.back().kind == studio::NodeKind::Video,
-              "real video library item inserts as an editable production video layer");
+        const auto hadDocumentBeforeVideo = ui.hasDocument();
+        const auto insertedVideo = ui.useAsset(importedVideo["id"].toString());
+        const auto hasInsertedVideo = std::any_of(editor.project().nodes.begin(), editor.project().nodes.end(), [&](const auto &node) {
+            return node.kind == studio::NodeKind::Video && node.source == importedVideo["source"].toString().toStdString();
+        });
+        check(insertedVideo && editor.project().schemaVersion >= 10 && hasInsertedVideo,
+              ("real video library item inserts as an editable production video layer: inserted=" +
+               std::to_string(insertedVideo) + ", schema=" + std::to_string(editor.project().schemaVersion) +
+               ", found=" + std::to_string(hasInsertedVideo) + ", hadDocument=" + std::to_string(hadDocumentBeforeVideo) +
+               ", path=" + editor.projectPath().toStdString() + ", message=" + ui.message().toStdString()).c_str());
         editor.undo();
         const auto fontPath = QStringLiteral("C:/Windows/Fonts/arial.ttf");
         if (QFile::exists(fontPath)) {
@@ -167,19 +275,22 @@ int main(int argc, char **argv) {
                   editor.project().artDirection.primaryColor == "#d85e3f",
               "named visual style can be reapplied to the selected scope");
         const auto baseAssetCount = ui.assetCount();
-        auto first = named(ui.projects(), "Minha história");
-        auto firstId = first["id"].toString(), path = first["path"].toString();
         check(QFile::exists(path) && path.startsWith(temp.path()),
               "managed project lives in isolated workspace");
         check(ui.useAsset("native:car"), "use native item from complete library");
         editor.updateSelected("color", "#44aa88");
+        const auto configuredCarId = editor.project().nodes.back().id;
         check(ui.saveSelection("Meu carro", "objects"), "save configured native object as reusable preset");
         auto preset = named(ui.assets(), "Meu carro");
         auto presetId = preset["id"].toString();
         check(!presetId.isEmpty() && ui.assetCount() == baseAssetCount + 1, "custom preset catalogued");
-        check(ui.useAsset(presetId) && editor.project().nodes.size() == 2, "reuse custom preset");
+        const auto nodesBeforePresetReuse = editor.project().nodes.size();
+        const auto reusedPreset = ui.useAsset(presetId);
+        check(reusedPreset && editor.project().nodes.size() == nodesBeforePresetReuse + 1,
+              ("reuse custom preset: " + ui.message().toStdString() + ", nodes=" +
+               std::to_string(editor.project().nodes.size())).c_str());
         check(editor.project().nodes.back().color == "#44aa88" &&
-                  editor.project().nodes[0].id != editor.project().nodes[1].id,
+                  editor.project().nodes.back().id != configuredCarId,
               "preset keeps style but receives a new object ID");
         ui.navigate("library");
         check(editor.dirty() && ui.hasDocument(), "navigation preserves in-memory editing");
@@ -273,7 +384,8 @@ int main(int argc, char **argv) {
         check(editor.title() == "História renomeada" &&
                   studio::loadProject(path).project.name == "História renomeada",
               "rename persists and refreshes current editor");
-        check(ui.duplicateProject(firstId) && ui.projectCount() == 2, "duplicate project");
+        const auto duplicatedProject = ui.duplicateProject(firstId);
+        check(duplicatedProject && ui.projectCount() == 2, "duplicate project");
         auto copy = named(ui.projects(), "História renomeada (cópia)");
         auto originalProject = studio::loadProject(path).project,
              copyProject = studio::loadProject(copy["path"].toString()).project;

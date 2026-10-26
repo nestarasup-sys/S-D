@@ -79,6 +79,7 @@ class WorkspaceController : public QObject {
     Q_INVOKABLE bool renameCategory(QString id, QString name);
     Q_INVOKABLE bool deleteCategory(QString id);
     Q_INVOKABLE bool addAsset(QUrl source, QString name, QString category);
+    Q_INVOKABLE QString importSlotMedia(QUrl source);
     Q_INVOKABLE bool addFont(QUrl source);
     Q_INVOKABLE bool saveVisualStylePreset(QString name);
     Q_INVOKABLE bool saveSelection(QString name, QString category);

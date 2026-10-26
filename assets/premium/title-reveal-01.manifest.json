@@ -1,0 +1,32 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 1,
+  "id": "premium:title-reveal-01",
+  "name": "Title Reveal · título cinematográfico",
+  "description": "Template editorial tipográfico com revelação progressiva, subtítulo e identificação substituíveis.",
+  "version": "1.0.0",
+  "type": "premium-typography-template",
+  "category": "kinetic-typography",
+  "tags": ["title", "documentary", "typography", "reveal"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "title-reveal-root",
+  "layers": [
+    { "id": "title-reveal-root", "kind": "group", "role": "root" },
+    { "id": "title-editorial-rule", "parentId": "title-reveal-root", "kind": "shape", "role": "editorial-rule" },
+    { "id": "title-editorial-id", "parentId": "title-reveal-root", "kind": "text", "role": "slot:editorial" },
+    { "id": "title-main", "parentId": "title-reveal-root", "kind": "text", "role": "slot:main-title" },
+    { "id": "title-subtitle", "parentId": "title-reveal-root", "kind": "text", "role": "slot:subtitle" },
+    { "id": "title-editorial-tick", "parentId": "title-reveal-root", "kind": "shape", "role": "accent" }
+  ],
+  "hierarchy": { "root": "title-reveal-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["editorial-wipe", "subtitle-rise", "fade-out"],
+  "slots": [
+    { "id": "main-title", "kind": "text", "nodeId": "title-main", "role": "premium:title:main", "editable": true },
+    { "id": "subtitle", "kind": "text", "nodeId": "title-subtitle", "role": "premium:title:subtitle", "editable": true },
+    { "id": "editorial-id", "kind": "text", "nodeId": "title-editorial-id", "role": "premium:title:editorial", "editable": true, "optional": true }
+  ],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

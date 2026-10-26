@@ -197,8 +197,8 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             QFont font(QString::fromStdString(art.fontFamily));
             font.setPixelSize(qRound(node.fontSize));
             font.setWeight(QFont::DemiBold);
-            painter.setFont(font);
             if (node.role == "caption" && !node.captionWords.empty()) {
+                painter.setFont(font);
                 struct CaptionPart {
                     QString text;
                     QColor color;
@@ -284,11 +284,38 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                 }
                 painter.restore();
             } else {
+                const auto alignment = (node.role == "caption" ? Qt::AlignCenter
+                                                                : Qt::AlignLeft | Qt::AlignTop) |
+                                       Qt::TextWordWrap;
+                const auto displayText = QString::fromStdString(node.text);
+                if (node.role.rfind("premium:", 0) == 0) {
+                    const int requestedSize = qRound(node.fontSize);
+                    int fittedSize = requestedSize;
+                    while (fittedSize > 12) {
+                        font.setPixelSize(fittedSize);
+                        const QFontMetricsF metrics(font);
+                        const auto measured = metrics.boundingRect(
+                            QRectF(0, 0, textBounds.width(), 10000), alignment, displayText);
+                        if (measured.height() <= textBounds.height())
+                            break;
+                        fittedSize = std::max(12, fittedSize - 2);
+                    }
+                    font.setPixelSize(fittedSize);
+                }
+                painter.setFont(font);
                 painter.setPen(QColor(QString::fromStdString(node.color)));
-                painter.drawText(textBounds,
-                                 (node.role == "caption" ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignTop) |
-                                     Qt::TextWordWrap,
-                                 QString::fromStdString(node.text));
+                if (node.role == "premium:title:main") {
+                    const double linear = std::clamp(double(frame - node.start) /
+                                                          std::max(1, node.motionFrames),
+                                                      0.0, 1.0);
+                    const double reveal = 1.0 - std::pow(1.0 - linear, 3.0);
+                    painter.save();
+                    painter.setClipRect(QRectF(0, 0, node.width * reveal, node.height));
+                    painter.drawText(textBounds, alignment, displayText);
+                    painter.restore();
+                } else {
+                    painter.drawText(textBounds, alignment, displayText);
+                }
             }
         } else {
             const auto path = QString::fromStdString(node.source);

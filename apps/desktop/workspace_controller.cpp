@@ -30,6 +30,7 @@ QString displayDate(QString iso) {
 } // namespace
 WorkspaceController::WorkspaceController(EditorController *editor, QString directory, QObject *parent)
     : QObject(parent), editor_(editor), store_(directory.isEmpty() ? defaultRoot() : directory) {
+    editor_->setManagedMediaRoot(store_.root() + "/library/media");
     connect(editor_, &EditorController::projectAvailable, this, [this](QString path) {
         rememberProject(path);
         hasDocument_ = true;
@@ -445,6 +446,17 @@ bool WorkspaceController::addAsset(QUrl source, QString name, QString category) 
     return complete(store_.addAsset(name, category, path, mediaSize.width(), mediaSize.height()),
                     "Item copiado para a biblioteca. O arquivo original não precisa ser movido.");
 }
+QString WorkspaceController::importSlotMedia(QUrl source) {
+    if (busy())
+        return {};
+    const auto result = store_.importSlotMedia(source.toLocalFile());
+    if (!result.error.isEmpty()) {
+        notify(result.error);
+        return {};
+    }
+    notify("Imagem copiada para a mídia gerenciada pelo workspace.");
+    return result.id;
+}
 bool WorkspaceController::addFont(QUrl source) {
     const auto path = source.toLocalFile();
     const auto fontId = QFontDatabase::addApplicationFont(path);
@@ -567,13 +579,22 @@ bool WorkspaceController::useAsset(QString id) {
         n.height = asset->height;
         n.color = "#efb873";
     } else if (kind == "preset" || kind == "premium") {
-        auto loaded = studio::deserialize(QJsonDocument(item["preset"].toObject()).toJson());
-        if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
-            !loaded.project.nodes.front().parentId.empty()) {
-            notify("Composição personalizada inválida.");
-            return false;
+        if (kind == "premium" && studio::premiumAsset(id.toStdString())) {
+            presetNodes = studio::makePremiumAsset(id.toStdString(), editor_->canvasWidth(),
+                                                   editor_->canvasHeight());
+            if (presetNodes.empty()) {
+                notify("O construtor registrado do recurso premium está indisponível.");
+                return false;
+            }
+        } else {
+            auto loaded = studio::deserialize(QJsonDocument(item["preset"].toObject()).toJson());
+            if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
+                !loaded.project.nodes.front().parentId.empty()) {
+                notify("Composição personalizada inválida.");
+                return false;
+            }
+            presetNodes = std::move(loaded.project.nodes);
         }
-        presetNodes = std::move(loaded.project.nodes);
         for (const auto &part : presetNodes)
             if ((part.kind == studio::NodeKind::Image || part.kind == studio::NodeKind::Svg) &&
                 !QFileInfo::exists(QString::fromStdString(part.source))) {

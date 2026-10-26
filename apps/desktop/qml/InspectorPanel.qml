@@ -15,9 +15,13 @@ Rectangle {
     }
     FileDialog {
         id: premiumImageDialog
-        title: "Substituir imagem da tela"
+        title: "Substituir imagem do slot"
         nameFilters: ["Imagens (*.png *.jpg *.jpeg *.webp *.bmp)"]
-        onAccepted: editor.updateSelected("source", selectedFile.toLocalFile())
+        onAccepted: {
+            const managedPath = workspace.importSlotMedia(selectedFile)
+            if (managedPath)
+                editor.updateSelected("source", managedPath)
+        }
     }
     Dialog {
         id: stylePresetDialog
@@ -45,6 +49,23 @@ Rectangle {
             if (editor.shots[i].id === editor.camera.shotId)
                 return editor.shots[i]
         return ({})
+    }
+    function slotLabel(role) {
+        const labels = {
+            "premium:text:screen-title": "TÍTULO DA TELA",
+            "premium:text:notification": "TEXTO DA NOTIFICAÇÃO",
+            "premium:image:screen": "IMAGEM DA TELA",
+            "premium:title:main": "TÍTULO PRINCIPAL",
+            "premium:title:subtitle": "SUBTÍTULO",
+            "premium:title:editorial": "IDENTIFICAÇÃO EDITORIAL",
+            "premium:comparison:left-title": "TÍTULO DO PAINEL ESQUERDO",
+            "premium:comparison:right-title": "TÍTULO DO PAINEL DIREITO",
+            "premium:comparison:left-value": "VALOR ESQUERDO",
+            "premium:comparison:right-value": "VALOR DIREITO",
+            "premium:comparison:left-description": "DESCRIÇÃO ESQUERDA",
+            "premium:comparison:right-description": "DESCRIÇÃO DIREITA"
+        }
+        return labels[role] || "CONTEÚDO"
     }
     component Field: ColumnLayout {
         id: field
@@ -132,6 +153,11 @@ Rectangle {
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
             Label { visible: !!panel.node.role && String(panel.node.role).startsWith("premium:"); text: "SLOT EDITÁVEL · " + String(panel.node.role || "").replace("premium:", ""); color: "#b4f078"; font.pixelSize: 10; font.letterSpacing: 1 }
             StudioButton { visible: !!panel.node.role && String(panel.node.role).startsWith("premium:image:"); text: "Substituir imagem deste slot"; Layout.fillWidth: true; quiet: true; onClicked: premiumImageDialog.open() }
+            Label {
+                visible: panel.node.mediaMissing && String(panel.node.role || "").startsWith("premium:image:")
+                text: "Arquivo do slot ausente. Selecione uma nova imagem; cópias gerenciadas ficam no workspace local."
+                color: "#efb873"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
+            }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
             Label { text: "ESCOPO DA DIREÇÃO DE ARTE"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; Layout.topMargin: 8 }
             StudioComboBox {
@@ -296,6 +322,11 @@ Rectangle {
                     onActivated: editor.updateSelected("pose", currentText)
                 }
                 Field { caption: "Tamanho do texto"; propertyKey: "fontSize"; currentValue: panel.node.fontSize; visible: panel.node.kind === "text" }
+                Field {
+                    caption: "Duração da revelação · frames"
+                    propertyKey: "motionFrames"; currentValue: panel.node.motionFrames
+                    visible: panel.node.role === "premium:title:main"
+                }
                 Label { text: "ANIMAÇÃO POR PALAVRA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.role === "caption" && panel.node.wordAligned }
                 StudioComboBox {
                     Layout.fillWidth: true
@@ -363,7 +394,7 @@ Rectangle {
                         }
                     }
                 }
-                Label { text: "Conteúdo"; color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
+                Label { text: panel.slotLabel(panel.node.role); color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
                 TextArea {
                     id: textEditor
                     property string editingId: ""
@@ -426,6 +457,11 @@ Rectangle {
                     Field { caption: "Deslocamento Y"; propertyKey: "travelY"; currentValue: panel.node.travelY }
                 }
                 Field { caption: "Giro no intervalo · graus"; propertyKey: "spinDegrees"; currentValue: panel.node.spinDegrees }
+                Field {
+                    caption: "Saída · frames (0 desativa)"
+                    propertyKey: "exitFrames"; currentValue: panel.node.exitFrames
+                    visible: panel.node.kind === "group"
+                }
                 StudioButton { text: panel.node.kind === "group" ? "Remover grupo e seus filhos" : "Remover objeto"; Layout.fillWidth: true; quiet: true; onClicked: editor.removeSelected() }
                 StudioButton { text: "Criar grupo com este objeto"; Layout.fillWidth: true; visible: panel.node.kind !== "group"; onClicked: editor.groupSelected() }
                 StudioButton { text: "Gravar keyframe · quadro " + editor.frame + " · " + (panel.node.keyframeCount || 0); Layout.fillWidth: true; accent: true; onClicked: editor.recordSelectedKeyframe() }

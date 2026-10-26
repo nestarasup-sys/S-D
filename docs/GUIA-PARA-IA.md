@@ -1333,15 +1333,21 @@ Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":
 
 ## Categorias visuais e recursos premium
 
-Escolha entre **Nativos básicos** (objetos vetoriais incluídos), **Recursos premium** (composições editáveis com hierarquia e slots) e **Imagens e vídeos reais** (arquivos locais do usuário). As 11 categorias temáticas continuam filtros da biblioteca. ID premium disponível: `premium:smartphone-premium-01` (Tecnologia). Use-o como `kind: "library"` com esse `assetId` real. O smartphone é um grupo editável com animação de entrada/flutuação, slot de texto na tela, slot de texto de notificação e slot de imagem para a tela. O texto segue editável normalmente; para imagem, selecione o slot e use **Substituir imagem deste slot**. A imagem é um arquivo local. Imagens podem entrar na biblioteca e vídeos locais podem ser importados como mídia real; receita v3 referencia um vídeo catalogado por `kind: "library"`. Isso é diferente de um slot de vídeo dentro do smartphone, que ainda não existe.
+Escolha entre **Nativos básicos** (objetos vetoriais incluídos), **Recursos premium** (composições editáveis com hierarquia e slots) e **Imagens e vídeos reais** (arquivos locais do usuário). As 11 categorias temáticas continuam filtros da biblioteca. Os IDs premium reais são:
 
-Exemplo estrutural de receita v2 (o exemplo usa o ID real e é validado pela suíte do parser):
+- `premium:smartphone-premium-01` — smartphone em camadas, entrada/flutuação, textos de tela/notificação e slot de imagem da tela.
+- `premium:title-reveal-01` — abertura tipográfica com wipe progressivo, subtítulo e identificação editorial editáveis.
+- `premium:comparison-pack-01` — comparação com dois painéis, seis slots de texto e revelação escalonada.
+
+Use cada ID por `{"kind":"library","assetId":"ID-REAL","cue":0}`. A receita instancia o layout responsivo de acordo com seu canvas (1280×720, 1920×1080 ou 1080×1920). Os slots são editados depois da inserção, pelo inspetor; receitas não aceitam campos extras para personalizar slots. No Comparison Pack, os valores iniciais são placeholders demonstrativos, não dados jornalísticos. Troque-os por informações com fontes verificadas. Imagens de slots são copiadas para `workspace/library/media` por conteúdo e o projeto aponta para essa cópia gerenciada. Isso evita dependência do caminho original no mesmo workspace; não empacota automaticamente mídia para transportar o projeto a outro computador. Se um arquivo gerenciado faltar, o inspetor sinaliza a imagem ausente e permite substituí-la. Imagens e vídeos reais também podem entrar na biblioteca; receita v3 referencia um vídeo catalogado por `kind: "library"`. Não há slot premium de vídeo ou ícone.
+
+Exemplo de abertura, smartphone e comparação usando IDs reais do registro:
 
 ```json
-{"format":"studio-dark-production","version":2,"catalogVersion":1,"title":"Apresentação de produto","captions":false,"musicGain":0,"effectsGain":0,"scenes":[{"id":"produto","narration":["Conheça uma nova forma de acompanhar as informações mais importantes."],"elements":[{"id":"telefone","kind":"library","assetId":"premium:smartphone-premium-01","cue":0}]}]}
+{"format":"studio-dark-production","version":2,"catalogVersion":1,"title":"Template editorial demonstrativo","voice":"auto","captions":false,"musicGain":0,"effectsGain":0,"scenes":[{"id":"abertura","narration":["Uma ideia começa com um título que se revela aos poucos."],"elements":[{"id":"abertura-tipografica","kind":"library","assetId":"premium:title-reveal-01","cue":0}]},{"id":"objeto","narration":["O smartphone premium apresenta uma composição editável."],"elements":[{"id":"smartphone","kind":"library","assetId":"premium:smartphone-premium-01","cue":0}]},{"id":"comparacao","narration":["Compare os cenários com informação verificada."],"elements":[{"id":"comparacao-editorial","kind":"library","assetId":"premium:comparison-pack-01","cue":0}]}]}
 ```
 
-O pacote usa o QPainter de produção. Reflexo e sombra são simulados por camadas vetoriais; blur/GPU não são requisitos. Slots de vídeo/ícone, kits de cena e os outros templates premium ainda não estão implementados. O smartphone abre com superfície vetorial substituível, não com foto.
+Os três pacotes usam QPainter de produção. O Title Reveal usa recorte determinístico no texto principal e keyframes de entrada/saída. Ao compilar uma receita, o tempo interno de animação dos pacotes oficiais é ajustado ao intervalo medido da cena/shot, mantendo a ordem das chaves e evitando keyframes além da duração da fala. Os templates oferecem layouts paisagem e retrato; o construtor escolhe posições específicas para o canvas. Reflexo/sombra do smartphone são camadas vetoriais; blur/GPU não são requisitos. Personalização dos slots via JSON, slots de vídeo/ícone, instalação de pacotes premium externos e os outros templates premium ainda não estão implementados. O smartphone abre com superfície vetorial substituível, não com foto.
 
 ## Presets compostos na biblioteca pessoal
 
@@ -2013,10 +2019,52 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "kind": "premium-object",
             "manifestVersion": 1,
             "name": "Smartphone premium",
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
             "slots": [
-                "text:screen-title",
-                "text:notification",
-                "image:screen"
+                "premium:image:screen",
+                "premium:text:screen-title",
+                "premium:text:notification"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:title-reveal-01",
+            "kind": "premium-typography-template",
+            "manifestVersion": 1,
+            "name": "Title Reveal · título cinematográfico",
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:title:editorial",
+                "premium:title:main",
+                "premium:title:subtitle"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:comparison-pack-01",
+            "kind": "premium-motion-template",
+            "manifestVersion": 1,
+            "name": "Comparison Pack · comparação editorial",
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:comparison:left-title",
+                "premium:comparison:left-value",
+                "premium:comparison:left-description",
+                "premium:comparison:right-title",
+                "premium:comparison:right-value",
+                "premium:comparison:right-description"
             ],
             "status": "implemented"
         }

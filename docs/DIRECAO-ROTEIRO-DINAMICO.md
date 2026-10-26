@@ -21,7 +21,7 @@ Um exemplo de variação, não uma regra de relógio: gancho tipográfico; cena 
 
 ## Recursos premium e escolhas artísticas
 
-O primeiro recurso premium disponível é `premium:smartphone-premium-01`: use-o quando a história pedir uma tela de produto ou notificação. Combine-o com texto breve, uma imagem local substituível na tela e movimento de câmera sutil. A animação do pacote é discreta e o texto e a imagem continuam editáveis. Esta é uma recomendação artística; os IDs, slots e o JSON aceito ficam no [guia técnico para IA](GUIA-PARA-IA.md). Os outros 29 itens da coleção continuam planejados, conforme [catálogo premium](premium/PREMIUM-CATALOG.md).
+Recursos premium disponíveis: `premium:smartphone-premium-01` para planos de produto/notificação; `premium:title-reveal-01` para aberturas com hierarquia editorial e revelação; `premium:comparison-pack-01` para contrastar duas condições sem inventar estatísticas. Use valores placeholders apenas enquanto compõe e substitua-os por informação verificada antes de publicar. Imagem da tela do telefone pode ser substituída; os textos e demais camadas são editáveis depois da inserção. Todos usam layouts próprios em paisagem e retrato e são animados no compositor QPainter. Esta seção contém direção artística: os IDs, slots executáveis e o JSON aceito ficam no [guia técnico para IA](GUIA-PARA-IA.md). Os outros 27 itens continuam planejados, conforme [catálogo premium](premium/PREMIUM-CATALOG.md).
 
 ## Biblioteca editorial (72 recursos nativos)
 

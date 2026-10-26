@@ -177,7 +177,8 @@ bool applyVisualStylePreset(const QJsonObject &library, const QString &id, ArtDi
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
                   int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
                   QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1,
-                  const ArtDirection *artDirection = nullptr, bool shotStartDeferred = false) {
+                  const ArtDirection *artDirection = nullptr, bool shotStartDeferred = false,
+                  int canvasWidth = 1280, int canvasHeight = 720) {
     auto fail = [&](QString message) {
         error = std::move(message);
         return false;
@@ -303,11 +304,21 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                 n.width > 30000 || n.height > 30000)
                 return fail("Dimensões de vídeo da biblioteca inválidas: " + assetId);
         } else if (assetKind == "preset" || assetKind == "premium") {
-            const auto loaded = deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
-            if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
-                !loaded.project.nodes.front().parentId.empty())
-                return fail("Preset da biblioteca inválido: " + assetId);
-            presetNodes = loaded.project.nodes;
+            const auto *registeredPremium = assetKind == "premium"
+                                                ? premiumAsset(assetId.toStdString())
+                                                : nullptr;
+            if (registeredPremium) {
+                presetNodes = makePremiumAsset(assetId.toStdString(), canvasWidth, canvasHeight);
+                if (presetNodes.empty())
+                    return fail("Construtor registrado do recurso premium indisponível: " + assetId);
+                element.premiumTemplate = true;
+            } else {
+                const auto loaded = deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
+                if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
+                    !loaded.project.nodes.front().parentId.empty())
+                    return fail("Preset da biblioteca inválido: " + assetId);
+                presetNodes = loaded.project.nodes;
+            }
             for (const auto &part : presetNodes)
                 if ((part.kind == NodeKind::Image || part.kind == NodeKind::Svg) &&
                     !QFileInfo::exists(QString::fromStdString(part.source)))
@@ -579,7 +590,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             if (!parseElement(child.toObject(), baseDirectory, library, version, cueCount, ids, elementCount,
                               parsedChild, error, depth + 1,
                               {element.cue, element.cueProgress, element.offsetSeconds, element.wordIndex},
-                              editingIntensity, artDirection, element.shotRelative))
+                              editingIntensity, artDirection, element.shotRelative, canvasWidth, canvasHeight))
                 return false;
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
@@ -612,6 +623,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     child.wordIndex = element.wordIndex;
                     child.utteranceOnly = element.utteranceOnly;
                     child.presetTiming = true;
+                    child.premiumTemplate = element.premiumTemplate;
                     if (!expand(child, part.id, level + 1))
                         return false;
                     parent.children.push_back(std::move(child));
@@ -1077,7 +1089,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                                       int(scene.narration.size()), ids, elementCount, element, elementError,
                                       0, shot.start, r.editingIntensity,
-                                      shotThemed ? &shotStyle : nullptr, shot.autoStart))
+                                      shotThemed ? &shotStyle : nullptr, shot.autoStart, r.width, r.height))
                         return fail(elementError);
                     shot.elements.push_back(std::move(element));
                 }
@@ -1289,7 +1301,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             if (!parseElement(elementValue.toObject(), baseDirectory, library, version,
                               int(scene.narration.size()), ids, elementCount, element, elementError, 0, {},
                               r.editingIntensity,
-                              o.contains("artDirection") ? &r.artDirection : nullptr))
+                              o.contains("artDirection") ? &r.artDirection : nullptr, false, r.width, r.height))
                 return fail(elementError);
             scene.elements.push_back(std::move(element));
         }

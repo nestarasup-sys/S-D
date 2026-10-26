@@ -143,6 +143,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void selectNode(QString id);
     Q_INVOKABLE void toggleNodeSelection(QString id);
     Q_INVOKABLE void updateSelected(QString key, QVariant value);
+    void setManagedMediaRoot(QString path);
     Q_INVOKABLE bool setCaptionWordBoundary(int wordIndex, QString edge, int frame);
     Q_INVOKABLE void beginGesture();
     Q_INVOKABLE void endGesture();
@@ -236,6 +237,7 @@ class EditorController : public QObject {
     QString currentShotId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
+    QString managedMediaRoot_;
     QStringList selectedIds_{"title"}, gestureClipIds_;
     QHash<QString, int> gestureClipOrigins_;
     int gestureClipAppliedDelta_{0};

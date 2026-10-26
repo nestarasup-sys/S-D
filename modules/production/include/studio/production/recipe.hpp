@@ -51,6 +51,7 @@ struct DirectedElement {
     bool utteranceOnly{false};
     bool shotRelative{false};
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
+    bool premiumTemplate{false}; // Registered official template; internal animation scales to the measured cue span.
     std::vector<DirectedKeyframe> keyframes;
     std::vector<DirectedElement> children;
 };

@@ -58,8 +58,13 @@ QVariantMap map(const studio::Node &n) {
             {"text", q(n.text)},
             {"color", q(n.color)},
             {"source", q(n.source)},
+            {"mediaMissing", (n.kind == studio::NodeKind::Image || n.kind == studio::NodeKind::Svg ||
+                              n.kind == studio::NodeKind::Video) && !n.source.empty() &&
+                                 !QFileInfo(QString::fromStdString(n.source)).isFile()},
             {"start", int(n.start)},
             {"duration", int(n.duration)},
+            {"motionFrames", n.motionFrames},
+            {"exitFrames", n.exitFrames},
             {"x", n.x},
             {"y", n.y},
             {"width", n.width},
@@ -342,7 +347,25 @@ void EditorController::updateSelected(QString key, QVariant value) {
     const bool keyframedEdit = selectedNode && !selectedNode->keyframes.empty() && transformProperty;
     if (before.isEmpty() || !before.contains(key) || (before[key] == value && !keyframedEdit))
         return;
-    if ((key == "start" || key == "duration" || key == "wordAnimationDurationFrames") &&
+    if (key == "source" && selectedNode && selectedNode->role.rfind("premium:image:", 0) == 0) {
+        const auto source = value.toString();
+        const QFileInfo info(source);
+        if (!info.isFile() ||
+            !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(info.suffix().toLower())) {
+            notify("O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
+            return;
+        }
+        const auto root = QFileInfo(managedMediaRoot_).canonicalFilePath();
+        const auto canonical = info.canonicalFilePath();
+        const auto relative = QDir(root).relativeFilePath(canonical);
+        if (root.isEmpty() || canonical.isEmpty() || relative == ".." || relative.startsWith("../") ||
+            relative.startsWith("..\\") || QFileInfo(relative).isAbsolute()) {
+            notify("Slots premium aceitam apenas imagens importadas para a mídia gerenciada do workspace.");
+            return;
+        }
+    }
+    if ((key == "start" || key == "duration" || key == "motionFrames" || key == "exitFrames" ||
+         key == "wordAnimationDurationFrames") &&
         (!std::isfinite(value.toDouble()) || std::floor(value.toDouble()) != value.toDouble())) {
         notify("Durações e tempos devem ser números inteiros de frames.");
         return;
@@ -370,14 +393,8 @@ void EditorController::updateSelected(QString key, QVariant value) {
                 if (key == "text")
                     n.text = value.toString().toStdString();
                 else if (key == "source" && n.role.rfind("premium:image:", 0) == 0) {
-                    const auto source = value.toString();
-                    const auto info = QFileInfo(source);
-                    if (!info.isFile() || !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(info.suffix().toLower())) {
-                        notify("O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
-                        continue;
-                    }
                     n.kind = studio::NodeKind::Image;
-                    n.source = source.toStdString();
+                    n.source = value.toString().toStdString();
                 }
                 else if (key == "color")
                     n.color = value.toString().toStdString();
@@ -397,6 +414,10 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.start = value.toInt();
                 else if (key == "duration")
                     n.duration = value.toInt();
+                else if (key == "motionFrames")
+                    n.motionFrames = value.toInt();
+                else if (key == "exitFrames")
+                    n.exitFrames = value.toInt();
                 else if (key == "animated")
                     n.animated = value.toBool();
                 else if (key == "pose")
@@ -445,6 +466,9 @@ void EditorController::updateSelected(QString key, QVariant value) {
         changed();
     else
         notify(q(error));
+}
+void EditorController::setManagedMediaRoot(QString path) {
+    managedMediaRoot_ = QFileInfo(std::move(path)).absoluteFilePath();
 }
 bool EditorController::setCaptionWordBoundary(int wordIndex, QString edge, int frame) {
     const auto *node = studio::findNode(project(), selectedId_.toStdString());

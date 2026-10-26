@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cmath>
+#include <unordered_set>
 #include <studio/core/library.hpp>
 
 namespace studio {
@@ -79,7 +81,8 @@ const std::vector<LibraryItem> &nativeLibrary() {
     };
     return items;
 }
-std::vector<Node> makePremiumSmartphone() {
+std::vector<Node> makePremiumSmartphone() { return makePremiumSmartphone(1280, 720); }
+std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight) {
     std::vector<Node> nodes;
     nodes.reserve(24);
     auto add = [&](std::string id, std::string name, NodeKind kind, double x, double y,
@@ -92,11 +95,16 @@ std::vector<Node> makePremiumSmartphone() {
         nodes.push_back(std::move(n));
         return nodes.back();
     };
-    auto &root = add("phone-premium", "Smartphone premium", NodeKind::Group, 790, 140, 260, 500, "#0b1118");
-    root.keyframes = {{0, 790, 165, 0, .96, 0, "ease-out"},
-                      {24, 790, 140, 0, 1, 1, "ease-out"},
-                      {60, 790, 134, 0, 1.015, 1, "ease-in-out"},
-                      {120, 790, 140, 0, 1, 1, "ease-in-out"}};
+    const bool portrait = canvasHeight > canvasWidth;
+    const double factor = std::clamp((portrait ? canvasHeight * .34 : canvasHeight * .72) / 500.0, .85, 1.25);
+    const double phoneX = portrait ? (canvasWidth - 260 * factor) / 2.0 : canvasWidth * .64 - 130 * factor;
+    const double phoneY = (canvasHeight - 500 * factor) / 2.0;
+    auto &root = add("phone-premium", "Smartphone premium", NodeKind::Group, phoneX, phoneY, 260, 500, "#0b1118");
+    root.scale = factor;
+    root.keyframes = {{0, phoneX, phoneY + 25, 0, factor * .96, 0, "ease-out"},
+                      {24, phoneX, phoneY, 0, factor, 1, "ease-out"},
+                      {60, phoneX, phoneY - 6, 0, factor * 1.015, 1, "ease-in-out"},
+                      {120, phoneX, phoneY, 0, factor, 1, "ease-in-out"}};
     auto child = [&](std::string id, std::string name, NodeKind kind, double x, double y,
                      double w, double h, std::string color, std::string role = {}) -> Node & {
         auto &n = add(std::move(id), std::move(name), kind, x, y, w, h, std::move(color), "phone-premium");
@@ -142,6 +150,203 @@ std::vector<Node> makePremiumSmartphone() {
     child("home", "Indicador inferior", NodeKind::Shape, 93, 451, 58, 4, "#d6dfe4");
     child("edge-highlight", "Brilho de borda", NodeKind::Shape, 6, 8, 3, 456, "#b4d7e9").opacity = .5;
     return nodes;
+}
+namespace {
+std::vector<Node> makePremiumTitleRevealImpl(int width, int height) {
+    std::vector<Node> nodes;
+    nodes.reserve(8);
+    const bool portrait = height > width;
+    const double margin = width * .085;
+    const double s = std::clamp(std::min(width / 1280.0, height / 720.0), .72, 1.6);
+    auto add = [&](std::string id, std::string name, NodeKind kind, double x, double y,
+                   double w, double h, std::string color, std::string parent = {}) -> Node & {
+        Node n;
+        n.id = std::move(id); n.name = std::move(name); n.kind = kind;
+        n.x = x; n.y = y; n.width = w; n.height = h; n.color = std::move(color);
+        n.parentId = std::move(parent); n.start = 0; n.duration = 360;
+        n.animated = false; n.motion = "none";
+        nodes.push_back(std::move(n));
+        return nodes.back();
+    };
+    auto &root = add("title-reveal-root", "Title Reveal · composição", NodeKind::Group,
+                     0, 0, width, height, "#000000");
+    root.keyframes = {{0, 0, 0, 0, 1, 0, "ease-out"},
+                      {24, 0, 0, 0, 1, 1, "ease-out"},
+                      {336, 0, 0, 0, 1, 1, "linear"}};
+    root.exitFrames = 24;
+    const double top = portrait ? height * .31 : height * .27;
+    const double markerH = portrait ? height * .20 : height * .25;
+    auto &rule = add("title-editorial-rule", "Filete editorial", NodeKind::Shape,
+                     margin, top, 5 * s, markerH, "#b4f078", "title-reveal-root");
+    rule.opacity = .95;
+    rule.keyframes = {{0, margin, top, 0, .12, 0, "ease-out"},
+                      {22, margin, top, 0, 1, 1, "ease-out"}};
+    auto &eyebrow = add("title-editorial-id", "Identificação editorial", NodeKind::Text,
+                        margin + 28 * s, top, width - margin * 2 - 28 * s, 30 * s,
+                        "#b4f078", "title-reveal-root");
+    eyebrow.role = "premium:title:editorial";
+    eyebrow.text = "STUDIO DARK  /  ESPECIAL"; eyebrow.fontSize = 16 * s;
+    eyebrow.animated = true; eyebrow.motion = "rise"; eyebrow.motionFrames = 28;
+    const double titleY = top + markerH * .20;
+    const double titleH = portrait ? height * .24 : height * .32;
+    auto &title = add("title-main", "Título principal", NodeKind::Text,
+                      margin + 28 * s, titleY, width - margin * 2 - 36 * s, titleH,
+                      "#eef4ef", "title-reveal-root");
+    title.role = "premium:title:main";
+    title.text = "UMA HISTÓRIA\nEM MOVIMENTO";
+    title.fontSize = (portrait ? 78 : 88) * s;
+    title.animated = false; title.motion = "none"; title.motionFrames = 42;
+    const double subtitleY = titleY + titleH + (portrait ? 20 : 10) * s;
+    auto &subtitle = add("title-subtitle", "Subtítulo", NodeKind::Text,
+                         margin + 28 * s, subtitleY, width - margin * 2 - 36 * s, 64 * s,
+                         "#a8bbc0", "title-reveal-root");
+    subtitle.role = "premium:title:subtitle";
+    subtitle.text = "Ideias que merecem ser vistas de perto.";
+    subtitle.fontSize = 26 * s; subtitle.animated = true; subtitle.motion = "rise";
+    subtitle.motionFrames = 34;
+    subtitle.keyframes = {{0, subtitle.x, subtitle.y + 18 * s, 0, 1, 0, "ease-out"},
+                          {34, subtitle.x, subtitle.y, 0, 1, 1, "ease-out"}};
+    auto &tick = add("title-editorial-tick", "Detalhe editorial", NodeKind::Shape,
+                     width - margin - 44 * s, titleY + titleH + 5 * s,
+                     44 * s, 2 * s, "#efb873", "title-reveal-root");
+    tick.keyframes = {{0, tick.x, tick.y, 0, .1, 0, "ease-out"},
+                      {30, tick.x, tick.y, 0, 1, 1, "ease-out"}};
+    return nodes;
+}
+} // namespace
+std::vector<Node> makePremiumTitleReveal(int width, int height) {
+    return makePremiumTitleRevealImpl(std::clamp(width, 1, 30000), std::clamp(height, 1, 30000));
+}
+std::vector<Node> makePremiumComparisonPack(int width, int height) {
+    width = std::clamp(width, 1, 30000);
+    height = std::clamp(height, 1, 30000);
+    std::vector<Node> nodes;
+    nodes.reserve(24);
+    const bool portrait = height > width;
+    const double scale = std::clamp(std::min(width / 1280.0, height / 720.0), .72, 1.6);
+    const double margin = width * .075;
+    auto add = [&](std::string id, std::string name, NodeKind kind, double x, double y,
+                   double w, double h, std::string color, std::string parent = {}) -> Node & {
+        Node n;
+        n.id = std::move(id); n.name = std::move(name); n.kind = kind;
+        n.x = x; n.y = y; n.width = w; n.height = h; n.color = std::move(color);
+        n.parentId = std::move(parent); n.start = 0; n.duration = 360;
+        n.animated = false; n.motion = "none";
+        nodes.push_back(std::move(n));
+        return nodes.back();
+    };
+    auto &root = add("comparison-root", "Comparison Pack · composição", NodeKind::Group,
+                     0, 0, width, height, "#000000");
+    root.keyframes = {{0, 0, 0, 0, 1, 0, "ease-out"},
+                      {28, 0, 0, 0, 1, 1, "ease-out"},
+                      {336, 0, 0, 0, 1, 1, "linear"}};
+    root.exitFrames = 22;
+    auto &eyebrow = add("comparison-eyebrow", "Identificação editorial", NodeKind::Text,
+                        margin, height * .15, width - 2 * margin, 24 * scale,
+                        "#b4f078", "comparison-root");
+    eyebrow.text = "COMPARAÇÃO  /  TEMPLATE DEMONSTRATIVO";
+    eyebrow.fontSize = 15 * scale;
+    auto &heading = add("comparison-heading", "Título da comparação", NodeKind::Text,
+                        margin, height * .19, width - 2 * margin, height * .1,
+                        "#eef4ef", "comparison-root");
+    heading.text = "DOIS CENÁRIOS. UMA ESCOLHA.";
+    heading.fontSize = (portrait ? 45 : 52) * scale;
+    const double gap = portrait ? 24 * scale : 28 * scale;
+    const double panelX1 = margin;
+    const double panelWidth = portrait ? width - 2 * margin : (width - 2 * margin - gap) / 2;
+    const double panelX2 = portrait ? margin : panelX1 + panelWidth + gap;
+    const double panelY1 = portrait ? height * .32 : height * .35;
+    const double panelHeight = portrait ? height * .235 : height * .43;
+    const double panelY2 = portrait ? height * .585 : panelY1;
+    const std::string panelIds[]{"comparison-panel-left", "comparison-panel-right"};
+    const double panelXs[]{panelX1, panelX2};
+    const double panelYs[]{panelY1, panelY2};
+    const std::string panelColors[]{"#10242d", "#1c2a28"};
+    const std::string accents[]{"#83bdc7", "#b4f078"};
+    const std::string titles[]{"CENÁRIO A", "CENÁRIO B"};
+    const std::string values[]{"PERSONALIZE\nESTE VALOR", "PERSONALIZE\nESTE VALOR"};
+    const std::string descriptions[]{"Substitua por informação verificada.",
+                                     "Substitua por informação verificada."};
+    for (int i = 0; i < 2; ++i) {
+        auto &panel = add(panelIds[i], i == 0 ? "Painel esquerdo" : "Painel direito",
+                          NodeKind::Group, panelXs[i], panelYs[i], panelWidth, panelHeight,
+                          panelColors[i], "comparison-root");
+        panel.opacity = 0;
+        panel.keyframes = {{0, panel.x + (i == 0 ? -26 : 26), panel.y, 0, .96, 0, "ease-out"},
+                           {34 + i * 8, panel.x, panel.y, 0, 1, 1, "ease-out"}};
+        add("comparison-panel-bg-" + std::to_string(i), "Superfície do painel", NodeKind::Shape,
+            0, 0, panelWidth, panelHeight, panelColors[i], panel.id);
+        add("comparison-panel-accent-" + std::to_string(i), "Acento do painel", NodeKind::Shape,
+            0, 0, panelWidth * .24, 5 * scale, accents[i], panel.id);
+        const double inset = panelWidth * .075;
+        auto &label = add(i == 0 ? "comparison-left-title" : "comparison-right-title",
+                          i == 0 ? "Título esquerdo" : "Título direito", NodeKind::Text,
+                          inset, panelHeight * .16, panelWidth - 2 * inset, 32 * scale,
+                          accents[i], panel.id);
+        label.role = i == 0 ? "premium:comparison:left-title" : "premium:comparison:right-title";
+        label.text = titles[i]; label.fontSize = 18 * scale;
+        auto &value = add(i == 0 ? "comparison-left-value" : "comparison-right-value",
+                          i == 0 ? "Valor esquerdo" : "Valor direito", NodeKind::Text,
+                          inset, panelHeight * .34, panelWidth - 2 * inset, panelHeight * .32,
+                          "#eef4ef", panel.id);
+        value.role = i == 0 ? "premium:comparison:left-value" : "premium:comparison:right-value";
+        value.text = values[i]; value.fontSize = (portrait ? 38 : 34) * scale;
+        auto &description = add(i == 0 ? "comparison-left-description" : "comparison-right-description",
+                                i == 0 ? "Descrição esquerda" : "Descrição direita", NodeKind::Text,
+                                inset, panelHeight * .74, panelWidth - 2 * inset, panelHeight * .19,
+                                "#9fb2b9", panel.id);
+        description.role = i == 0 ? "premium:comparison:left-description"
+                                  : "premium:comparison:right-description";
+        description.text = descriptions[i]; description.fontSize = 15 * scale;
+    }
+    {
+        const double splitX = (panelX1 + panelWidth + panelX2) / 2;
+        const double dividerX = portrait ? margin + panelWidth * .1 : splitX - 1.5 * scale;
+        const double dividerY = portrait ? (panelY1 + panelHeight + panelY2) / 2 : panelY1 + 28 * scale;
+        const double dividerW = portrait ? panelWidth * .8 : 3 * scale;
+        const double dividerH = portrait ? 3 * scale : panelHeight - 56 * scale;
+        auto &divider = add("comparison-divider", "Separador central", NodeKind::Shape,
+                            dividerX, dividerY, dividerW, dividerH, "#71898b", "comparison-root");
+        divider.opacity = .65;
+    }
+    auto &footer = add("comparison-footer", "Nota do template", NodeKind::Text,
+                       margin, portrait ? height * .86 : height * .82,
+                       width - 2 * margin, 40 * scale, "#efb873", "comparison-root");
+    footer.text = "EXEMPLO VISUAL — substitua por dados com fonte.";
+    footer.fontSize = 17 * scale;
+    return nodes;
+}
+const std::vector<PremiumAssetDefinition> &premiumLibrary() {
+    static const std::vector<PremiumAssetDefinition> assets{
+        {"premium:smartphone-premium-01", "Smartphone premium", "premium-object", "technology",
+         "smartphone-premium-01.manifest.json", makePremiumSmartphone},
+        {"premium:title-reveal-01", "Title Reveal · título cinematográfico", "premium-typography-template",
+         "typography", "title-reveal-01.manifest.json", makePremiumTitleReveal},
+        {"premium:comparison-pack-01", "Comparison Pack · comparação editorial", "premium-motion-template",
+         "data", "comparison-pack-01.manifest.json", makePremiumComparisonPack}};
+    return assets;
+}
+const PremiumAssetDefinition *premiumAsset(const std::string &id) {
+    const auto &assets = premiumLibrary();
+    const auto it = std::find_if(assets.begin(), assets.end(),
+                                 [&](const auto &asset) { return asset.id == id; });
+    return it == assets.end() ? nullptr : &*it;
+}
+std::vector<Node> makePremiumAsset(const std::string &id, int width, int height) {
+    const auto *asset = premiumAsset(id);
+    return asset ? asset->build(std::clamp(width, 1, 30000), std::clamp(height, 1, 30000))
+                 : std::vector<Node>{};
+}
+bool premiumSlotRole(const std::string &role) {
+    if (role.empty()) return false;
+    static const auto roles = [] {
+        std::unordered_set<std::string> result;
+        for (const auto &asset : premiumLibrary())
+            for (const auto &node : asset.build(1280, 720))
+                if (!node.role.empty()) result.insert(node.role);
+        return result;
+    }();
+    return roles.contains(role);
 }
 const LibraryItem *libraryItem(const std::string &id) {
     const auto &items = nativeLibrary();

@@ -1086,21 +1086,68 @@ int main(int argc, char **argv) {
         futureManifest["manifestVersion"] = 2;
         check(!studio::validatePremiumManifest(futureManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
               "unknown future manifest versions fail clearly without corrupting older packages");
+        auto premiumScene = [](QString sceneId, QString narration, QString elementId, QString assetId) {
+            return QJsonObject{{"id", sceneId}, {"narration", QJsonArray{narration}},
+                               {"elements", QJsonArray{QJsonObject{{"id", elementId},
+                                                                   {"kind", "library"},
+                                                                   {"assetId", assetId},
+                                                                   {"cue", 0}}}}};
+        };
         auto premiumRecipe = QJsonObject{
             {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
-            {"title", "Apresentação de produto"}, {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
-            {"scenes", QJsonArray{QJsonObject{{"id", "produto"},
-                                               {"narration", QJsonArray{"Conheça uma nova forma de acompanhar as informações mais importantes."}},
-                                               {"elements", QJsonArray{QJsonObject{{"id", "telefone"},
-                                                                                   {"kind", "library"},
-                                                                                   {"assetId", "premium:smartphone-premium-01"},
-                                                                                   {"cue", 0}}}}}}}};
+            {"title", "Templates editoriais demonstrativos"}, {"captions", false},
+            {"musicGain", 0}, {"effectsGain", 0},
+            {"scenes", QJsonArray{
+                premiumScene("abertura", "Uma ideia começa com um título que se revela aos poucos.",
+                             "title", "premium:title-reveal-01"),
+                premiumScene("objeto", "O smartphone premium apresenta uma composição editável.",
+                             "phone", "premium:smartphone-premium-01"),
+                premiumScene("comparacao", "Compare cenários com informação verificada.",
+                             "comparison", "premium:comparison-pack-01")}}};
         auto premiumParsed = studio::parseRecipe(QJsonDocument(premiumRecipe).toJson(), directory.path(), catalog.data());
-        check(premiumParsed.error.isEmpty() && premiumParsed.recipe.scenes.front().elements.front().children.size() >= 15,
-              "real versioned premium smartphone ID expands through kind library in AI recipe");
+        std::string premiumDiagnostic = "premium recipe parse: " + premiumParsed.error.toStdString();
+        const auto subtreeNodes = [](const auto &self, const studio::DirectedElement &element) -> int {
+            int total = 1;
+            for (const auto &child : element.children)
+                total += self(self, child);
+            return total;
+        };
+        for (const auto &scene : premiumParsed.recipe.scenes)
+            if (!scene.elements.empty())
+                premiumDiagnostic += " [" + scene.id.toStdString() + ":" +
+                                     std::to_string(subtreeNodes(subtreeNodes, scene.elements.front())) + "]";
+        check(premiumParsed.error.isEmpty() && premiumParsed.recipe.scenes.size() == 3 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[0].elements.front()) == 6 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[1].elements.front()) == 19 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[2].elements.front()) == 17,
+              premiumDiagnostic.c_str());
+        QMap<QString, studio::PcmAudio> shortPremiumVoice;
+        for (const auto &scene : premiumParsed.recipe.scenes)
+            for (const auto &utterance : scene.narration) {
+                studio::PcmAudio audio;
+                audio.samples.resize(2 * 48000, 0);
+                shortPremiumVoice.insert(utterance.id, std::move(audio));
+            }
+        const auto compiledPremium = studio::compileProduction(
+            premiumParsed.recipe, shortPremiumVoice, directory.filePath("premium-short-voice.wav"));
+        const auto *shortTitleRoot = studio::findNode(compiledPremium.project, "title");
+        const auto shortTitleValid = !compiledPremium.error.isEmpty()
+                                         ? compiledPremium.error.toStdString()
+                                         : studio::validate(compiledPremium.project);
+        check(compiledPremium.error.isEmpty() && shortTitleValid.empty() && shortTitleRoot &&
+                  shortTitleRoot->duration < 360 && !shortTitleRoot->keyframes.empty() &&
+                  shortTitleRoot->keyframes.back().frame <= shortTitleRoot->start + shortTitleRoot->duration,
+              ("registered premium animations scale to measured narration spans without invalid keyframes: " +
+               shortTitleValid + ", duration=" + (shortTitleRoot ? std::to_string(shortTitleRoot->duration) : "missing") +
+               ", keys=" + (shortTitleRoot ? std::to_string(shortTitleRoot->keyframes.size()) : "0") +
+               ", premium=" + std::to_string(premiumParsed.recipe.scenes.front().elements.front().premiumTemplate) +
+               ", preset=" + std::to_string(premiumParsed.recipe.scenes.front().elements.front().presetTiming) +
+               ", sceneDuration=" + std::to_string(compiledPremium.project.scenes.front().duration)).c_str());
         check(studio::aiGuide(catalog.data()).contains("premium:smartphone-premium-01") &&
-                  studio::capabilities()["premiumAssets"].toArray().size() == 1,
-              "AI guide and capability catalogue list the implemented premium asset");
+                  studio::aiGuide(catalog.data()).contains("premium:title-reveal-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:comparison-pack-01") &&
+                  studio::capabilities()["premiumAssets"].toArray().size() == 3,
+              "AI guide and generated capability catalogue match the three implemented premium assets");
         check(studio::capabilities()["productionCapabilities"].toArray().contains("personal-library-video-assets"),
               "AI capability catalogue distinguishes real library video from premium slots");
         auto production = QJsonObject{

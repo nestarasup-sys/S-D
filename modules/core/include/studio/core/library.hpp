@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 #include <studio/core/project.hpp>
 
@@ -10,7 +11,22 @@ struct LibraryItem {
 };
 const std::vector<LibraryItem> &nativeLibrary();
 const LibraryItem *libraryItem(const std::string &id);
+struct PremiumAssetDefinition {
+    std::string_view id;
+    std::string_view name;
+    std::string_view type;
+    std::string_view category;
+    std::string_view manifestResource;
+    std::vector<Node> (*build)(int canvasWidth, int canvasHeight);
+};
+const std::vector<PremiumAssetDefinition> &premiumLibrary();
+const PremiumAssetDefinition *premiumAsset(const std::string &id);
+std::vector<Node> makePremiumAsset(const std::string &id, int canvasWidth = 1280, int canvasHeight = 720);
 std::vector<Node> makePremiumSmartphone();
+std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight);
+std::vector<Node> makePremiumTitleReveal(int canvasWidth, int canvasHeight);
+std::vector<Node> makePremiumComparisonPack(int canvasWidth, int canvasHeight);
+bool premiumSlotRole(const std::string &role);
 const std::vector<std::string> &motionNames();
 const std::vector<std::string> &poseNames();
 bool supportedMotion(const std::string &name);
