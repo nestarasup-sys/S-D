@@ -290,7 +290,19 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             const double dimensionScale = std::min({1.0, 10000. / n.width, 10000. / n.height});
             n.width *= dimensionScale;
             n.height *= dimensionScale;
-        } else if (assetKind == "preset") {
+        } else if (assetKind == "video" && version >= 3) {
+            const auto source = asset["source"].toString();
+            if (source.isEmpty() || !QFileInfo::exists(source))
+                return fail("Arquivo de vídeo da biblioteca ausente: " + assetId);
+            n.kind = NodeKind::Video;
+            n.source = source.toStdString();
+            n.name = asset["name"].toString().toStdString();
+            n.width = asset["width"].toDouble(1280);
+            n.height = asset["height"].toDouble(720);
+            if (!std::isfinite(n.width) || !std::isfinite(n.height) || n.width < 1 || n.height < 1 ||
+                n.width > 30000 || n.height > 30000)
+                return fail("Dimensões de vídeo da biblioteca inválidas: " + assetId);
+        } else if (assetKind == "preset" || assetKind == "premium") {
             const auto loaded = deserialize(QJsonDocument(asset["preset"].toObject()).toJson());
             if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
                 !loaded.project.nodes.front().parentId.empty())

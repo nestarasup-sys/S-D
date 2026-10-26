@@ -21,3 +21,7 @@ O manifesto pessoal depende da instalação e os assets não são empacotados no
 ## Verificação
 
 Foram acrescentados testes automatizados para salvamento, reinserção, undo, IDs, hierarquia, keyframes e compilação por JSON. Em 24/10/2026, `scripts/build.ps1 -Test` passou (4/4), assim como `scripts/smoke.ps1`, `scripts/smoke-workspace.ps1`, `scripts/smoke-production.ps1` e `scripts/update-ai-guide.ps1`. O smoke de produção usa a voz SAPI instalada `Microsoft Maria Desktop` e compara quadros do MP4 renderizado com a composição.
+
+## Pacotes premium
+
+O pacote premium não substitui o preset composto. Ele acrescenta manifesto versionado e metadados sobre tipo, slots e origem, mas instancia suas camadas pelo mesmo formato de projeto e comando de remapeamento de IDs. O primeiro `premium:smartphone-premium-01` fica no catálogo Workspace como item embutido e não é duplicado como item pessoal. O leitor premium v1 rejeita IDs de camada duplicados, slots sem camada, tipos desconhecidos, limites acima de 200 camadas/64 slots, dependências repetidas e caminhos absolutos ou que escapem da raiz do pacote. A edição resultante é independente do manifesto e usa os nós normais do projeto.

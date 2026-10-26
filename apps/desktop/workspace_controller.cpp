@@ -9,6 +9,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QSvgRenderer>
 #include <algorithm>
@@ -100,6 +102,12 @@ void WorkspaceController::setCategoryFilter(QString v) {
     categoryFilter_ = std::move(v);
     emit assetsChanged();
 }
+void WorkspaceController::setAssetTypeFilter(QString v) {
+    if (v != "" && v != "basic" && v != "premium" && v != "media")
+        return;
+    assetTypeFilter_ = std::move(v);
+    emit assetsChanged();
+}
 void WorkspaceController::setProjectTrash(bool v) {
     projectTrash_ = v;
     emit projectsChanged();
@@ -187,7 +195,7 @@ QVariantList WorkspaceController::assetChoices() const {
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
         if (!o["deleted"].toBool() &&
-            (o["kind"] == "native" || o["kind"] == "image" || o["kind"] == "svg" ||
+            (o["kind"] == "native" || o["kind"] == "premium" || o["kind"] == "image" || o["kind"] == "svg" ||
              o["kind"] == "preset"))
             result.append(o.toVariantMap());
     }
@@ -197,6 +205,11 @@ QVariantList WorkspaceController::assets() const {
     QVariantList result;
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
+        const auto kind = o["kind"].toString();
+        if ((assetTypeFilter_ == "basic" && kind != "native") ||
+            (assetTypeFilter_ == "premium" && kind != "premium" && kind != "preset") ||
+            (assetTypeFilter_ == "media" && kind != "image" && kind != "svg" && kind != "video"))
+            continue;
         if (o["deleted"].toBool() != assetTrash_ ||
             (!categoryFilter_.isEmpty() && o["categoryId"] != categoryFilter_) ||
             !o["name"].toString().contains(assetSearch_, Qt::CaseInsensitive))
@@ -204,12 +217,23 @@ QVariantList WorkspaceController::assets() const {
         for (auto c : store_.data()["categories"].toArray())
             if (c.toObject()["id"] == o["categoryId"])
                 o["categoryName"] = c.toObject()["name"];
-        auto kind = o["kind"].toString();
         if (kind == "native")
             o["thumbnail"] = "image://studio/native/" + o["nativeId"].toString();
-        else if (kind == "preset") {
+        else if (kind == "preset" || kind == "premium") {
             auto path = thumbnailPath(o["id"].toString());
+            if (!QFileInfo::exists(path)) {
+                const auto loaded = studio::deserialize(QJsonDocument(o["preset"].toObject()).toJson());
+                if (loaded.error.isEmpty() && !loaded.project.nodes.empty()) {
+                    QDir().mkpath(store_.root() + "/cache");
+                    studio::CompositionPainter painter;
+                    painter.frame(loaded.project, 50).scaled(480, 270, Qt::KeepAspectRatio,
+                                                             Qt::SmoothTransformation).save(path);
+                }
+            }
             o["thumbnail"] = QFileInfo::exists(path) ? QUrl::fromLocalFile(path).toString() : QString{};
+        } else if (kind == "video") {
+            o["thumbnail"] = QString{};
+            o["missing"] = !QFileInfo::exists(o["source"].toString());
         } else if (kind == "font" || kind == "visual-style") {
             o["thumbnail"] = QString{};
             o["missing"] = kind == "font" && !QFileInfo::exists(o["source"].toString());
@@ -218,6 +242,7 @@ QVariantList WorkspaceController::assets() const {
             o["missing"] = !QFileInfo::exists(o["source"].toString());
         }
         o["typeLabel"] = kind == "native"        ? "NATIVO"
+                         : kind == "premium"     ? "PREMIUM"
                          : kind == "preset"      ? "PERSONALIZADO"
                          : kind == "font"        ? "FONTE"
                          : kind == "visual-style" ? "ESTILO"
@@ -369,7 +394,33 @@ QString WorkspaceController::suggestedAssetName(QUrl source) const {
 bool WorkspaceController::addAsset(QUrl source, QString name, QString category) {
     auto path = source.toLocalFile();
     QSize mediaSize;
-    if (QFileInfo(path).suffix().compare("svg", Qt::CaseInsensitive) == 0) {
+    const auto extension = QFileInfo(path).suffix().toLower();
+    if (QStringList{"mp4", "mov", "mkv", "webm", "avi", "m4v"}.contains(extension)) {
+        if (!QFileInfo(path).isFile() || QFileInfo(path).size() < 1 || QFileInfo(path).size() > 32 * 1024 * 1024) {
+            notify("O vídeo precisa existir e ter até 32 MiB para entrar na biblioteca.");
+            return false;
+        }
+        QProcess probe;
+        probe.start(qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg"),
+                    {"-hide_banner", "-i", path, "-map", "0:v:0", "-frames:v", "1", "-f", "null", "NUL"});
+        if (!probe.waitForStarted(10000) || !probe.waitForFinished(30000) ||
+            probe.exitStatus() != QProcess::NormalExit || probe.exitCode() != 0) {
+            notify("Não foi possível analisar o vídeo com o FFmpeg local.");
+            return false;
+        }
+        const auto diagnostic = QString::fromLocal8Bit(probe.readAllStandardError());
+        const auto videoInfo = QRegularExpression("Video:.*?(\\d{2,5})x(\\d{2,5})",
+                                                   QRegularExpression::DotMatchesEverythingOption).match(diagnostic);
+        if (!videoInfo.hasMatch()) {
+            notify("O arquivo não contém uma faixa de vídeo decodificável.");
+            return false;
+        }
+        mediaSize = QSize(videoInfo.captured(1).toInt(), videoInfo.captured(2).toInt());
+        if (mediaSize.isEmpty() || qint64(mediaSize.width()) * mediaSize.height() > 40000000) {
+            notify("As dimensões do vídeo excedem o limite suportado.");
+            return false;
+        }
+    } else if (extension == "svg") {
         QSvgRenderer svg(path);
         if (QFileInfo(path).size() > 4 * 1024 * 1024 || !svg.isValid()) {
             notify("SVG inválido ou maior que 4 MiB.");
@@ -515,7 +566,7 @@ bool WorkspaceController::useAsset(QString id) {
         n.width = asset->width;
         n.height = asset->height;
         n.color = "#efb873";
-    } else if (kind == "preset") {
+    } else if (kind == "preset" || kind == "premium") {
         auto loaded = studio::deserialize(QJsonDocument(item["preset"].toObject()).toJson());
         if (!loaded.error.isEmpty() || loaded.project.nodes.empty() ||
             !loaded.project.nodes.front().parentId.empty()) {
@@ -530,6 +581,15 @@ bool WorkspaceController::useAsset(QString id) {
                 return false;
             }
         n = presetNodes.front();
+    } else if (kind == "video") {
+        n.kind = studio::NodeKind::Video;
+        n.source = item["source"].toString().toStdString();
+        n.width = item["width"].toDouble(1280);
+        n.height = item["height"].toDouble(720);
+        if (!QFileInfo::exists(QString::fromStdString(n.source))) {
+            notify("Arquivo de vídeo da biblioteca ausente.");
+            return false;
+        }
     } else {
         n.kind = kind == "svg" ? studio::NodeKind::Svg : studio::NodeKind::Image;
         n.source = item["source"].toString().toStdString();
@@ -541,7 +601,7 @@ bool WorkspaceController::useAsset(QString id) {
         }
     }
     n.name = item["name"].toString().toStdString();
-    const bool compound = kind == "preset" &&
+    const bool compound = (kind == "preset" || kind == "premium") &&
                           (presetNodes.size() > 1 || !presetNodes.front().keyframes.empty() ||
                            presetNodes.front().kind == studio::NodeKind::Group);
     if (compound)

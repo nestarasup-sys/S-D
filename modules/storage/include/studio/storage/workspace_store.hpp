@@ -1,5 +1,6 @@
 #pragma once
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -7,6 +8,7 @@
 
 namespace studio {
 QStringList loadWorkspaceFonts(const QString &workspaceDirectory);
+QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot);
 struct WorkspaceResult {
     QString id, error;
 };

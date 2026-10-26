@@ -15,7 +15,7 @@ Rectangle {
     function categoryName(id) { const c = workspace.categories.find(function(c) { return c.id === id }); return c ? c.name : "Categoria" }
     FileDialog {
         id: mediaDialog; title: "Adicionar imagem ou vetor à biblioteca"
-        nameFilters: ["Imagens e vetores (*.png *.jpg *.jpeg *.webp *.bmp *.svg)"]
+        nameFilters: ["Imagens, vetores e vídeo (*.png *.jpg *.jpeg *.webp *.bmp *.svg *.mp4 *.mov *.mkv *.webm *.avi *.m4v)"]
         onAccepted: { pendingFile = selectedFile; itemAction = "import"; selectedAsset = ({}); itemDialog.open() }
     }
     Dialog {
@@ -118,13 +118,16 @@ Rectangle {
                 Layout.fillWidth: true
                 ColumnLayout { spacing: 6
                     Label { text: workspace.assetTrash ? "Itens excluídos" : "Sua biblioteca criativa"; color: "#edf3f5"; font.pixelSize: 29; font.weight: Font.DemiBold }
-                    Label { text: "Objetos, cenários, personagens, imagens e as suas próprias variações."; color: "#819aaa"; font.pixelSize: 12 }
+                    Label { text: "Nativos, recursos premium, imagens e vídeos reais, além das suas próprias variações."; color: "#819aaa"; font.pixelSize: 12 }
                 }
                 Item { Layout.fillWidth: true }
                 StudioButton { text: "+  Adicionar arquivo"; accent: true; implicitHeight: 40; onClicked: mediaDialog.open() }
             }
             RowLayout {
                 Layout.fillWidth: true; spacing: 12
+                StudioButton { text: "Nativos básicos"; quiet: workspace.assetTypeFilter !== "basic"; accent: workspace.assetTypeFilter === "basic"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "basic" ? "" : "basic" }
+                StudioButton { text: "Premium"; quiet: workspace.assetTypeFilter !== "premium"; accent: workspace.assetTypeFilter === "premium"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "premium" ? "" : "premium" }
+                StudioButton { text: "Mídia real"; quiet: workspace.assetTypeFilter !== "media"; accent: workspace.assetTypeFilter === "media"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "media" ? "" : "media" }
                 StudioField { Layout.fillWidth: true; placeholderText: "Buscar na biblioteca…"; text: workspace.assetSearch; onTextEdited: workspace.assetSearch = text }
                 StudioButton { text: "Salvar seleção do editor"; enabled: workspace.canSaveSelection; onClicked: { itemAction = "preset"; itemDialog.open() } ToolTip.text: "Selecione um objeto ou grupo raiz para salvar a composição"; ToolTip.visible: hovered }
                 StudioButton { text: "Atualizar"; quiet: true; onClicked: workspace.refresh() }
@@ -147,7 +150,8 @@ Rectangle {
                                 anchors.fill: parent; anchors.margins: 12; spacing: 8
                                 Rectangle {
                                     Layout.fillWidth: true; Layout.preferredHeight: 140; radius: 5; color: "#102028"; clip: true
-                                    Image { anchors.fill: parent; anchors.margins: 4; visible: modelData.kind !== "font" && modelData.kind !== "visual-style"; source: modelData.thumbnail; fillMode: Image.PreserveAspectFit; autoTransform: true; sourceSize.width: 480; sourceSize.height: 270 }
+                                    Image { anchors.fill: parent; anchors.margins: 4; visible: modelData.kind !== "font" && modelData.kind !== "visual-style" && modelData.kind !== "video"; source: modelData.thumbnail; fillMode: Image.PreserveAspectFit; autoTransform: true; sourceSize.width: 480; sourceSize.height: 270 }
+                                    Label { anchors.centerIn: parent; visible: modelData.kind === "video"; text: "▶  VÍDEO\n" + modelData.width + " × " + modelData.height; color: "#b4f078"; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 18 }
                                     Label {
                                         anchors.centerIn: parent
                                         visible: modelData.kind === "font"

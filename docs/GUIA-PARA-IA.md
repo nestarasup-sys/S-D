@@ -1331,6 +1331,18 @@ Nenhum preset visual ativo.
 
 Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":0}`. Itens apagados não aparecem. O aplicativo resolve IDs na biblioteca local e informa se o item foi removido ou não existe. Não invente IDs nem suponha que outra máquina tenha os mesmos arquivos. O manifesto descreve nomes, categorias e dimensões; ele não inspeciona visualmente a imagem. Se a descrição não bastar para decidir, pergunte ao usuário. Itens image/SVG também podem ser referenciados por `source` se o usuário fornecer um caminho.
 
+## Categorias visuais e recursos premium
+
+Escolha entre **Nativos básicos** (objetos vetoriais incluídos), **Recursos premium** (composições editáveis com hierarquia e slots) e **Imagens e vídeos reais** (arquivos locais do usuário). As 11 categorias temáticas continuam filtros da biblioteca. ID premium disponível: `premium:smartphone-premium-01` (Tecnologia). Use-o como `kind: "library"` com esse `assetId` real. O smartphone é um grupo editável com animação de entrada/flutuação, slot de texto na tela, slot de texto de notificação e slot de imagem para a tela. O texto segue editável normalmente; para imagem, selecione o slot e use **Substituir imagem deste slot**. A imagem é um arquivo local. Imagens podem entrar na biblioteca e vídeos locais podem ser importados como mídia real; receita v3 referencia um vídeo catalogado por `kind: "library"`. Isso é diferente de um slot de vídeo dentro do smartphone, que ainda não existe.
+
+Exemplo estrutural de receita v2 (o exemplo usa o ID real e é validado pela suíte do parser):
+
+```json
+{"format":"studio-dark-production","version":2,"catalogVersion":1,"title":"Apresentação de produto","captions":false,"musicGain":0,"effectsGain":0,"scenes":[{"id":"produto","narration":["Conheça uma nova forma de acompanhar as informações mais importantes."],"elements":[{"id":"telefone","kind":"library","assetId":"premium:smartphone-premium-01","cue":0}]}]}
+```
+
+O pacote usa o QPainter de produção. Reflexo e sombra são simulados por camadas vetoriais; blur/GPU não são requisitos. Slots de vídeo/ícone, kits de cena e os outros templates premium ainda não estão implementados. O smartphone abre com superfície vetorial substituível, não com foto.
+
 ## Presets compostos na biblioteca pessoal
 
 O app agora permite salvar e reutilizar um **grupo raiz** com filhos, subgrupos, animações e mídias copiadas para a biblioteca. O guia exportado pelo aplicativo identifica esses presets; o guia do repositório não contém IDs pessoais.
@@ -1990,6 +2002,25 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "wave",
         "worried"
     ],
+    "premiumAssetCategories": [
+        "basic-native",
+        "premium",
+        "real-media"
+    ],
+    "premiumAssets": [
+        {
+            "id": "premium:smartphone-premium-01",
+            "kind": "premium-object",
+            "manifestVersion": 1,
+            "name": "Smartphone premium",
+            "slots": [
+                "text:screen-title",
+                "text:notification",
+                "image:screen"
+            ],
+            "status": "implemented"
+        }
+    ],
     "productionCapabilities": [
         "free-scene-layout",
         "nested-groups",
@@ -2028,6 +2059,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "video-source-trim",
         "video-speed-control",
         "video-normalized-crop",
+        "personal-library-video-assets",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",

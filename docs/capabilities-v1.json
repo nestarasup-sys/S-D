@@ -552,6 +552,25 @@
         "wave",
         "worried"
     ],
+    "premiumAssetCategories": [
+        "basic-native",
+        "premium",
+        "real-media"
+    ],
+    "premiumAssets": [
+        {
+            "id": "premium:smartphone-premium-01",
+            "kind": "premium-object",
+            "manifestVersion": 1,
+            "name": "Smartphone premium",
+            "slots": [
+                "text:screen-title",
+                "text:notification",
+                "image:screen"
+            ],
+            "status": "implemented"
+        }
+    ],
     "productionCapabilities": [
         "free-scene-layout",
         "nested-groups",
@@ -590,6 +609,7 @@
         "video-source-trim",
         "video-speed-control",
         "video-normalized-crop",
+        "personal-library-video-assets",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",

@@ -1055,6 +1055,54 @@ int main(int argc, char **argv) {
         part.keyframes = {{45, 15, 30, 0, 1, 1}, {65, 60, 30, 0, 1, 1}};
         auto grouped = catalog.addPreset("Painel IA", "objects", {group, part});
         check(grouped.error.isEmpty(), "store reusable group preset");
+        QFile manifestFile(QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium/smartphone-premium-01.manifest.json");
+        check(manifestFile.open(QIODevice::ReadOnly), "read the versioned premium package manifest");
+        auto manifest = QJsonDocument::fromJson(manifestFile.readAll()).object();
+        check(studio::validatePremiumManifest(manifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "version 1 premium manifest validates against its package root");
+        auto internalPathManifest = manifest;
+        auto internalLayers = internalPathManifest["layers"].toArray();
+        auto internalLayer = internalLayers[0].toObject();
+        internalLayer["source"] = "smartphone-premium-01.manifest.json";
+        internalLayers[0] = internalLayer;
+        internalPathManifest["layers"] = internalLayers;
+        check(studio::validatePremiumManifest(internalPathManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifest accepts an existing relative file inside its package");
+        auto traversalManifest = manifest;
+        auto traversalLayers = traversalManifest["layers"].toArray();
+        auto traversalLayer = traversalLayers[0].toObject();
+        traversalLayer["source"] = "../../outside.png";
+        traversalLayers[0] = traversalLayer;
+        traversalManifest["layers"] = traversalLayers;
+        check(!studio::validatePremiumManifest(traversalManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifests reject paths escaping their package");
+        auto duplicateManifest = manifest;
+        auto duplicateLayers = duplicateManifest["layers"].toArray();
+        duplicateLayers.append(duplicateLayers[0]);
+        duplicateManifest["layers"] = duplicateLayers;
+        check(!studio::validatePremiumManifest(duplicateManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifests reject duplicate layer IDs");
+        auto futureManifest = manifest;
+        futureManifest["manifestVersion"] = 2;
+        check(!studio::validatePremiumManifest(futureManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "unknown future manifest versions fail clearly without corrupting older packages");
+        auto premiumRecipe = QJsonObject{
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Apresentação de produto"}, {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
+            {"scenes", QJsonArray{QJsonObject{{"id", "produto"},
+                                               {"narration", QJsonArray{"Conheça uma nova forma de acompanhar as informações mais importantes."}},
+                                               {"elements", QJsonArray{QJsonObject{{"id", "telefone"},
+                                                                                   {"kind", "library"},
+                                                                                   {"assetId", "premium:smartphone-premium-01"},
+                                                                                   {"cue", 0}}}}}}}};
+        auto premiumParsed = studio::parseRecipe(QJsonDocument(premiumRecipe).toJson(), directory.path(), catalog.data());
+        check(premiumParsed.error.isEmpty() && premiumParsed.recipe.scenes.front().elements.front().children.size() >= 15,
+              "real versioned premium smartphone ID expands through kind library in AI recipe");
+        check(studio::aiGuide(catalog.data()).contains("premium:smartphone-premium-01") &&
+                  studio::capabilities()["premiumAssets"].toArray().size() == 1,
+              "AI guide and capability catalogue list the implemented premium asset");
+        check(studio::capabilities()["productionCapabilities"].toArray().contains("personal-library-video-assets"),
+              "AI capability catalogue distinguishes real library video from premium slots");
         auto production = QJsonObject{
             {"format", "studio-dark-production"},
             {"version", 2},

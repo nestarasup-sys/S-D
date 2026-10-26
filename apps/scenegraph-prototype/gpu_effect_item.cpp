@@ -195,19 +195,14 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
             const QSize readbackSize = source_.size();
             const auto submissionNanoseconds = submissionTimer.nsecsElapsed();
             const auto submittedAt = std::chrono::steady_clock::now();
-            auto *commandBuffer = cb;
-            const bool timestampSupported = rhi_->isFeatureSupported(QRhi::Timestamps);
             auto *resultData = result.get();
             result->completed = [resultData, state, readbackSize, submittedAt,
-                                 uploadPreparationNanoseconds, submissionNanoseconds, commandBuffer,
-                                 timestampSupported] {
+                                 uploadPreparationNanoseconds, submissionNanoseconds] {
                 GpuEffectTimings timings;
                 timings.textureUploadPreparationNanoseconds = uploadPreparationNanoseconds;
                 timings.renderPassSubmissionNanoseconds = submissionNanoseconds;
                 timings.readbackLatencyNanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::steady_clock::now() - submittedAt).count();
-                if (timestampSupported)
-                    timings.completedGpuFrameNanoseconds = qint64(commandBuffer->lastCompletedGpuTime() * 1e9);
                 if (resultData->data.size() < qsizetype(readbackSize.width()) * readbackSize.height() * 4) {
                     state->publish({}, timings, QStringLiteral("QRhi returned an incomplete texture readback"));
                     return;
@@ -230,7 +225,6 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         dynamicPasses_.clear();
         stackPlanRevision_ = std::numeric_limits<quint64>::max();
         stackPlanSize_ = {};
-        uploadedStackRevision_ = std::numeric_limits<quint64>::max();
         pipeline_.reset();
         maskPipeline_.reset();
         horizontalPipeline_.reset();
@@ -469,19 +463,18 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         }
         bool firstPass = true;
         QElapsedTimer maskUploadTimer;
-        const bool uploadMasks = uploadedStackRevision_ != stackRevision_;
-        if (uploadMasks)
-            maskUploadTimer.start();
+        maskUploadTimer.start();
         for (auto &command : dynamicPasses_) {
             auto *updates = firstPass ? firstUpdates : rhi_->nextResourceUpdateBatch();
             firstPass = false;
-            if (command.pass == Pass::Mask && uploadMasks) {
+            if (command.pass == Pass::Mask) {
                 if (command.effect.alphaMask.size() != source_.size()) {
                     error = QStringLiteral("Dynamic alpha masks must match their source layer dimensions");
                     return false;
                 }
-                updates->uploadTexture(maskTexture_.get(), command.effect.alphaMask.convertToFormat(
-                    QImage::Format_RGBA8888_Premultiplied));
+                // Sequential passes share this texture; a later mask or final copy may
+                // overwrite it, so upload the declared mask immediately before use.
+                updates->uploadTexture(maskTexture_.get(), command.effect.alphaMask);
             }
             EffectUniforms uniforms;
             uniforms.params[0] = float(command.effect.radius);
@@ -506,10 +499,7 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
             }
             runPass(cb, updates, pipeline, command.bindings.get(), targetFor(command.target), command.pass);
         }
-        if (uploadedStackRevision_ != stackRevision_) {
-            uploadedStackRevision_ = stackRevision_;
-            uploadPreparationNanoseconds += maskUploadTimer.nsecsElapsed();
-        }
+        uploadPreparationNanoseconds += maskUploadTimer.nsecsElapsed();
         return true;
     }
 
@@ -517,7 +507,6 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         dynamicPasses_.clear();
         stackPlanRevision_ = std::numeric_limits<quint64>::max();
         stackPlanSize_ = {};
-        uploadedStackRevision_ = std::numeric_limits<quint64>::max();
         pipeline_.reset();
         maskPipeline_.reset();
         horizontalPipeline_.reset();
@@ -653,7 +642,6 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
     quint64 revision_{0};
     quint64 stackRevision_{0};
     quint64 uploadedRevision_{std::numeric_limits<quint64>::max()};
-    quint64 uploadedStackRevision_{std::numeric_limits<quint64>::max()};
     quint64 stackPlanRevision_{std::numeric_limits<quint64>::max()};
     QSize stackPlanSize_;
     std::vector<DynamicPass> dynamicPasses_;

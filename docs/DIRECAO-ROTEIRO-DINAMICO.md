@@ -19,6 +19,10 @@ A narração informa **o quê**; a direção visual escolhe **como descobrir**. 
 
 Um exemplo de variação, não uma regra de relógio: gancho tipográfico; cena de objeto com profundidade; travelling contínuo; infográfico; pausa visual; conclusão. Misture shots curtos e um plano mais longo. Evite repetir `pop` ou `zoom` em toda frase.
 
+## Recursos premium e escolhas artísticas
+
+O primeiro recurso premium disponível é `premium:smartphone-premium-01`: use-o quando a história pedir uma tela de produto ou notificação. Combine-o com texto breve, uma imagem local substituível na tela e movimento de câmera sutil. A animação do pacote é discreta e o texto e a imagem continuam editáveis. Esta é uma recomendação artística; os IDs, slots e o JSON aceito ficam no [guia técnico para IA](GUIA-PARA-IA.md). Os outros 29 itens da coleção continuam planejados, conforme [catálogo premium](premium/PREMIUM-CATALOG.md).
+
 ## Biblioteca editorial (72 recursos nativos)
 
 O catálogo agora contém 72 desenhos vetoriais, incluindo 58 recursos novos; o exportador de guia lista os IDs atuais. Famílias sugeridas:

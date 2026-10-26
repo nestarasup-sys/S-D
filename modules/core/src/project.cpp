@@ -180,7 +180,11 @@ std::string validate(const Project &p) {
             !std::all_of(n.secondaryColor.begin() + 1, n.secondaryColor.end(),
                          [](unsigned char c) { return std::isxdigit(c); }))
             return "Cor secundária inválida.";
-        if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header")
+        const bool premiumSlot = n.role == "premium:text:screen-title" ||
+                                 n.role == "premium:text:notification" ||
+                                 n.role == "premium:image:screen";
+        if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header" &&
+            !premiumSlot)
             return "Papel visual desconhecido.";
     }
     std::unordered_map<std::string, const ShotMarker *> shotsById;

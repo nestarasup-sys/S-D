@@ -57,6 +57,7 @@ QVariantMap map(const studio::Node &n) {
                                                           : "image"},
             {"text", q(n.text)},
             {"color", q(n.color)},
+            {"source", q(n.source)},
             {"start", int(n.start)},
             {"duration", int(n.duration)},
             {"x", n.x},
@@ -368,6 +369,16 @@ void EditorController::updateSelected(QString key, QVariant value) {
                 }
                 if (key == "text")
                     n.text = value.toString().toStdString();
+                else if (key == "source" && n.role.rfind("premium:image:", 0) == 0) {
+                    const auto source = value.toString();
+                    const auto info = QFileInfo(source);
+                    if (!info.isFile() || !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(info.suffix().toLower())) {
+                        notify("O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
+                        continue;
+                    }
+                    n.kind = studio::NodeKind::Image;
+                    n.source = source.toStdString();
+                }
                 else if (key == "color")
                     n.color = value.toString().toStdString();
                 else if (key == "x")
@@ -979,7 +990,7 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     }
     auto error = editor_.execute([&](studio::Project &p) {
         if (n.kind == studio::NodeKind::Video)
-            p.schemaVersion = std::max(p.schemaVersion, 5);
+            p.schemaVersion = std::max(p.schemaVersion, 10);
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
         else

@@ -79,6 +79,70 @@ const std::vector<LibraryItem> &nativeLibrary() {
     };
     return items;
 }
+std::vector<Node> makePremiumSmartphone() {
+    std::vector<Node> nodes;
+    nodes.reserve(24);
+    auto add = [&](std::string id, std::string name, NodeKind kind, double x, double y,
+                   double w, double h, std::string color, std::string parent = {}) -> Node & {
+        Node n;
+        n.id = std::move(id); n.name = std::move(name); n.kind = kind;
+        n.x = x; n.y = y; n.width = w; n.height = h; n.color = std::move(color);
+        n.parentId = std::move(parent); n.start = 0; n.duration = 360;
+        n.animated = false; n.motion = "none";
+        nodes.push_back(std::move(n));
+        return nodes.back();
+    };
+    auto &root = add("phone-premium", "Smartphone premium", NodeKind::Group, 790, 140, 260, 500, "#0b1118");
+    root.keyframes = {{0, 790, 165, 0, .96, 0, "ease-out"},
+                      {24, 790, 140, 0, 1, 1, "ease-out"},
+                      {60, 790, 134, 0, 1.015, 1, "ease-in-out"},
+                      {120, 790, 140, 0, 1, 1, "ease-in-out"}};
+    auto child = [&](std::string id, std::string name, NodeKind kind, double x, double y,
+                     double w, double h, std::string color, std::string role = {}) -> Node & {
+        auto &n = add(std::move(id), std::move(name), kind, x, y, w, h, std::move(color), "phone-premium");
+        n.role = std::move(role);
+        return n;
+    };
+    child("shadow", "Sombra simulada", NodeKind::Shape, 8, 12, 244, 480, "#030609").opacity = .75;
+    child("rail", "Aro externo", NodeKind::Shape, 0, 0, 244, 480, "#71808c");
+    child("body", "Corpo em grafite", NodeKind::Shape, 4, 4, 236, 472, "#171e27");
+    child("inner-rail", "Moldura metálica", NodeKind::Shape, 10, 10, 224, 460, "#323e49");
+    child("glass", "Vidro frontal", NodeKind::Shape, 14, 14, 216, 452, "#05090e");
+    child("screen", "Slot de imagem da tela", NodeKind::Shape, 24, 42, 196, 394, "#102539", "premium:image:screen");
+    child("reflection", "Reflexo de vidro", NodeKind::Shape, 24, 42, 196, 394, "#496579").opacity = .13;
+    auto &camera = child("camera-island", "Ilha de sensores", NodeKind::Shape, 82, 18, 80, 20, "#020407");
+    camera.opacity = .98;
+    child("earpiece", "Alto-falante", NodeKind::Shape, 104, 24, 36, 4, "#53616c");
+    auto &clock = child("clock", "Hora da tela", NodeKind::Text, 39, 64, 125, 38, "#f2f6f8", "premium:text:screen-title");
+    clock.text = "09:41"; clock.fontSize = 27;
+    auto &status = child("status", "Indicadores", NodeKind::Text, 40, 92, 165, 18, "#d8e1e8");
+    status.text = "●  5G                             98%"; status.fontSize = 9;
+    child("divider", "Filete de luz", NodeKind::Shape, 30, 119, 184, 2, "#9bc9e3").opacity = .65;
+    auto &notification = child("notification", "Grupo de notificação", NodeKind::Group, 34, 142, 176, 92, "#dbe6eb");
+    notification.opacity = 0;
+    notification.keyframes = {{0,34,142,0,1,0,"linear"},{30,34,142,0,1,0,"ease-out"},
+                              {42,34,142,0,1,1,"ease-out"},{92,34,130,0,1,1,"ease-in-out"}};
+    auto &notificationCard = add("notification-card", "Cartão da notificação", NodeKind::Shape,
+                                 0, 0, 176, 92, "#dbe6eb", "notification");
+    notificationCard.animated = false; notificationCard.motion = "none";
+    auto &app = add("app-name", "Aplicativo da notificação", NodeKind::Text, 12, 10, 150, 20,
+                    "#233545", "notification");
+    app.role = ""; app.text = "STUDIO DARK"; app.fontSize = 11;
+    auto &message = add("message", "Mensagem substituível", NodeKind::Text, 12, 33, 150, 49,
+                        "#1b2a35", "notification");
+    message.role = "premium:text:notification";
+    message.text = "Seu projeto está pronto\npara a próxima cena."; message.fontSize = 12;
+    for (auto *part : {&app, &message}) {
+        part->opacity = 0;
+        part->keyframes = {{0, part->x, part->y, 0, 1, 0, "linear"},
+                           {30, part->x, part->y, 0, 1, 0, "ease-out"},
+                           {42, part->x, part->y, 0, 1, 1, "ease-out"},
+                           {92, part->x, part->y, 0, 1, 1, "ease-in-out"}};
+    }
+    child("home", "Indicador inferior", NodeKind::Shape, 93, 451, 58, 4, "#d6dfe4");
+    child("edge-highlight", "Brilho de borda", NodeKind::Shape, 6, 8, 3, 456, "#b4d7e9").opacity = .5;
+    return nodes;
+}
 const LibraryItem *libraryItem(const std::string &id) {
     const auto &items = nativeLibrary();
     auto it = std::find_if(items.begin(), items.end(), [&](const auto &a) { return a.id == id; });

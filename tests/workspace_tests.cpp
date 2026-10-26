@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QImageReader>
 #include <QPainter>
+#include <QProcess>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
@@ -13,6 +14,7 @@
 #include <stdexcept>
 #include <studio/composition/painter.hpp>
 #include <studio/core/library.hpp>
+#include <studio/production/recipe.hpp>
 
 namespace {
 int checks = 0;
@@ -41,17 +43,110 @@ int main(int argc, char **argv) {
         WorkspaceController ui(&editor, temp.filePath("workspace"));
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
         check(ui.projectCount() == 0 &&
-                  ui.assetCount() == int(studio::nativeLibrary().size()) &&
+                  ui.assetCount() == int(studio::nativeLibrary().size()) + 1 &&
                   ui.categories().size() == 11 &&
                   !named(ui.categories(), "Tecnologia").isEmpty() &&
                   !named(ui.categories(), "Comunicação").isEmpty() &&
                   !named(ui.categories(), "Finanças").isEmpty() &&
                   !named(ui.categories(), "Ciência").isEmpty(),
               "initial complete native library and categories");
+        const auto premium = named(ui.assets(), "Smartphone premium");
+        check(premium["id"] == "premium:smartphone-premium-01" &&
+                  premium["kind"] == "premium" && !premium["thumbnail"].toString().isEmpty(),
+              "versioned smartphone premium is visible with generated preview");
+        ui.setAssetTypeFilter("premium");
+        check(ui.assets().size() == 1 && ui.assets().front().toMap()["kind"] == "premium",
+              "top-level premium category filter preserves thematic categories");
+        ui.setAssetTypeFilter("basic");
+        check(ui.assets().size() == int(studio::nativeLibrary().size()), "basic native category filter retains all 72 items");
+        ui.setAssetTypeFilter("media");
+        check(ui.assets().isEmpty(), "real-media category is separate from native and premium assets");
+        ui.setAssetTypeFilter("");
         check(!ui.createProject(" "), "empty project names rejected");
         check(ui.createProject("Minha história"), "create managed project");
         check(ui.hasDocument() && ui.page() == "editor" && !editor.dirty(),
               "creation opens an already saved blank document");
+        check(ui.useAsset("premium:smartphone-premium-01") && editor.project().nodes.size() >= 15,
+              "premium smartphone inserts its editable vector hierarchy");
+        const auto slotText = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                                           [](const auto &n) { return n.role == "premium:text:notification"; });
+        check(slotText != editor.project().nodes.end(), "premium text slot is a real project node");
+        const auto slotId = QString::fromStdString(slotText->id);
+        editor.selectNode(slotId);
+        editor.updateSelected("text", "Oferta atualizada");
+        check(studio::findNode(editor.project(), slotId.toStdString())->text == "Oferta atualizada",
+              "premium text slot uses the standard editable text command");
+        const auto imageSlot = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                                            [](const auto &n) { return n.role == "premium:image:screen"; });
+        check(imageSlot != editor.project().nodes.end() && imageSlot->kind == studio::NodeKind::Shape,
+              "premium image slot starts as editable screen surface");
+        auto slotImage = QImage(32, 32, QImage::Format_RGBA8888);
+        slotImage.fill(QColor(220, 80, 60, 180));
+        const auto imagePath = temp.filePath("slot.png");
+        check(slotImage.save(imagePath), "create a temporary image for premium slot test");
+        const auto imageSlotId = QString::fromStdString(imageSlot->id);
+        editor.selectNode(imageSlotId);
+        editor.updateSelected("source", imagePath);
+        check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Image &&
+                  studio::findNode(editor.project(), imageSlotId.toStdString())->source == imagePath.toStdString(),
+              "image slot substitutes image while keeping its transform and hierarchy");
+        const auto premiumRoundTrip = studio::deserialize(studio::serialize(editor.project()));
+        check(premiumRoundTrip.error.isEmpty() && premiumRoundTrip.project.nodes.size() == editor.project().nodes.size() &&
+                  std::any_of(premiumRoundTrip.project.nodes.begin(), premiumRoundTrip.project.nodes.end(),
+                              [](const auto &n) { return n.role == "premium:image:screen" && n.kind == studio::NodeKind::Image; }),
+              "premium slot and media persist through project save and reopen");
+        editor.undo();
+        check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Shape,
+              "premium image replacement can be undone");
+        editor.undo();
+        check(studio::findNode(editor.project(), slotId.toStdString())->text != "Oferta atualizada",
+              "premium text edit can be undone");
+        editor.undo();
+        check(std::none_of(editor.project().nodes.begin(), editor.project().nodes.end(),
+                           [](const auto &n) { return n.role.starts_with("premium:"); }),
+              "premium insertion is one history action");
+        const auto videoPath = temp.filePath("library-video.mp4");
+        QProcess videoEncoder;
+        videoEncoder.start(qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg"),
+                           {"-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+                            "color=c=steelblue:s=160x90:d=1:r=30", "-c:v", "libx264", "-pix_fmt",
+                            "yuv420p", "-an", "-y", videoPath});
+        const bool encodedVideo = videoEncoder.waitForStarted(10000) && videoEncoder.waitForFinished(30000) &&
+                                  videoEncoder.exitCode() == 0;
+        check(encodedVideo, "generate a short real video file for the media-library test");
+        check(ui.addAsset(QUrl::fromLocalFile(videoPath), "Clipe de mídia real", "technology"),
+              "import and probe a local video into the real-media library");
+        ui.setAssetTypeFilter("media");
+        const auto importedVideo = named(ui.assets(), "Clipe de mídia real");
+        check(importedVideo["kind"] == "video" && importedVideo["width"].toInt() == 160 &&
+                  importedVideo["height"].toInt() == 90,
+              "video library item preserves detected dimensions and is in the media category");
+        const QJsonObject videoRecipe{{"format", "studio-dark-production"}, {"version", 3},
+                                      {"catalogVersion", 1}, {"title", "Vídeo da biblioteca"},
+                                      {"voice", "auto"}, {"captions", false},
+                                      {"editing", QJsonObject{{"intensity", 50}, {"rhythm", "narration"}}},
+                                      {"musicGain", 0}, {"effectsGain", 0},
+                                      {"scenes", QJsonArray{QJsonObject{
+                                          {"id", "video-scene"}, {"narration", QJsonArray{"Um clipe demonstrativo."}},
+                                          {"shots", QJsonArray{QJsonObject{
+                                              {"id", "video-shot"},
+                                              {"camera", QJsonObject{{"x", 640}, {"y", 360}, {"zoom", 1}, {"rotation", 0}}},
+                                              {"elements", QJsonArray{QJsonObject{{"id", "video-library"},
+                                                                                  {"kind", "library"},
+                                                                                  {"assetId", importedVideo["id"].toString()},
+                                                                                  {"cue", 0}}}}}}}}}}};
+        const auto parsedVideoRecipe = studio::parseRecipe(
+            QJsonDocument(videoRecipe).toJson(), temp.path(),
+            QJsonObject{{"assets", QJsonArray{QJsonObject::fromVariantMap(importedVideo)}}});
+        check(parsedVideoRecipe.error.isEmpty() &&
+                  parsedVideoRecipe.recipe.scenes.front().shots.front().elements.front().node.kind ==
+                      studio::NodeKind::Video,
+              "v3 AI recipe resolves a real catalogued video through kind library");
+        ui.setAssetTypeFilter("");
+        check(ui.useAsset(importedVideo["id"].toString()) && editor.project().schemaVersion >= 10 &&
+                  editor.project().nodes.back().kind == studio::NodeKind::Video,
+              "real video library item inserts as an editable production video layer");
+        editor.undo();
         const auto fontPath = QStringLiteral("C:/Windows/Fonts/arial.ttf");
         if (QFile::exists(fontPath)) {
             check(ui.addFont(QUrl::fromLocalFile(fontPath)), "import a system font into the private library");

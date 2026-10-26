@@ -9,6 +9,7 @@
 #include <QLockFile>
 #include <QMap>
 #include <QSaveFile>
+#include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
 #include <studio/core/library.hpp>
@@ -132,6 +133,17 @@ QJsonObject defaults() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
+    auto premium = makeEmpty();
+    premium.name = "Smartphone premium";
+    premium.duration = 360;
+    premium.nodes = makePremiumSmartphone();
+    assets.append(QJsonObject{{"id", "premium:smartphone-premium-01"},
+                              {"name", "Smartphone premium"},
+                              {"kind", "premium"}, {"premiumType", "object"},
+                              {"manifestVersion", 1}, {"preset", QJsonDocument::fromJson(serialize(premium)).object()},
+                              {"categoryId", "technology"}, {"deleted", false}, {"builtin", true},
+                              {"slots", QJsonArray{"text:screen-title", "text:notification", "image:screen"}},
+                              {"createdAt", "2026-10-26T00:00:00.000Z"}});
     return {{"format", "studio-dark-workspace"},
             {"version", 1},
             {"projects", QJsonArray{}},
@@ -163,6 +175,106 @@ QStringList loadWorkspaceFonts(const QString &workspaceDirectory) {
             loadedFamilies.append(family);
     }
     return loadedFamilies;
+}
+QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot) {
+    if (manifest["format"] != "studio-dark-premium" || manifest["manifestVersion"] != 1)
+        return "Formato ou versão de manifesto premium não suportado.";
+    const auto id = manifest["id"].toString();
+    static const QRegularExpression validId("^premium:[a-z0-9][a-z0-9-]{2,78}$");
+    static const QRegularExpression semanticVersion("^\\d+\\.\\d+\\.\\d+$");
+    const auto packageType = manifest["type"].toString();
+    const auto canvas = manifest["canvas"].toObject();
+    if (!validId.match(id).hasMatch() || !validName(manifest["name"].toString()) ||
+        !semanticVersion.match(manifest["version"].toString()).hasMatch() ||
+        !QStringList{"premium-object", "premium-scene-kit", "premium-motion-template",
+                     "premium-typography-template", "premium-overlay"}.contains(packageType) ||
+        manifest["category"].toString().isEmpty() || !canvas["width"].isDouble() ||
+        !canvas["height"].isDouble() || canvas["width"].toInt() < 1 || canvas["height"].toInt() < 1 ||
+        canvas["width"].toInt() > 30000 || canvas["height"].toInt() > 30000 ||
+        !manifest["license"].isObject() || manifest["license"]["spdx"].toString().isEmpty() ||
+        !manifest["origin"].isObject() || manifest["origin"]["kind"].toString().isEmpty() ||
+        !manifest["tags"].isArray() || manifest["tags"].toArray().size() > 32 ||
+        !manifest["preview"].isObject() || !manifest["hierarchy"].isObject() ||
+        !manifest["layers"].isArray() ||
+        manifest["layers"].toArray().isEmpty() || manifest["layers"].toArray().size() > 200 ||
+        !manifest["slots"].isArray() || manifest["slots"].toArray().size() > 64 ||
+        !manifest["dependencies"].isArray() || manifest["dependencies"].toArray().size() > 64)
+        return "Metadados, limites, ID ou tipo de pacote premium inválidos.";
+    QSet<QString> layerIds, slotIds, dependencies;
+    QMap<QString, QString> layerParents;
+    const auto insidePackage = [&](const QString &relative) {
+        const auto root = QFileInfo(packageRoot).canonicalFilePath();
+        const auto resolved = QFileInfo(QDir(packageRoot).filePath(relative)).canonicalFilePath();
+        if (root.isEmpty() || resolved.isEmpty())
+            return false;
+        const auto child = QDir(root).relativeFilePath(resolved);
+        return !QFileInfo(child).isAbsolute() && child != ".." &&
+               !child.startsWith("../") && !child.startsWith("..\\");
+    };
+    for (const auto &value : manifest["layers"].toArray()) {
+        const auto layer = value.toObject();
+        const auto layerId = layer["id"].toString();
+        const auto kind = layer["kind"].toString();
+        if (layerId.isEmpty() || layerId.size() > 80 || layerIds.contains(layerId) ||
+            !QStringList{"group", "shape", "text", "native", "image", "svg", "video", "shape-or-image"}.contains(kind))
+            return "Camada premium inválida ou com ID duplicado.";
+        layerIds.insert(layerId);
+        if (layer.contains("parentId") && !layer["parentId"].isString())
+            return "Relação pai de camada premium inválida.";
+        layerParents.insert(layerId, layer["parentId"].toString());
+        if (layer.contains("source")) {
+            const auto source = layer["source"].toString();
+            const auto relative = QDir::cleanPath(source);
+            if (source.isEmpty() || QFileInfo(source).isAbsolute() || source.contains("://") ||
+                relative == ".." || relative.startsWith("../") || relative.startsWith("..\\"))
+                return "Caminho de camada fora do pacote premium.";
+            if (!insidePackage(relative))
+                return "Arquivo de pacote ausente ou fora da raiz permitida.";
+        }
+    }
+    const auto rootId = manifest["rootNodeId"].toString();
+    if (!layerIds.contains(rootId) || !layerParents[rootId].isEmpty())
+        return "Nó raiz premium não existe na lista de camadas.";
+    for (const auto &layerId : layerIds) {
+        QSet<QString> ancestry;
+        auto parent = layerParents.value(layerId);
+        int depth = 1;
+        while (!parent.isEmpty()) {
+            if (!layerIds.contains(parent) || ancestry.contains(parent) || parent == layerId)
+                return "Hierarquia premium contém pai ausente ou ciclo.";
+            ancestry.insert(parent);
+            parent = layerParents.value(parent);
+            if (++depth > 8)
+                return "Hierarquia premium excede oito níveis.";
+        }
+    }
+    for (const auto &value : manifest["slots"].toArray()) {
+        const auto slot = value.toObject();
+        const auto slotId = slot["id"].toString();
+        const auto kind = slot["kind"].toString();
+        if (slotId.isEmpty() || slotId.size() > 80 || slotIds.contains(slotId) ||
+            !QStringList{"text", "image", "video", "icon"}.contains(kind) ||
+            !layerIds.contains(slot["nodeId"].toString()))
+            return "Slot premium inválido, duplicado ou aponta para camada ausente.";
+        slotIds.insert(slotId);
+    }
+    for (const auto &value : manifest["dependencies"].toArray()) {
+        if (!value.isString() || value.toString().isEmpty() || value.toString() == id ||
+            dependencies.contains(value.toString()))
+            return "Dependências premium inválidas ou duplicadas.";
+        dependencies.insert(value.toString());
+    }
+    const auto preview = manifest["preview"].toObject();
+    if (preview.contains("source")) {
+        const auto source = preview["source"].toString();
+        const auto relative = QDir::cleanPath(source);
+        if (source.isEmpty() || QFileInfo(source).isAbsolute() || source.contains("://") ||
+            relative == ".." || relative.startsWith("../") || relative.startsWith("..\\"))
+            return "Caminho de preview fora do pacote premium.";
+        if (!insidePackage(relative))
+            return "Preview premium ausente ou fora da raiz permitida.";
+    }
+    return {};
 }
 WorkspaceStore::WorkspaceStore(QString directory) : root_(QDir(directory).absolutePath()) {
     QDir().mkpath(root_);
@@ -215,6 +327,19 @@ bool WorkspaceStore::reload() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
+    }
+    if (!known.contains("premium:smartphone-premium-01")) {
+        auto premium = makeEmpty();
+        premium.name = "Smartphone premium";
+        premium.duration = 360;
+        premium.nodes = makePremiumSmartphone();
+        assets.append(QJsonObject{{"id", "premium:smartphone-premium-01"},
+                                  {"name", "Smartphone premium"}, {"kind", "premium"},
+                                  {"premiumType", "object"}, {"manifestVersion", 1},
+                                  {"preset", QJsonDocument::fromJson(serialize(premium)).object()},
+                                  {"categoryId", "technology"}, {"deleted", false}, {"builtin", true},
+                                  {"slots", QJsonArray{"text:screen-title", "text:notification", "image:screen"}},
+                                  {"createdAt", "2026-10-26T00:00:00.000Z"}});
     }
     data_["assets"] = assets;
     revision_ = hash(bytes);
@@ -430,9 +555,10 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
         return {{}, "Informe um nome de até 120 caracteres."};
     QFile f(source);
     auto extension = QFileInfo(source).suffix().toLower();
-    if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg"}.contains(extension) ||
+    const QStringList videoExtensions{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+    if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg", "mp4", "mov", "mkv", "webm", "avi", "m4v"}.contains(extension) ||
         !f.open(QIODevice::ReadOnly) || f.size() < 1 || f.size() > 32 * 1024 * 1024)
-        return {{}, "Use imagem PNG/JPG/WebP/BMP ou SVG, até 32 MiB."};
+        return {{}, "Use imagem PNG/JPG/WebP/BMP/SVG ou vídeo MP4/MOV/MKV/WebM/AVI/M4V, até 32 MiB."};
     auto bytes = f.readAll();
     auto owned = root_ + "/library/media/" + QString::fromLatin1(hash(bytes)) + "." + extension;
     auto id = uuid();
@@ -445,7 +571,7 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
             return WorkspaceResult{{}, "Não foi possível copiar a mídia para a biblioteca."};
         auto list = d["assets"].toArray();
         QJsonObject asset{
-            {"id", id},         {"name", name},           {"kind", extension == "svg" ? "svg" : "image"},
+            {"id", id},         {"name", name},           {"kind", extension == "svg" ? "svg" : videoExtensions.contains(extension) ? "video" : "image"},
             {"source", owned},  {"categoryId", category}, {"deleted", false},
             {"builtin", false}, {"createdAt", now()}};
         if (width > 0 && height > 0) {

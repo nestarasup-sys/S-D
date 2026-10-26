@@ -156,6 +156,7 @@ bool waitForResult(const std::shared_ptr<GpuEffectReadbackState> &state, QImage 
         if (state->wait(image, timings, error, 50))
             return true;
     }
+    error = QStringLiteral("QRhi readback callback did not complete within 20000 ms");
     return false;
 }
 
@@ -334,9 +335,13 @@ int main(int argc, char **argv) {
             QImage gpu;
             GpuEffectTimings timings;
             QString error;
-            if (!waitForResult(state, gpu, timings, error) || !error.isEmpty() || gpu.size() != size) {
+            const bool readbackCompleted = waitForResult(state, gpu, timings, error);
+            if (!readbackCompleted || !error.isEmpty() || gpu.size() != size) {
                 std::cerr << "Dynamic GPU stack failed at " << size.width() << 'x' << size.height() << " "
-                          << stack.first.toStdString() << ": " << error.toStdString() << '\n';
+                          << stack.first.toStdString() << ": " << error.toStdString()
+                          << "; readbackCompleted=" << readbackCompleted
+                          << "; output=" << gpu.width() << 'x' << gpu.height()
+                          << "; expected=" << size.width() << 'x' << size.height() << '\n';
                 return 10;
             }
             const auto cpu = cpuEffectSequence(source, sequence);
@@ -375,6 +380,54 @@ int main(int argc, char **argv) {
             std::cout << size.width() << 'x' << size.height() << ' ' << name.toStdString()
                       << " PSNR=" << metrics.psnr << " MAE=" << metrics.mae
                       << " alphaMAE=" << metrics.alphaMae << " edgeF1=" << metrics.edgeF1 << '\n';
+
+            if (stack.first == QStringLiteral("glow-mask") || stack.first == QStringLiteral("mask-glow")) {
+                // Keep the stack revision fixed while replacing the source, so the test
+                // exercises cached mask data across subsequent frames.
+                QImage changedSource = source.copy();
+                QPainter changedPainter(&changedSource);
+                changedPainter.setRenderHint(QPainter::Antialiasing);
+                changedPainter.setPen(Qt::NoPen);
+                changedPainter.setBrush(QColor(240, 80, 120, 220));
+                changedPainter.drawEllipse(QRectF(size.width() * .68, size.height() * .18,
+                                                  size.width() * .17, size.height() * .22));
+                changedPainter.end();
+                const auto repeatedState = std::make_shared<GpuEffectReadbackState>();
+                item->setInputs(changedSource, {});
+                item->setReadbackState(repeatedState);
+                QImage repeatedGpu;
+                GpuEffectTimings repeatedTimings;
+                QString repeatedError;
+                const bool repeatedCompleted = waitForResult(repeatedState, repeatedGpu,
+                                                              repeatedTimings, repeatedError);
+                if (!repeatedCompleted || !repeatedError.isEmpty() || repeatedGpu.size() != size) {
+                    std::cerr << "Repeated GPU stack readback failed at " << size.width() << 'x'
+                              << size.height() << " " << stack.first.toStdString() << ": "
+                              << repeatedError.toStdString() << "; output=" << repeatedGpu.width() << 'x'
+                              << repeatedGpu.height() << '\n';
+                    return 15;
+                }
+                const auto repeatedCpu = cpuEffectSequence(changedSource, sequence);
+                const auto repeatedMetrics = compare(repeatedGpu, repeatedCpu);
+                if (repeatedCpu.isNull() || repeatedMetrics.psnr < 38.0 || repeatedMetrics.mae > 1.25 ||
+                    repeatedMetrics.alphaMae > 1.0 || repeatedMetrics.edgeF1 < .96) {
+                    std::cerr << "Reused GPU mask state changed the stack output at " << size.width() << 'x'
+                              << size.height() << " " << stack.first.toStdString()
+                              << " PSNR=" << repeatedMetrics.psnr << " MAE=" << repeatedMetrics.mae
+                              << " alphaMAE=" << repeatedMetrics.alphaMae
+                              << " edgeF1=" << repeatedMetrics.edgeF1 << '\n';
+                    return 16;
+                }
+                results.append(QJsonObject{{"effect", QStringLiteral("stack-%1-repeat-%2x%3")
+                                                       .arg(stack.first).arg(size.width()).arg(size.height())},
+                                           {"width", size.width()}, {"height", size.height()},
+                                           {"sameStackRevisionWithNewSource", true},
+                                           {"psnrDb", repeatedMetrics.psnr},
+                                           {"maeRgba", repeatedMetrics.mae},
+                                           {"alphaMae", repeatedMetrics.alphaMae},
+                                           {"edgeF1", repeatedMetrics.edgeF1},
+                                           {"qualityPassed", true}});
+            }
         }
         if (glowThenMaskImage.isNull() || maskThenGlowImage.isNull() ||
             compare(glowThenMaskImage, maskThenGlowImage).mae <= .25) {
@@ -383,7 +436,49 @@ int main(int argc, char **argv) {
             return 14;
         }
     }
+    // Drop one renderer and create another on the same QRhi/window. This exercises
+    // QQuickRhiItem cleanup and resource recreation independently of process startup.
+    delete item;
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    item = new GpuEffectItem(window.contentItem());
+    item->setWidth(640);
+    item->setHeight(360);
+
     const QSize validationSize(64, 64);
+    item->setFixedColorBufferWidth(validationSize.width());
+    item->setFixedColorBufferHeight(validationSize.height());
+    const auto recreatedSource = makeSource(validationSize);
+    const auto recreatedMask = makeMask(validationSize);
+    item->setInputs(recreatedSource, recreatedMask);
+    item->setEffect(GpuEffectItem::Kind::AlphaMask, 0, Qt::white, .75);
+    const auto recreatedState = std::make_shared<GpuEffectReadbackState>();
+    item->setReadbackState(recreatedState);
+    QImage recreatedGpu;
+    GpuEffectTimings recreatedTimings;
+    QString recreatedError;
+    if (!waitForResult(recreatedState, recreatedGpu, recreatedTimings, recreatedError) ||
+        !recreatedError.isEmpty() || recreatedGpu.size() != validationSize) {
+        std::cerr << "GPU renderer recreation failed: " << recreatedError.toStdString()
+                  << "; output=" << recreatedGpu.width() << 'x' << recreatedGpu.height() << '\n';
+        return 17;
+    }
+    const auto recreatedCpu = cpuEffect(recreatedSource, recreatedMask,
+                                        GpuEffectItem::Kind::AlphaMask, validationSize, 0);
+    const auto recreatedMetrics = compare(recreatedGpu, recreatedCpu);
+    if (recreatedCpu.isNull() || recreatedMetrics.psnr < 38.0 || recreatedMetrics.mae > 1.25 ||
+        recreatedMetrics.alphaMae > 1.0 || recreatedMetrics.edgeF1 < .96) {
+        std::cerr << "GPU renderer recreation changed output: PSNR=" << recreatedMetrics.psnr
+                  << " MAE=" << recreatedMetrics.mae << " alphaMAE=" << recreatedMetrics.alphaMae
+                  << " edgeF1=" << recreatedMetrics.edgeF1 << '\n';
+        return 18;
+    }
+    results.append(QJsonObject{{"effect", QStringLiteral("renderer-recreation-alpha-mask")},
+                               {"width", validationSize.width()}, {"height", validationSize.height()},
+                               {"rendererRecreated", true}, {"psnrDb", recreatedMetrics.psnr},
+                               {"maeRgba", recreatedMetrics.mae},
+                               {"alphaMae", recreatedMetrics.alphaMae},
+                               {"edgeF1", recreatedMetrics.edgeF1}, {"qualityPassed", true}});
+
     item->setFixedColorBufferWidth(validationSize.width());
     item->setFixedColorBufferHeight(validationSize.height());
     item->setInputs(makeSource(validationSize), makeMask(validationSize));
@@ -412,6 +507,8 @@ int main(int argc, char **argv) {
                         {"backend", window.rendererInterface()->graphicsApi() == QSGRendererInterface::Direct3D11
                                         ? "Direct3D11" : "other"},
                         {"runtimeGpuEffects", true},
+                        {"rendererRecreationPassed", true},
+                        {"sameStackRevisionMaskReusePassed", true},
                         {"invalidRadiusRejected", true},
                         {"missingAlphaMaskRejected", true},
                         {"sourceContains", QJsonArray{"transparent image", "vector shapes", "text"}},
