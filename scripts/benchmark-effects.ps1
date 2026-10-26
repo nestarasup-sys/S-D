@@ -67,6 +67,11 @@ foreach ($case in $sceneCases) {
         sceneGraphWorkingSetBytes = $sceneMetric.sceneGraphWorkingSetBytes
         gpuEffectCpuLayerBytes = $sceneMetric.gpuEffectCpuLayerBytes
         gpuEffectTextureEstimateBytes = $sceneMetric.gpuEffectTextureEstimateBytes
+        textureCacheBytesBeforeRelease = $sceneMetric.textureCacheBytesBeforeRelease
+        textureCacheBytesAfterRelease = $sceneMetric.textureCacheBytesAfterRelease
+        textureCacheReleaseJobCompleted = $sceneMetric.textureCacheReleaseJobCompleted
+        textureCacheReleaseRequested = $sceneMetric.textureCacheReleaseRequested
+        gpuMemoryDiagnostics = $sceneMetric.gpuMemoryDiagnostics
         visualPsnrDb = $sceneMetric.visualPsnrDb
         visualMetrics = $sceneMetric.visualMetrics
         visualRegressionPassed = $sceneMetric.visualRegressionPassed

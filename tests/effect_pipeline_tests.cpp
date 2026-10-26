@@ -184,6 +184,18 @@ void runTests(bool updateReference) {
     const auto chain = pipeline.execute(source, effectStack(alphaRamp(size)), context);
     check(chain.succeeded() && chain.passTimings.size() == 3,
           "blur, glow and alpha mask share one ordered pass stack");
+    const auto orderMask = alphaRamp(size);
+    const std::vector<studio::RenderEffect> glowThenMask{
+        {studio::RenderEffectKind::OuterGlow, 8, QColor("#70ecb1"), {}, .85},
+        {studio::RenderEffectKind::AlphaMask, 0, Qt::white, orderMask, .9}};
+    const std::vector<studio::RenderEffect> maskThenGlow{
+        {studio::RenderEffectKind::AlphaMask, 0, Qt::white, orderMask, .9},
+        {studio::RenderEffectKind::OuterGlow, 8, QColor("#70ecb1"), {}, .85}};
+    const auto glowMasked = pipeline.execute(source, glowThenMask, context);
+    const auto maskedGlow = pipeline.execute(source, maskThenGlow, context);
+    check(glowMasked.succeeded() && maskedGlow.succeeded() &&
+              meanAbsoluteError(glowMasked.image, maskedGlow.image) > .25,
+          "effect order remains observable; glow then mask differs from mask then glow");
     check(chain.scratchBytes <= chain.workingSetLimitBytes,
           "reusable intermediate buffers remain within the explicit byte budget");
     for (const auto &timing : chain.passTimings)

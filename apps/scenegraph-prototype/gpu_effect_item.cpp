@@ -17,6 +17,7 @@ constexpr qsizetype kGpuBudgetBytes = 64 * 1024 * 1024;
 constexpr int kMaximumBlurRadius = 24;
 
 enum class Pass { Mask, BlurHorizontal, BlurVertical, GlowComposite };
+enum class TextureSlot { Source, Mask, Output, Scratch0, Scratch1 };
 
 struct alignas(16) EffectUniforms {
     float params[4]{1.0f, 1.0f, 0.0f, 0.0f};
@@ -84,6 +85,9 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         radius_ = item->radius_;
         color_ = item->color_;
         strength_ = item->strength_;
+        effectStack_ = item->effectStack_;
+        dynamicStackActive_ = item->dynamicStackActive_;
+        stackRevision_ = item->stackRevision_;
         revision_ = item->revision_;
         readback_ = item->readback_;
     }
@@ -107,18 +111,34 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         qint64 uploadPreparationNanoseconds = 0;
         if (uploadedRevision_ != revision_) {
             updates->uploadTexture(sourceTexture_.get(), source_);
-            QImage opaqueMask;
-            if (mask_.isNull()) {
-                opaqueMask = QImage(1, 1, QImage::Format_RGBA8888_Premultiplied);
-                opaqueMask.fill(Qt::white);
+            if (!dynamicStackActive_) {
+                QImage opaqueMask;
+                if (mask_.isNull()) {
+                    opaqueMask = QImage(1, 1, QImage::Format_RGBA8888_Premultiplied);
+                    opaqueMask.fill(Qt::white);
+                }
+                updates->uploadTexture(maskTexture_.get(), mask_.isNull() ? opaqueMask : mask_);
             }
-            updates->uploadTexture(maskTexture_.get(), mask_.isNull() ? opaqueMask : mask_);
             uploadedRevision_ = revision_;
             uploadPreparationNanoseconds = uploadPreparationTimer.nsecsElapsed();
         }
         QElapsedTimer submissionTimer;
         submissionTimer.start();
-        if (kind_ == GpuEffectItem::Kind::GaussianBlur) {
+        if (kind_ == GpuEffectItem::Kind::EffectStack && dynamicStackActive_) {
+            if (stackPlanRevision_ != stackRevision_ || stackPlanSize_ != source_.size()) {
+                if (!createDynamicStackPlan(error)) {
+                    if (readback_)
+                        readback_->publish({}, {}, error);
+                    return;
+                }
+            }
+            if (!renderDynamicStack(cb, updates, uploadPreparationNanoseconds, error)) {
+                if (readback_)
+                    readback_->publish({}, {}, error);
+                return;
+            }
+            updates = nullptr;
+        } else if (kind_ == GpuEffectItem::Kind::GaussianBlur) {
             writeUniformsToBatch(updates, uniformBuffers_[1].get(), Pass::BlurHorizontal);
             runPass(cb, updates, horizontalPipeline_.get(), horizontalSrb_.get(), scratchTarget_[0].get(),
                     Pass::BlurHorizontal);
@@ -207,6 +227,10 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
 
   private:
     void releaseResources() {
+        dynamicPasses_.clear();
+        stackPlanRevision_ = std::numeric_limits<quint64>::max();
+        stackPlanSize_ = {};
+        uploadedStackRevision_ = std::numeric_limits<quint64>::max();
         pipeline_.reset();
         maskPipeline_.reset();
         horizontalPipeline_.reset();
@@ -238,14 +262,15 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
     }
 
     bool ensureResources(QString &error) {
-        if (radius_ < 1 || radius_ > kMaximumBlurRadius) {
+        if (!(kind_ == GpuEffectItem::Kind::EffectStack && dynamicStackActive_) &&
+            (radius_ < 1 || radius_ > kMaximumBlurRadius)) {
             if (kind_ != GpuEffectItem::Kind::AlphaMask) {
                 error = QStringLiteral("GPU blur radius must be in [1, 24]");
                 return false;
             }
         }
-        if ((kind_ == GpuEffectItem::Kind::AlphaMask || kind_ == GpuEffectItem::Kind::EffectStack) &&
-            mask_.isNull()) {
+        if ((kind_ == GpuEffectItem::Kind::AlphaMask ||
+             (kind_ == GpuEffectItem::Kind::EffectStack && !dynamicStackActive_)) && mask_.isNull()) {
             error = QStringLiteral("Alpha mask is missing");
             return false;
         }
@@ -257,7 +282,8 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
             error = QStringLiteral("GPU effect exceeds the 64 MiB texture budget");
             return false;
         }
-        const QSize requestedMaskSize = mask_.isNull() ? QSize(1, 1) : mask_.size();
+        const QSize requestedMaskSize = dynamicStackActive_ ? source_.size()
+                                             : mask_.isNull() ? QSize(1, 1) : mask_.size();
         if (!sourceTexture_ || sourceTexture_->pixelSize() != source_.size() ||
             !maskTexture_ || maskTexture_->pixelSize() != requestedMaskSize) {
             releaseTargetsAndPipelines();
@@ -301,7 +327,197 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         return true;
     }
 
+    struct DynamicPass {
+        Pass pass{Pass::Mask};
+        studio::RenderEffect effect;
+        TextureSlot first{TextureSlot::Source};
+        TextureSlot second{TextureSlot::Source};
+        TextureSlot target{TextureSlot::Output};
+        std::unique_ptr<QRhiBuffer> uniforms;
+        std::unique_ptr<QRhiShaderResourceBindings> bindings;
+    };
+
+    QRhiTexture *textureFor(TextureSlot slot) const {
+        switch (slot) {
+        case TextureSlot::Source: return sourceTexture_.get();
+        case TextureSlot::Mask: return maskTexture_.get();
+        case TextureSlot::Output: return colorTexture();
+        case TextureSlot::Scratch0: return scratchTexture_[0].get();
+        case TextureSlot::Scratch1: return scratchTexture_[1].get();
+        }
+        return nullptr;
+    }
+
+    QRhiRenderTarget *targetFor(TextureSlot slot) const {
+        switch (slot) {
+        case TextureSlot::Output: return renderTarget();
+        case TextureSlot::Scratch0: return scratchTarget_[0].get();
+        case TextureSlot::Scratch1: return scratchTarget_[1].get();
+        case TextureSlot::Mask: return nullptr;
+        case TextureSlot::Source: return nullptr;
+        }
+        return nullptr;
+    }
+
+    bool createDynamicStackPlan(QString &error) {
+        dynamicPasses_.clear();
+        if (effectStack_.empty() || effectStack_.size() > 8) {
+            error = QStringLiteral("Dynamic effect stack must contain between 1 and 8 effects");
+            return false;
+        }
+        auto append = [&](Pass pass, const studio::RenderEffect &effect, TextureSlot first,
+                          TextureSlot second, TextureSlot target) {
+            DynamicPass command;
+            command.pass = pass;
+            command.effect = effect;
+            command.first = first;
+            command.second = second;
+            command.target = target;
+            command.uniforms.reset(rhi_->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer,
+                                                    sizeof(EffectUniforms)));
+            if (!command.uniforms || !command.uniforms->create())
+                return false;
+            command.bindings.reset(rhi_->newShaderResourceBindings());
+            command.bindings->setBindings({
+                QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::FragmentStage,
+                                                         command.uniforms.get()),
+                QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
+                                                          textureFor(first), sampler_.get()),
+                QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage,
+                                                          textureFor(second), sampler_.get()),
+            });
+            if (!command.bindings->create())
+                return false;
+            dynamicPasses_.push_back(std::move(command));
+            return true;
+        };
+        const std::array<TextureSlot, 3> targets{TextureSlot::Output, TextureSlot::Scratch0,
+                                                  TextureSlot::Scratch1};
+        TextureSlot current = TextureSlot::Source;
+        for (const auto &effect : effectStack_) {
+            if (effect.radius < 0 || effect.radius > kMaximumBlurRadius || effect.strength < 0.0 ||
+                effect.strength > 1.0 ||
+                (effect.kind == studio::RenderEffectKind::AlphaMask && effect.alphaMask.isNull()) ||
+                (effect.kind == studio::RenderEffectKind::OuterGlow && !effect.color.isValid())) {
+                error = QStringLiteral("Dynamic effect has an invalid radius or missing alpha mask");
+                return false;
+            }
+            if (effect.kind == studio::RenderEffectKind::GaussianBlur) {
+                auto horizontal = std::find_if(targets.begin() + 1, targets.end(), [&](TextureSlot slot) {
+                    return slot != current;
+                });
+                if (horizontal == targets.end()) {
+                    error = QStringLiteral("No intermediate target is available for horizontal blur");
+                    return false;
+                }
+                const auto temp = *horizontal;
+                const auto vertical = temp == TextureSlot::Output ? TextureSlot::Scratch0 : TextureSlot::Output;
+                if (vertical == temp ||
+                    !append(Pass::BlurHorizontal, effect, current, current, temp) ||
+                    !append(Pass::BlurVertical, effect, temp, current, vertical)) {
+                    error = QStringLiteral("Could not allocate resources for a Gaussian blur pass");
+                    return false;
+                }
+                current = vertical;
+            } else if (effect.kind == studio::RenderEffectKind::AlphaMask) {
+                const auto destination = std::find_if(targets.begin(), targets.end(), [&](TextureSlot slot) {
+                    return slot != current;
+                });
+                if (destination == targets.end() ||
+                    !append(Pass::Mask, effect, current, TextureSlot::Mask, *destination)) {
+                    error = QStringLiteral("Could not allocate resources for an alpha mask pass");
+                    return false;
+                }
+                current = *destination;
+            } else {
+                std::array<TextureSlot, 2> temporary{};
+                int found = 0;
+                for (const auto candidate : targets)
+                    if (candidate != current && found < 2)
+                        temporary[found++] = candidate;
+                const auto destination = temporary[0];
+                if (found != 2 ||
+                    !append(Pass::BlurHorizontal, effect, current, current, temporary[0]) ||
+                    !append(Pass::BlurVertical, effect, temporary[0], current, temporary[1]) ||
+                    !append(Pass::GlowComposite, effect, current, temporary[1], destination)) {
+                    error = QStringLiteral("Could not allocate resources for an outer glow pass");
+                    return false;
+                }
+                current = destination;
+            }
+        }
+        if (current != TextureSlot::Output) {
+            studio::RenderEffect copy;
+            copy.kind = studio::RenderEffectKind::AlphaMask;
+            copy.alphaMask = QImage(source_.size(), QImage::Format_RGBA8888_Premultiplied);
+            copy.alphaMask.fill(Qt::white);
+            if (!append(Pass::Mask, copy, current, TextureSlot::Mask, TextureSlot::Output)) {
+                error = QStringLiteral("Could not allocate final composition output pass");
+                return false;
+            }
+        }
+        stackPlanRevision_ = stackRevision_;
+        stackPlanSize_ = source_.size();
+        return true;
+    }
+
+    bool renderDynamicStack(QRhiCommandBuffer *cb, QRhiResourceUpdateBatch *firstUpdates,
+                            qint64 &uploadPreparationNanoseconds, QString &error) {
+        if (dynamicPasses_.empty()) {
+            error = QStringLiteral("Dynamic effect pass plan is empty");
+            return false;
+        }
+        bool firstPass = true;
+        QElapsedTimer maskUploadTimer;
+        const bool uploadMasks = uploadedStackRevision_ != stackRevision_;
+        if (uploadMasks)
+            maskUploadTimer.start();
+        for (auto &command : dynamicPasses_) {
+            auto *updates = firstPass ? firstUpdates : rhi_->nextResourceUpdateBatch();
+            firstPass = false;
+            if (command.pass == Pass::Mask && uploadMasks) {
+                if (command.effect.alphaMask.size() != source_.size()) {
+                    error = QStringLiteral("Dynamic alpha masks must match their source layer dimensions");
+                    return false;
+                }
+                updates->uploadTexture(maskTexture_.get(), command.effect.alphaMask.convertToFormat(
+                    QImage::Format_RGBA8888_Premultiplied));
+            }
+            EffectUniforms uniforms;
+            uniforms.params[0] = float(command.effect.radius);
+            uniforms.params[1] = 1.0f / float(std::max(1, source_.width()));
+            uniforms.params[2] = 1.0f / float(std::max(1, source_.height()));
+            uniforms.params[3] = 1.0f;
+            if (command.pass == Pass::Mask || command.pass == Pass::GlowComposite) {
+                uniforms.params[0] = 1.0f;
+                uniforms.params[1] = float(command.effect.strength);
+            }
+            uniforms.color[0] = float(command.effect.color.redF());
+            uniforms.color[1] = float(command.effect.color.greenF());
+            uniforms.color[2] = float(command.effect.color.blueF());
+            uniforms.color[3] = float(command.effect.color.alphaF());
+            updates->updateDynamicBuffer(command.uniforms.get(), 0, sizeof(uniforms), &uniforms);
+            QRhiGraphicsPipeline *pipeline = nullptr;
+            switch (command.pass) {
+            case Pass::Mask: pipeline = maskPipeline_.get(); break;
+            case Pass::BlurHorizontal: pipeline = horizontalPipeline_.get(); break;
+            case Pass::BlurVertical: pipeline = verticalPipeline_.get(); break;
+            case Pass::GlowComposite: pipeline = glowPipeline_.get(); break;
+            }
+            runPass(cb, updates, pipeline, command.bindings.get(), targetFor(command.target), command.pass);
+        }
+        if (uploadedStackRevision_ != stackRevision_) {
+            uploadedStackRevision_ = stackRevision_;
+            uploadPreparationNanoseconds += maskUploadTimer.nsecsElapsed();
+        }
+        return true;
+    }
+
     void releaseTargetsAndPipelines() {
+        dynamicPasses_.clear();
+        stackPlanRevision_ = std::numeric_limits<quint64>::max();
+        stackPlanSize_ = {};
+        uploadedStackRevision_ = std::numeric_limits<quint64>::max();
         pipeline_.reset();
         maskPipeline_.reset();
         horizontalPipeline_.reset();
@@ -428,12 +644,19 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
     QRhi *rhi_{nullptr};
     QImage source_;
     QImage mask_;
+    std::vector<studio::RenderEffect> effectStack_;
     GpuEffectItem::Kind kind_{GpuEffectItem::Kind::AlphaMask};
     int radius_{0};
     QColor color_{Qt::white};
     float strength_{1.0f};
+    bool dynamicStackActive_{false};
     quint64 revision_{0};
+    quint64 stackRevision_{0};
     quint64 uploadedRevision_{std::numeric_limits<quint64>::max()};
+    quint64 uploadedStackRevision_{std::numeric_limits<quint64>::max()};
+    quint64 stackPlanRevision_{std::numeric_limits<quint64>::max()};
+    QSize stackPlanSize_;
+    std::vector<DynamicPass> dynamicPasses_;
     QSize pipelineOutputSize_;
     std::shared_ptr<GpuEffectReadbackState> readback_;
     bool readbackQueued_{false};
@@ -495,9 +718,25 @@ void GpuEffectItem::setInputs(QImage source, QImage mask) {
 
 void GpuEffectItem::setEffect(Kind kind, int radius, QColor color, double strength) {
     kind_ = kind;
+    dynamicStackActive_ = false;
+    effectStack_.clear();
+    ++stackRevision_;
     radius_ = radius;
     color_ = std::move(color);
     strength_ = float(std::clamp(strength, 0.0, 1.0));
+    update();
+}
+
+void GpuEffectItem::setEffectStack(std::vector<studio::RenderEffect> effects) {
+    kind_ = Kind::EffectStack;
+    dynamicStackActive_ = true;
+    effectStack_ = std::move(effects);
+    if (!source_.isNull())
+        for (auto &effect : effectStack_)
+            if (effect.kind == studio::RenderEffectKind::AlphaMask && !effect.alphaMask.isNull())
+                effect.alphaMask = effect.alphaMask.convertToFormat(QImage::Format_RGBA8888_Premultiplied)
+                                       .scaled(source_.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    ++stackRevision_;
     update();
 }
 

@@ -193,7 +193,16 @@ $report = [ordered]@{
     shapeCounts = $NodeCounts
     framesPerScenario = $Frames
     repetitionsPerScenario = $Repeats
-    apiCoverage = @{ direct3D11 = 'measured'; software = $softwareStatus; gpuDedicatedMemory = 'not reliably measurable from this process' }
+    apiCoverage = @{ direct3D11 = 'measured'; software = $softwareStatus; gpuMemory = 'DXGI QueryVideoMemoryInfo sampled from the adapter returned by the active Qt QRhi D3D11 device; unavailable is non-fatal' }
+    gpuMemoryDefinitions = @{
+        physicalDedicatedBytes = 'DXGI adapter descriptor capacity; not the Windows process budget'
+        localAndNonLocal = 'IDXGIAdapter3 QueryVideoMemoryInfo process usage and Windows-assigned budget/reservation'
+        textureEstimates = 'Application-side estimates remain separate and are not equated with DXGI CurrentUsage'
+        processRam = 'Working set is reported independently from adapter usage'
+    }
+    gpuMemoryDiagnosticsByTrial = @($allMeasurements | ForEach-Object {
+        [ordered]@{ scenario = $_.scenario; canvas = $_.canvas; diagnostics = $_.gpuMemoryDiagnostics }
+    })
     profiles = $profileReports
     primitiveSuites = $primitiveReports
     primitiveReferenceTests = $primitiveReferenceTests

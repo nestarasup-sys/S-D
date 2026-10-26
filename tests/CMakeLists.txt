@@ -22,6 +22,9 @@ target_link_libraries(studio_render_snapshot_tests PRIVATE studio_composition)
 target_compile_definitions(studio_render_snapshot_tests PRIVATE
     STUDIO_REFERENCE_DIR="${PROJECT_SOURCE_DIR}/tests/reference/render-snapshot")
 add_test(NAME render_snapshot_visual_regression COMMAND studio_render_snapshot_tests)
+add_executable(studio_composition_graph_tests composition_graph_tests.cpp)
+target_link_libraries(studio_composition_graph_tests PRIVATE studio_composition)
+add_test(NAME composition_graph_planning COMMAND studio_composition_graph_tests)
 add_executable(studio_effect_pipeline_tests effect_pipeline_tests.cpp)
 target_link_libraries(studio_effect_pipeline_tests PRIVATE studio_composition Qt6::Gui)
 target_compile_definitions(studio_effect_pipeline_tests PRIVATE
@@ -54,3 +57,6 @@ add_test(NAME scenegraph_gpu_effect_scene_animated
 add_test(NAME scenegraph_gpu_effect_scene_static
     COMMAND studio_scenegraph_prototype --gpu-effects-scene --nodes 5 --frames 8 --static-scene
             --width 1280 --height 720 --output "${PROJECT_SOURCE_DIR}/artifacts/gpu-effect-scene-ctest-static")
+add_test(NAME scenegraph_composition_graph_alternate_order
+    COMMAND studio_scenegraph_prototype --gpu-effects-scene --alternate-composition --nodes 5 --frames 8
+            --width 1280 --height 720 --output "${PROJECT_SOURCE_DIR}/artifacts/composition-graph-alternate-order")

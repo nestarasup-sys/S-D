@@ -28,6 +28,7 @@
 #include <QSGTextureMaterial>
 #include <QSGTransformNode>
 #include <QSGVertexColorMaterial>
+#include <QSemaphore>
 #include <QSurfaceFormat>
 #include <QTextStream>
 #include <QThread>
@@ -51,7 +52,9 @@
 #endif
 #include <studio/composition/painter.hpp>
 #include <studio/composition/effect_pipeline.hpp>
+#include <studio/composition/composition_graph.hpp>
 #include <studio/composition/render_snapshot.hpp>
+#include "gpu_memory_diagnostics.hpp"
 #include <studio/core/library.hpp>
 #include <studio/core/project.hpp>
 #include "gpu_effect_item.hpp"
@@ -142,7 +145,8 @@ studio::Project referenceProject(int width, int height, int nodeCount) {
 
 studio::Project hybridProject(int width, int height, const QString &fixtureDirectory, bool nativeAtlas,
                                bool staticScene = false, bool *webpAlphaOutput = nullptr,
-                               bool gpuEffectsScene = false, int extraShapeCount = 0) {
+                               bool gpuEffectsScene = false, int extraShapeCount = 0,
+                               bool alternateComposition = false) {
     QDir().mkpath(fixtureDirectory);
     auto project = studio::makeEmpty();
     project.id = nativeAtlas ? "scenegraph-native-atlas" : "scenegraph-hybrid-suite";
@@ -426,13 +430,85 @@ studio::Project hybridProject(int width, int height, const QString &fixtureDirec
         groupText.height = group.height - 68;
         groupText.fontSize = std::max(20.0, width * .018);
         project.nodes.push_back(groupText);
-
-        const std::unordered_set<std::string> effectOrder{
-            "hybrid-caption", "effect-phone", "hybrid-png", "hybrid-webp",
-            "effect-group", "effect-group-shape", "effect-group-text"};
-        std::stable_partition(project.nodes.begin(), project.nodes.end(), [&](const auto &node) {
-            return !effectOrder.contains(node.id);
+        studio::Node innerGroup;
+        innerGroup.id = "effect-inner-group";
+        innerGroup.parentId = group.id;
+        innerGroup.kind = studio::NodeKind::Group;
+        innerGroup.name = "Nested image and vector group";
+        innerGroup.start = 0;
+        innerGroup.duration = project.duration;
+        innerGroup.x = 26;
+        innerGroup.y = group.height * .55;
+        innerGroup.width = group.width - 52;
+        innerGroup.height = group.height * .38;
+        innerGroup.opacity = .9;
+        innerGroup.animated = !staticScene;
+        if (!staticScene)
+            innerGroup.keyframes = {{0, innerGroup.x, innerGroup.y, -1, 1, .9, "linear"},
+                                    {60, innerGroup.x + 12, innerGroup.y, 2, 1.02, .9, "ease-in-out"},
+                                    {119, innerGroup.x, innerGroup.y, -1, 1, .9, "linear"}};
+        project.nodes.push_back(innerGroup);
+        studio::Node innerShape;
+        innerShape.id = "effect-inner-vector";
+        innerShape.parentId = innerGroup.id;
+        innerShape.kind = studio::NodeKind::Shape;
+        innerShape.name = "Nested group vector";
+        innerShape.start = 0;
+        innerShape.duration = project.duration;
+        innerShape.x = 2;
+        innerShape.y = 2;
+        innerShape.width = innerGroup.width - 4;
+        innerShape.height = innerGroup.height - 4;
+        innerShape.color = "#364f5e";
+        innerShape.animated = false;
+        project.nodes.push_back(innerShape);
+        for (auto &candidate : project.nodes)
+            if (candidate.id == "hybrid-jpeg") {
+                candidate.parentId = innerGroup.id;
+                candidate.x = innerGroup.width * .52;
+                candidate.y = 1;
+                candidate.width = innerGroup.width * .45;
+                candidate.height = innerGroup.height - 2;
+            }
+        const auto nestedImage = std::find_if(project.nodes.begin(), project.nodes.end(), [](const auto &candidate) {
+            return candidate.id == "hybrid-jpeg";
         });
+        if (nestedImage != project.nodes.end()) {
+            auto movedImage = std::move(*nestedImage);
+            project.nodes.erase(nestedImage);
+            const auto vectorSibling = std::find_if(project.nodes.begin(), project.nodes.end(), [](const auto &candidate) {
+                return candidate.id == "effect-inner-vector";
+            });
+            project.nodes.insert(vectorSibling == project.nodes.end() ? project.nodes.end() : vectorSibling + 1,
+                                 std::move(movedImage));
+        }
+
+        studio::Node foregroundCaption;
+        foregroundCaption.id = "effect-foreground-caption";
+        foregroundCaption.parentId = root.id;
+        foregroundCaption.kind = studio::NodeKind::Text;
+        foregroundCaption.name = "Foreground caption after effected group";
+        foregroundCaption.text = "CAMADAS COM ORDEM REAL";
+        foregroundCaption.color = "#e5ebdf";
+        foregroundCaption.start = 0;
+        foregroundCaption.duration = project.duration;
+        foregroundCaption.x = width * .12;
+        foregroundCaption.y = height * .87;
+        foregroundCaption.width = width * .6;
+        foregroundCaption.height = height * .06;
+        foregroundCaption.fontSize = std::max(18.0, width * .016);
+        foregroundCaption.animated = false;
+        project.nodes.push_back(foregroundCaption);
+        if (alternateComposition) {
+            const auto phone = std::find_if(project.nodes.begin(), project.nodes.end(), [](const auto &candidate) {
+                return candidate.id == "effect-phone";
+            });
+            if (phone != project.nodes.end()) {
+                auto movedPhone = std::move(*phone);
+                project.nodes.erase(phone);
+                project.nodes.push_back(std::move(movedPhone));
+            }
+        }
     }
     return project;
 }
@@ -685,10 +761,29 @@ QImage paintPrimitiveReference(const studio::RenderFrameSnapshot &frame, int wid
 
 class SceneGraphItem final : public QQuickItem {
   public:
+    struct SharedTextureBudget {
+        explicit SharedTextureBudget(qsizetype maximumBytes) : limit(maximumBytes) {}
+        bool reserve(qint64 bytes) {
+            auto current = used.load();
+            while (current + bytes <= limit) {
+                if (used.compare_exchange_weak(current, current + bytes))
+                    return true;
+            }
+            return false;
+        }
+        void release(qint64 bytes) { used.fetch_sub(bytes); }
+        std::atomic<qint64> used{0};
+        qsizetype limit;
+    };
     SceneGraphItem(studio::Project project, studio::RenderFrameSnapshot snapshot, int canvasWidth, int canvasHeight,
-                   qsizetype textureBudgetBytes = 64 * 1024 * 1024)
+                   qsizetype textureBudgetBytes = 64 * 1024 * 1024,
+                   std::shared_ptr<SharedTextureBudget> sharedBudget = {},
+                   std::shared_ptr<GpuMemoryDiagnostics> gpuMemoryDiagnostics = {})
         : project_(std::move(project)), snapshot_(std::move(snapshot)), canvasWidth_(canvasWidth),
-          canvasHeight_(canvasHeight), textureCacheBudgetBytes_(std::max<qsizetype>(1024, textureBudgetBytes)) {
+          canvasHeight_(canvasHeight), textureCacheBudgetBytes_(std::max<qsizetype>(1024, textureBudgetBytes)),
+          sharedTextureBudget_(sharedBudget ? std::move(sharedBudget)
+                                            : std::make_shared<SharedTextureBudget>(textureBudgetBytes)),
+          gpuMemoryDiagnostics_(std::move(gpuMemoryDiagnostics)) {
         setFlag(ItemHasContents);
         setClip(true);
     }
@@ -700,6 +795,12 @@ class SceneGraphItem final : public QQuickItem {
     }
     void setFilteredNodeIds(QSet<QString> ids) {
         filteredNodeIds_ = std::move(ids);
+        update();
+    }
+    void setLayerNodeIds(QSet<QString> ids, bool drawBackground) {
+        allowedNodeIds_ = std::move(ids);
+        layerFilterEnabled_ = true;
+        drawBackground_ = drawBackground;
         update();
     }
     const studio::RenderFrameSnapshot &snapshot() const {
@@ -725,6 +826,8 @@ class SceneGraphItem final : public QQuickItem {
     qint64 unsupportedLayerCount() const { return unsupportedLayerCount_.load(); }
     qint64 nativeAssetCount() const { return nativeAssetCount_.load(); }
     bool textureCacheWithinBudget() const { return textureCacheBytes() <= textureCacheBudgetBytes_; }
+    qint64 sharedTextureCacheBytes() const { return sharedTextureBudget_->used.load(); }
+    qsizetype sharedTextureCacheBudget() const { return sharedTextureBudget_->limit; }
     bool cacheInvalidationSelfTest() const {
         const studio::RenderNodeSnapshot *staticLayer = nullptr;
         const studio::RenderNodeSnapshot *animatedNative = nullptr;
@@ -766,7 +869,7 @@ class SceneGraphItem final : public QQuickItem {
         }
         textures_.clear();
         textureLru_.clear();
-        textureCacheBytes_.store(0);
+        sharedTextureBudget_->release(textureCacheBytes_.exchange(0));
     }
 
     void releaseResources() override {
@@ -778,13 +881,15 @@ class SceneGraphItem final : public QQuickItem {
             pending.push_back(entry.value().texture);
         textures_.clear();
         textureLru_.clear();
-        textureCacheBytes_.store(0);
+        sharedTextureBudget_->release(textureCacheBytes_.exchange(0));
         if (auto *quickWindow = window())
             quickWindow->scheduleRenderJob(new TextureReleaseJob(std::move(pending)),
                                            QQuickWindow::AfterRenderingStage);
     }
 
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override {
+        if (gpuMemoryDiagnostics_ && window())
+            gpuMemoryDiagnostics_->sample(window()->rhi());
         QElapsedTimer preparationTimer;
         preparationTimer.start();
         delete oldNode;
@@ -799,9 +904,10 @@ class SceneGraphItem final : public QQuickItem {
         const double sx = width() / canvasWidth_;
         const double sy = height() / canvasHeight_;
         auto *root = new QSGNode;
-        appendTexture(root, QStringLiteral("background:") + artKey(frame.backgroundArt),
-                      [&] { return rasterizer_.rasterBackgroundLayer(project_, frame.backgroundArt); },
-                      QRectF(0, 0, project_.width, project_.height), QTransform{}, 1.0, sx, sy);
+        if (drawBackground_)
+            appendTexture(root, QStringLiteral("background:") + artKey(frame.backgroundArt),
+                          [&] { return rasterizer_.rasterBackgroundLayer(project_, frame.backgroundArt); },
+                          QRectF(0, 0, project_.width, project_.height), QTransform{}, 1.0, sx, sy);
 
         const auto flushShapes = [&] {
             if (shapeBatch.empty())
@@ -830,7 +936,8 @@ class SceneGraphItem final : public QQuickItem {
         std::unordered_set<std::string> nativeIds;
         for (const auto &resolved : frame.nodes) {
             const auto &node = resolved.node;
-            if (filteredNodeIds_.contains(QString::fromStdString(node.id)))
+            const auto nodeId = QString::fromStdString(node.id);
+            if (filteredNodeIds_.contains(nodeId) || (layerFilterEnabled_ && !allowedNodeIds_.contains(nodeId)))
                 continue;
             if (!resolved.visible || resolved.inheritedOpacity <= 0 || node.kind == studio::NodeKind::Group)
                 continue;
@@ -1022,11 +1129,16 @@ class SceneGraphItem final : public QQuickItem {
             const auto old = textures_.find(oldKey);
             if (old != textures_.end()) {
                 textureCacheBytes_.fetch_sub(old.value().bytes);
+                sharedTextureBudget_->release(old.value().bytes);
                 delete old.value().texture;
                 textures_.remove(oldKey);
                 textureCacheEvictions_.fetch_add(1);
             }
             textureLru_.erase(std::next(candidate).base());
+        }
+        if (!sharedTextureBudget_->reserve(bytes)) {
+            isCached = false;
+            return texture;
         }
         textureLru_.push_front(key);
         textures_.insert(key, CachedTexture{texture, bytes, textureLru_.begin()});
@@ -1042,8 +1154,13 @@ class SceneGraphItem final : public QQuickItem {
     studio::RenderFrameSnapshot snapshot_;
     int canvasWidth_{0}, canvasHeight_{0};
     qsizetype textureCacheBudgetBytes_{64 * 1024 * 1024};
+    std::shared_ptr<SharedTextureBudget> sharedTextureBudget_;
+    std::shared_ptr<GpuMemoryDiagnostics> gpuMemoryDiagnostics_;
     studio::CompositionPainter rasterizer_;
     QSet<QString> filteredNodeIds_;
+    QSet<QString> allowedNodeIds_;
+    bool layerFilterEnabled_{false};
+    bool drawBackground_{true};
     QHash<QString, CachedTexture> textures_;
     std::list<QString> textureLru_;
     QSet<QString> activeTextureKeys_;
@@ -1055,6 +1172,21 @@ class SceneGraphItem final : public QQuickItem {
     std::atomic<qint64> textureCacheEvictions_{0};
     std::atomic<qint64> rasterizedLayerCount_{0}, transparentLayerCount_{0}, unsupportedLayerCount_{0},
         nativeAssetCount_{0};
+};
+
+class SceneTextureCacheReleaseJob final : public QRunnable {
+  public:
+    SceneTextureCacheReleaseJob(std::vector<SceneGraphItem *> items, QSemaphore &completed)
+        : items_(std::move(items)), completed_(completed) {}
+    void run() override {
+        for (auto *item : items_)
+            item->clearTextureCacheOnRenderThread();
+        completed_.release();
+    }
+
+  private:
+    std::vector<SceneGraphItem *> items_;
+    QSemaphore &completed_;
 };
 
 QString apiName(QSGRendererInterface::GraphicsApi api) {
@@ -1199,11 +1331,80 @@ struct EffectLayerBinding {
     QColor color{Qt::white};
     double strength{1.0};
     bool group{false};
+    std::vector<studio::RenderEffect> effects;
     GpuEffectItem *item{nullptr};
     QString cachedContentKey;
     QImage currentPixels;
     QRectF localRect;
 };
+
+struct CompositionVisualLayer {
+    std::size_t nodeIndex{0};
+    bool group{false};
+    std::vector<studio::RenderEffect> effects;
+};
+
+QImage effectMask(QSize size);
+
+std::vector<studio::RenderEffect> effectsForBinding(const EffectLayerBinding &binding, QSize maskSize = {2, 2}) {
+    if (!binding.effects.empty()) {
+        auto effects = binding.effects;
+        for (auto &effect : effects)
+            if (effect.kind == studio::RenderEffectKind::AlphaMask && effect.alphaMask.isNull())
+                effect.alphaMask = effectMask(maskSize);
+        return effects;
+    }
+    if (binding.kind == GpuEffectItem::Kind::GaussianBlur)
+        return {{studio::RenderEffectKind::GaussianBlur, binding.radius}};
+    if (binding.kind == GpuEffectItem::Kind::AlphaMask)
+        return {{studio::RenderEffectKind::AlphaMask, 0, Qt::white, effectMask(maskSize), binding.strength}};
+    if (binding.kind == GpuEffectItem::Kind::EffectStack)
+        return {{studio::RenderEffectKind::OuterGlow, binding.radius, binding.color, {}, binding.strength},
+                {studio::RenderEffectKind::GaussianBlur, binding.radius},
+                {studio::RenderEffectKind::AlphaMask, 0, Qt::white, effectMask(maskSize), binding.strength}};
+    return {{studio::RenderEffectKind::OuterGlow, binding.radius, binding.color, {}, binding.strength}};
+}
+
+std::vector<studio::CompositionEffectBinding> graphEffectBindings(
+    const std::vector<EffectLayerBinding> &bindings) {
+    std::vector<studio::CompositionEffectBinding> result;
+    result.reserve(bindings.size());
+    for (const auto &binding : bindings) {
+        result.push_back({binding.nodeId.toStdString(),
+                          binding.group ? studio::CompositionEffectScope::Group
+                                         : studio::CompositionEffectScope::Object,
+                          effectsForBinding(binding)});
+    }
+    return result;
+}
+
+std::vector<CompositionVisualLayer> orderedVisualLayers(const studio::CompositionGraphResult &graph) {
+    std::vector<CompositionVisualLayer> layers;
+    const auto &ops = graph.operations;
+    for (std::size_t index = 0; index < ops.size(); ++index) {
+        const auto &op = ops[index];
+        if (op.kind == studio::CompositionGraphOpKind::DrawLayer) {
+            layers.push_back({op.nodeIndex, false, op.effects});
+            continue;
+        }
+        if (op.kind != studio::CompositionGraphOpKind::BeginGroupSurface)
+            continue;
+        const auto end = std::find_if(ops.begin() + std::ptrdiff_t(index + 1), ops.end(), [&](const auto &candidate) {
+            return candidate.kind == studio::CompositionGraphOpKind::CompositeGroup &&
+                   candidate.surfaceId == op.surfaceId;
+        });
+        if (end == ops.end())
+            continue;
+        const auto apply = std::find_if(ops.begin() + std::ptrdiff_t(index + 1), end, [&](const auto &candidate) {
+            return candidate.kind == studio::CompositionGraphOpKind::ApplyEffectStack &&
+                   candidate.surfaceId == op.surfaceId;
+        });
+        if (apply != end)
+            layers.push_back({op.nodeIndex, true, apply->effects});
+        index = std::size_t(std::distance(ops.begin(), end));
+    }
+    return layers;
+}
 
 const studio::RenderNodeSnapshot *resolvedNode(const studio::RenderFrameSnapshot &frame, const QString &id) {
     for (const auto &resolved : frame.nodes)
@@ -1232,7 +1433,8 @@ QImage effectMask(QSize size) {
 
 QImage rasterGroupLayer(studio::CompositionPainter &rasterizer, const studio::Project &project,
                         const studio::RenderFrameSnapshot &frame, const studio::RenderNodeSnapshot &group,
-                        double margin, double supersampling = 2.0) {
+                        double margin, double supersampling = 2.0,
+                        const std::vector<EffectLayerBinding> *bindings = nullptr) {
     const auto &node = group.node;
     const int width = std::clamp(qCeil((node.width + 2 * margin) * supersampling), 1, 4096);
     const int height = std::clamp(qCeil((node.height + 2 * margin) * supersampling), 1, 4096);
@@ -1249,12 +1451,127 @@ QImage rasterGroupLayer(studio::CompositionPainter &rasterizer, const studio::Pr
     if (!invertible)
         return {};
     const auto groupIndex = std::size_t(&group - frame.nodes.data());
-    for (const auto &child : frame.nodes) {
-        if (child.parentIndex != groupIndex || !child.visible || child.node.kind == studio::NodeKind::Group)
-            continue;
-        const auto childImage = rasterizer.rasterNodeLayer(project, frame, child, supersampling);
+    std::function<void(const studio::RenderNodeSnapshot &)> drawChild;
+    drawChild = [&](const studio::RenderNodeSnapshot &child) {
+        if (!child.visible)
+            return;
+        if (child.node.kind == studio::NodeKind::Group) {
+            const auto childIndex = std::size_t(&child - frame.nodes.data());
+            const auto childId = QString::fromStdString(child.node.id);
+            const auto groupBinding = bindings ? std::find_if(bindings->begin(), bindings->end(), [&](const auto &entry) {
+                return entry.group && entry.nodeId == childId;
+            }) : std::vector<EffectLayerBinding>::const_iterator{};
+            if (bindings && groupBinding != bindings->end()) {
+                const auto effects = effectsForBinding(*groupBinding);
+                double effectMargin = 0.0;
+                for (const auto &effect : effects)
+                    if (effect.kind == studio::RenderEffectKind::GaussianBlur ||
+                        effect.kind == studio::RenderEffectKind::OuterGlow)
+                        effectMargin += effect.radius * 3.0;
+                auto childSurface = rasterGroupLayer(rasterizer, project, frame, child, effectMargin,
+                                                     supersampling, bindings);
+                if (childSurface.isNull())
+                    return;
+                auto resolvedEffects = effects;
+                for (auto &effect : resolvedEffects)
+                    if (effect.kind == studio::RenderEffectKind::AlphaMask) {
+                        if (effect.alphaMask.isNull())
+                            effect.alphaMask = effectMask(childSurface.size());
+                        else
+                            effect.alphaMask = effect.alphaMask.scaled(childSurface.size(), Qt::IgnoreAspectRatio,
+                                                                       Qt::SmoothTransformation);
+                    }
+                studio::RenderEffectContext context;
+                context.frame = frame.frame;
+                context.fps = project.fps;
+                context.canvasSize = QSize(project.width, project.height);
+                context.localBounds = QRectF(-effectMargin, -effectMargin,
+                                             child.node.width + effectMargin * 2,
+                                             child.node.height + effectMargin * 2);
+                const auto effected = studio::RenderEffectPipeline{}.execute(childSurface, resolvedEffects, context);
+                if (!effected.succeeded())
+                    return;
+                const auto relative = child.sceneTransform * inverseGroup;
+                const double opacity = group.inheritedOpacity > 0
+                                           ? std::clamp(child.inheritedOpacity / group.inheritedOpacity, 0.0, 1.0)
+                                           : 0.0;
+                painter.save();
+                painter.setOpacity(opacity);
+                painter.setWorldTransform(relative, true);
+                painter.drawImage(QRectF(-effectMargin, -effectMargin,
+                                         child.node.width + effectMargin * 2,
+                                         child.node.height + effectMargin * 2), effected.image);
+                painter.restore();
+                return;
+            }
+            std::vector<std::size_t> descendants;
+            for (std::size_t index = 0; index < frame.nodes.size(); ++index)
+                if (frame.nodes[index].parentIndex == childIndex)
+                    descendants.push_back(index);
+            std::sort(descendants.begin(), descendants.end(), [&](std::size_t a, std::size_t b) {
+                return frame.nodes[a].drawOrder < frame.nodes[b].drawOrder;
+            });
+            for (const auto index : descendants)
+                drawChild(frame.nodes[index]);
+            return;
+        }
+        auto childImage = rasterizer.rasterNodeLayer(project, frame, child, supersampling);
         if (childImage.isNull())
-            continue;
+            return;
+        const auto childId = QString::fromStdString(child.node.id);
+        const auto effectBinding = bindings ? std::find_if(bindings->begin(), bindings->end(), [&](const auto &entry) {
+            return entry.nodeId == childId;
+        }) : std::vector<EffectLayerBinding>::const_iterator{};
+        if (bindings && effectBinding != bindings->end()) {
+            const auto effects = effectsForBinding(*effectBinding, childImage.size());
+            const double effectMargin = [&] {
+                double value = 0.0;
+                for (const auto &effect : effects)
+                    if (effect.kind == studio::RenderEffectKind::GaussianBlur ||
+                        effect.kind == studio::RenderEffectKind::OuterGlow)
+                        value += effect.radius * 3.0;
+                return value;
+            }();
+            const QSize paddedSize(qCeil((child.node.width + 2 * effectMargin) * supersampling),
+                                   qCeil((child.node.height + 2 * effectMargin) * supersampling));
+            QImage padded(paddedSize, QImage::Format_RGBA8888_Premultiplied);
+            padded.fill(Qt::transparent);
+            QPainter pad(&padded);
+            pad.drawImage(QPoint(qRound(effectMargin * supersampling), qRound(effectMargin * supersampling)), childImage);
+            pad.end();
+            auto resolvedEffects = effects;
+            for (auto &effect : resolvedEffects)
+                if (effect.kind == studio::RenderEffectKind::AlphaMask) {
+                    if (effect.alphaMask.isNull())
+                        effect.alphaMask = effectMask(padded.size());
+                    else
+                        effect.alphaMask = effect.alphaMask.scaled(padded.size(), Qt::IgnoreAspectRatio,
+                                                                   Qt::SmoothTransformation);
+                }
+            studio::RenderEffectContext context;
+            context.frame = frame.frame;
+            context.fps = project.fps;
+            context.canvasSize = QSize(project.width, project.height);
+            context.localBounds = QRectF(-effectMargin, -effectMargin,
+                                         child.node.width + effectMargin * 2,
+                                         child.node.height + effectMargin * 2);
+            const auto effected = studio::RenderEffectPipeline{}.execute(padded, resolvedEffects, context);
+            if (!effected.succeeded())
+                return;
+            childImage = effected.image;
+            const auto relative = child.sceneTransform * inverseGroup;
+            const double opacity = group.inheritedOpacity > 0
+                                       ? std::clamp(child.inheritedOpacity / group.inheritedOpacity, 0.0, 1.0)
+                                       : 0.0;
+            painter.save();
+            painter.setOpacity(opacity);
+            painter.setWorldTransform(relative, true);
+            painter.drawImage(QRectF(-effectMargin, -effectMargin,
+                                     child.node.width + effectMargin * 2,
+                                     child.node.height + effectMargin * 2), childImage);
+            painter.restore();
+            return;
+        }
         const auto relative = child.sceneTransform * inverseGroup;
         const double opacity = group.inheritedOpacity > 0
                                    ? std::clamp(child.inheritedOpacity / group.inheritedOpacity, 0.0, 1.0)
@@ -1264,33 +1581,77 @@ QImage rasterGroupLayer(studio::CompositionPainter &rasterizer, const studio::Pr
         painter.setWorldTransform(relative, true);
         painter.drawImage(QRectF(0, 0, child.node.width, child.node.height), childImage);
         painter.restore();
-    }
+    };
+    std::vector<std::size_t> children;
+    for (std::size_t index = 0; index < frame.nodes.size(); ++index)
+        if (frame.nodes[index].parentIndex == groupIndex)
+            children.push_back(index);
+    std::sort(children.begin(), children.end(), [&](std::size_t a, std::size_t b) {
+        return frame.nodes[a].drawOrder < frame.nodes[b].drawOrder;
+    });
+    for (const auto index : children)
+        drawChild(frame.nodes[index]);
     painter.end();
     return result;
 }
 
 QString effectContentKey(const EffectLayerBinding &binding, const studio::RenderNodeSnapshot &resolved,
-                         const studio::RenderFrameSnapshot &frame) {
+                         const studio::RenderFrameSnapshot &frame,
+                         const std::vector<EffectLayerBinding> &allBindings) {
     QStringList parts{binding.nodeId, QString::number(int(binding.kind)), QString::number(binding.radius),
                       QString::number(binding.strength, 'f', 4)};
+    const auto effects = effectsForBinding(binding);
+    for (const auto &effect : effects)
+        parts << QString::number(int(effect.kind)) << QString::number(effect.radius)
+              << effect.color.name(QColor::HexArgb) << QString::number(effect.strength, 'f', 4);
     if (binding.group) {
         const auto groupIndex = std::size_t(&resolved - frame.nodes.data());
-        for (const auto &child : frame.nodes)
-            if (child.parentIndex == groupIndex)
+        std::function<void(std::size_t)> appendDescendant = [&](std::size_t parent) {
+            for (std::size_t index = 0; index < frame.nodes.size(); ++index) {
+                const auto &child = frame.nodes[index];
+                if (child.parentIndex != parent)
+                    continue;
                 parts << QString::fromStdString(child.node.id) << QString::fromStdString(child.node.text)
+                      << QString::fromStdString(child.node.source) << QString::fromStdString(child.node.color)
+                      << QString::fromStdString(child.node.nativeId) << QString::fromStdString(child.node.pose)
                       << QString::number(child.state.x, 'f', 3) << QString::number(child.state.y, 'f', 3)
                       << QString::number(child.state.rotation, 'f', 3)
-                      << QString::number(child.state.scale, 'f', 3);
+                      << QString::number(child.state.scale, 'f', 3)
+                      << QString::number(child.inheritedOpacity, 'f', 4)
+                      << QString::number(child.visible) << QString::number(child.drawOrder);
+                if (!child.node.source.empty()) {
+                    const QFileInfo media(QString::fromStdString(child.node.source));
+                    parts << QString::number(media.size()) << media.lastModified().toString(Qt::ISODateWithMs);
+                }
+                const auto nestedBinding = std::find_if(allBindings.begin(), allBindings.end(), [&](const auto &entry) {
+                    return entry.nodeId == QString::fromStdString(child.node.id);
+                });
+                if (nestedBinding != allBindings.end())
+                    for (const auto &effect : effectsForBinding(*nestedBinding))
+                        parts << QString::number(int(effect.kind)) << QString::number(effect.radius)
+                              << effect.color.name(QColor::HexArgb) << QString::number(effect.strength, 'f', 4);
+                if (child.node.kind == studio::NodeKind::Group)
+                    appendDescendant(index);
+                if (child.node.animated || (child.node.kind == studio::NodeKind::Text &&
+                    child.node.role == "caption" && child.node.wordAnimationPreset != "none"))
+                    parts << QString::number(frame.frame);
+            }
+        };
+        appendDescendant(groupIndex);
     } else {
         const auto &node = resolved.node;
         parts << QString::fromStdString(node.text) << QString::fromStdString(node.source)
               << QString::fromStdString(node.color) << QString::fromStdString(node.nativeId)
               << QString::fromStdString(node.pose);
+        if (!node.source.empty()) {
+            const QFileInfo media(QString::fromStdString(node.source));
+            parts << QString::number(media.size()) << media.lastModified().toString(Qt::ISODateWithMs);
+        }
         const bool animatedCaption = node.kind == studio::NodeKind::Text && node.role == "caption" &&
                                      !node.captionWords.empty() && node.wordAnimationPreset != "none";
         const bool animatedNative = node.kind == studio::NodeKind::Native &&
                                     ((node.nativeId == "person" && node.pose == "wave") || node.nativeId == "bars");
-        if (animatedCaption || animatedNative)
+        if (node.animated || animatedCaption || animatedNative)
             parts << QString::number(frame.frame);
     }
     return QString::fromLatin1(QCryptographicHash::hash(parts.join(QChar(0)).toUtf8(),
@@ -1298,7 +1659,8 @@ QString effectContentKey(const EffectLayerBinding &binding, const studio::Render
 }
 
 bool refreshEffectLayer(EffectLayerBinding &binding, const studio::Project &project,
-                        const studio::RenderFrameSnapshot &frame, studio::CompositionPainter &rasterizer) {
+                        const studio::RenderFrameSnapshot &frame, studio::CompositionPainter &rasterizer,
+                        const std::vector<EffectLayerBinding> &effectBindings) {
     const auto *resolved = resolvedNode(frame, binding.nodeId);
     if (!resolved || !resolved->visible) {
         const auto parent = resolved && resolved->parentIndex ? &frame.nodes[*resolved->parentIndex] : nullptr;
@@ -1312,13 +1674,13 @@ bool refreshEffectLayer(EffectLayerBinding &binding, const studio::Project &proj
                          parent && parent->visible, parent && studio::active(parent->node, frame.frame));
         return false;
     }
-    const auto key = effectContentKey(binding, *resolved, frame);
+    const auto key = effectContentKey(binding, *resolved, frame, effectBindings);
     if (binding.cachedContentKey == key && !binding.currentPixels.isNull())
         return true;
     const double margin = binding.radius * 3.0;
     constexpr double scale = 2.0;
     const auto content = binding.group
-                             ? rasterGroupLayer(rasterizer, project, frame, *resolved, margin, scale)
+                             ? rasterGroupLayer(rasterizer, project, frame, *resolved, margin, scale, &effectBindings)
                              : rasterizer.rasterNodeLayer(project, frame, *resolved, scale);
     if (content.isNull()) {
         std::fprintf(stderr, "Effect layer %s produced null raster\n", qPrintable(binding.nodeId));
@@ -1343,6 +1705,8 @@ bool refreshEffectLayer(EffectLayerBinding &binding, const studio::Project &proj
     binding.item->setFixedColorBufferWidth(padded.width());
     binding.item->setFixedColorBufferHeight(padded.height());
     binding.item->setInputs(padded, mask);
+    if (!binding.effects.empty())
+        binding.item->setEffectStack(binding.effects);
     binding.item->setWidth(binding.localRect.width());
     binding.item->setHeight(binding.localRect.height());
     const auto transform = resolved->sceneTransform * frame.cameraTransform;
@@ -1359,6 +1723,8 @@ bool refreshEffectLayer(EffectLayerBinding &binding, const studio::Project &proj
 void updateEffectLayerTransforms(std::vector<EffectLayerBinding> &layers,
                                  const studio::RenderFrameSnapshot &frame) {
     for (auto &binding : layers) {
+        if (!binding.item)
+            continue;
         const auto *resolved = resolvedNode(frame, binding.nodeId);
         if (!resolved)
             continue;
@@ -1374,78 +1740,78 @@ void updateEffectLayerTransforms(std::vector<EffectLayerBinding> &layers,
 
 QImage renderCpuEffectScene(const studio::Project &project, std::int64_t frameNumber,
                             const std::vector<EffectLayerBinding> &bindings) {
-    studio::Project base = project;
-    QSet<QString> removed;
-    for (const auto &binding : bindings)
-        removed.insert(binding.nodeId);
-    base.nodes.erase(std::remove_if(base.nodes.begin(), base.nodes.end(), [&](const auto &node) {
-                         return removed.contains(QString::fromStdString(node.id)) ||
-                                node.parentId == "effect-group";
-                     }), base.nodes.end());
-    studio::CompositionPainter compositor;
-    QImage output = compositor.frame(base, frameNumber);
     const auto snapshot = studio::RenderSnapshot::build(project, frameNumber);
     const auto &frame = snapshot.primary();
+    const auto graph = studio::CompositionRenderGraph::build(snapshot, graphEffectBindings(bindings));
+    if (!graph.succeeded())
+        return {};
+    const auto layers = orderedVisualLayers(graph);
     studio::CompositionPainter rasterizer;
+    QImage output = rasterizer.rasterBackgroundLayer(project, frame.backgroundArt);
+    if (output.isNull()) {
+        output = QImage(snapshot.width(), snapshot.height(), QImage::Format_ARGB32_Premultiplied);
+        output.fill(QColor("#101820"));
+    }
     studio::RenderEffectPipeline pipeline;
     QPainter painter(&output);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-    for (const auto &binding : bindings) {
-        const auto *resolved = resolvedNode(frame, binding.nodeId);
-        if (!resolved)
+    for (const auto &layer : layers) {
+        if (layer.nodeIndex >= frame.nodes.size())
             continue;
-        const double margin = binding.radius * 3.0;
-        const auto content = binding.group
-                                 ? rasterGroupLayer(rasterizer, project, frame, *resolved, margin, 2.0)
-                                 : rasterizer.rasterNodeLayer(project, frame, *resolved, 2.0);
+        const auto &resolved = frame.nodes[layer.nodeIndex];
+        const double margin = [&] {
+            double value = 0.0;
+            for (const auto &effect : layer.effects)
+                if (effect.kind == studio::RenderEffectKind::GaussianBlur ||
+                    effect.kind == studio::RenderEffectKind::OuterGlow)
+                    value += effect.radius * 3.0;
+            return value;
+        }();
+        QImage content = layer.group
+                             ? rasterGroupLayer(rasterizer, project, frame, resolved, margin, 2.0, &bindings)
+                             : rasterizer.rasterNodeLayer(project, frame, resolved, 2.0);
         if (content.isNull())
             continue;
-        const QSize paddedSize(qCeil((resolved->node.width + 2 * margin) * 2.0),
-                               qCeil((resolved->node.height + 2 * margin) * 2.0));
-        QImage padded(paddedSize, QImage::Format_ARGB32_Premultiplied);
-        padded.fill(Qt::transparent);
-        QPainter padPainter(&padded);
-        padPainter.drawImage(binding.group ? QPoint(0, 0) : QPoint(qRound(margin * 2), qRound(margin * 2)), content);
-        padPainter.end();
-        std::vector<studio::RenderEffect> effects;
-        if (binding.kind == GpuEffectItem::Kind::AlphaMask) {
-            studio::RenderEffect effect;
-            effect.kind = studio::RenderEffectKind::AlphaMask;
-            effect.radius = 0;
-            effect.strength = binding.strength;
-            effect.alphaMask = effectMask(padded.size());
-            effects.push_back(std::move(effect));
-        } else if (binding.kind == GpuEffectItem::Kind::GaussianBlur) {
-            studio::RenderEffect effect;
-            effect.kind = studio::RenderEffectKind::GaussianBlur;
-            effect.radius = binding.radius;
-            effects.push_back(std::move(effect));
-        } else if (binding.kind == GpuEffectItem::Kind::EffectStack) {
-            effects.push_back({studio::RenderEffectKind::OuterGlow, binding.radius, binding.color, {}, binding.strength});
-            effects.push_back({studio::RenderEffectKind::GaussianBlur, binding.radius});
-            effects.push_back({studio::RenderEffectKind::AlphaMask, 0, Qt::white, effectMask(padded.size()),
-                               binding.strength});
-        } else {
-            studio::RenderEffect effect;
-            effect.kind = studio::RenderEffectKind::OuterGlow;
-            effect.radius = binding.radius;
-            effect.color = binding.color;
-            effect.strength = binding.strength;
-            effects.push_back(std::move(effect));
+        if (!layer.effects.empty()) {
+            const QSize paddedSize(qCeil((resolved.node.width + 2 * margin) * 2.0),
+                                   qCeil((resolved.node.height + 2 * margin) * 2.0));
+            QImage padded(paddedSize, QImage::Format_RGBA8888_Premultiplied);
+            padded.fill(Qt::transparent);
+            if (!layer.group) {
+                QPainter padPainter(&padded);
+                padPainter.setRenderHint(QPainter::SmoothPixmapTransform);
+                padPainter.drawImage(QPoint(qRound(margin * 2), qRound(margin * 2)), content);
+                padPainter.end();
+                content = std::move(padded);
+            }
+            auto effects = layer.effects;
+            for (auto &effect : effects)
+                if (effect.kind == studio::RenderEffectKind::AlphaMask) {
+                    if (effect.alphaMask.isNull())
+                        effect.alphaMask = effectMask(content.size());
+                    else
+                        effect.alphaMask = effect.alphaMask.scaled(content.size(), Qt::IgnoreAspectRatio,
+                                                                   Qt::SmoothTransformation);
+                }
+            studio::RenderEffectContext context;
+            context.frame = frameNumber;
+            context.fps = snapshot.fps();
+            context.canvasSize = QSize(snapshot.width(), snapshot.height());
+            context.localBounds = QRectF(-margin, -margin, resolved.node.width + 2 * margin,
+                                         resolved.node.height + 2 * margin);
+            const auto result = pipeline.execute(content, effects, context);
+            if (!result.succeeded())
+                continue;
+            content = result.image;
         }
-        studio::RenderEffectContext context;
-        context.frame = frameNumber;
-        context.fps = snapshot.fps();
-        context.canvasSize = QSize(snapshot.width(), snapshot.height());
-        context.localBounds = binding.localRect;
-        const auto result = pipeline.execute(padded, effects, context);
-        if (!result.succeeded())
-            continue;
         painter.save();
-        painter.setWorldTransform(resolved->sceneTransform * frame.cameraTransform);
-        painter.setOpacity(resolved->inheritedOpacity);
-        painter.drawImage(QRectF(-margin, -margin, resolved->node.width + 2 * margin,
-                                 resolved->node.height + 2 * margin), result.image);
+        painter.setWorldTransform(resolved.sceneTransform * frame.cameraTransform);
+        painter.setOpacity(resolved.inheritedOpacity);
+        const QRectF localRect = layer.effects.empty()
+                                     ? QRectF(0, 0, resolved.node.width, resolved.node.height)
+                                     : QRectF(-margin, -margin, resolved.node.width + 2 * margin,
+                                              resolved.node.height + 2 * margin);
+        painter.drawImage(localRect, content);
         painter.restore();
     }
     painter.end();
@@ -1467,6 +1833,7 @@ int main(int argc, char **argv) {
     parser.addOption({"update-reference", "Write a QPainter golden for --primitive-kind"});
     parser.addOption({"hybrid-suite", "Render the mixed text/native/image/SVG regression scene"});
     parser.addOption({"gpu-effects-scene", "Compose the RenderSnapshot hybrid fixture with GPU-effect layers"});
+    parser.addOption({"alternate-composition", "Move the smartphone to the foreground and change group effect order"});
     parser.addOption({"static-scene", "Use fixed text/native content and no animated camera for the hybrid benchmark"});
     parser.addOption({"native-atlas", "Render every native asset as a QPainter-backed GPU texture"});
     parser.addOption({"cache-pressure-test", "Use a 4 MiB texture cache to verify eviction and memory bounds"});
@@ -1485,6 +1852,7 @@ int main(int argc, char **argv) {
         return 3;
 
     const bool effectScene = parser.isSet("gpu-effects-scene");
+    const bool alternateComposition = parser.isSet("alternate-composition");
     const bool hybridSuite = parser.isSet("hybrid-suite") || effectScene;
     const bool nativeAtlas = parser.isSet("native-atlas");
     const bool cachePressureTest = parser.isSet("cache-pressure-test");
@@ -1496,7 +1864,8 @@ int main(int argc, char **argv) {
     bool webpAlphaWasPreserved = false;
     auto project = (hybridSuite || nativeAtlas)
                        ? hybridProject(width, height, fixtureDirectory, nativeAtlas, staticScene,
-                                       &webpAlphaWasPreserved, effectScene, effectSceneShapeCount)
+                                       &webpAlphaWasPreserved, effectScene, effectSceneShapeCount,
+                                       alternateComposition)
                        : referenceProject(width, height, nodes);
     std::vector<EffectLayerBinding> effectLayers;
     bool qPainterReferenceRegressionPassed = true;
@@ -1511,6 +1880,14 @@ int main(int argc, char **argv) {
                         {"hybrid-png", GpuEffectItem::Kind::GaussianBlur, 8, Qt::white, 1.0, false},
                         {"hybrid-webp", GpuEffectItem::Kind::AlphaMask, 0, Qt::white, .9, false},
                         {"effect-group", GpuEffectItem::Kind::EffectStack, 8, QColor("#57b8af"), .72, true}});
+        effectLayers.insert(effectLayers.end() - 1,
+                            {"effect-inner-group", GpuEffectItem::Kind::GaussianBlur, 3, Qt::white, 1.0, true});
+        if (alternateComposition) {
+            auto &group = effectLayers.back();
+            group.effects = {{studio::RenderEffectKind::GaussianBlur, 8},
+                             {studio::RenderEffectKind::OuterGlow, 8, QColor("#57b8af"), {}, .72},
+                             {studio::RenderEffectKind::AlphaMask, 0, Qt::white, effectMask({64, 64}), .72}};
+        }
     }
     QString registeredFontFamily;
     if (parser.isSet("font-file")) {
@@ -1592,7 +1969,9 @@ int main(int argc, char **argv) {
         const auto effectsGoldenPath = QDir(QStringLiteral(STUDIO_HYBRID_REFERENCE_DIR))
                                           .filePath("hybrid-effects.png");
         goldenPath = effectsGoldenPath;
-        if (parser.isSet("update-gpu-effects-reference")) {
+        if (alternateComposition) {
+            goldenPath.clear();
+        } else if (parser.isSet("update-gpu-effects-reference")) {
             if (width != 1280 || height != 720 || !cpuImage.save(effectsGoldenPath))
                 return 11;
         } else if (width == 1280 && height == 720 && effectSceneShapeCount == 5 && frameCount == 8 &&
@@ -1657,33 +2036,75 @@ int main(int argc, char **argv) {
     if (primitiveSuite)
         applyPrimitiveSuite(initial, forcedPrimitive);
     const qsizetype textureBudget = cachePressureTest ? 4 * 1024 * 1024 : 64 * 1024 * 1024;
-    auto *item = new SceneGraphItem(project, std::move(initial), width, height, textureBudget);
+    auto sharedTextureBudget = std::make_shared<SceneGraphItem::SharedTextureBudget>(textureBudget);
+    auto gpuMemoryDiagnostics = std::make_shared<GpuMemoryDiagnostics>();
+    gpuMemoryDiagnostics->setPhase(QStringLiteral("before"));
+    auto *item = new SceneGraphItem(project, std::move(initial), width, height, textureBudget,
+                                    sharedTextureBudget, gpuMemoryDiagnostics);
     item->setParentItem(window.contentItem());
     item->setSize(QSizeF(width, height));
+    std::vector<SceneGraphItem *> sceneItems{item};
+    std::vector<CompositionVisualLayer> compositionLayers;
+    int compositionGraphOperationCount = 0;
     QSet<QString> filteredEffectIds;
     if (effectScene) {
-        for (const auto &binding : effectLayers)
-            filteredEffectIds.insert(binding.nodeId);
-        filteredEffectIds.insert("effect-group-shape");
-        filteredEffectIds.insert("effect-group-text");
-        item->setFilteredNodeIds(filteredEffectIds);
-        for (auto &binding : effectLayers) {
-            binding.item = new GpuEffectItem(window.contentItem());
-            binding.item->setEffect(binding.kind, binding.radius, binding.color, binding.strength);
+        auto initialSnapshot = studio::RenderSnapshot::build(project, 0);
+        const auto graph = studio::CompositionRenderGraph::build(initialSnapshot, graphEffectBindings(effectLayers));
+        if (!graph.succeeded()) {
+            qCritical().noquote() << "Composition graph failed:" << graph.error;
+            return 15;
         }
-        auto initialEffectFrame = studio::RenderSnapshot::build(project, 0).primary();
+        compositionLayers = orderedVisualLayers(graph);
+        compositionGraphOperationCount = int(graph.operations.size());
+        item->setLayerNodeIds({}, true);
+        item->setZ(-1.0);
+        qreal layerZ = 0.0;
+        auto initialEffectFrame = initialSnapshot.primary();
         studio::CompositionPainter effectRasterizer;
-        for (std::size_t index = 0; index < effectLayers.size(); ++index) {
-            auto &binding = effectLayers[index];
-            if (!refreshEffectLayer(binding, project, initialEffectFrame, effectRasterizer)) {
-                std::fprintf(stderr, "Could not prepare GPU effect layer %s\n",
-                             qPrintable(binding.nodeId));
-                return 12 + int(index);
+        for (const auto &layer : compositionLayers) {
+            const auto &resolved = initialEffectFrame.nodes[layer.nodeIndex];
+            const QString nodeId = QString::fromStdString(resolved.node.id);
+            if (!layer.effects.empty()) {
+                auto binding = std::find_if(effectLayers.begin(), effectLayers.end(), [&](const auto &candidate) {
+                    return candidate.nodeId == nodeId;
+                });
+                if (binding == effectLayers.end()) {
+                    qCritical().noquote() << "Composition graph effect has no prototype binding:" << nodeId;
+                    return 16;
+                }
+                binding->effects = layer.effects;
+                binding->item = new GpuEffectItem(window.contentItem());
+                binding->item->setZ(layerZ++);
+                binding->item->setEffectStack(layer.effects);
+                if (!refreshEffectLayer(*binding, project, initialEffectFrame, effectRasterizer, effectLayers)) {
+                    std::fprintf(stderr, "Could not prepare GPU effect layer %s\n", qPrintable(nodeId));
+                    return 12 + int(std::distance(effectLayers.begin(), binding));
+                }
+                continue;
             }
+            auto *segment = new SceneGraphItem(project, initialEffectFrame, width, height, textureBudget,
+                                               sharedTextureBudget, gpuMemoryDiagnostics);
+            segment->setParentItem(window.contentItem());
+            segment->setSize(QSizeF(width, height));
+            segment->setZ(layerZ++);
+            segment->setLayerNodeIds({nodeId}, false);
+            sceneItems.push_back(segment);
         }
     }
-    QObject::connect(&window, &QQuickWindow::sceneGraphInvalidated, item,
-                     [item] { item->clearTextureCacheOnRenderThread(); }, Qt::DirectConnection);
+    for (auto *sceneItem : sceneItems)
+        QObject::connect(&window, &QQuickWindow::sceneGraphInvalidated, sceneItem,
+                         [sceneItem] { sceneItem->clearTextureCacheOnRenderThread(); }, Qt::DirectConnection);
+    const auto sumSceneItems = [&](auto metric) {
+        qint64 total = 0;
+        for (const auto *sceneItem : sceneItems)
+            total += metric(*sceneItem);
+        return total;
+    };
+    const auto allSceneItems = [&](auto predicate) {
+        return std::all_of(sceneItems.begin(), sceneItems.end(), [&](const auto *sceneItem) {
+            return predicate(*sceneItem);
+        });
+    };
     QObject::connect(
         &window, &QQuickWindow::sceneGraphError, &app,
         [](QQuickWindow::SceneGraphError, const QString &message) { qCritical().noquote() << message; });
@@ -1704,21 +2125,23 @@ int main(int argc, char **argv) {
         if (effectScene) {
             studio::CompositionPainter effectRasterizer;
             for (auto &binding : effectLayers)
-                if (!refreshEffectLayer(binding, project, snapshot, effectRasterizer))
+                if (binding.item && !refreshEffectLayer(binding, project, snapshot, effectRasterizer, effectLayers))
                     return 13;
             updateEffectLayerTransforms(effectLayers, snapshot);
         }
-        item->setSnapshot(std::move(snapshot));
+        for (auto *sceneItem : sceneItems)
+            sceneItem->setSnapshot(snapshot);
         QTimer::singleShot(5000, &loop, &QEventLoop::quit);
         loop.exec();
         QObject::disconnect(connection);
     }
+    gpuMemoryDiagnostics->setPhase(QStringLiteral("during"));
     timer.restart();
     qint64 snapshotBuildNanos = 0;
-    qint64 preparationBefore = item->preparationNanos();
-    const qint64 rasterizationBefore = item->rasterizationNanos();
-    const qint64 textureUploadBefore = item->textureUploadNanos();
-    const qint64 textureUploadsBefore = item->textureUploads();
+    qint64 preparationBefore = sumSceneItems([](const auto &value) { return value.preparationNanos(); });
+    const qint64 rasterizationBefore = sumSceneItems([](const auto &value) { return value.rasterizationNanos(); });
+    const qint64 textureUploadBefore = sumSceneItems([](const auto &value) { return value.textureUploadNanos(); });
+    const qint64 textureUploadsBefore = sumSceneItems([](const auto &value) { return value.textureUploads(); });
     for (int i = 0; i < frameCount; ++i) {
         QEventLoop loop;
         const auto connection =
@@ -1731,12 +2154,13 @@ int main(int argc, char **argv) {
         if (effectScene) {
             studio::CompositionPainter effectRasterizer;
             for (auto &binding : effectLayers)
-                if (!refreshEffectLayer(binding, project, snapshot, effectRasterizer))
+                if (binding.item && !refreshEffectLayer(binding, project, snapshot, effectRasterizer, effectLayers))
                     return 14;
             updateEffectLayerTransforms(effectLayers, snapshot);
         }
         snapshotBuildNanos += snapshotTimer.nsecsElapsed();
-        item->setSnapshot(std::move(snapshot));
+        for (auto *sceneItem : sceneItems)
+            sceneItem->setSnapshot(snapshot);
         QTimer::singleShot(5000, &loop, &QEventLoop::quit);
         loop.exec();
         QObject::disconnect(connection);
@@ -1744,7 +2168,8 @@ int main(int argc, char **argv) {
     const double sceneGraphMilliseconds = double(timer.nsecsElapsed()) / 1e6 / frameCount;
     const double snapshotBuildMilliseconds = double(snapshotBuildNanos) / 1e6 / frameCount;
     const double preparationMilliseconds =
-        double(item->preparationNanos() - preparationBefore) / 1e6 / frameCount;
+        double(sumSceneItems([](const auto &value) { return value.preparationNanos(); }) - preparationBefore) /
+        1e6 / frameCount;
     QElapsedTimer captureTimer;
     captureTimer.start();
     const QImage gpuImage = window.grabWindow();
@@ -1763,7 +2188,7 @@ int main(int argc, char **argv) {
                 nativeAtlas ? "native-atlas.png" : staticScene ? "hybrid-static.png" : "hybrid.png";
             hybridGoldenPath = QDir(QStringLiteral(STUDIO_HYBRID_REFERENCE_DIR)).filePath(goldenName);
         }
-        if (!parser.isSet("update-hybrid-reference") && !hybridGoldenPath.isEmpty() &&
+        if (!parser.isSet("update-hybrid-reference") && frameCount == 8 && !hybridGoldenPath.isEmpty() &&
             registeredFontFamily.isEmpty()) {
             const QImage golden(hybridGoldenPath);
             qPainterReferenceRegressionPassed = !golden.isNull();
@@ -1783,21 +2208,34 @@ int main(int argc, char **argv) {
                             *forcedPrimitive == studio::RenderPrimitiveKind::Line);
     const double minimumForegroundIou = thinStrokeClass ? 0.74 : 0.94;
     const double minimumEdgeF1 = nativeAtlas ? 0.91 : 0.95;
-    const bool nativeAtlasComplete = !nativeAtlas || item->nativeAssetCount() == qint64(studio::nativeLibrary().size());
+    const auto cacheBytes = sharedTextureBudget->used.load();
+    const auto cacheBudgetBytes = sharedTextureBudget->limit;
+    const auto cacheHits = sumSceneItems([](const auto &value) { return value.textureCacheHits(); });
+    const auto cacheMisses = sumSceneItems([](const auto &value) { return value.textureCacheMisses(); });
+    const auto cacheUploads = sumSceneItems([](const auto &value) { return value.textureUploads(); });
+    const auto cacheEvictions = sumSceneItems([](const auto &value) { return value.textureCacheEvictions(); });
+    const auto cachePeakBytes = sumSceneItems([](const auto &value) { return value.peakTextureCacheBytes(); });
+    const bool cacheWithinBudget = cacheBytes <= cacheBudgetBytes &&
+        allSceneItems([](const auto &value) { return value.textureCacheWithinBudget(); });
+    const auto nativeAssetsSupported = sumSceneItems([](const auto &value) { return value.nativeAssetCount(); });
+    const bool nativeAtlasComplete = !nativeAtlas || nativeAssetsSupported == qint64(studio::nativeLibrary().size());
     const bool cacheInvalidationChecksPassed = (!hybridSuite && !nativeAtlas) ||
-                                                item->cacheInvalidationSelfTest();
+        effectScene || staticScene || allSceneItems([](const auto &value) { return value.cacheInvalidationSelfTest(); });
     const bool cacheTestsPassed =
         (!hybridSuite && !nativeAtlas) ||
-        (item->textureCacheWithinBudget() && item->textureCacheMisses() > 0 && item->textureUploads() > 0 &&
-         (frameCount < 2 || item->textureCacheHits() > 0) && item->unsupportedLayerCount() == 0 &&
-         (staticScene || cacheInvalidationChecksPassed) && (!hybridSuite || item->transparentLayerCount() > 0) &&
-         mediaFormatTestsPassed && (!cachePressureTest || item->textureCacheEvictions() > 0));
+        (cacheWithinBudget && cacheMisses > 0 && cacheUploads > 0 &&
+         (frameCount < 2 || cacheHits > 0) &&
+         sumSceneItems([](const auto &value) { return value.unsupportedLayerCount(); }) == 0 &&
+         cacheInvalidationChecksPassed &&
+         (!hybridSuite || sumSceneItems([](const auto &value) { return value.transparentLayerCount(); }) > 0) &&
+         mediaFormatTestsPassed && (!cachePressureTest || cacheEvictions > 0));
     qsizetype effectLayerCpuBytes = 0;
     qsizetype effectLayerGpuEstimateBytes = 0;
     bool effectLayersReady = true;
     QSet<QString> effectLayerKinds;
     for (const auto &binding : effectLayers) {
-        effectLayersReady = effectLayersReady && !binding.currentPixels.isNull();
+        if (binding.item)
+            effectLayersReady = effectLayersReady && !binding.currentPixels.isNull();
         effectLayerCpuBytes += binding.currentPixels.sizeInBytes();
         effectLayerGpuEstimateBytes += qint64(binding.currentPixels.width()) * binding.currentPixels.height() * 4 * 5;
         effectLayerKinds.insert(binding.kind == GpuEffectItem::Kind::AlphaMask ? "alpha-mask" :
@@ -1816,7 +2254,7 @@ int main(int argc, char **argv) {
 
     const auto api = apiName(window.rendererInterface()->graphicsApi());
     const auto framebufferBytes = qint64(width) * height * 4;
-    const auto geometryBytes = item->geometryBytes();
+    const auto geometryBytes = sumSceneItems([](const auto &value) { return value.geometryBytes(); });
     QJsonObject primitiveCoverage;
     int primitiveCounts[6]{};
     for (const auto &resolved : item->snapshot().nodes) {
@@ -1830,6 +2268,41 @@ int main(int argc, char **argv) {
         primitiveCoverage.insert(primitiveNames[index], primitiveCounts[index]);
     const double pixelsPerSecondCpu = (double(width) * height) / (cpuMilliseconds / 1000.0);
     const double pixelsPerSecondGpu = (double(width) * height) / (sceneGraphMilliseconds / 1000.0);
+    QJsonArray visibleGpuEffectIds;
+    QJsonArray cpuNestedEffectIds;
+    QJsonArray orderedLayerIds;
+    for (const auto &layer : compositionLayers) {
+        if (layer.nodeIndex < item->snapshot().nodes.size()) {
+            const auto id = QString::fromStdString(item->snapshot().nodes[layer.nodeIndex].node.id);
+            orderedLayerIds.append(id);
+            if (!layer.effects.empty())
+                visibleGpuEffectIds.append(id);
+        }
+    }
+    for (const auto &binding : effectLayers)
+        if (!binding.item)
+            cpuNestedEffectIds.append(binding.nodeId);
+    const auto textureCacheBytesBeforeRelease = sharedTextureBudget->used.load();
+    gpuMemoryDiagnostics->sampleCurrent(QStringLiteral("beforeRelease"));
+    QSemaphore textureCacheReleaseComplete;
+    window.scheduleRenderJob(new SceneTextureCacheReleaseJob(sceneItems, textureCacheReleaseComplete),
+                             QQuickWindow::AfterRenderingStage);
+    window.requestUpdate();
+    QElapsedTimer cacheReleaseWait;
+    cacheReleaseWait.start();
+    bool textureCacheReleaseJobCompleted = false;
+    while (cacheReleaseWait.elapsed() < 5000 && !textureCacheReleaseJobCompleted) {
+        textureCacheReleaseJobCompleted = textureCacheReleaseComplete.tryAcquire(1, 25);
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    }
+    const auto textureCacheBytesAfterRelease = sharedTextureBudget->used.load();
+    window.close();
+    window.releaseResources();
+    QCoreApplication::processEvents();
+    gpuMemoryDiagnostics->sampleCurrent(QStringLiteral("afterRelease"));
+    const auto gpuMemoryReport = gpuMemoryDiagnostics->report();
+    const bool gpuDedicatedMemoryMeasured =
+        gpuMemoryReport.value(QStringLiteral("status")).toString() == QStringLiteral("available");
     const QJsonObject metrics{
         {"canvas", QJsonObject{{"width", width}, {"height", height}}},
         {"shapeCount", effectScene ? effectSceneShapeCount + 1 : nodes},
@@ -1838,7 +2311,12 @@ int main(int argc, char **argv) {
                                                                  "project-shape-snapshot"},
         {"hybridSuite", hybridSuite},
         {"gpuEffectScene", effectScene},
-        {"gpuEffectLayerIds", effectScene ? QJsonArray{"hybrid-caption", "effect-phone", "hybrid-png", "hybrid-webp", "effect-group"} : QJsonArray{}},
+        {"gpuEffectLayerIds", visibleGpuEffectIds},
+        {"compositionGraphOperationCount", compositionGraphOperationCount},
+        {"compositionLayerOrder", orderedLayerIds},
+        {"compositionAlternateOrder", alternateComposition},
+        {"visibleGpuEffectLayerIds", visibleGpuEffectIds},
+        {"cpuCompositedNestedEffectLayerIds", cpuNestedEffectIds},
         {"gpuEffectKinds", QJsonArray::fromStringList(effectLayerKinds.values())},
         {"gpuEffectGroupComposition", effectScene},
         {"gpuEffectReadbackInPresentation", false},
@@ -1852,28 +2330,32 @@ int main(int argc, char **argv) {
         {"staticScene", staticScene},
         {"nativeAtlas", nativeAtlas},
         {"cachePressureTest", cachePressureTest},
-        {"nativeAssetsSupported", item->nativeAssetCount()},
+        {"nativeAssetsSupported", nativeAssetsSupported},
         {"nativeAssetsExpected", nativeAtlas ? int(studio::nativeLibrary().size()) : 0},
         {"nativeAtlasComplete", nativeAtlasComplete},
-        {"rasterizedLayerCount", item->rasterizedLayerCount()},
-        {"transparentTextureLayerCount", item->transparentLayerCount()},
-        {"unsupportedLayerCount", item->unsupportedLayerCount()},
-        {"cpuRasterizationMsTotal", double(item->rasterizationNanos()) / 1e6},
+        {"rasterizedLayerCount", sumSceneItems([](const auto &value) { return value.rasterizedLayerCount(); })},
+        {"transparentTextureLayerCount", sumSceneItems([](const auto &value) { return value.transparentLayerCount(); })},
+        {"unsupportedLayerCount", sumSceneItems([](const auto &value) { return value.unsupportedLayerCount(); })},
+        {"cpuRasterizationMsTotal", double(sumSceneItems([](const auto &value) { return value.rasterizationNanos(); })) / 1e6},
         {"cpuRasterizationMsTotalIncludesWarmup", true},
         {"cpuRasterizationMsPerMeasuredFrame",
-         double(item->rasterizationNanos() - rasterizationBefore) / 1e6 / frameCount},
-        {"textureUploadSubmissionMsTotal", double(item->textureUploadNanos()) / 1e6},
+         double(sumSceneItems([](const auto &value) { return value.rasterizationNanos(); }) - rasterizationBefore) / 1e6 / frameCount},
+        {"textureUploadSubmissionMsTotal", double(sumSceneItems([](const auto &value) { return value.textureUploadNanos(); })) / 1e6},
         {"textureUploadSubmissionMsPerMeasuredFrame",
-         double(item->textureUploadNanos() - textureUploadBefore) / 1e6 / frameCount},
-        {"textureUploadsDuringMeasuredFrames", item->textureUploads() - textureUploadsBefore},
-        {"gpuTextureUploadCount", item->textureUploads()},
-        {"textureCacheHits", item->textureCacheHits()},
-        {"textureCacheMisses", item->textureCacheMisses()},
-        {"textureCacheBytes", item->textureCacheBytes()},
-        {"textureCachePeakBytes", item->peakTextureCacheBytes()},
-        {"textureCacheBudgetBytes", item->textureCacheBudget()},
-        {"textureCacheEvictions", item->textureCacheEvictions()},
-        {"textureCacheWithinBudget", item->textureCacheWithinBudget()},
+         double(sumSceneItems([](const auto &value) { return value.textureUploadNanos(); }) - textureUploadBefore) / 1e6 / frameCount},
+        {"textureUploadsDuringMeasuredFrames", cacheUploads - textureUploadsBefore},
+        {"gpuTextureUploadCount", cacheUploads},
+        {"textureCacheHits", cacheHits},
+        {"textureCacheMisses", cacheMisses},
+        {"textureCacheBytes", cacheBytes},
+        {"textureCacheBytesBeforeRelease", double(textureCacheBytesBeforeRelease)},
+        {"textureCacheBytesAfterRelease", double(textureCacheBytesAfterRelease)},
+        {"textureCacheReleaseJobCompleted", textureCacheReleaseJobCompleted},
+        {"textureCacheReleaseRequested", textureCacheReleaseJobCompleted && textureCacheBytesAfterRelease == 0},
+        {"textureCachePeakBytes", cachePeakBytes},
+        {"textureCacheBudgetBytes", cacheBudgetBytes},
+        {"textureCacheEvictions", cacheEvictions},
+        {"textureCacheWithinBudget", cacheWithinBudget},
         {"textureCacheTestsPassed", cacheTestsPassed},
         {"cacheInvalidationChecksPassed", cacheInvalidationChecksPassed},
         {"nativeRasterizationBackend", "QPainter CPU rasterization uploaded as GPU textures"},
@@ -1890,10 +2372,10 @@ int main(int argc, char **argv) {
         {"webpAlphaTested", webpAlphaTested},
         {"webpAlphaPreserved", webpAlphaWasPreserved},
         {"rasterSupersamplingScale", 2.0},
-        {"transparentLayerSamplesDetected", item->transparentLayerCount() > 0},
+        {"transparentLayerSamplesDetected", sumSceneItems([](const auto &value) { return value.transparentLayerCount(); }) > 0},
         {"supportedVectorPrimitives", primitiveCoverage},
         {"unsupportedSceneFeatures",
-         effectScene ? QJsonArray{"video frames", "shot transition compositing", "arbitrary GPU effect stacks"}
+         effectScene ? QJsonArray{"video frames", "shot transition compositing", "nested group effect surfaces"}
                      : QJsonArray{"video frames", "shot transition compositing", "premium effects"}},
         {"frames", frameCount},
         {"sceneGraphApi", api},
@@ -1921,7 +2403,8 @@ int main(int argc, char **argv) {
                       "Raster edge coverage over a 3-pixel outline is sensitive to subpixel center "
                       "placement; edge F1 and color MAE provide stricter companion checks."}}},
         {"visualRegressionPassed", visualRegressionPassed},
-        {"gpuDedicatedMemoryMeasured", false},
+        {"gpuDedicatedMemoryMeasured", gpuDedicatedMemoryMeasured},
+        {"gpuMemoryDiagnostics", gpuMemoryReport},
         {"cpuRgbaFrameBytes", double(framebufferBytes)},
         {"sceneGraphGeometryBytesEstimate", double(geometryBytes)},
         {"sceneGraphFramebufferBytesEstimate", double(framebufferBytes)},
@@ -1932,6 +2415,5 @@ int main(int argc, char **argv) {
     if (!metricsFile.open(QIODevice::WriteOnly) || metricsFile.write(metricsJson) != metricsJson.size())
         return 7;
     QTextStream(stdout) << metricsJson << Qt::endl;
-    window.close();
     return visualRegressionPassed ? 0 : 6;
 }

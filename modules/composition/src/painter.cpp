@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+#include <QFile>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
@@ -48,8 +49,12 @@ QString videoFrameCacheKey(const Node &node, const Project &project, int width, 
 
 QString svgRendererCacheKey(const QString &source) {
     const QFileInfo info(source);
+    QFile file(source);
+    const auto digest = file.open(QIODevice::ReadOnly)
+                            ? QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex()
+                            : QByteArray{};
     return source + QChar(0) + QString::number(info.size()) + QChar(0) +
-           QString::number(info.lastModified().toMSecsSinceEpoch());
+           QString::number(info.lastModified().toMSecsSinceEpoch()) + QChar(0) + QString::fromLatin1(digest);
 }
 
 double firstVideoFrameAtOrAfter(const QString &ffmpeg, const QString &source, double sourceInSeconds,

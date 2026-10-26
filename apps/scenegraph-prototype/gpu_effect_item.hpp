@@ -6,6 +6,8 @@
 #include <QWaitCondition>
 #include <chrono>
 #include <memory>
+#include <vector>
+#include <studio/composition/effect_pipeline.hpp>
 
 struct GpuEffectTimings {
     qint64 textureUploadPreparationNanoseconds{0};
@@ -36,6 +38,7 @@ class GpuEffectItem final : public QQuickRhiItem {
     explicit GpuEffectItem(QQuickItem *parent = nullptr);
     void setInputs(QImage source, QImage mask = {});
     void setEffect(Kind kind, int radius = 0, QColor color = Qt::white, double strength = 1.0);
+    void setEffectStack(std::vector<studio::RenderEffect> effects);
     void setReadbackState(std::shared_ptr<GpuEffectReadbackState> state);
 
   protected:
@@ -49,6 +52,9 @@ class GpuEffectItem final : public QQuickRhiItem {
     int radius_{0};
     QColor color_{Qt::white};
     float strength_{1.0f};
+    std::vector<studio::RenderEffect> effectStack_;
+    bool dynamicStackActive_{false};
+    quint64 stackRevision_{0};
     quint64 revision_{0};
     std::shared_ptr<GpuEffectReadbackState> readback_;
 };

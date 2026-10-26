@@ -190,6 +190,17 @@ QImage cpuEffect(QImage source, QImage mask, GpuEffectItem::Kind kind, QSize siz
     return result.image;
 }
 
+QImage cpuEffectSequence(const QImage &source, const std::vector<studio::RenderEffect> &effects) {
+    studio::RenderEffectContext context;
+    context.frame = 45;
+    context.fps = {30, 1};
+    context.canvasSize = source.size();
+    context.localBounds = QRectF(QPointF(0, 0), source.size());
+    studio::RenderEffectPipeline pipeline(64 * 1024 * 1024);
+    const auto result = pipeline.execute(source, effects, context);
+    return result.succeeded() ? result.image : QImage{};
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -298,6 +309,78 @@ int main(int argc, char **argv) {
             std::cout << size.width() << 'x' << size.height() << ' ' << effectName(effect).toStdString()
                       << " PSNR=" << metrics.psnr << " MAE=" << metrics.mae
                       << " alphaMAE=" << metrics.alphaMae << " edgeF1=" << metrics.edgeF1 << '\n';
+        }
+
+        const studio::RenderEffect gpuGlow{studio::RenderEffectKind::OuterGlow, 8,
+                                            QColor(93, 165, 255, 220), {}, .75};
+        const studio::RenderEffect gpuBlur{studio::RenderEffectKind::GaussianBlur, 6};
+        const studio::RenderEffect gpuMask{studio::RenderEffectKind::AlphaMask, 0, Qt::white, mask, .75};
+        const QVector<QPair<QString, std::vector<studio::RenderEffect>>> dynamicStacks{
+            {QStringLiteral("glow-mask"), {gpuGlow, gpuMask}},
+            {QStringLiteral("mask-glow"), {gpuMask, gpuGlow}},
+            {QStringLiteral("blur-mask"), {gpuBlur, gpuMask}},
+            {QStringLiteral("mask-blur"), {gpuMask, gpuBlur}},
+            {QStringLiteral("glow-glow"), {gpuGlow, gpuGlow}},
+            {QStringLiteral("blur-glow-mask"), {gpuBlur, gpuGlow, gpuMask}},
+        };
+        QImage glowThenMaskImage;
+        QImage maskThenGlowImage;
+        for (const auto &stack : dynamicStacks) {
+            auto sequence = stack.second;
+            const auto state = std::make_shared<GpuEffectReadbackState>();
+            item->setInputs(source, {});
+            item->setEffectStack(sequence);
+            item->setReadbackState(state);
+            QImage gpu;
+            GpuEffectTimings timings;
+            QString error;
+            if (!waitForResult(state, gpu, timings, error) || !error.isEmpty() || gpu.size() != size) {
+                std::cerr << "Dynamic GPU stack failed at " << size.width() << 'x' << size.height() << " "
+                          << stack.first.toStdString() << ": " << error.toStdString() << '\n';
+                return 10;
+            }
+            const auto cpu = cpuEffectSequence(source, sequence);
+            if (cpu.isNull())
+                return 11;
+            const auto name = QStringLiteral("stack-%1-%2x%3").arg(stack.first).arg(size.width()).arg(size.height());
+            const auto goldenPath = QStringLiteral(STUDIO_GPU_EFFECT_REFERENCE_DIR) + '/' + name + QStringLiteral(".png");
+            if (updateGoldens && !cpu.save(goldenPath, "PNG"))
+                return 12;
+            const QImage golden(goldenPath);
+            if (golden.isNull()) {
+                std::cerr << "Missing dynamic CPU golden " << goldenPath.toStdString() << '\n';
+                return 13;
+            }
+            const auto metrics = compare(gpu, golden);
+            const bool quality = metrics.psnr >= 38.0 && metrics.mae <= 1.25 &&
+                                 metrics.alphaMae <= 1.0 && metrics.edgeF1 >= .96;
+            passed = passed && quality;
+            const auto artifactPath = QStringLiteral(STUDIO_GPU_EFFECT_ARTIFACT_DIR) + '/' + name;
+            gpu.save(artifactPath + QStringLiteral("-gpu.png"));
+            difference(gpu, golden).save(artifactPath + QStringLiteral("-difference.png"));
+            results.append(QJsonObject{{"effect", name}, {"width", size.width()}, {"height", size.height()},
+                                      {"dynamicStack", true}, {"passCount", int(sequence.size())},
+                                      {"gpuTextureAllocationEstimateBytes",
+                                       double(qint64(size.width()) * size.height() * 4 * 5)},
+                                      {"psnrDb", metrics.psnr}, {"maeRgba", metrics.mae},
+                                      {"alphaMae", metrics.alphaMae}, {"edgeF1", metrics.edgeF1},
+                                      {"renderPassSubmissionNanoseconds",
+                                       double(timings.renderPassSubmissionNanoseconds)},
+                                      {"readbackLatencyNanoseconds", double(timings.readbackLatencyNanoseconds)},
+                                      {"qualityPassed", quality}});
+            if (stack.first == QStringLiteral("glow-mask"))
+                glowThenMaskImage = gpu;
+            if (stack.first == QStringLiteral("mask-glow"))
+                maskThenGlowImage = gpu;
+            std::cout << size.width() << 'x' << size.height() << ' ' << name.toStdString()
+                      << " PSNR=" << metrics.psnr << " MAE=" << metrics.mae
+                      << " alphaMAE=" << metrics.alphaMae << " edgeF1=" << metrics.edgeF1 << '\n';
+        }
+        if (glowThenMaskImage.isNull() || maskThenGlowImage.isNull() ||
+            compare(glowThenMaskImage, maskThenGlowImage).mae <= .25) {
+            std::cerr << "Dynamic effect order did not change the resulting image at " << size.width() << 'x'
+                      << size.height() << '\n';
+            return 14;
         }
     }
     const QSize validationSize(64, 64);
