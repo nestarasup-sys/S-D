@@ -139,6 +139,30 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
             auto *compositeUpdates = rhi_->nextResourceUpdateBatch();
             writeUniformsToBatch(compositeUpdates, uniformBuffers_[3].get(), Pass::GlowComposite);
             runPass(cb, compositeUpdates, glowPipeline_.get(), glowSrb_.get(), renderTarget(), Pass::GlowComposite);
+        } else if (kind_ == GpuEffectItem::Kind::EffectStack) {
+            writeUniformsToBatch(updates, uniformBuffers_[1].get(), Pass::BlurHorizontal);
+            runPass(cb, updates, horizontalPipeline_.get(), horizontalSrb_.get(), scratchTarget_[0].get(),
+                    Pass::BlurHorizontal);
+            updates = nullptr;
+            auto *verticalUpdates = rhi_->nextResourceUpdateBatch();
+            writeUniformsToBatch(verticalUpdates, uniformBuffers_[2].get(), Pass::BlurVertical);
+            runPass(cb, verticalUpdates, verticalPipeline_.get(), verticalSrb_.get(), scratchTarget_[1].get(),
+                    Pass::BlurVertical);
+            auto *glowUpdates = rhi_->nextResourceUpdateBatch();
+            writeUniformsToBatch(glowUpdates, uniformBuffers_[3].get(), Pass::GlowComposite);
+            runPass(cb, glowUpdates, glowPipeline_.get(), glowSrb_.get(), renderTarget(), Pass::GlowComposite);
+
+            auto *stackBlurUpdates = rhi_->nextResourceUpdateBatch();
+            writeUniformsToBatch(stackBlurUpdates, uniformBuffers_[4].get(), Pass::BlurHorizontal);
+            runPass(cb, stackBlurUpdates, horizontalPipeline_.get(), stackHorizontalSrb_.get(),
+                    scratchTarget_[0].get(), Pass::BlurHorizontal);
+            auto *stackVerticalUpdates = rhi_->nextResourceUpdateBatch();
+            writeUniformsToBatch(stackVerticalUpdates, uniformBuffers_[5].get(), Pass::BlurVertical);
+            runPass(cb, stackVerticalUpdates, verticalPipeline_.get(), stackVerticalSrb_.get(),
+                    scratchTarget_[1].get(), Pass::BlurVertical);
+            auto *maskUpdates = rhi_->nextResourceUpdateBatch();
+            writeUniformsToBatch(maskUpdates, uniformBuffers_[6].get(), Pass::Mask);
+            runPass(cb, maskUpdates, maskPipeline_.get(), stackMaskSrb_.get(), renderTarget(), Pass::Mask);
         } else {
             writeUniformsToBatch(updates, uniformBuffers_[0].get(), Pass::Mask);
             runPass(cb, updates, maskPipeline_.get(), maskSrb_.get(), renderTarget(), Pass::Mask);
@@ -194,6 +218,9 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
         alphaHorizontalSrb_.reset();
         alphaVerticalSrb_.reset();
         glowSrb_.reset();
+        stackHorizontalSrb_.reset();
+        stackVerticalSrb_.reset();
+        stackMaskSrb_.reset();
         vertexBuffer_.reset();
         for (auto &uniformBuffer : uniformBuffers_)
             uniformBuffer.reset();
@@ -217,7 +244,8 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
                 return false;
             }
         }
-        if (kind_ == GpuEffectItem::Kind::AlphaMask && mask_.isNull()) {
+        if ((kind_ == GpuEffectItem::Kind::AlphaMask || kind_ == GpuEffectItem::Kind::EffectStack) &&
+            mask_.isNull()) {
             error = QStringLiteral("Alpha mask is missing");
             return false;
         }
@@ -319,7 +347,10 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
             !makeSrb(uniformBuffers_[2].get(), scratchTexture_[0].get(), sourceTexture_.get(), verticalSrb_) ||
             !makeSrb(uniformBuffers_[1].get(), sourceTexture_.get(), sourceTexture_.get(), alphaHorizontalSrb_) ||
             !makeSrb(uniformBuffers_[2].get(), scratchTexture_[0].get(), sourceTexture_.get(), alphaVerticalSrb_) ||
-            !makeSrb(uniformBuffers_[3].get(), sourceTexture_.get(), scratchTexture_[1].get(), glowSrb_)) {
+            !makeSrb(uniformBuffers_[3].get(), sourceTexture_.get(), scratchTexture_[1].get(), glowSrb_) ||
+            !makeSrb(uniformBuffers_[4].get(), colorTexture(), sourceTexture_.get(), stackHorizontalSrb_) ||
+            !makeSrb(uniformBuffers_[5].get(), scratchTexture_[0].get(), sourceTexture_.get(), stackVerticalSrb_) ||
+            !makeSrb(uniformBuffers_[6].get(), scratchTexture_[1].get(), maskTexture_.get(), stackMaskSrb_)) {
             error = QStringLiteral("QRhi could not create effect texture bindings");
             return false;
         }
@@ -408,7 +439,7 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
     bool readbackQueued_{false};
     std::shared_ptr<QRhiReadbackResult> pendingReadback_;
     std::unique_ptr<QRhiBuffer> vertexBuffer_;
-    std::unique_ptr<QRhiBuffer> uniformBuffers_[4];
+    std::unique_ptr<QRhiBuffer> uniformBuffers_[7];
     std::unique_ptr<QRhiSampler> sampler_;
     std::unique_ptr<QRhiTexture> sourceTexture_;
     std::unique_ptr<QRhiTexture> maskTexture_;
@@ -421,6 +452,9 @@ class GpuEffectItemRenderer final : public QQuickRhiItemRenderer {
     std::unique_ptr<QRhiShaderResourceBindings> alphaHorizontalSrb_;
     std::unique_ptr<QRhiShaderResourceBindings> alphaVerticalSrb_;
     std::unique_ptr<QRhiShaderResourceBindings> glowSrb_;
+    std::unique_ptr<QRhiShaderResourceBindings> stackHorizontalSrb_;
+    std::unique_ptr<QRhiShaderResourceBindings> stackVerticalSrb_;
+    std::unique_ptr<QRhiShaderResourceBindings> stackMaskSrb_;
     std::unique_ptr<QRhiGraphicsPipeline> pipeline_;
     std::unique_ptr<QRhiGraphicsPipeline> maskPipeline_;
     std::unique_ptr<QRhiGraphicsPipeline> horizontalPipeline_;

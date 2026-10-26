@@ -142,6 +142,7 @@ QString effectName(GpuEffectItem::Kind kind) {
     case GpuEffectItem::Kind::AlphaMask: return QStringLiteral("alpha-mask");
     case GpuEffectItem::Kind::GaussianBlur: return QStringLiteral("gaussian-blur");
     case GpuEffectItem::Kind::OuterGlow: return QStringLiteral("outer-glow");
+    case GpuEffectItem::Kind::EffectStack: return QStringLiteral("stack-glow-blur-mask");
     }
     return QStringLiteral("unknown");
 }
@@ -159,23 +160,31 @@ bool waitForResult(const std::shared_ptr<GpuEffectReadbackState> &state, QImage 
 }
 
 QImage cpuEffect(QImage source, QImage mask, GpuEffectItem::Kind kind, QSize size, int radius) {
-    studio::RenderEffect effect;
-    effect.radius = radius;
-    effect.alphaMask = mask;
-    effect.color = QColor(93, 165, 255, 220);
-    effect.strength = .75;
-    if (kind == GpuEffectItem::Kind::AlphaMask)
-        effect.kind = studio::RenderEffectKind::AlphaMask;
-    else if (kind == GpuEffectItem::Kind::GaussianBlur)
-        effect.kind = studio::RenderEffectKind::GaussianBlur;
-    else
-        effect.kind = studio::RenderEffectKind::OuterGlow;
+    std::vector<studio::RenderEffect> effects;
+    if (kind == GpuEffectItem::Kind::EffectStack) {
+        effects = {{studio::RenderEffectKind::OuterGlow, radius, QColor(93, 165, 255, 220), {}, .75},
+                   {studio::RenderEffectKind::GaussianBlur, radius},
+                   {studio::RenderEffectKind::AlphaMask, 0, Qt::white, mask, .75}};
+    } else {
+        studio::RenderEffect effect;
+        effect.radius = radius;
+        effect.alphaMask = mask;
+        effect.color = QColor(93, 165, 255, 220);
+        effect.strength = .75;
+        if (kind == GpuEffectItem::Kind::AlphaMask)
+            effect.kind = studio::RenderEffectKind::AlphaMask;
+        else if (kind == GpuEffectItem::Kind::GaussianBlur)
+            effect.kind = studio::RenderEffectKind::GaussianBlur;
+        else
+            effect.kind = studio::RenderEffectKind::OuterGlow;
+        effects.push_back(std::move(effect));
+    }
     studio::RenderEffectPipeline pipeline(64 * 1024 * 1024);
     studio::RenderEffectContext context;
     context.frame = 0;
     context.fps = {30, 1};
     context.canvasSize = size;
-    const auto result = pipeline.execute(source, {effect}, context);
+    const auto result = pipeline.execute(source, effects, context);
     if (!result.succeeded())
         return {};
     return result.image;
@@ -205,7 +214,8 @@ int main(int argc, char **argv) {
     const QVector<QSize> sizes{{1280, 720}, {1920, 1080}, {1080, 1920}};
     const QVector<GpuEffectItem::Kind> effects{GpuEffectItem::Kind::AlphaMask,
                                                GpuEffectItem::Kind::GaussianBlur,
-                                               GpuEffectItem::Kind::OuterGlow};
+                                               GpuEffectItem::Kind::OuterGlow,
+                                               GpuEffectItem::Kind::EffectStack};
     QJsonArray results;
     bool passed = true;
     const bool updateGoldens = qEnvironmentVariableIsSet("STUDIO_UPDATE_GPU_EFFECT_GOLDENS");

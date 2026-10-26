@@ -22,6 +22,57 @@ $gpuRuntimeMetrics = Get-Content -LiteralPath $gpuRuntimeReport -Raw | ConvertFr
 if ($gpuRuntimeMetrics.status -ne 'passed' -or $gpuRuntimeMetrics.runtimeGpuEffects -ne $true) {
     throw 'O relatório não confirma execução real dos efeitos no backend GPU.'
 }
+$scenePrototype = Join-Path $StudioBin 'studio_scenegraph_prototype.exe'
+if (!(Test-Path -LiteralPath $scenePrototype)) { throw 'Protótipo híbrido de cena ausente; execute scripts/build.ps1 primeiro.' }
+$sceneRuns = @()
+$sceneCases = @()
+foreach ($profile in $profiles) {
+    foreach ($count in @(5, 20, 50)) {
+        $sceneCases += @{ profile = $profile; nodes = $count; static = $false }
+    }
+}
+foreach ($count in @(5, 20, 50)) {
+    $sceneCases += @{ profile = $profiles[0]; nodes = $count; static = $true }
+}
+foreach ($case in $sceneCases) {
+    $profile = $case.profile
+    $caseName = '{0}-n{1}-{2}' -f $profile.name, $case.nodes, $(if ($case.static) { 'static' } else { 'animated' })
+    $sceneOutput = Join-Path $outputRoot ('scene-' + $caseName)
+    $arguments = @('--gpu-effects-scene', '--nodes', [string]$case.nodes, '--frames', '12',
+                   '--width', [string]$profile.width, '--height', [string]$profile.height,
+                   '--output', $sceneOutput)
+    if ($case.static) { $arguments += '--static-scene' }
+    & $scenePrototype @arguments | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Cena híbrida GPU falhou: $caseName" }
+    $sceneMetricsPath = Join-Path $sceneOutput 'metrics.json'
+    if (!(Test-Path -LiteralPath $sceneMetricsPath)) { throw "Métricas ausentes: $caseName" }
+    $sceneMetric = Get-Content -LiteralPath $sceneMetricsPath -Raw | ConvertFrom-Json
+    if (!$sceneMetric.visualRegressionPassed -or !$sceneMetric.gpuEffectMemoryWithinBudgets -or
+        $sceneMetric.shapeCount -ne ($case.nodes + 1)) {
+        throw "Regressão visual, orçamento ou contagem falhou: $caseName"
+    }
+    $sceneRuns += [ordered]@{
+        case = $caseName
+        canvas = $sceneMetric.canvas
+        shapeCount = $sceneMetric.shapeCount
+        staticScene = $sceneMetric.staticScene
+        sceneGraphMsPerFrame = $sceneMetric.sceneGraphMsPerFrame
+        snapshotBuildMsPerFrame = $sceneMetric.snapshotBuildMsPerFrame
+        sceneGraphPreparationMsPerFrame = $sceneMetric.sceneGraphPreparationMsPerFrame
+        cpuRasterizationMsPerMeasuredFrame = $sceneMetric.cpuRasterizationMsPerMeasuredFrame
+        textureUploadSubmissionMsPerMeasuredFrame = $sceneMetric.textureUploadSubmissionMsPerMeasuredFrame
+        sceneGraphCaptureMs = $sceneMetric.sceneGraphCaptureMs
+        effectSceneCpuReferenceMilliseconds = $sceneMetric.effectSceneCpuReferenceMilliseconds
+        cpuWorkingSetBytes = $sceneMetric.cpuWorkingSetBytes
+        sceneGraphWorkingSetBytes = $sceneMetric.sceneGraphWorkingSetBytes
+        gpuEffectCpuLayerBytes = $sceneMetric.gpuEffectCpuLayerBytes
+        gpuEffectTextureEstimateBytes = $sceneMetric.gpuEffectTextureEstimateBytes
+        visualPsnrDb = $sceneMetric.visualPsnrDb
+        visualMetrics = $sceneMetric.visualMetrics
+        visualRegressionPassed = $sceneMetric.visualRegressionPassed
+        report = $sceneMetricsPath
+    }
+}
 foreach ($profile in $profiles) {
     $trials = @()
     for ($trial = 1; $trial -le $Repeats; $trial++) {
@@ -66,6 +117,7 @@ $report = [ordered]@{
     cacheBytesMaximum = 64MB
     gpuRuntimeReport = $gpuRuntimeReport
     gpuRuntimeMetrics = $gpuRuntimeMetrics
+    integratedGpuSceneRuns = $sceneRuns
     gpuTimingsInclude = @('submission CPU time', 'readback latency', 'completed GPU frame time when QRhi timestamps are supported')
     results = $results
 }
@@ -82,5 +134,15 @@ $results | ForEach-Object {
         RoiTotalMs = [math]::Round($_.roiTotalMs.median, 2)
         RoiScratchMiB = [math]::Round($_.roiScratchBytes.median / 1MB, 2)
         ScratchMiB = [math]::Round($_.scratchBytes.median / 1MB, 2)
+    }
+} | Format-Table -AutoSize
+$sceneRuns | ForEach-Object {
+    [pscustomobject]@{
+        Cena = $_.case
+        TotalMs = [math]::Round($_.sceneGraphMsPerFrame, 2)
+        SnapshotMs = [math]::Round($_.snapshotBuildMsPerFrame, 2)
+        RasterMs = [math]::Round($_.cpuRasterizationMsPerMeasuredFrame, 2)
+        GPUTextureEstimateMiB = [math]::Round($_.gpuEffectTextureEstimateBytes / 1MB, 2)
+        PSNRdB = [math]::Round($_.visualPsnrDb, 2)
     }
 } | Format-Table -AutoSize

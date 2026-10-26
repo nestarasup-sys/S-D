@@ -48,3 +48,9 @@ qt_add_shaders(studio_gpu_effect_tests gpu_effect_shaders
         "${PROJECT_SOURCE_DIR}/tests/shaders/gaussian_blur_vertical.frag"
         "${PROJECT_SOURCE_DIR}/tests/shaders/glow_composite.frag")
 add_test(NAME scenegraph_gpu_effect_runtime COMMAND studio_gpu_effect_tests)
+add_test(NAME scenegraph_gpu_effect_scene_animated
+    COMMAND studio_scenegraph_prototype --gpu-effects-scene --nodes 5 --frames 8 --width 1280 --height 720
+            --output "${PROJECT_SOURCE_DIR}/artifacts/gpu-effect-scene-ctest-animated")
+add_test(NAME scenegraph_gpu_effect_scene_static
+    COMMAND studio_scenegraph_prototype --gpu-effects-scene --nodes 5 --frames 8 --static-scene
+            --width 1280 --height 720 --output "${PROJECT_SOURCE_DIR}/artifacts/gpu-effect-scene-ctest-static")

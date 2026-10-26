@@ -31,7 +31,7 @@ class GpuEffectReadbackState final {
 class GpuEffectItem final : public QQuickRhiItem {
     Q_OBJECT
   public:
-    enum class Kind { AlphaMask, GaussianBlur, OuterGlow };
+    enum class Kind { AlphaMask, GaussianBlur, OuterGlow, EffectStack };
 
     explicit GpuEffectItem(QQuickItem *parent = nullptr);
     void setInputs(QImage source, QImage mask = {});

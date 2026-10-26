@@ -225,3 +225,36 @@ As métricas GPU medem cada efeito isoladamente; o script de benchmark roda trê
 | `scripts/benchmark-effects.ps1 -Repeats 3` | Passou; CPU tela inteira e ROI nas três resoluções; máscara, blur e glow GPU passaram qualidade em D3D11. Relatório: `artifacts/effect-benchmark-20261026-065750540/report.json`. |
 | `scripts/test-shaders.ps1` | Passou; compilação/reflexão dos cinco shaders e execução runtime D3D11, comparada aos goldens CPU. |
 | Guia/catálogo JSON | Sem alteração: efeitos continuam indisponíveis em receitas IA. |
+
+## Etapa 7 — composição híbrida e efeitos em camadas
+
+A integração permanece isolada no executável `studio_scenegraph_prototype`; o editor e o exportador continuam usando `CompositionPainter → QPainter → QImage → FFmpeg`. A cena agora deriva os estados de um único `RenderSnapshot` por quadro: geometria vetorial é enviada como nós do Scene Graph; texto/legendas, PNG/WebP/JPEG/SVG e nativos são rasterizados por `CompositionPainter` em superfícies locais; itens `QQuickRhiItem` recebem essas superfícies e executam efeitos em QRhi. Câmera, transformações hierárquicas, visibilidade e opacidade herdada vêm do snapshot, sem nova avaliação em shader.
+
+### Interop Qt Quick / QRhi
+
+No Qt 6.8.3, não se compartilha diretamente uma `QRhiTexture` arbitrária com um `QSGGeometryNode` como se ambos os itens possuíssem o mesmo ciclo de vida. O adaptador escolhido é a composição de itens `QQuickRhiItem` irmãos na árvore Qt Quick: cada item desenha no target QRhi que o Qt fornece e o Qt compõe a textura de saída na ordem da cena. Isso evita readback e cópias GPU→CPU→GPU no fluxo normal. O buffer QRhi, os SRBs e as texturas intermediárias pertencem ao renderer/thread do item e são descartados no ciclo de vida da cena. A API de `QQuickRhiItem` e QRhi ainda tem restrições de compatibilidade; por isso o backend segue experimental. Referências oficiais: [QQuickRhiItem](https://doc.qt.io/qt-6/qquickrhiitem.html), [QRhi](https://doc.qt.io/qt-6/qrhi.html) e [QSGRenderNode](https://doc.qt.io/qt-6.8/qsgrendernode.html).
+
+A ordem entre camadas é representada pela ordem dos itens Qt Quick. A fixture move as camadas com efeito para a frente mantendo a ordem relativa. Isso prova a integração e o recorte ao canvas, mas ainda não oferece um planejador para inserção arbitrária de itens com efeito entre quaisquer nós vetoriais. A camada recebe transformação de composição/screen-space derivada do snapshot; a imagem de origem permanece em coordenadas locais do nó.
+
+### Pilhas e grupos
+
+`GpuEffectItem::EffectStack` executa a sequência explícita `Glow → GaussianBlur → AlphaMask`: dois passes de glow, composição da fonte, dois passes de blur e máscara final. O target de saída do `QQuickRhiItem` é reutilizado como superfície intermediária entre os grupos de passes. Os shaders operam em texturas QRhi, sem retorno à CPU. A sequência é intencionalmente fixa nesta etapa; parâmetros de raio, cor e intensidade são validados pelo item. Máscara, blur e glow individuais também seguem disponíveis.
+
+Efeito por objeto rasteriza uma camada local do objeto. O efeito de grupo primeiro rasteriza os filhos diretos visíveis (shape + texto) numa única superfície local com a composição e a opacidade relativa resolvidas; em seguida, aplica a pilha ao resultado combinado. A transformada e opacidade do grupo e da câmera são aplicadas ao item de efeito. A expansão local é de três raios para cada lado, recortada pelo canvas. Isso demonstra efeito de grupo simples, não suporte genérico a subgrupos aninhados, máscaras de grupo ou regras de clipping de um documento arbitrário.
+
+### Cena e medições
+
+O modo `--gpu-effects-scene` constrói uma cena experimental com fundo escuro, vetores GPU, smartphone nativo com glow, título/legenda com animação por palavra e glow, PNG com blur, WebP transparente mascarado, JPEG, SVG e grupo misto de texto/vetor com pilha glow/blur/máscara; câmera, root e grupo são animáveis pelo mesmo snapshot. A golden de comparação QPainter é `tests/reference/render-hybrid/hybrid-effects.png`; cada execução também salva cena, referência CPU e diferença amplificada em `artifacts/`.
+
+A estimativa conservadora de recursos mantém superfícies de efeito dentro de 32 MiB para camadas CPU e 64 MiB para texturas QRhi na fixture de referência (4,94 MiB e 24,71 MiB, respectivamente, em 1280×720). São estimativas alocadas pela aplicação, não medição de VRAM pelo driver. `sceneGraphMsPerFrame` abrange execução/atualização de cena e eventos medidos pelo harness, não é timestamp puro da GPU. `sceneGraphCaptureMs` inclui o readback diagnóstico de `grabWindow`; ele não participa do fluxo normal. Os scripts registram também snapshot, preparação, rasterização, submissão de upload, captura e QPainter CPU. Não se infere 30 FPS do tempo de shader.
+
+O benchmark integrado `artifacts/effect-benchmark-20261026-074245384/report.json` completou 12 casos: cenas animadas de 5/20/50 formas nas três resoluções e cenas estáticas de 5/20/50 em 1280×720. O tempo do harness variou de 8,91 ms (720p/5 formas) a 13,08 ms (Full HD/50 formas); PSNR QPainter variou de 32,17 a 40,28 dB, F1 de bordas de 0,99968 a 0,99993, IoU mínimo 0,9942 e MAE RGB máximo 0,754. A memória estimada de texturas foi 23,56 MiB em 720p, 45,69 MiB em Full HD e 44,10 MiB em retrato, sob o limite de 64 MiB. O total inclui atualizações e espera do harness e não é tempo de GPU puro. Estes valores representam este computador e este fixture, sem garantia de 30 FPS em cenas do usuário. O mesmo relatório inclui a cadeia CPU integral/ROI; as medianas ROI foram 13,23 ms em 720p, 24,89 ms em Full HD e 25,78 ms em retrato, contra 154,46/346,43/346,43 ms de processamento CPU integral. VRAM dedicada permanece não medida.
+
+O `QQuickRhiItem` faz a apresentação da saída por meio do Qt. O caminho de prévia e exportação de produção não mudou. Não houve mudança no JSON: efeitos GPU e pilhas continuam fora das receitas e do guia para IA. Limitações atuais: a pilha é fixa, layers com efeito são ordenadas ao fim da fixture, grupo aceita somente filhos diretos, mídia de vídeo e transições de shots não entram nesta cena. Backend software do protótipo não é suportado; `CompositionPainter` continua fallback estável.
+
+| Verificação da Etapa 7 | Resultado esperado/registrado |
+| --- | --- |
+| `scenegraph_gpu_effect_runtime` | Executa máscara, blur, glow e pilha combinada em Direct3D11 contra goldens CPU em três resoluções. |
+| `scenegraph_gpu_effect_scene_animated/static` | Composição híbrida integrada com contagem de formas e quadros controlados pelo teste. |
+| `scripts/benchmark-effects.ps1` | Benchmark CPU full/ROI, runtime GPU isolado e cena híbrida 5/20/50 com/sem animação e nas três dimensões. |
+| JSON/guia/catálogo IA | Sem alteração; os efeitos continuam experimentais e não importáveis por JSON. |
