@@ -26,8 +26,9 @@
 #include <memory>
 #include <vector>
 #ifdef Q_OS_WIN
-#include <psapi.h>
 #include <windows.h>
+
+#include <psapi.h>
 #endif
 #include <studio/composition/painter.hpp>
 #include <studio/core/project.hpp>

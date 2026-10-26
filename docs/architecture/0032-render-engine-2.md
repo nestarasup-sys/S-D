@@ -58,7 +58,11 @@ flowchart LR
 
 ## Primeira melhoria entregue
 
-`CompositionPainter` agora mantém `QSvgRenderer` em um cache LRU limitado a 128 SVGs, reutilizando a árvore vetorial parseada entre quadros. A chave inclui caminho, tamanho e data de modificação; substituir o conteúdo no mesmo caminho invalida a entrada. Prévia e exportação continuam no mesmo compositor e produzem o mesmo conteúdo. O teste automatizado confirma hit após o primeiro parse, quadro determinístico e invalidação ao atualizar o arquivo. Não há mudança no JSON nem no guia de produção.
+`RenderSnapshot` agora é construído para um quadro e possui cópias próprias do tempo/FPS/canvas, câmera resolvida, shots/transição, nós em ordem de camada, hierarquia, bounds, keyframes avaliados, opacidade/visibilidade, direção de arte e referências de mídia. O `CompositionPainter` consome os estados resolvidos e conserva a sequência de operações QPainter para manter a rasterização existente. O snapshot não mantém ponteiros para o `Project` editável e expõe acesso constante ao estado publicado. A representação define o contrato para um consumidor Scene Graph futuro; nenhum backend GPU foi ligado ao editor.
+
+As imagens de referência cobrem o projeto demo, um quadro misto com PNG/SVG/vídeo, nativos e palavras de legenda, e uma transição dissolve. O comparador normaliza os formatos de canal antes do cálculo: os três resultados tiveram PSNR de 99 dB. Testes também verificam hierarquia, opacidade herdada, limites, câmera, referências de mídia, shots e quadro de saída da transição. O catálogo tem 72 nativos. Não houve mudança de capacidade JSON: receitas v1/v2/v3, schemas e guia da IA permanecem iguais.
+
+Uma nova rodada do benchmark (60 quadros, 120 formas, três repetições) mediu o caminho CPU em 28,21 ms/quadro e 26,1 MiB de RSS em 1280×720; 30,01 ms e 30,5 MiB em 1920×1080; e 43,79 ms e 30,5 MiB em 1080×1920. A rodada anterior registrou 29,39/25,9 MiB, 59,52/30,3 MiB e 53,47/30,3 MiB, respectivamente. O RSS variou apenas 0,2 MiB; os tempos tiveram dispersão considerável entre repetições, então não indicam ganho/perda estável. Relatórios completos: `artifacts/renderer-benchmark-20261026-034552038/report.json` e `artifacts/renderer-benchmark-20261026-040407049/report.json`. O teste de protótipo Scene Graph permaneceu isolado; sua comparação visual segue em torno de 24 dB e não autoriza adoção no editor.
 
 O protótipo isolado em `apps/scenegraph-prototype/` é uma prova de mecanismo, não um backend do app: traduz formas do mesmo `Project` e avalia os keyframes/câmera com o core existente, mas usa uma tesselação simplificada. O executável gera imagem CPU, imagem Scene Graph e relatório com tempo, RSS, estimativa de geometria/framebuffer e PSNR. `scripts/benchmark-renderers.ps1` mede 120 formas em cada canvas documentado.
 
@@ -67,7 +71,7 @@ O protótipo isolado em `apps/scenegraph-prototype/` é uma prova de mecanismo, 
 | Corte | Trabalho | Critério de saída |
 | --- | --- | --- |
 | 0 — Instrumentação (feito parcialmente) | Benchmark reproduzível, teste de cache SVG, fotografia de referência e limites de memória. | Cenários de canvas e relatórios repetíveis; paridade atual preview/export protegida por smoke. |
-| 1 — Avaliação compartilhada | Extrair hierarquia, estado resolvido, câmera e ordem para `RenderSnapshot`; QPainter passa a consumir snapshot sem alterar pixels/schema. | Golden images, timeline e transições preservadas; mesmos snapshots em preview e worker. |
+| 1 — Avaliação compartilhada (implementado nesta etapa) | Extrair hierarquia, estado resolvido, câmera, ordem e metadados de shots para `RenderSnapshot`; QPainter consome estados resolvidos sem alterar pixels/schema. | Imagens de referência idênticas; a mesma `CompositionPainter` atende prévia, still e worker. |
 | 2 — Primitivas vetoriais RHI | Implementar retângulo, elipse, path, transformações, clips e opacidade no Scene Graph; comparar com RasterBackend. | PSNR definido por classe de conteúdo, regressões em 3 canvases e testes em software/D3D11. |
 | 3 — Texto e assets nativos | Resolver fonte, métricas, layout e cache de glyphs/atlas com fallback; converter nativos em componentes parametrizados sobre primitivas comuns. | Métricas tipográficas estáveis, fontes externas, 72 nativos e compatibilidade com receitas existentes. |
 | 4 — Imagens, SVG e efeitos | Texturas versionadas, filtros e efeitos como passes do mesmo grafo; cache LRU com limites por bytes. | Limites de memória e comparação de cor/alpha; sem desvio de direção de arte. |
@@ -78,7 +82,8 @@ Cada etapa mantém o rasterizador funcional. Só considerar troca ou backend sel
 
 ## Verificação desta decisão
 
-- `scripts/build.ps1 -Test`: 4/4 testes passaram, incluindo cache/hits/invalidação SVG.
+- `scripts/build.ps1 -Test`: 5/5 testes passaram, incluindo o novo teste de snapshot e regressão visual.
 - `scripts/smoke.ps1`: passou; preview/export 44,09 dB em 1280×720.
-- `scripts/smoke-production.ps1`: passou com Microsoft Daniel; inclui receita, áudio, shots, beats, retrato, vídeo e comparações preview/export.
-- `scripts/benchmark-renderers.ps1 -Frames 60 -Nodes 120 -Repeats 3`: executado em Direct3D11 nas três resoluções; os valores são medianas e o relatório completo com os nove testes está em `artifacts/`.
+- `scripts/smoke-workspace.ps1`: passou; projetos locais, catálogo completo e 72 recursos nativos.
+- `scripts/smoke-production.ps1`: passou com Microsoft Daniel; inclui receita, áudio, shots, beats, retrato, vídeo e comparações preview/export. Maior caso: 2700 quadros, 18 shots e 20 Visual Beats; preview/export 42,50 dB.
+- `scripts/benchmark-renderers.ps1 -Frames 60 -Nodes 120 -Repeats 3`: antes e depois da extração do snapshot, executado em Direct3D11 nas três resoluções; RSS CPU pós-refatoração entre 26,1 e 30,5 MiB. A variabilidade de tempo está documentada acima.

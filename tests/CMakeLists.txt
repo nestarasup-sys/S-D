@@ -17,3 +17,8 @@ target_include_directories(studio_workspace_tests PRIVATE ../apps/desktop)
 target_link_libraries(studio_workspace_tests PRIVATE studio_storage studio_production studio_composition Qt6::Gui Qt6::Svg Qt6::Multimedia)
 add_test(NAME workspace_projects_library COMMAND studio_workspace_tests)
 set_tests_properties(workspace_projects_library PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+add_executable(studio_render_snapshot_tests render_snapshot_tests.cpp)
+target_link_libraries(studio_render_snapshot_tests PRIVATE studio_composition)
+target_compile_definitions(studio_render_snapshot_tests PRIVATE
+    STUDIO_REFERENCE_DIR="${PROJECT_SOURCE_DIR}/tests/reference/render-snapshot")
+add_test(NAME render_snapshot_visual_regression COMMAND studio_render_snapshot_tests)

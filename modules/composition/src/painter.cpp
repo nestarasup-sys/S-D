@@ -15,6 +15,7 @@
 #include <optional>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
+#include <studio/composition/render_snapshot.hpp>
 #include <vector>
 
 namespace studio {
@@ -88,16 +89,6 @@ const ArtDirection &artDirectionFor(const Project &project, const std::string &s
     return project.artDirection;
 }
 
-const ArtDirection &artDirectionAt(const Project &project, std::int64_t frame) {
-    for (const auto &shot : project.shots)
-        if (frame >= shot.start && frame < shot.start + shot.duration)
-            return artDirectionFor(project, shot.sceneId, shot.id);
-    for (const auto &scene : project.scenes)
-        if (frame >= scene.start && frame < scene.start + scene.duration)
-            return artDirectionFor(project, scene.id);
-    return project.artDirection;
-}
-
 void paintBackground(QPainter &painter, const Project &project, const ArtDirection &art) {
     const auto background = QColor(QString::fromStdString(art.backgroundColor));
     const auto glowColor = QColor(QString::fromStdString(art.glowColor));
@@ -113,81 +104,37 @@ double animationEaseOut(double progress) {
     return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
 }
 
-void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
-                const std::optional<std::string> &shotId, NodePass pass, QCache<QString, QImage> &images,
-                QCache<QString, QSvgRenderer> &svgRenderers, SvgCacheStats &svgCacheStats,
+void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnapshot &snapshot, NodePass pass,
+                QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
+                SvgCacheStats &svgCacheStats,
                 const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
-    const auto camera = evaluateCamera(project, frame);
+    const auto frame = snapshot.frame;
     painter.save();
     painter.translate(project.width / 2.0, project.height / 2.0);
-    painter.scale(camera.zoom, camera.zoom);
-    painter.rotate(camera.rotation);
-    painter.translate(-camera.x, -camera.y);
-    for (const auto &node : project.nodes) {
+    painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
+    painter.rotate(snapshot.camera.rotation);
+    painter.translate(-snapshot.camera.x, -snapshot.camera.y);
+    for (const auto &resolved : snapshot.nodes) {
+        const auto &node = resolved.node;
         if (pass == NodePass::Captions && (node.role != "caption" || !node.shotId.empty()))
             continue;
         if (pass == NodePass::ShotComposition) {
-            const bool belongsToShot = shotId && node.shotId == *shotId;
+            const bool belongsToShot = snapshot.shotId && node.shotId == *snapshot.shotId;
             const bool isShared = node.shotId.empty() && node.role != "caption";
             if (!belongsToShot && !isShared)
                 continue;
         }
-        std::vector<const Node *> chain{&node};
-        auto parentId = node.parentId;
-        while (!parentId.empty()) {
-            const auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
-                                             [&](const Node &candidate) { return candidate.id == parentId; });
-            if (parent == project.nodes.end())
-                break;
-            chain.push_back(&*parent);
-            parentId = parent->parentId;
-        }
-        std::reverse(chain.begin(), chain.end());
-        double opacity = 1;
-        bool visible = true;
-        for (const auto *part : chain) {
-            const auto state = evaluate(*part, frame);
-            if (state.opacity <= 0 || !active(*part, frame)) {
-                visible = false;
-                break;
-            }
-            opacity *= state.opacity;
-        }
-        if (!visible || node.kind == NodeKind::Group)
+        if (!resolved.visible || node.kind == NodeKind::Group)
             continue;
-        auto styleSceneId = node.sceneId;
-        auto styleShotId = node.shotId;
-        if (styleShotId.empty() && shotId)
-            styleShotId = *shotId;
-        if (styleSceneId.empty() && !styleShotId.empty())
-            for (const auto &shot : project.shots)
-                if (shot.id == styleShotId) {
-                    styleSceneId = shot.sceneId;
-                    break;
-                }
-        if (styleSceneId.empty())
-            for (const auto &scene : project.scenes)
-                if (frame >= scene.start && frame < scene.start + scene.duration) {
-                    styleSceneId = scene.id;
-                    break;
-                }
-        if (node.role == "caption" && styleShotId.empty())
-            for (const auto &shot : project.shots)
-                if (shot.sceneId == styleSceneId && frame >= shot.start &&
-                    frame < shot.start + shot.duration) {
-                    styleShotId = shot.id;
-                    break;
-                }
-        const auto &art = artDirectionFor(project, styleSceneId, styleShotId);
+        const auto &art = resolved.artDirection;
         painter.save();
-        painter.setOpacity(opacity);
-        for (const auto *part : chain) {
-            const auto state = evaluate(*part, frame);
-            painter.translate(state.x, state.y);
-            painter.translate(part->width / 2, part->height / 2);
-            painter.rotate(state.rotation);
-            painter.scale(state.scale, state.scale);
-            painter.translate(-part->width / 2, -part->height / 2);
+        painter.setOpacity(resolved.inheritedOpacity);
+        for (const auto &part : resolved.transformChain) {
+            painter.translate(part.state.x, part.state.y);
+            painter.translate(part.width / 2.0, part.height / 2.0);
+            painter.rotate(part.state.rotation);
+            painter.scale(part.state.scale, part.state.scale);
+            painter.translate(-part.width / 2.0, -part.height / 2.0);
         }
         const QRectF bounds(0, 0, node.width, node.height);
         if (node.kind == NodeKind::Shape) {
@@ -375,8 +322,11 @@ QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &s
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     paintBackground(painter, project, artDirectionFor(project, shot.sceneId, shot.id));
-    paintNodes(painter, project, frame, shot.id, NodePass::ShotComposition, images, svgRenderers,
-               svgCacheStats, videoFrame);
+    // The requested layer can be the outgoing shot while the frame time has
+    // advanced into the incoming shot. Resolve it explicitly for this layer.
+    const auto layer = buildRenderFrameSnapshot(project, frame, shot.id);
+    paintNodes(painter, project, layer, NodePass::ShotComposition, images, svgRenderers, svgCacheStats,
+               videoFrame);
     painter.end();
     return image;
 }
@@ -533,9 +483,10 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    const auto snapshot = RenderSnapshot::build(project, frame);
     if (project.shots.empty()) {
-        paintBackground(painter, project, artDirectionAt(project, frame));
-        paintNodes(painter, project, frame, std::nullopt, NodePass::All, images_, svgRenderers_,
+        paintBackground(painter, project, snapshot.primary().backgroundArt);
+        paintNodes(painter, project, snapshot.primary(), NodePass::All, images_, svgRenderers_,
                    svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
@@ -543,13 +494,15 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     }
 
     const ShotMarker *currentShot = nullptr;
-    for (const auto &shot : project.shots)
-        if (frame >= shot.start && frame < shot.start + shot.duration &&
-            (!currentShot || shot.start > currentShot->start))
-            currentShot = &shot;
+    if (snapshot.primary().shotId)
+        for (const auto &shot : snapshot.shots())
+            if (shot.id == *snapshot.primary().shotId) {
+                currentShot = &shot;
+                break;
+            }
     if (!currentShot) {
-        paintBackground(painter, project, artDirectionAt(project, frame));
-        paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_, svgRenderers_,
+        paintBackground(painter, project, snapshot.primary().backgroundArt);
+        paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
                    svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
@@ -557,21 +510,21 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     }
 
     const ShotMarker *previousShot = nullptr;
-    if (currentShot->transitionIn != "cut" &&
-        frame < currentShot->start + currentShot->transitionDurationFrames) {
-        for (const auto &shot : project.shots)
-            if (shot.sceneId == currentShot->sceneId && shot.start + shot.duration == currentShot->start)
+    if (snapshot.transition())
+        for (const auto &shot : snapshot.shots())
+            if (shot.id == snapshot.transition()->outgoingShotId) {
                 previousShot = &shot;
-    }
+                break;
+            }
 
     if (!previousShot || currentShot->transitionIn == "cut") {
         paintBackground(painter, project, artDirectionFor(project, currentShot->sceneId, currentShot->id));
-        paintNodes(painter, project, frame, currentShot->id, NodePass::ShotComposition, images_,
-                   svgRenderers_, svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
+        paintNodes(painter, project, snapshot.primary(), NodePass::ShotComposition, images_, svgRenderers_,
+                   svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
     } else {
-        const auto previousFrame = previousShot->start + previousShot->duration - 1;
+        const auto previousFrame = snapshot.transition()->outgoingFrame;
         const auto decoder = [this, &project](const Node &node, std::int64_t number) {
             return videoFrame(node, project, number);
         };
@@ -579,9 +532,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
             shotLayer(project, previousFrame, *previousShot, images_, svgRenderers_, svgCacheStats_, decoder);
         const auto incoming =
             shotLayer(project, frame, *currentShot, images_, svgRenderers_, svgCacheStats_, decoder);
-        const double progress = std::clamp(double(frame - currentShot->start) /
-                                               std::max(1, currentShot->transitionDurationFrames - 1),
-                                           0.0, 1.0);
+        const double progress = snapshot.transition()->progress;
         if (currentShot->transitionIn == "dissolve") {
             painter.setCompositionMode(QPainter::CompositionMode_Plus);
             painter.setOpacity(1.0 - progress);
@@ -627,7 +578,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
                 incoming);
         }
     }
-    paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_, svgRenderers_,
+    paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
                svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                    return videoFrame(node, project, number);
                });
