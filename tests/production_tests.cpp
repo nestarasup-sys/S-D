@@ -1011,6 +1011,14 @@ int main(int argc, char **argv) {
                                       {"deleted", false},
                                       {"builtin", false}});
         legacyCatalog["assets"] = oldBuiltins;
+        QJsonArray legacyCategories;
+        for (const auto &entry : legacyCatalog["categories"].toArray()) {
+            const auto id = entry.toObject()["id"].toString();
+            if (id != "technology" && id != "communication" &&
+                id != "finance" && id != "science")
+                legacyCategories.append(entry);
+        }
+        legacyCatalog["categories"] = legacyCategories;
         {
             QFile f(migrationDir.filePath("catalogue.json"));
             check(f.open(QIODevice::WriteOnly), "write legacy catalogue");
@@ -1023,6 +1031,13 @@ int main(int argc, char **argv) {
         check(upgraded.asset("personal:retained")["name"] == "Elemento pessoal" &&
                   upgraded.asset("native:person")["name"] == "Personagem",
               "upgrade preserves personal files and previous native assets");
+        check(upgraded.addCategory("Depois da migração").error.isEmpty(),
+              "updated library categories and natives remain valid for new writes");
+        studio::WorkspaceStore persistedUpgrade(migrationDir.path());
+        check(persistedUpgrade.error().isEmpty() &&
+                  !persistedUpgrade.asset("native:rocket").isEmpty() &&
+                  persistedUpgrade.asset("personal:retained")["name"] == "Elemento pessoal",
+              "upgraded catalogue persists with personal assets intact");
         studio::WorkspaceStore catalog(directory.filePath("catalog"));
         studio::Node group, part;
         group.id = "template-root";
