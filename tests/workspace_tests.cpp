@@ -1,8 +1,11 @@
 #include "workspace_controller.hpp"
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
+#include <QImageReader>
+#include <QPainter>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
@@ -116,6 +119,43 @@ int main(int argc, char **argv) {
         check(owned != original && QFile::exists(owned), "library owns media independently of original");
         check(QFile::remove(original) && ui.useAsset(assetId),
               "library item survives original image removal");
+        QImage webpImage(96, 64, QImage::Format_ARGB32_Premultiplied);
+        webpImage.fill(Qt::transparent);
+        {
+            QPainter painter(&webpImage);
+            painter.fillRect(QRect(48, 0, 48, 64), QColor("#b4f078"));
+            painter.fillRect(QRect(72, 16, 24, 32), QColor(239, 184, 115, 210));
+        }
+        const auto webpOriginal = temp.filePath("translucent.webp");
+        check(webpImage.save(webpOriginal, "WEBP", 100), "Qt Image Formats can encode WebP");
+        QImageReader webpReader(webpOriginal);
+        const auto decodedWebp = webpReader.read();
+        check(webpReader.format().toLower() == QByteArrayLiteral("webp") && !decodedWebp.isNull(),
+              "Qt imageformats plugin decodes a real WebP file");
+        check(decodedWebp.pixelColor(2, 2).alpha() == 0 && decodedWebp.pixelColor(60, 32).alpha() >= 240,
+              "WebP decoding preserves transparent and opaque alpha regions");
+        studio::CompositionPainter webpPainter;
+        const auto frameBeforeWebp = webpPainter.frame(editor.project(), 120);
+        check(ui.addAsset(QUrl::fromLocalFile(webpOriginal), "Imagem WebP", "objects"),
+              "library validates and imports a decoded WebP image");
+        const auto webpAsset = named(ui.assets(), "Imagem WebP");
+        const auto webpAssetId = webpAsset["id"].toString();
+        const auto webpOwned = webpAsset["source"].toString();
+        check(webpAsset["kind"].toString() == "image" && QFile::exists(webpOwned) &&
+                  QFileInfo(webpOwned).suffix().compare("webp", Qt::CaseInsensitive) == 0,
+              "library retains its independent WebP copy");
+        check(ui.useAsset(webpAssetId), "imported WebP can be inserted into an editable project");
+        const auto frameWithWebp = webpPainter.frame(editor.project(), 120);
+        const bool webpTransparentMatches =
+            frameWithWebp.pixelColor(150, 250) == frameBeforeWebp.pixelColor(150, 250);
+        const bool webpOpaqueDiffers = frameWithWebp.pixelColor(500, 250) != frameBeforeWebp.pixelColor(500, 250);
+        if (!webpTransparentMatches || !webpOpaqueDiffers)
+            std::cerr << "WebP samples transparent=" << frameBeforeWebp.pixelColor(150, 250).name().toStdString()
+                      << "/" << frameWithWebp.pixelColor(150, 250).name().toStdString() << " opaque="
+                      << frameBeforeWebp.pixelColor(500, 250).name().toStdString() << "/"
+                      << frameWithWebp.pixelColor(500, 250).name().toStdString() << '\n';
+        check(webpTransparentMatches && webpOpaqueDiffers,
+              "CompositionPainter composites WebP transparency and visible color");
         check(ui.deleteAsset(assetId) && QFile::exists(owned),
               "removing library item retains media referenced by project");
         check(studio::validate(editor.project()).empty(),
@@ -130,6 +170,7 @@ int main(int argc, char **argv) {
         check(decodedPreset.error.isEmpty() && decodedPreset.project.nodes.front().opacity == .4 &&
                   QFile::exists(QString::fromStdString(decodedPreset.project.nodes.front().source)),
               "image preset preserves opacity and an owned file");
+        const auto savedProjectNodeCount = editor.project().nodes.size();
         check(editor.save(), "save current edits");
         ui.navigate("projects");
         check(ui.renameProject(firstId, "História renomeada"), "rename project document and catalogue");
@@ -153,7 +194,7 @@ int main(int argc, char **argv) {
         check(!ui.openProject(firstId), "trash projects must be restored before opening");
         check(ui.restoreProject(firstId), "restore project");
         ui.setProjectTrash(false);
-        check(ui.openProject(firstId) && editor.project().nodes.size() == 3,
+        check(ui.openProject(firstId) && editor.project().nodes.size() == savedProjectNodeCount,
               "restored project reopens with all content");
         ui.setProjectSearch("cópia");
         check(ui.projects().size() == 1, "project search filters by name");

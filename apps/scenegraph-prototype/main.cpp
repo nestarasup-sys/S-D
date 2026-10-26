@@ -137,7 +137,7 @@ studio::Project referenceProject(int width, int height, int nodeCount) {
 }
 
 studio::Project hybridProject(int width, int height, const QString &fixtureDirectory, bool nativeAtlas,
-                               bool staticScene = false) {
+                               bool staticScene = false, bool *webpAlphaOutput = nullptr) {
     QDir().mkpath(fixtureDirectory);
     auto project = studio::makeEmpty();
     project.id = nativeAtlas ? "scenegraph-native-atlas" : "scenegraph-hybrid-suite";
@@ -291,15 +291,23 @@ studio::Project hybridProject(int width, int height, const QString &fixtureDirec
     }
     opaque.save(QDir(fixtureDirectory).filePath("photo.jpg"), "JPEG", 90);
     QImage webp(144, 96, QImage::Format_ARGB32_Premultiplied);
-    webp.fill(QColor("#172a35"));
+    webp.fill(Qt::transparent);
     QPainter webpPainter(&webp);
-    webpPainter.setPen(QPen(QColor("#b4f078"), 8));
+    webpPainter.setPen(Qt::NoPen);
+    webpPainter.setBrush(QColor("#b4f078"));
     webpPainter.drawEllipse(QRectF(30, 12, 82, 72));
+    webpPainter.setBrush(QColor(239, 184, 115, 210));
+    webpPainter.drawRoundedRect(QRectF(82, 42, 50, 42), 9, 9);
     webpPainter.end();
     const auto webpPath = QDir(fixtureDirectory).filePath("photo.webp");
     const bool webpFixtureWritten = webp.save(webpPath, "WEBP", 90);
     QImageReader webpFixtureReader(webpPath);
     const bool webpFixtureUsable = webpFixtureWritten && webpFixtureReader.canRead();
+    const auto decodedWebp = webpFixtureUsable ? webpFixtureReader.read() : QImage{};
+    const bool webpAlphaOk = webpFixtureUsable && decodedWebp.pixelColor(2, 2).alpha() == 0 &&
+                             decodedWebp.pixelColor(50, 40).alpha() >= 240;
+    if (webpAlphaOutput)
+        *webpAlphaOutput = webpAlphaOk;
     QFile svgFile(QDir(fixtureDirectory).filePath("mark.svg"));
     if (svgFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
         svgFile.write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"144\" height=\"96\"><rect x=\"3\" y=\"3\" width=\"138\" height=\"90\" rx=\"15\" fill=\"#284f56\"/><path d=\"M18 70 L55 20 L80 55 L105 30 L128 72 Z\" fill=\"#b4f078\"/><circle cx=\"112\" cy=\"27\" r=\"8\" fill=\"#efb873\"/></svg>");
@@ -1117,8 +1125,10 @@ int main(int argc, char **argv) {
     if ((hybridSuite && nativeAtlas) || (cachePressureTest && !hybridSuite) || (staticScene && !hybridSuite))
         return 2;
     const auto fixtureDirectory = output.filePath("fixtures");
+    bool webpAlphaWasPreserved = false;
     auto project = (hybridSuite || nativeAtlas)
-                       ? hybridProject(width, height, fixtureDirectory, nativeAtlas, staticScene)
+                       ? hybridProject(width, height, fixtureDirectory, nativeAtlas, staticScene,
+                                       &webpAlphaWasPreserved)
                        : referenceProject(width, height, nodes);
     QString registeredFontFamily;
     if (parser.isSet("font-file")) {
@@ -1155,8 +1165,12 @@ int main(int argc, char **argv) {
     const bool webpAvailable = webpAdvertised || (hybridSuite && webpFixtureReadable);
     const bool svgFixtureReadable = !hybridSuite ||
                                     QSvgRenderer(QDir(fixtureDirectory).filePath("mark.svg")).isValid();
-    const bool mediaFormatTestsPassed = pngFixtureReadable && jpegFixtureReadable &&
-                                        (!webpAvailable || webpFixtureReadable) && svgFixtureReadable;
+    const bool webpAlphaTested = hybridSuite && QFileInfo::exists(QDir(fixtureDirectory).filePath("photo.webp"));
+    const bool webpAlphaPassed = !hybridSuite || !webpAvailable ||
+                                 (webpAlphaTested && webpAlphaWasPreserved);
+    const bool mediaFormatTestsPassed = !hybridSuite || (pngFixtureReadable && jpegFixtureReadable &&
+                                        (!webpAvailable || webpFixtureReadable) && webpAlphaPassed &&
+                                        svgFixtureReadable);
     studio::CompositionPainter cpu;
     QElapsedTimer timer;
     QImage cpuImage;
@@ -1388,6 +1402,8 @@ int main(int argc, char **argv) {
                                      {"webpAvailable", webpAvailable}, {"webp", webpFixtureReadable},
                                      {"svg", svgFixtureReadable}}},
         {"mediaFormatTestsPassed", mediaFormatTestsPassed},
+        {"webpAlphaTested", webpAlphaTested},
+        {"webpAlphaPreserved", webpAlphaWasPreserved},
         {"rasterSupersamplingScale", 2.0},
         {"transparentLayerSamplesDetected", item->transparentLayerCount() > 0},
         {"supportedVectorPrimitives", primitiveCoverage},
