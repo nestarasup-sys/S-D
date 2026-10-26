@@ -124,6 +124,8 @@ Comandos PowerShell para desenvolvimento:
 .\scripts\run.ps1
 ```
 
+Para medir o backend raster atual e o protótipo isolado Qt Quick Scene Graph nos três canvases suportados, execute `scripts/build.ps1` e depois `scripts/benchmark-renderers.ps1 -Frames 60 -Nodes 120`. Os resultados e imagens ficam em `artifacts/renderer-benchmark-*`. A análise, a decisão de não migrar ainda e a arquitetura proposta estão na [ADR 0032 — motor gráfico 2.0](docs/architecture/0032-render-engine-2.md). O editor e o exportador continuam no compositor compartilhado atual; o benchmark não altera projetos nem receitas.
+
 Leia a [arquitetura da produção por IA](docs/architecture/0002-ai-directed-production.md) e a [fundação nativa](docs/architecture/0001-native-prototype.md). O [plano futuro](FUTURO-DO-APP.md) mantém o estado atual e a visão de produto.
 
 A persistência da coleção e os limites de exclusão estão na [arquitetura de projetos e biblioteca](docs/architecture/0003-projects-and-library.md).

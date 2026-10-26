@@ -1,8 +1,8 @@
 #include <QFile>
 #include <QGuiApplication>
-#include <QProcess>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QProcess>
 #include <QTemporaryDir>
 #include <iostream>
 #include <stdexcept>
@@ -100,8 +100,8 @@ int main(int argc, char **argv) {
         shotProject.visualBeats = {{"reveal", "detail", "price", "show", 72, 0}};
         shotProject.audioSource = "C:/media/voice.wav";
         shotProject.voiceDuckingSource = "C:/media/voice-stem.wav";
-        shotProject.audioTracks = {{"bed", "Trilha de teste", "C:/media/bed.wav", 0, 120,
-                                    .45, false, true, .7}};
+        shotProject.audioTracks = {
+            {"bed", "Trilha de teste", "C:/media/bed.wav", 0, 120, .45, false, true, .7}};
         check(studio::validate(shotProject).empty(), "valid independent shots and beat");
         auto persistedShots = studio::deserialize(studio::serialize(shotProject));
         check(persistedShots.error.isEmpty() && persistedShots.project.shots.size() == 2 &&
@@ -126,7 +126,8 @@ int main(int argc, char **argv) {
                   persistedScopedStyles.project.shots.front().artDirection->backgroundColor == "#334455",
               "scene and shot art direction survive schema 11 roundtrip");
         studio::CompositionPainter scopedStylePainter;
-        check(scopedStylePainter.frame(styledShotProject, 10) != scopedStylePainter.frame(styledShotProject, 80),
+        check(scopedStylePainter.frame(styledShotProject, 10) !=
+                  scopedStylePainter.frame(styledShotProject, 80),
               "shot style overrides the scene style in the composition");
         auto legacyScopedStyle = styledShotProject;
         legacyScopedStyle.schemaVersion = 10;
@@ -151,8 +152,7 @@ int main(int argc, char **argv) {
         animatedCaption.wordAnimationStartScale = .72;
         animatedCaption.wordAnimationTravelY = 18;
         animatedCaptionProject.nodes.push_back(animatedCaption);
-        const auto persistedWordAnimation =
-            studio::deserialize(studio::serialize(animatedCaptionProject));
+        const auto persistedWordAnimation = studio::deserialize(studio::serialize(animatedCaptionProject));
         check(studio::validate(animatedCaptionProject).empty() && persistedWordAnimation.error.isEmpty() &&
                   persistedWordAnimation.project.schemaVersion == 12 &&
                   persistedWordAnimation.project.nodes.front().wordAnimationPreset == "pop-rise" &&
@@ -205,12 +205,14 @@ int main(int argc, char **argv) {
         linkedTrack.linkedVideoNodeId = linkedVideo.id;
         linkedAudioProject.audioTracks.push_back(linkedTrack);
         studio::Editor linkedAudioEditor(linkedAudioProject);
-        check(linkedAudioEditor.execute([](auto &project) {
-                  project.nodes.front().start = 20;
-                  project.nodes.front().duration = 45;
-                  project.nodes.front().videoSourceInSeconds = 1.25;
-                  project.nodes.front().videoPlaybackRate = 2;
-              }).empty() &&
+        check(linkedAudioEditor
+                      .execute([](auto &project) {
+                          project.nodes.front().start = 20;
+                          project.nodes.front().duration = 45;
+                          project.nodes.front().videoSourceInSeconds = 1.25;
+                          project.nodes.front().videoPlaybackRate = 2;
+                      })
+                      .empty() &&
                   linkedAudioEditor.project().audioTracks.front().start == 20 &&
                   linkedAudioEditor.project().audioTracks.front().duration == 45 &&
                   linkedAudioEditor.project().audioTracks.front().sourceInSeconds == 1.25 &&
@@ -240,7 +242,8 @@ int main(int argc, char **argv) {
               "sound Visual Beats persist as linked audio tracks in schema 9");
         auto detachedSoundBeat = soundBeatProject;
         detachedSoundBeat.audioTracks.back().start = 79;
-        check(!studio::validate(detachedSoundBeat).empty(), "sound Visual Beat and audio track share a frame");
+        check(!studio::validate(detachedSoundBeat).empty(),
+              "sound Visual Beat and audio track share a frame");
         detachedSoundBeat = soundBeatProject;
         detachedSoundBeat.audioTracks.pop_back();
         check(!studio::validate(detachedSoundBeat).empty(), "sound Visual Beat requires its linked track");
@@ -261,10 +264,14 @@ int main(int argc, char **argv) {
         automatedProject.audioTracks.front().gainAutomation = {
             {0, .2, "linear"}, {30, 1.0, "ease-in-out"}, {60, .4, "ease-out"}};
         check(studio::validate(automatedProject).empty() &&
-                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 0) - .2) < 1e-9 &&
-                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 15) - .6) < 1e-9 &&
-                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 30) - 1.0) < 1e-9 &&
-                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 90) - .4) < 1e-9,
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 0) - .2) <
+                      1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 15) - .6) <
+                      1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 30) - 1.0) <
+                      1e-9 &&
+                  std::abs(studio::evaluateGainAutomation(automatedProject.audioTracks.front(), 90) - .4) <
+                      1e-9,
               "audio gain automation evaluates linear segments and easing curves");
         const auto persistedAutomation = studio::deserialize(studio::serialize(automatedProject));
         check(persistedAutomation.error.isEmpty() && persistedAutomation.project.schemaVersion == 8 &&
@@ -273,7 +280,7 @@ int main(int argc, char **argv) {
               "audio gain automation survives schema 8 save and load");
         auto unsortedAutomation = automatedProject;
         std::swap(unsortedAutomation.audioTracks.front().gainAutomation[0],
-                 unsortedAutomation.audioTracks.front().gainAutomation[1]);
+                  unsortedAutomation.audioTracks.front().gainAutomation[1]);
         check(!studio::validate(unsortedAutomation).empty(), "gain automation points must be ordered");
         auto noVoiceDucking = shotProject;
         noVoiceDucking.audioSource.clear();
@@ -302,6 +309,40 @@ int main(int argc, char **argv) {
         check(first.size() == QSize(p.width, p.height) && first != later, "animated frames differ");
         auto same = painter.frame(p, 90);
         check(same == later, "frame evaluation deterministic");
+        const auto svgPath = directory.filePath("cached.svg");
+        QFile svgFile(svgPath);
+        check(svgFile.open(QIODevice::WriteOnly) &&
+                  svgFile.write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\"><rect "
+                                "width=\"64\" height=\"64\" fill=\"#ff0000\"/></svg>") > 0,
+              "write SVG renderer cache fixture");
+        svgFile.close();
+        auto svgProject = studio::makeEmpty();
+        svgProject.width = 128;
+        svgProject.height = 128;
+        svgProject.duration = 4;
+        studio::Node svgNode;
+        svgNode.id = "cached-vector";
+        svgNode.kind = studio::NodeKind::Svg;
+        svgNode.source = svgPath.toStdString();
+        svgNode.width = 64;
+        svgNode.height = 64;
+        svgNode.animated = false;
+        svgNode.duration = 4;
+        svgProject.nodes.push_back(svgNode);
+        studio::CompositionPainter svgPainter;
+        const auto svgFirst = svgPainter.frame(svgProject, 0);
+        const auto svgSecond = svgPainter.frame(svgProject, 1);
+        check(svgFirst == svgSecond && svgPainter.svgCacheStats().misses == 1 &&
+                  svgPainter.svgCacheStats().hits == 1,
+              "reused SVG is parsed once and produces deterministic frames");
+        check(svgFile.open(QIODevice::WriteOnly | QIODevice::Truncate) &&
+                  svgFile.write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\"><rect "
+                                "width=\"32\" height=\"64\" fill=\"#0000ff\"/></svg>") > 0,
+              "replace cached SVG fixture");
+        svgFile.close();
+        const auto svgAfterReplace = svgPainter.frame(svgProject, 2);
+        check(svgAfterReplace != svgFirst && svgPainter.svgCacheStats().misses == 2,
+              "updated SVG file invalidates its parsed renderer cache entry");
         const auto ffmpeg = qEnvironmentVariable("STUDIO_FFMPEG", "ffmpeg");
         const auto videoPath = directory.filePath("moving-test.mp4");
         QProcess videoEncoder;
@@ -358,7 +399,8 @@ int main(int argc, char **argv) {
         croppedVideoProject.nodes.front().videoCropHeight = .5;
         studio::CompositionPainter croppedVideoPainter;
         const auto croppedFrame = croppedVideoPainter.frame(croppedVideoProject, 0);
-        check(studio::validate(croppedVideoProject).empty() && !croppedFrame.isNull() && croppedFrame != videoFrame0,
+        check(studio::validate(croppedVideoProject).empty() && !croppedFrame.isNull() &&
+                  croppedFrame != videoFrame0,
               "video preview applies a normalized manual crop");
         auto invalidCropProject = croppedVideoProject;
         invalidCropProject.nodes.front().videoCropX = .75;

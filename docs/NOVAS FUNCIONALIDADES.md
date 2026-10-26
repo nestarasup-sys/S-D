@@ -1,10 +1,20 @@
 # PROJETO: EVOLUÇÃO DO STUDIO DARK — MOTOR DE EDIÇÃO AUDIOVISUAL DIRIGIDO POR IA
 
-## ANDAMENTO DA IMPLEMENTAÇÃO — 25/10/2026
+## ANDAMENTO DA IMPLEMENTAÇÃO — 26/10/2026
 
 **Fases 1–4 do checklist original: concluídas. Plano global: em andamento.** A cor independente e os presets reutilizáveis de títulos/textos agora estão implementados; outras evoluções ainda listadas no documento continuam pendentes.
 
 Este quadro separa as funcionalidades implementadas, as limitações atuais e as próximas evoluções sugeridas. O checklist principal das quatro fases está concluído.
+
+### Entrega implementada: fundação e benchmark do motor gráfico 2.0
+
+- O diagnóstico confirmou um compositor `CompositionPainter` compartilhado por prévia, still e exportação; o render-worker fixa o tempo por frame e usa o mesmo avaliador de keyframes/câmera. A prévia atualmente rasteriza via `QQuickPaintedItem`/`QPainter`.
+- Foi criado um protótipo independente `apps/scenegraph-prototype/` que envia formas com grupos, keyframes e câmera ao Qt Quick Scene Graph. Não foi ligado ao editor nem substituiu o backend raster.
+- Benchmark aquecido, 3 repetições de 60 quadros e 120 formas, Qt 6.8.3/Direct3D11, Radeon RX 7600 e Ryzen 5 4600G: 1280×720 mediana de 25,71 ms/quadro no QPainter e 7,19 no Scene Graph; 1920×1080, 36,30 e 6,27 ms; 1080×1920, 36,60 e 5,99 ms. O RSS subiu de 25,9 para 60,8 MiB em 720p e de 30,3 para cerca de 74 MiB nos quadros de 8,3 MP. PSNR CPU/Scene Graph foi ~24,1 dB; a diferença visual ainda é perceptível. Os tempos CPU variaram entre repetições; o relatório guarda os nove resultados e as medianas.
+- Conclusão: medir throughput não basta para aprovar migração. O raster atual permanece padrão até existir snapshot de cena compartilhado, maior paridade, testes adicionais e orçamento de memória definido.
+- Melhoria concreta no compositor existente: cache limitado (128 entradas) de `QSvgRenderer`, invalidado por caminho/tamanho/data de modificação. Testes verificam reutilização parseada, quadro determinístico e invalidação após substituir o SVG.
+- Verificação: `scripts/build.ps1 -Test` (4/4), `scripts/smoke.ps1` (preview/export 44,09 dB), `scripts/smoke-production.ps1` e `scripts/benchmark-renderers.ps1 -Frames 60 -Nodes 120` passaram.
+- Referência arquitetural: [ADR 0032 — fundação do motor gráfico 2.0](architecture/0032-render-engine-2.md). O relatório e as imagens permanecem em `artifacts/renderer-benchmark-20261026-032146512/` e não são versionados.
 
 ### Entrega implementada: presets reutilizáveis para títulos e textos
 

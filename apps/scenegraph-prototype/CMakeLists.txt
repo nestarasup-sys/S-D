@@ -1,0 +1,5 @@
+qt_add_executable(studio_scenegraph_prototype main.cpp)
+target_link_libraries(studio_scenegraph_prototype PRIVATE studio_core studio_composition Qt6::Quick)
+if(WIN32)
+    target_link_libraries(studio_scenegraph_prototype PRIVATE psapi)
+endif()
