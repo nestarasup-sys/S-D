@@ -10,6 +10,8 @@
 
 namespace studio {
 
+enum class RenderPrimitiveKind { RoundedRectangle, Rectangle, Ellipse, RectangleOutline, Line, ConvexPath };
+
 // A frame-owned, resolved description shared by composition backends. It copies
 // project data so consumers never retain pointers into an editable Project.
 struct RenderNodeSnapshot {
@@ -29,6 +31,10 @@ struct RenderNodeSnapshot {
     QRectF localBounds;
     QRectF sceneBounds;
     ArtDirection artDirection;
+    RenderPrimitiveKind primitive{RenderPrimitiveKind::RoundedRectangle};
+    std::vector<QPointF> path;
+    double strokeWidth{2.0};
+    bool filled{true};
 };
 
 struct RenderFrameSnapshot {
