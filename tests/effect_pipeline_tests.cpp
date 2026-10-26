@@ -1,6 +1,7 @@
 #include <studio/composition/effect_pipeline.hpp>
 
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImageReader>
@@ -120,10 +121,25 @@ QJsonObject benchmark(int width, int height) {
     qint64 totalNanos = 0;
     for (const auto &timing : result.passTimings)
         totalNanos += timing.elapsedNanoseconds;
+    auto roiContext = context;
+    roiContext.useProcessingRegion = true;
+    roiContext.processingRegion = QRect(width * 5 / 12, height * 3 / 8,
+                                        std::max(1, width / 6), std::max(1, height / 4));
+    QElapsedTimer roiTimer;
+    roiTimer.start();
+    const auto roiResult = pipeline.execute(source, effects, roiContext);
+    const auto roiElapsed = roiTimer.nsecsElapsed();
+    if (!roiResult.succeeded())
+        throw std::runtime_error(roiResult.error.toStdString());
     return {{"width", width},
             {"height", height},
             {"iterations", 1},
             {"totalPassMilliseconds", double(totalNanos) / 1e6},
+            {"roiTotalMilliseconds", double(roiElapsed) / 1e6},
+            {"roiProcessingRegionPixels", roiContext.processingRegion.width() * roiContext.processingRegion.height()},
+            {"roiScratchBytes", roiResult.scratchBytes},
+            {"roiOutputMatchesFullCanvas", meanAbsoluteError(result.image, roiResult.image) <= .15 &&
+                                                meanAbsoluteError(result.image, roiResult.image, true) <= .15},
             {"scratchBytes", result.scratchBytes},
             {"workingSetLimitBytes", result.workingSetLimitBytes},
             {"passes", passTimes}};
@@ -206,6 +222,16 @@ void runTests(bool updateReference) {
     check(repeated.succeeded() && repeated.image == chain.image &&
               repeated.scratchBytes == chain.scratchBytes,
           "reused scratch storage is deterministic across consecutive frames");
+
+    auto roiContext = context;
+    roiContext.useProcessingRegion = true;
+    roiContext.processingRegion = QRect(48, 32, 96, 64);
+    const auto roi = pipeline.execute(source, effectStack(alphaRamp(size)), roiContext);
+    check(roi.succeeded() && roi.image.size() == source.size(),
+          "bounded CPU effects process an expanded region and preserve the full layer dimensions");
+    check(meanAbsoluteError(chain.image, roi.image) <= .15 &&
+              meanAbsoluteError(chain.image, roi.image, true) <= .15,
+          "region-of-interest processing matches full-canvas rendering within the blur support error");
 
     std::cout << "effect pipeline checks: " << checks << " passed; rgb MAE="
               << meanAbsoluteError(chain.image, QImage(referencePath)) << "; alpha MAE="

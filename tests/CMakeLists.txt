@@ -28,3 +28,23 @@ target_compile_definitions(studio_effect_pipeline_tests PRIVATE
     STUDIO_EFFECT_REFERENCE="${PROJECT_SOURCE_DIR}/tests/reference/render-effects/pipeline.png")
 add_test(NAME experimental_render_effects COMMAND studio_effect_pipeline_tests)
 set_tests_properties(experimental_render_effects PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+qt_add_executable(studio_gpu_effect_tests
+    gpu_effect_runtime_tests.cpp
+    ../apps/scenegraph-prototype/gpu_effect_item.cpp
+    ../apps/scenegraph-prototype/gpu_effect_item.hpp)
+target_include_directories(studio_gpu_effect_tests PRIVATE ../apps/scenegraph-prototype)
+target_link_libraries(studio_gpu_effect_tests PRIVATE studio_composition Qt6::Quick Qt6::GuiPrivate)
+target_compile_definitions(studio_gpu_effect_tests PRIVATE
+    STUDIO_GPU_EFFECT_REFERENCE_DIR="${PROJECT_SOURCE_DIR}/tests/reference/gpu-effects"
+    STUDIO_GPU_EFFECT_ARTIFACT_DIR="${PROJECT_SOURCE_DIR}/artifacts/gpu-effects-test")
+qt_add_shaders(studio_gpu_effect_tests gpu_effect_shaders
+    PREFIX "/gpu-effects"
+    BASE "${PROJECT_SOURCE_DIR}/tests/shaders"
+    FILES
+        "${PROJECT_SOURCE_DIR}/tests/shaders/fullscreen.vert"
+        "${PROJECT_SOURCE_DIR}/tests/shaders/alpha_mask.frag"
+        "${PROJECT_SOURCE_DIR}/tests/shaders/gaussian_blur_horizontal.frag"
+        "${PROJECT_SOURCE_DIR}/tests/shaders/gaussian_blur_vertical.frag"
+        "${PROJECT_SOURCE_DIR}/tests/shaders/glow_composite.frag")
+add_test(NAME scenegraph_gpu_effect_runtime COMMAND studio_gpu_effect_tests)

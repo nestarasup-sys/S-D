@@ -90,8 +90,15 @@ RenderEffectPipeline::RenderEffectPipeline(qsizetype workingSetLimitBytes)
 
 RenderEffectContext RenderEffectContext::fromSnapshot(const RenderSnapshot &snapshot,
                                                       const RenderNodeSnapshot &node) {
-    return {snapshot.frame(), snapshot.fps(), QSize(snapshot.width(), snapshot.height()), node.localBounds,
-            node.sceneTransform, snapshot.primary().cameraTransform, node.inheritedOpacity};
+    RenderEffectContext context;
+    context.frame = snapshot.frame();
+    context.fps = snapshot.fps();
+    context.canvasSize = QSize(snapshot.width(), snapshot.height());
+    context.localBounds = node.localBounds;
+    context.sceneTransform = node.sceneTransform;
+    context.cameraTransform = snapshot.primary().cameraTransform;
+    context.inheritedOpacity = node.inheritedOpacity;
+    return context;
 }
 
 bool RenderEffectPipeline::prepareBuffers(QSize size, qsizetype bytesPerBuffer, QString &error) {
@@ -131,6 +138,54 @@ RenderEffectResult RenderEffectPipeline::execute(const QImage &source,
     if (source.isNull()) {
         result.error = "A camada de origem do efeito está vazia.";
         return result;
+    }
+    if (context.useProcessingRegion) {
+        if (context.processingRegion.isEmpty()) {
+            result.error = "A região de processamento está vazia.";
+            return result;
+        }
+        int support = 0;
+        for (const auto &effect : effects) {
+            if (effect.kind == RenderEffectKind::GaussianBlur || effect.kind == RenderEffectKind::OuterGlow) {
+                if (effect.radius < 1 || effect.radius > 64) {
+                    result.error = "O raio de desfoque deve estar entre 1 e 64 pixels.";
+                    return result;
+                }
+                support += effect.radius * 3;
+            }
+        }
+        const QRect expanded = context.processingRegion.adjusted(-support, -support, support, support)
+                                   .intersected(source.rect());
+        if (expanded.isEmpty()) {
+            result.error = "A região do efeito está fora da camada de origem.";
+            return result;
+        }
+        auto localContext = context;
+        localContext.useProcessingRegion = false;
+        localContext.processingRegion = {};
+        auto localEffects = effects;
+        for (auto &effect : localEffects) {
+            if (effect.kind != RenderEffectKind::AlphaMask || effect.alphaMask.isNull())
+                continue;
+            const int left = int(qint64(expanded.x()) * effect.alphaMask.width() / source.width());
+            const int top = int(qint64(expanded.y()) * effect.alphaMask.height() / source.height());
+            const int right = int((qint64(expanded.x() + expanded.width()) * effect.alphaMask.width() +
+                                   source.width() - 1) / source.width());
+            const int bottom = int((qint64(expanded.y() + expanded.height()) * effect.alphaMask.height() +
+                                    source.height() - 1) / source.height());
+            const QRect maskRegion(left, top, std::max(1, right - left), std::max(1, bottom - top));
+            effect.alphaMask = effect.alphaMask.copy(maskRegion.intersected(effect.alphaMask.rect()));
+        }
+        auto processed = execute(source.copy(expanded), localEffects, localContext);
+        if (!processed.succeeded())
+            return processed;
+        QImage composited = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        QPainter painter(&composited);
+        painter.setCompositionMode(QPainter::CompositionMode_Source);
+        painter.drawImage(expanded.topLeft(), processed.image);
+        painter.end();
+        processed.image = std::move(composited);
+        return processed;
     }
     const auto bytesPerBuffer = qsizetype(source.width()) * source.height() * 4;
     if (!prepareBuffers(source.size(), bytesPerBuffer, result.error))

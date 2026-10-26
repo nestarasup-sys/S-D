@@ -31,6 +31,10 @@ struct RenderEffectContext {
     FrameRate fps{};
     QSize canvasSize;
     QRectF localBounds;
+    // Optional source-pixel region that contains the layer content. The CPU
+    // fallback expands it by the cumulative effect support before processing.
+    QRect processingRegion;
+    bool useProcessingRegion{false};
     QTransform sceneTransform;
     QTransform cameraTransform;
     double inheritedOpacity{1.0};
