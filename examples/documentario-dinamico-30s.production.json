@@ -1,0 +1,325 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Demonstração — Travelling documental e tipografia",
+  "voice": "auto",
+  "speechRate": 0,
+  "captions": true,
+  "timingMode": "fit-to-duration",
+  "targetDurationSeconds": 30,
+  "preserveVoicePitch": true,
+  "editing": {
+    "intensity": 53
+  },
+  "artDirection": {
+    "backgroundColor": "#0C1622",
+    "glowColor": "#214458",
+    "primaryColor": "#55E2C4",
+    "secondaryColor": "#F4BC69",
+    "textColor": "#F3F7FA",
+    "cardColor": "#172E3B",
+    "captionBackgroundColor": "#091520",
+    "fontFamily": "Segoe UI",
+    "titleSize": 58,
+    "bodySize": 40,
+    "captionSize": 28,
+    "captionPosition": "bottom",
+    "safeMargin": 40
+  },
+  "scenes": [
+    {
+      "id": "uma-ideia-em-movimento",
+      "narration": [
+        {
+          "text": "Você pensa que escolhe cada notificação.",
+          "targetDurationSeconds": 6.5
+        },
+        {
+          "text": "Mas existe uma máquina inteira disputando sua atenção.",
+          "targetDurationSeconds": 9
+        },
+        {
+          "text": "Cada segundo vira um sinal. Cada escolha, mais um dado.",
+          "targetDurationSeconds": 8.5
+        },
+        {
+          "text": "A pergunta é: quem dirige essa história?",
+          "targetDurationSeconds": 6
+        }
+      ],
+      "shots": [
+        {
+          "id": "gancho-textual",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "texto-abertura",
+              "kind": "text",
+              "text": "VOCÊ ESCOLHE?",
+              "x": 165,
+              "y": 230,
+              "width": 950,
+              "height": 160,
+              "fontSize": 82,
+              "color": "#F3F7FA",
+              "motion": "rise"
+            },
+            {
+              "id": "linha-abertura",
+              "kind": "shape",
+              "x": 180,
+              "y": 412,
+              "width": 400,
+              "height": 9,
+              "color": "#55E2C4",
+              "motion": "slide-right"
+            }
+          ]
+        },
+        {
+          "id": "notificacao",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0.55
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 10
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.05
+          },
+          "elements": [
+            {
+              "id": "celular-notificacao",
+              "kind": "native",
+              "asset": "phone",
+              "x": 470,
+              "y": 150,
+              "width": 300,
+              "height": 460,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "alerta-notificacao",
+              "kind": "native",
+              "asset": "notification",
+              "x": 760,
+              "y": 166,
+              "width": 162,
+              "height": 120,
+              "color": "#F4BC69",
+              "motion": "pop"
+            }
+          ]
+        },
+        {
+          "id": "travelling",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "zoom",
+            "durationFrames": 9
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.1
+          },
+          "elements": [
+            {
+              "id": "servidor-travel",
+              "kind": "native",
+              "asset": "server",
+              "x": 420,
+              "y": 190,
+              "width": 320,
+              "height": 240,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "rede-travel",
+              "kind": "native",
+              "asset": "network",
+              "x": 1150,
+              "y": 190,
+              "width": 320,
+              "height": 240,
+              "color": "#F4BC69"
+            },
+            {
+              "id": "cerebro-travel",
+              "kind": "native",
+              "asset": "brain",
+              "x": 1950,
+              "y": 190,
+              "width": 320,
+              "height": 240,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "label-a",
+              "kind": "text",
+              "text": "ALGORITMO",
+              "x": 420,
+              "y": 425,
+              "width": 410,
+              "height": 70,
+              "fontSize": 44
+            },
+            {
+              "id": "label-b",
+              "kind": "text",
+              "text": "CONEXÕES",
+              "x": 1150,
+              "y": 425,
+              "width": 410,
+              "height": 70,
+              "fontSize": 44
+            },
+            {
+              "id": "label-c",
+              "kind": "text",
+              "text": "ATENÇÃO",
+              "x": 1950,
+              "y": 425,
+              "width": 410,
+              "height": 70,
+              "fontSize": 44
+            }
+          ],
+          "beats": [
+            {
+              "id": "cam-b",
+              "at": {
+                "cue": 1,
+                "cueProgress": 0.32
+              },
+              "action": "camera",
+              "x": 1400,
+              "y": 360,
+              "zoom": 1.07,
+              "durationFrames": 20
+            },
+            {
+              "id": "cam-c",
+              "at": {
+                "cue": 1,
+                "cueProgress": 0.65
+              },
+              "action": "camera",
+              "x": 2180,
+              "y": 360,
+              "zoom": 1.08,
+              "durationFrames": 18
+            }
+          ]
+        },
+        {
+          "id": "dados",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "slide",
+            "direction": "left",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "dados-grafico",
+              "kind": "native",
+              "asset": "chart-line",
+              "x": 190,
+              "y": 168,
+              "width": 430,
+              "height": 330,
+              "color": "#55E2C4"
+            },
+            {
+              "id": "dados-rede",
+              "kind": "native",
+              "asset": "data-table",
+              "x": 720,
+              "y": 155,
+              "width": 370,
+              "height": 315,
+              "color": "#F4BC69"
+            },
+            {
+              "id": "texto-dados",
+              "kind": "text",
+              "text": "SINAIS  →  DADOS",
+              "x": 205,
+              "y": 520,
+              "width": 875,
+              "height": 95,
+              "fontSize": 48,
+              "color": "#F3F7FA"
+            }
+          ]
+        },
+        {
+          "id": "fecho",
+          "start": {
+            "cue": 3,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "fade",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1
+          },
+          "elements": [
+            {
+              "id": "pergunta",
+              "kind": "text",
+              "text": "QUEM CONTROLA?",
+              "x": 175,
+              "y": 243,
+              "width": 930,
+              "height": 170,
+              "fontSize": 78,
+              "color": "#F3F7FA",
+              "motion": "rise"
+            },
+            {
+              "id": "alvo",
+              "kind": "native",
+              "asset": "target",
+              "x": 935,
+              "y": 110,
+              "width": 240,
+              "height": 180,
+              "color": "#55E2C4",
+              "opacity": 0.75
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

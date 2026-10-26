@@ -80,7 +80,7 @@ QJsonObject capabilities() {
 QString aiGuide(const QJsonObject &library) {
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 13 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 14 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -314,7 +314,7 @@ Propriedades: `x`, `y`, `width`, `height`, `cueProgress` (alternativo a `offsetS
 
 Movimentos: `none`, `fade`, `rise`, `slide-left`, `slide-right`, `pop`. Poses: `neutral`, `point`, `wave`, `worried`. Roupas/personagem usam `color`; `secondaryColor` controla a pele. Partes de personagem ainda não são objetos articulados.
 
-Biblioteca nativa disponível: car, person, house, building, document, computer, phone, coins, price-tag, bars, street, office, showroom e studio. Barras são ilustrativas e não representam números de pesquisa.
+Biblioteca nativa vetorial: 72 recursos, incluindo objetos, tecnologia, comunicação, finanças, ciência, gráficos e cenários. Os símbolos e fundos são ilustrações procedurais editáveis, não fotografias. Consulte os IDs e as dimensões em **Catálogo nativo do aplicativo**. Gráficos, percentuais, mapas e painéis são apenas ilustrativos; não implicam dados externos verificados.
 
 ## Biblioteca pessoal desta cópia do guia
 
@@ -424,6 +424,12 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
                  " (" + QString::fromStdString(asset.category) + "), " + QString::number(asset.width) + "×" +
                  QString::number(asset.height) + ".\n";
     guide += R"GUIDE(
+
+### Direção para roteiro dinâmico
+
+Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
+
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os novos elementos são vetoriais; use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 

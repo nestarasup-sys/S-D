@@ -1,6 +1,6 @@
 # Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 13 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 14 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -1315,7 +1315,7 @@ Propriedades: `x`, `y`, `width`, `height`, `cueProgress` (alternativo a `offsetS
 
 Movimentos: `none`, `fade`, `rise`, `slide-left`, `slide-right`, `pop`. Poses: `neutral`, `point`, `wave`, `worried`. Roupas/personagem usam `color`; `secondaryColor` controla a pele. Partes de personagem ainda não são objetos articulados.
 
-Biblioteca nativa disponível: car, person, house, building, document, computer, phone, coins, price-tag, bars, street, office, showroom e studio. Barras são ilustrativas e não representam números de pesquisa.
+Biblioteca nativa vetorial: 72 recursos, incluindo objetos, tecnologia, comunicação, finanças, ciência, gráficos e cenários. Os símbolos e fundos são ilustrações procedurais editáveis, não fotografias. Consulte os IDs e as dimensões em **Catálogo nativo do aplicativo**. Gráficos, percentuais, mapas e painéis são apenas ilustrativos; não implicam dados externos verificados.
 
 ## Biblioteca pessoal desta cópia do guia
 
@@ -1357,7 +1357,70 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 - `office` — Escritório (cenários), 1280×720.
 - `showroom` — Concessionária (cenários), 1280×720.
 - `studio` — Estúdio (cenários), 1280×720.
+- `laptop` — Notebook (tecnologia), 320×240.
+- `tablet` — Tablet (tecnologia), 320×240.
+- `camera` — Câmera (tecnologia), 320×240.
+- `microphone` — Microfone (tecnologia), 320×240.
+- `headphones` — Fones de ouvido (tecnologia), 320×240.
+- `chip` — Chip de IA (tecnologia), 320×240.
+- `server` — Servidor (tecnologia), 320×240.
+- `cloud` — Nuvem digital (tecnologia), 320×240.
+- `wifi` — Sinal Wi-Fi (tecnologia), 320×240.
+- `lock` — Cadeado digital (tecnologia), 320×240.
+- `notification` — Notificação (tecnologia), 320×240.
+- `robot` — Robô (tecnologia), 320×240.
+- `chat-bubble` — Balão de conversa (comunicação), 320×240.
+- `email` — E-mail (comunicação), 320×240.
+- `newspaper` — Jornal (comunicação), 320×240.
+- `book` — Livro (comunicação), 320×240.
+- `calendar` — Calendário (comunicação), 320×240.
+- `clock` — Relógio (comunicação), 320×240.
+- `hourglass` — Ampulheta (comunicação), 320×240.
+- `eye` — Olho (comunicação), 320×240.
+- `magnifier` — Lupa (comunicação), 320×240.
+- `target` — Alvo (comunicação), 320×240.
+- `chart-line` — Gráfico de linhas (gráficos), 320×240.
+- `chart-pie` — Gráfico de pizza (gráficos), 320×240.
+- `chart-donut` — Gráfico de rosca (gráficos), 320×240.
+- `chart-area` — Gráfico de área (gráficos), 320×240.
+- `timeline` — Linha do tempo (gráficos), 320×240.
+- `flowchart` — Fluxograma (gráficos), 320×240.
+- `network` — Rede de conexões (gráficos), 320×240.
+- `dashboard` — Painel de indicadores (gráficos), 320×240.
+- `progress-ring` — Anel de progresso ilustrativo (gráficos), 320×240.
+- `data-table` — Tabela de dados ilustrativa (gráficos), 320×240.
+- `bank` — Banco (finanças), 320×240.
+- `wallet` — Carteira (finanças), 320×240.
+- `credit-card` — Cartão de crédito (finanças), 320×240.
+- `cash` — Dinheiro (finanças), 320×240.
+- `receipt` — Recibo (finanças), 320×240.
+- `shopping-cart` — Carrinho de compras (finanças), 320×240.
+- `factory` — Fábrica (finanças), 320×240.
+- `briefcase` — Maleta (finanças), 320×240.
+- `atom` — Átomo (ciência), 320×240.
+- `dna` — DNA (ciência), 320×240.
+- `flask` — Frasco de laboratório (ciência), 320×240.
+- `brain` — Cérebro (ciência), 320×240.
+- `globe` — Globo terrestre (ciência), 320×240.
+- `map-pin` — Marcador de mapa (ciência), 320×240.
+- `compass` — Bússola (ciência), 320×240.
+- `rocket` — Foguete (ciência), 320×240.
+- `satellite` — Satélite (ciência), 320×240.
+- `lightbulb` — Lâmpada (ciência), 320×240.
+- `night-city` — Cidade à noite (cenários), 1280×720.
+- `server-room` — Sala de servidores (cenários), 1280×720.
+- `newsroom` — Redação de notícias (cenários), 1280×720.
+- `laboratory-scene` — Laboratório (cenários), 1280×720.
+- `map-room` — Mapa mundial estilizado (cenários), 1280×720.
+- `financial-district` — Distrito financeiro (cenários), 1280×720.
+- `cyber-grid` — Grade digital (cenários), 1280×720.
+- `archive-room` — Arquivo documental (cenários), 1280×720.
 
+### Direção para roteiro dinâmico
+
+Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
+
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os novos elementos são vetoriais; use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 

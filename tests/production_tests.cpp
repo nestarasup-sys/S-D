@@ -973,6 +973,11 @@ int main(int argc, char **argv) {
         legacy.remove("audioSource");
         check(studio::deserialize(QJsonDocument(legacy).toJson()).project.schemaVersion == 2,
               "v1 migrates into v2 in memory");
+        check(studio::nativeLibrary().size() == 72,
+              "documentary native catalog has expected number of assets");
+        check(studio::libraryItem("rocket") && studio::libraryItem("night-city") &&
+                  studio::libraryItem("chart-donut"),
+              "new objects, data graphics and backgrounds exist in native catalog");
         studio::CompositionPainter painter;
         for (const auto &asset : studio::nativeLibrary()) {
             auto p = studio::makeEmpty();
@@ -986,6 +991,38 @@ int main(int argc, char **argv) {
             check(studio::validate(p).empty() && !painter.frame(p, 60).isNull(),
                   "native library asset renders");
         }
+
+        // Simulate a catalogue saved by a previous release: older native registry
+        // plus personal content. Reload must merge new entries, not replace data.
+        QTemporaryDir migrationDir;
+        check(migrationDir.isValid(), "temporary workspace for native migration");
+        studio::WorkspaceStore migrationSeed(migrationDir.path());
+        auto legacyCatalog = migrationSeed.data();
+        QJsonArray oldBuiltins;
+        for (const auto &entry : legacyCatalog["assets"].toArray()) {
+            auto item = entry.toObject();
+            if (item["nativeId"] == "car" || item["nativeId"] == "person")
+                oldBuiltins.append(item);
+        }
+        oldBuiltins.append(QJsonObject{{"id", "personal:retained"},
+                                      {"name", "Elemento pessoal"},
+                                      {"kind", "image"},
+                                      {"categoryId", "objects"},
+                                      {"deleted", false},
+                                      {"builtin", false}});
+        legacyCatalog["assets"] = oldBuiltins;
+        {
+            QFile f(migrationDir.filePath("catalogue.json"));
+            check(f.open(QIODevice::WriteOnly), "write legacy catalogue");
+            f.write(QJsonDocument(legacyCatalog).toJson());
+        }
+        studio::WorkspaceStore upgraded(migrationDir.path());
+        check(upgraded.error().isEmpty() && !upgraded.asset("native:rocket").isEmpty() &&
+                  !upgraded.asset("native:newsroom").isEmpty(),
+              "upgrade automatically adds new builtin native illustrations");
+        check(upgraded.asset("personal:retained")["name"] == "Elemento pessoal" &&
+                  upgraded.asset("native:person")["name"] == "Personagem",
+              "upgrade preserves personal files and previous native assets");
         studio::WorkspaceStore catalog(directory.filePath("catalog"));
         studio::Node group, part;
         group.id = "template-root";

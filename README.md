@@ -83,7 +83,7 @@ O botão **Logs** no topo abre os arquivos locais de diagnóstico de importaçõ
 1. A demonstração começa com texto e forma animados em uma composição de 12 segundos.
 2. Reproduza, navegue pela régua e selecione um objeto na biblioteca ou na prévia.
 3. Arraste o objeto na prévia ou ajuste posição, dimensões, texto, cor e tempo no inspetor.
-4. Adicione texto, forma, PNG/SVG, vídeo local ou um dos 14 objetos/cenários nativos. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline com Snap opcional, alinhando às referências visuais e de áudio; para liberar espaço, reduza a duração pelo inspetor.
+4. Adicione texto, forma, PNG/SVG, vídeo local ou um dos 72 recursos nativos, incluindo tecnologia, gráficos e cenários documentais. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline com Snap opcional, alinhando às referências visuais e de áudio; para liberar espaço, reduza a duração pelo inspetor.
 5. Use desfazer/refazer, salve com um nome novo e reabra o projeto.
 6. Em uma produção gerada, escolha a cena no seletor abaixo da prévia. A biblioteca e a timeline mostram os objetos daquela cena. O áudio permanece fixo enquanto você ajusta visuais.
 7. Exporte MP4 com nome novo. Produções geradas incluem narração, trilha e efeitos; projetos visuais sem master de áudio continuam exportando sem som.
@@ -139,3 +139,10 @@ Há biblioteca vetorial autoral, quatro poses de personagem, seis movimentos de 
 A IA externa prepara a receita; o app executa capacidades reais. Personagens são objetos parametrizados, sem edição individual dos ossos ou sincronização labial. SVG não é convertido automaticamente em partes nativas. Receitas v3 permitem definir e reutilizar trajetórias nomeadas de câmera; o compositor mantém até 64 MiB de quadros de vídeo em cache e usa seeks diretos em saltos longos, preservando o alinhamento da prévia com a exportação. A prévia de áudio usa o seek nativo do Qt Multimedia. Continuam pendentes automação de ritmo a partir do conteúdo, edição avançada de duração/overlap, curvas Bézier personalizadas, carregamento de fontes externas e presets visuais nomeados.
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.
+
+
+## Biblioteca documental expandida
+
+O catálogo vetorial nativo reúne **72 itens** (14 originais e 58 novos), incluindo ilustrações de tecnologia, ciência, finanças, comunicação, gráficos ilustrativos e oito cenários adicionais. Os recursos novos são procedurais: não precisam de download, funcionam sem internet e são editáveis como objetos `kind: "native"` nas receitas v3.
+
+Após compilar, os itens adicionais entram automaticamente em bibliotecas pessoais já existentes; os itens importados e as exclusões anteriores são preservados. A documentação de escolhas de câmera, tipografia e ritmo fica em [Direção de roteiro dinâmico](docs/DIRECAO-ROTEIRO-DINAMICO.md); o contrato técnico JSON continua em [Guia para IA](docs/GUIA-PARA-IA.md). Ilustrações não substituem imagens/B-roll reais nem representam estatísticas verificadas.

@@ -31,7 +31,14 @@ bool write(const QString &path, const QByteArray &b) {
     return f.open(QIODevice::WriteOnly) && f.write(b) == b.size() && f.commit();
 }
 QString nativeCategory(const std::string &s) {
-    return s == "personagens" ? "characters" : s == "cenários" ? "scenes" : s == "dados" ? "data" : "objects";
+    if (s == "personagens") return "characters";
+    if (s == "cenários") return "scenes";
+    if (s == "dados" || s == "gráficos") return "data";
+    if (s == "tecnologia") return "technology";
+    if (s == "comunicação") return "communication";
+    if (s == "finanças") return "finance";
+    if (s == "ciência") return "science";
+    return "objects";
 }
 bool categoryExists(const QJsonObject &data, const QString &id);
 void ensureCategory(QJsonObject &data, const QString &id, const QString &name) {
@@ -182,6 +189,30 @@ bool WorkspaceStore::reload() {
         return false;
     }
     data_ = doc.object();
+    // Keep personal items and deletions intact, but register new built-in resources
+    // in existing workspace catalogues when the application is upgraded.
+    ensureCategory(data_, "technology", "Tecnologia");
+    ensureCategory(data_, "communication", "Comunicação");
+    ensureCategory(data_, "finance", "Finanças");
+    ensureCategory(data_, "science", "Ciência");
+    auto assets = data_["assets"].toArray();
+    QSet<QString> known;
+    for (const auto &entry : assets)
+        known.insert(entry.toObject()["id"].toString());
+    for (const auto &item : nativeLibrary()) {
+        const auto id = "native:" + QString::fromStdString(item.id);
+        if (known.contains(id))
+            continue;
+        assets.append(QJsonObject{{"id", id},
+                                  {"nativeId", QString::fromStdString(item.id)},
+                                  {"name", QString::fromStdString(item.name)},
+                                  {"kind", "native"},
+                                  {"categoryId", nativeCategory(item.category)},
+                                  {"deleted", false},
+                                  {"builtin", true},
+                                  {"createdAt", now()}});
+    }
+    data_["assets"] = assets;
     revision_ = hash(bytes);
     error_.clear();
     return true;
