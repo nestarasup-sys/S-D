@@ -22,3 +22,9 @@ target_link_libraries(studio_render_snapshot_tests PRIVATE studio_composition)
 target_compile_definitions(studio_render_snapshot_tests PRIVATE
     STUDIO_REFERENCE_DIR="${PROJECT_SOURCE_DIR}/tests/reference/render-snapshot")
 add_test(NAME render_snapshot_visual_regression COMMAND studio_render_snapshot_tests)
+add_executable(studio_effect_pipeline_tests effect_pipeline_tests.cpp)
+target_link_libraries(studio_effect_pipeline_tests PRIVATE studio_composition Qt6::Gui)
+target_compile_definitions(studio_effect_pipeline_tests PRIVATE
+    STUDIO_EFFECT_REFERENCE="${PROJECT_SOURCE_DIR}/tests/reference/render-effects/pipeline.png")
+add_test(NAME experimental_render_effects COMMAND studio_effect_pipeline_tests)
+set_tests_properties(experimental_render_effects PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
