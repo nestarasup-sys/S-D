@@ -107,15 +107,20 @@ double animationEaseOut(double progress) {
 void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnapshot &snapshot, NodePass pass,
                 QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
                 SvgCacheStats &svgCacheStats,
-                const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
+                const std::function<QImage(const Node &, std::int64_t)> &videoFrame,
+                const std::string *nodeId = nullptr, bool localLayer = false) {
     const auto frame = snapshot.frame;
     painter.save();
-    painter.translate(project.width / 2.0, project.height / 2.0);
-    painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
-    painter.rotate(snapshot.camera.rotation);
-    painter.translate(-snapshot.camera.x, -snapshot.camera.y);
+    if (!localLayer) {
+        painter.translate(project.width / 2.0, project.height / 2.0);
+        painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
+        painter.rotate(snapshot.camera.rotation);
+        painter.translate(-snapshot.camera.x, -snapshot.camera.y);
+    }
     for (const auto &resolved : snapshot.nodes) {
         const auto &node = resolved.node;
+        if (nodeId && node.id != *nodeId)
+            continue;
         if (pass == NodePass::Captions && (node.role != "caption" || !node.shotId.empty()))
             continue;
         if (pass == NodePass::ShotComposition) {
@@ -128,13 +133,15 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             continue;
         const auto &art = resolved.artDirection;
         painter.save();
-        painter.setOpacity(resolved.inheritedOpacity);
-        for (const auto &part : resolved.transformChain) {
-            painter.translate(part.state.x, part.state.y);
-            painter.translate(part.width / 2.0, part.height / 2.0);
-            painter.rotate(part.state.rotation);
-            painter.scale(part.state.scale, part.state.scale);
-            painter.translate(-part.width / 2.0, -part.height / 2.0);
+        painter.setOpacity(localLayer ? 1.0 : resolved.inheritedOpacity);
+        if (!localLayer) {
+            for (const auto &part : resolved.transformChain) {
+                painter.translate(part.state.x, part.state.y);
+                painter.translate(part.width / 2.0, part.height / 2.0);
+                painter.rotate(part.state.rotation);
+                painter.scale(part.state.scale, part.state.scale);
+                painter.translate(-part.width / 2.0, -part.height / 2.0);
+            }
         }
         const QRectF bounds(0, 0, node.width, node.height);
         if (node.kind == NodeKind::Shape) {
@@ -589,6 +596,35 @@ QImage CompositionPainter::frame(const Project &project, std::int64_t frameNumbe
     image.fill(Qt::black);
     QPainter painter(&image);
     paint(painter, project, frameNumber);
+    painter.end();
+    return image;
+}
+
+QImage CompositionPainter::rasterNodeLayer(const Project &project, const RenderFrameSnapshot &snapshot,
+                                           const RenderNodeSnapshot &node, double supersamplingScale) {
+    if (!node.visible || node.node.kind == NodeKind::Group || node.node.kind == NodeKind::Video)
+        return {};
+    const auto scale = std::clamp(supersamplingScale, 1.0, 4.0);
+    const QSize size(std::clamp(qCeil(node.node.width * scale), 1, 4096),
+                     std::clamp(qCeil(node.node.height * scale), 1, 4096));
+    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    painter.scale(scale, scale);
+    paintNodes(painter, project, snapshot, NodePass::All, images_, svgRenderers_, svgCacheStats_,
+               [this, &project](const Node &current, std::int64_t frame) {
+                   return videoFrame(current, project, frame);
+               },
+               &node.node.id, true);
+    painter.end();
+    return image;
+}
+
+QImage CompositionPainter::rasterBackgroundLayer(const Project &project, const ArtDirection &art) {
+    QImage image(project.width, project.height, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    paintBackground(painter, project, art);
     painter.end();
     return image;
 }

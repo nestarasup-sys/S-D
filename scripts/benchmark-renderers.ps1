@@ -85,6 +85,52 @@ function Invoke-Profile([hashtable]$Profile, [int]$Count, [string]$Name, [bool]$
     }
 }
 
+function Invoke-HybridProfile([hashtable]$Profile, [string]$Scenario, [string[]]$ModeArguments,
+                              [int]$ModeRepeats = $Repeats, [int]$ScenarioFrames = $Frames) {
+    $trials = @()
+    for ($trial = 1; $trial -le $ModeRepeats; $trial++) {
+        $out = Join-Path (Join-Path (Join-Path $outputRoot $Profile.name) $Scenario) ("trial-{0:D2}" -f $trial)
+        Write-Host "Benchmark híbrido $($Profile.width)x$($Profile.height), $Scenario, tentativa $trial/$ModeRepeats..."
+        $arguments = @('--width', $Profile.width, '--height', $Profile.height, '--frames', $ScenarioFrames,
+            '--nodes', 72, '--output', $out) + $ModeArguments
+        & $prototype @arguments | Out-Null
+        $exitCode = $LASTEXITCODE
+        $metricsPath = Join-Path $out 'metrics.json'
+        if (!(Test-Path -LiteralPath $metricsPath)) {
+            throw "Benchmark híbrido sem métricas em $($Profile.name), $Scenario, tentativa $trial, código $exitCode."
+        }
+        $metrics = Get-Content -LiteralPath $metricsPath -Raw | ConvertFrom-Json
+        if ($exitCode -ne 0 -or !$metrics.visualRegressionPassed) {
+            throw "Regressão híbrida em $($Profile.name), $Scenario, tentativa $trial (IoU=$($metrics.visualMetrics.foregroundIntersectionOverUnion), edgeF1=$($metrics.visualMetrics.edgeF1Within1Px), MAE=$($metrics.visualMetrics.meanAbsoluteColorError), cache=$($metrics.textureCacheWithinBudget))."
+        }
+        $trials += $metrics
+        $script:allMeasurements += $metrics
+    }
+    return [ordered]@{
+        scenario = $Scenario
+        canvas = @{ width = $Profile.width; height = $Profile.height }
+        repetitions = $ModeRepeats
+        frames = $ScenarioFrames
+        trials = $trials
+        cpuPainterMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.cpuPainterMsPerFrame })
+        snapshotBuildMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.snapshotBuildMsPerFrame })
+        backendPreparationMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.sceneGraphPreparationMsPerFrame })
+        frameSubmitAndWaitMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.sceneGraphFrameAfterSnapshotAndPreparationMsPerFrame })
+        cpuRasterizationMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.cpuRasterizationMsPerMeasuredFrame })
+        textureUploadSubmissionMsPerFrame = Get-Stats @($trials | ForEach-Object { [double]$_.textureUploadSubmissionMsPerMeasuredFrame })
+        captureMs = Get-Stats @($trials | ForEach-Object { [double]$_.sceneGraphCaptureMs })
+        cpuWorkingSetBytes = Get-Stats @($trials | ForEach-Object { [double]$_.cpuWorkingSetBytes })
+        sceneGraphWorkingSetBytes = Get-Stats @($trials | ForEach-Object { [double]$_.sceneGraphWorkingSetBytes })
+        peakTextureCacheBytes = Get-Stats @($trials | ForEach-Object { [double]$_.textureCachePeakBytes })
+        textureCacheEvictions = Get-Stats @($trials | ForEach-Object { [double]$_.textureCacheEvictions })
+        psnrDb = Get-Stats @($trials | ForEach-Object { [double]$_.visualPsnrDb })
+        colorMae = Get-Stats @($trials | ForEach-Object { [double]$_.visualMetrics.meanAbsoluteColorError })
+        alphaMae = Get-Stats @($trials | ForEach-Object { [double]$_.visualMetrics.meanAbsoluteAlphaError })
+        foregroundIou = Get-Stats @($trials | ForEach-Object { [double]$_.visualMetrics.foregroundIntersectionOverUnion })
+        edgeF1Within1Px = Get-Stats @($trials | ForEach-Object { [double]$_.visualMetrics.edgeF1Within1Px })
+    }
+}
+
 foreach ($profile in $profiles) {
     $scenarioReports = @()
     foreach ($count in $NodeCounts) {
@@ -105,6 +151,14 @@ $primitiveKinds = @('roundedRectangle', 'rectangle', 'ellipse', 'rectangleOutlin
 foreach ($kind in $primitiveKinds) {
     $primitiveReferenceTests += Invoke-Profile $profiles[0] 20 "reference-$kind" $true $kind
 }
+
+$hybridScenarios = @()
+foreach ($profile in $profiles) {
+    $hybridScenarios += Invoke-HybridProfile $profile 'hybrid-animated' @('--hybrid-suite')
+    $hybridScenarios += Invoke-HybridProfile $profile 'hybrid-static' @('--hybrid-suite', '--static-scene')
+}
+$nativeAtlasScenario = Invoke-HybridProfile $profiles[0] 'native-atlas-72' @('--native-atlas')
+$cachePressureScenario = Invoke-HybridProfile $profiles[0] 'cache-pressure-4mib' @('--hybrid-suite', '--cache-pressure-test') 1 60
 
 # Qt 6.8's QSGVertexColorMaterial is only supported by the default scene graph
 # backend. Probe the software backend and preserve the failure as an explicit
@@ -143,6 +197,9 @@ $report = [ordered]@{
     profiles = $profileReports
     primitiveSuites = $primitiveReports
     primitiveReferenceTests = $primitiveReferenceTests
+    hybridScenarios = $hybridScenarios
+    nativeAtlas72 = $nativeAtlasScenario
+    cachePressureTest = $cachePressureScenario
     everyVisualComparisonPassed = -not [bool](@($allMeasurements | Where-Object { !$_.visualRegressionPassed }).Count)
     softwareBackendProbe = if (Test-Path -LiteralPath $softwareMetricsPath) { $softwareMetrics } else { $null }
 }
@@ -165,4 +222,18 @@ foreach ($profileReport in $profileReports) {
     }
 }
 $summaryRows | Format-Table -AutoSize
+@($hybridScenarios + @($nativeAtlasScenario) + @($cachePressureScenario)) | ForEach-Object {
+    [pscustomobject]@{
+        Canvas = "$($_.canvas.width)x$($_.canvas.height)"; Case = $_.scenario
+        CPUms = [math]::Round($_.cpuPainterMsPerFrame.median, 2)
+        Rasterms = [math]::Round($_.cpuRasterizationMsPerFrame.median, 2)
+        Uploadms = [math]::Round($_.textureUploadSubmissionMsPerFrame.median, 4)
+        Prepms = [math]::Round($_.backendPreparationMsPerFrame.median, 2)
+        Waitms = [math]::Round($_.frameSubmitAndWaitMsPerFrame.median, 2)
+        CacheMiB = [math]::Round($_.peakTextureCacheBytes.median / 1MB, 1)
+        Evictions = [math]::Round($_.textureCacheEvictions.median)
+        PSNR = [math]::Round($_.psnrDb.median, 2); IoU = [math]::Round($_.foregroundIou.median, 3)
+        EdgeF1 = [math]::Round($_.edgeF1Within1Px.median, 3); ColorMAE = [math]::Round($_.colorMae.median, 2)
+    }
+} | Format-Table -AutoSize
 Write-Host "Primitivas GPU: $($primitiveKinds -join ', ') | backend software: $softwareStatus"

@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <studio/core/project.hpp>
+#include <studio/composition/render_snapshot.hpp>
 
 namespace studio {
 struct VideoCacheStats {
@@ -24,6 +25,9 @@ class CompositionPainter {
     CompositionPainter &operator=(const CompositionPainter &) = delete;
     void paint(QPainter &painter, const Project &, std::int64_t frame);
     QImage frame(const Project &, std::int64_t frame);
+    QImage rasterNodeLayer(const Project &, const RenderFrameSnapshot &, const RenderNodeSnapshot &,
+                           double supersamplingScale = 1.0);
+    QImage rasterBackgroundLayer(const Project &, const ArtDirection &);
     void clearCache();
     VideoCacheStats videoCacheStats() const {
         return videoCacheStats_;
