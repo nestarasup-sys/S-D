@@ -1,644 +1,644 @@
 {
-  "audio": [
-    "windows-pt-BR-tts",
-    "windows-sapi-word-boundaries",
-    "procedural-bed",
-    "scene-chime",
-    "multi-track-wav-mp3-aac-ogg-flac-wma",
-    "voice-sidechain-ducking"
-  ],
-  "catalogVersion": 1,
-  "format": "studio-dark-capabilities",
-  "fps": 30,
-  "height": 720,
-  "maxAudioTracks": 32,
-  "maxNarrationCharactersPerCue": 150,
-  "maxNodes": 200,
-  "maxScenes": 20,
-  "maxShots": 256,
-  "maxShotsPerScene": 64,
-  "maxTransitionDurationFrames": 300,
-  "maxVisualBeats": 4096,
-  "media": [
-    "png",
-    "jpeg",
-    "webp",
-    "bmp",
-    "svg",
-    "mp4",
-    "mov",
-    "mkv",
-    "webm",
-    "avi",
-    "m4v"
-  ],
-  "motions": [
-    "none",
-    "fade",
-    "rise",
-    "slide-left",
-    "slide-right",
-    "pop"
-  ],
-  "nativeAssets": [
-    {
-      "id": "car",
-      "name": "Carro",
-      "category": "objetos",
-      "width": 460,
-      "height": 210
-    },
-    {
-      "id": "person",
-      "name": "Personagem",
-      "category": "personagens",
-      "width": 180,
-      "height": 350
-    },
-    {
-      "id": "house",
-      "name": "Casa",
-      "category": "objetos",
-      "width": 240,
-      "height": 210
-    },
-    {
-      "id": "building",
-      "name": "Prédio",
-      "category": "objetos",
-      "width": 160,
-      "height": 300
-    },
-    {
-      "id": "document",
-      "name": "Documento",
-      "category": "objetos",
-      "width": 200,
-      "height": 250
-    },
-    {
-      "id": "computer",
-      "name": "Computador",
-      "category": "objetos",
-      "width": 280,
-      "height": 210
-    },
-    {
-      "id": "phone",
-      "name": "Celular",
-      "category": "objetos",
-      "width": 120,
-      "height": 220
-    },
-    {
-      "id": "coins",
-      "name": "Moedas",
-      "category": "objetos",
-      "width": 250,
-      "height": 200
-    },
-    {
-      "id": "price-tag",
-      "name": "Etiqueta",
-      "category": "objetos",
-      "width": 250,
-      "height": 150
-    },
-    {
-      "id": "bars",
-      "name": "Barras ilustrativas",
-      "category": "dados",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "street",
-      "name": "Rua",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "office",
-      "name": "Escritório",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "showroom",
-      "name": "Concessionária",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "studio",
-      "name": "Estúdio",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "laptop",
-      "name": "Notebook",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "tablet",
-      "name": "Tablet",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "camera",
-      "name": "Câmera",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "microphone",
-      "name": "Microfone",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "headphones",
-      "name": "Fones de ouvido",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chip",
-      "name": "Chip de IA",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "server",
-      "name": "Servidor",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "cloud",
-      "name": "Nuvem digital",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "wifi",
-      "name": "Sinal Wi-Fi",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "lock",
-      "name": "Cadeado digital",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "notification",
-      "name": "Notificação",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "robot",
-      "name": "Robô",
-      "category": "tecnologia",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chat-bubble",
-      "name": "Balão de conversa",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "email",
-      "name": "E-mail",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "newspaper",
-      "name": "Jornal",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "book",
-      "name": "Livro",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "calendar",
-      "name": "Calendário",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "clock",
-      "name": "Relógio",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "hourglass",
-      "name": "Ampulheta",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "eye",
-      "name": "Olho",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "magnifier",
-      "name": "Lupa",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "target",
-      "name": "Alvo",
-      "category": "comunicação",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chart-line",
-      "name": "Gráfico de linhas",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chart-pie",
-      "name": "Gráfico de pizza",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chart-donut",
-      "name": "Gráfico de rosca",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "chart-area",
-      "name": "Gráfico de área",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "timeline",
-      "name": "Linha do tempo",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "flowchart",
-      "name": "Fluxograma",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "network",
-      "name": "Rede de conexões",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "dashboard",
-      "name": "Painel de indicadores",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "progress-ring",
-      "name": "Anel de progresso ilustrativo",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "data-table",
-      "name": "Tabela de dados ilustrativa",
-      "category": "gráficos",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "bank",
-      "name": "Banco",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "wallet",
-      "name": "Carteira",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "credit-card",
-      "name": "Cartão de crédito",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "cash",
-      "name": "Dinheiro",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "receipt",
-      "name": "Recibo",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "shopping-cart",
-      "name": "Carrinho de compras",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "factory",
-      "name": "Fábrica",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "briefcase",
-      "name": "Maleta",
-      "category": "finanças",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "atom",
-      "name": "Átomo",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "dna",
-      "name": "DNA",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "flask",
-      "name": "Frasco de laboratório",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "brain",
-      "name": "Cérebro",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "globe",
-      "name": "Globo terrestre",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "map-pin",
-      "name": "Marcador de mapa",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "compass",
-      "name": "Bússola",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "rocket",
-      "name": "Foguete",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "satellite",
-      "name": "Satélite",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "lightbulb",
-      "name": "Lâmpada",
-      "category": "ciência",
-      "width": 320,
-      "height": 240
-    },
-    {
-      "id": "night-city",
-      "name": "Cidade à noite",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "server-room",
-      "name": "Sala de servidores",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "newsroom",
-      "name": "Redação de notícias",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "laboratory-scene",
-      "name": "Laboratório",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "map-room",
-      "name": "Mapa mundial estilizado",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "financial-district",
-      "name": "Distrito financeiro",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "cyber-grid",
-      "name": "Grade digital",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    },
-    {
-      "id": "archive-room",
-      "name": "Arquivo documental",
-      "category": "cenários",
-      "width": 1280,
-      "height": 720
-    }
-  ],
-  "poses": [
-    "neutral",
-    "point",
-    "wave",
-    "worried"
-  ],
-  "productionCapabilities": [
-    "free-scene-layout",
-    "nested-groups",
-    "transform-keyframes-linear",
-    "camera-2d-keyframes",
-    "keyframe-easing-curves",
-    "personal-library-assets",
-    "reusable-group-presets",
-    "optional-visual-captions",
-    "fixed-duration-timing",
-    "automatic-duration-extension",
-    "cue-progress-sync",
-    "pitch-preserving-atempo",
-    "independent-shots",
-    "visual-beats-show-hide-transform-camera-sound",
-    "shot-cut-camera",
-    "narration-content-shot-rhythm",
-    "shot-transitions-fade-dissolve-slide-zoom",
-    "auto-reframe-by-shot-target",
-    "continuous-shot-focus-follow",
-    "intensity-driven-default-motion",
-    "reusable-camera-keyframe-presets",
-    "global-art-direction",
-    "scene-shot-art-direction",
-    "word-aligned-visual-beats",
-    "external-library-fonts",
-    "named-visual-style-presets",
-    "embedded-video-audio-with-source-trim-and-speed",
-    "word-aligned-elements-keyframes",
-    "multi-track-audio",
-    "visual-beat-sound-effects",
-    "voice-sidechain-ducking",
-    "audio-track-fades",
-    "audio-gain-automation-easing",
-    "video-layer-broll",
-    "video-source-trim",
-    "video-speed-control",
-    "video-normalized-crop",
-    "landscape-and-portrait-canvas-presets",
-    "word-timed-karaoke-captions",
-    "word-animated-karaoke-captions",
-    "independent-caption-highlight-color"
-  ],
-  "productionVersion": 3,
-  "projectCapabilities": [
-    "group-hierarchy",
-    "transform-keyframes-linear",
-    "camera-2d-keyframes",
-    "keyframe-easing-curves",
-    "shot-ownership",
-    "visual-beat-markers",
-    "audio-tracks",
-    "visual-beat-linked-audio-tracks",
-    "video-layers",
-    "video-trim-speed-crop",
-    "scene-art-direction",
-    "shot-art-direction",
-    "audio-track-fades",
-    "audio-gain-automation",
-    "word-timed-caption-highlights",
-    "word-animated-caption-presets",
-    "independent-caption-highlight-color"
-  ],
-  "projectVersion": 14,
-  "shotTransitionTypes": [
-    "cut",
-    "fade",
-    "dissolve",
-    "slide",
-    "zoom"
-  ],
-  "supportedCanvases": [
-    {
-      "height": 720,
-      "name": "Paisagem HD",
-      "width": 1280
-    },
-    {
-      "height": 1080,
-      "name": "Paisagem Full HD",
-      "width": 1920
-    },
-    {
-      "height": 1920,
-      "name": "Retrato",
-      "width": 1080
-    }
-  ],
-  "width": 1280
+    "audio": [
+        "windows-pt-BR-tts",
+        "windows-sapi-word-boundaries",
+        "procedural-bed",
+        "scene-chime",
+        "multi-track-wav-mp3-aac-ogg-flac-wma",
+        "voice-sidechain-ducking"
+    ],
+    "catalogVersion": 1,
+    "format": "studio-dark-capabilities",
+    "fps": 30,
+    "height": 720,
+    "maxAudioTracks": 32,
+    "maxNarrationCharactersPerCue": 150,
+    "maxNodes": 200,
+    "maxScenes": 20,
+    "maxShots": 256,
+    "maxShotsPerScene": 64,
+    "maxTransitionDurationFrames": 300,
+    "maxVisualBeats": 4096,
+    "media": [
+        "png",
+        "jpeg",
+        "webp",
+        "bmp",
+        "svg",
+        "mp4",
+        "mov",
+        "mkv",
+        "webm",
+        "avi",
+        "m4v"
+    ],
+    "motions": [
+        "none",
+        "fade",
+        "rise",
+        "slide-left",
+        "slide-right",
+        "pop"
+    ],
+    "nativeAssets": [
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "car",
+            "name": "Carro",
+            "width": 460
+        },
+        {
+            "category": "personagens",
+            "height": 350,
+            "id": "person",
+            "name": "Personagem",
+            "width": 180
+        },
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "house",
+            "name": "Casa",
+            "width": 240
+        },
+        {
+            "category": "objetos",
+            "height": 300,
+            "id": "building",
+            "name": "Prédio",
+            "width": 160
+        },
+        {
+            "category": "objetos",
+            "height": 250,
+            "id": "document",
+            "name": "Documento",
+            "width": 200
+        },
+        {
+            "category": "objetos",
+            "height": 210,
+            "id": "computer",
+            "name": "Computador",
+            "width": 280
+        },
+        {
+            "category": "objetos",
+            "height": 220,
+            "id": "phone",
+            "name": "Celular",
+            "width": 120
+        },
+        {
+            "category": "objetos",
+            "height": 200,
+            "id": "coins",
+            "name": "Moedas",
+            "width": 250
+        },
+        {
+            "category": "objetos",
+            "height": 150,
+            "id": "price-tag",
+            "name": "Etiqueta",
+            "width": 250
+        },
+        {
+            "category": "dados",
+            "height": 240,
+            "id": "bars",
+            "name": "Barras ilustrativas",
+            "width": 320
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "street",
+            "name": "Rua",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "office",
+            "name": "Escritório",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "showroom",
+            "name": "Concessionária",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "studio",
+            "name": "Estúdio",
+            "width": 1280
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "laptop",
+            "name": "Notebook",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "tablet",
+            "name": "Tablet",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "camera",
+            "name": "Câmera",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "microphone",
+            "name": "Microfone",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "headphones",
+            "name": "Fones de ouvido",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "chip",
+            "name": "Chip de IA",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "server",
+            "name": "Servidor",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "cloud",
+            "name": "Nuvem digital",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "wifi",
+            "name": "Sinal Wi-Fi",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "lock",
+            "name": "Cadeado digital",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "notification",
+            "name": "Notificação",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "robot",
+            "name": "Robô",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "chat-bubble",
+            "name": "Balão de conversa",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "email",
+            "name": "E-mail",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "newspaper",
+            "name": "Jornal",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "book",
+            "name": "Livro",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "calendar",
+            "name": "Calendário",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "clock",
+            "name": "Relógio",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "hourglass",
+            "name": "Ampulheta",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "eye",
+            "name": "Olho",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "magnifier",
+            "name": "Lupa",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "target",
+            "name": "Alvo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-line",
+            "name": "Gráfico de linhas",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-pie",
+            "name": "Gráfico de pizza",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-donut",
+            "name": "Gráfico de rosca",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-area",
+            "name": "Gráfico de área",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "timeline",
+            "name": "Linha do tempo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "flowchart",
+            "name": "Fluxograma",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "network",
+            "name": "Rede de conexões",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "dashboard",
+            "name": "Painel de indicadores",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "progress-ring",
+            "name": "Anel de progresso ilustrativo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "data-table",
+            "name": "Tabela de dados ilustrativa",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "bank",
+            "name": "Banco",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "wallet",
+            "name": "Carteira",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "credit-card",
+            "name": "Cartão de crédito",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "cash",
+            "name": "Dinheiro",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "receipt",
+            "name": "Recibo",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "shopping-cart",
+            "name": "Carrinho de compras",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "factory",
+            "name": "Fábrica",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "briefcase",
+            "name": "Maleta",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "atom",
+            "name": "Átomo",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "dna",
+            "name": "DNA",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "flask",
+            "name": "Frasco de laboratório",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "brain",
+            "name": "Cérebro",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "globe",
+            "name": "Globo terrestre",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "map-pin",
+            "name": "Marcador de mapa",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "compass",
+            "name": "Bússola",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "rocket",
+            "name": "Foguete",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "satellite",
+            "name": "Satélite",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "lightbulb",
+            "name": "Lâmpada",
+            "width": 320
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "night-city",
+            "name": "Cidade à noite",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "server-room",
+            "name": "Sala de servidores",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "newsroom",
+            "name": "Redação de notícias",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "laboratory-scene",
+            "name": "Laboratório",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "map-room",
+            "name": "Mapa mundial estilizado",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "financial-district",
+            "name": "Distrito financeiro",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "cyber-grid",
+            "name": "Grade digital",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "archive-room",
+            "name": "Arquivo documental",
+            "width": 1280
+        }
+    ],
+    "poses": [
+        "neutral",
+        "point",
+        "wave",
+        "worried"
+    ],
+    "productionCapabilities": [
+        "free-scene-layout",
+        "nested-groups",
+        "transform-keyframes-linear",
+        "camera-2d-keyframes",
+        "keyframe-easing-curves",
+        "personal-library-assets",
+        "reusable-group-presets",
+        "optional-visual-captions",
+        "fixed-duration-timing",
+        "automatic-duration-extension",
+        "cue-progress-sync",
+        "pitch-preserving-atempo",
+        "independent-shots",
+        "visual-beats-show-hide-transform-camera-sound",
+        "shot-cut-camera",
+        "narration-content-shot-rhythm",
+        "shot-transitions-fade-dissolve-slide-zoom",
+        "auto-reframe-by-shot-target",
+        "continuous-shot-focus-follow",
+        "intensity-driven-default-motion",
+        "reusable-camera-keyframe-presets",
+        "global-art-direction",
+        "scene-shot-art-direction",
+        "word-aligned-visual-beats",
+        "external-library-fonts",
+        "named-visual-style-presets",
+        "embedded-video-audio-with-source-trim-and-speed",
+        "word-aligned-elements-keyframes",
+        "multi-track-audio",
+        "visual-beat-sound-effects",
+        "voice-sidechain-ducking",
+        "audio-track-fades",
+        "audio-gain-automation-easing",
+        "video-layer-broll",
+        "video-source-trim",
+        "video-speed-control",
+        "video-normalized-crop",
+        "landscape-and-portrait-canvas-presets",
+        "word-timed-karaoke-captions",
+        "word-animated-karaoke-captions",
+        "independent-caption-highlight-color"
+    ],
+    "productionVersion": 3,
+    "projectCapabilities": [
+        "group-hierarchy",
+        "transform-keyframes-linear",
+        "camera-2d-keyframes",
+        "keyframe-easing-curves",
+        "shot-ownership",
+        "visual-beat-markers",
+        "audio-tracks",
+        "visual-beat-linked-audio-tracks",
+        "video-layers",
+        "video-trim-speed-crop",
+        "scene-art-direction",
+        "shot-art-direction",
+        "audio-track-fades",
+        "audio-gain-automation",
+        "word-timed-caption-highlights",
+        "word-animated-caption-presets",
+        "independent-caption-highlight-color"
+    ],
+    "projectVersion": 14,
+    "shotTransitionTypes": [
+        "cut",
+        "fade",
+        "dissolve",
+        "slide",
+        "zoom"
+    ],
+    "supportedCanvases": [
+        {
+            "height": 720,
+            "name": "Paisagem HD",
+            "width": 1280
+        },
+        {
+            "height": 1080,
+            "name": "Paisagem Full HD",
+            "width": 1920
+        },
+        {
+            "height": 1920,
+            "name": "Retrato",
+            "width": 1080
+        }
+    ],
+    "width": 1280
 }

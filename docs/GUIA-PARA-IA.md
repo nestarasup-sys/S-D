@@ -1416,6 +1416,7 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 - `cyber-grid` — Grade digital (cenários), 1280×720.
 - `archive-room` — Arquivo documental (cenários), 1280×720.
 
+
 ### Direção para roteiro dinâmico
 
 Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
@@ -1574,6 +1575,412 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "studio",
             "name": "Estúdio",
+            "width": 1280
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "laptop",
+            "name": "Notebook",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "tablet",
+            "name": "Tablet",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "camera",
+            "name": "Câmera",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "microphone",
+            "name": "Microfone",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "headphones",
+            "name": "Fones de ouvido",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "chip",
+            "name": "Chip de IA",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "server",
+            "name": "Servidor",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "cloud",
+            "name": "Nuvem digital",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "wifi",
+            "name": "Sinal Wi-Fi",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "lock",
+            "name": "Cadeado digital",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "notification",
+            "name": "Notificação",
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "robot",
+            "name": "Robô",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "chat-bubble",
+            "name": "Balão de conversa",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "email",
+            "name": "E-mail",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "newspaper",
+            "name": "Jornal",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "book",
+            "name": "Livro",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "calendar",
+            "name": "Calendário",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "clock",
+            "name": "Relógio",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "hourglass",
+            "name": "Ampulheta",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "eye",
+            "name": "Olho",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "magnifier",
+            "name": "Lupa",
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "target",
+            "name": "Alvo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-line",
+            "name": "Gráfico de linhas",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-pie",
+            "name": "Gráfico de pizza",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-donut",
+            "name": "Gráfico de rosca",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-area",
+            "name": "Gráfico de área",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "timeline",
+            "name": "Linha do tempo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "flowchart",
+            "name": "Fluxograma",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "network",
+            "name": "Rede de conexões",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "dashboard",
+            "name": "Painel de indicadores",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "progress-ring",
+            "name": "Anel de progresso ilustrativo",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "data-table",
+            "name": "Tabela de dados ilustrativa",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "bank",
+            "name": "Banco",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "wallet",
+            "name": "Carteira",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "credit-card",
+            "name": "Cartão de crédito",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "cash",
+            "name": "Dinheiro",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "receipt",
+            "name": "Recibo",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "shopping-cart",
+            "name": "Carrinho de compras",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "factory",
+            "name": "Fábrica",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "briefcase",
+            "name": "Maleta",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "atom",
+            "name": "Átomo",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "dna",
+            "name": "DNA",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "flask",
+            "name": "Frasco de laboratório",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "brain",
+            "name": "Cérebro",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "globe",
+            "name": "Globo terrestre",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "map-pin",
+            "name": "Marcador de mapa",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "compass",
+            "name": "Bússola",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "rocket",
+            "name": "Foguete",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "satellite",
+            "name": "Satélite",
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "lightbulb",
+            "name": "Lâmpada",
+            "width": 320
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "night-city",
+            "name": "Cidade à noite",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "server-room",
+            "name": "Sala de servidores",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "newsroom",
+            "name": "Redação de notícias",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "laboratory-scene",
+            "name": "Laboratório",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "map-room",
+            "name": "Mapa mundial estilizado",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "financial-district",
+            "name": "Distrito financeiro",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "cyber-grid",
+            "name": "Grade digital",
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "archive-room",
+            "name": "Arquivo documental",
             "width": 1280
         }
     ],
