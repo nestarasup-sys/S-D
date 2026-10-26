@@ -112,6 +112,10 @@ QJsonObject defaults() {
     QJsonArray categories;
     for (auto pair : {std::pair{"objects", "Objetos"},
                       {"characters", "Personagens"},
+                      {"technology", "Tecnologia"},
+                      {"communication", "Comunicação"},
+                      {"finance", "Finanças"},
+                      {"science", "Ciência"},
                       {"scenes", "Cenários"},
                       {"data", "Dados"},
                       {"fonts", "Fontes"},

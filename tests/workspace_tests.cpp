@@ -37,7 +37,13 @@ int main(int argc, char **argv) {
         EditorController editor(nullptr, temp.filePath("recovery"));
         WorkspaceController ui(&editor, temp.filePath("workspace"));
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
-        check(ui.projectCount() == 0 && ui.assetCount() == 14 && ui.categories().size() == 7,
+        check(ui.projectCount() == 0 &&
+                  ui.assetCount() == int(studio::nativeLibrary().size()) &&
+                  ui.categories().size() == 11 &&
+                  !named(ui.categories(), "Tecnologia").isEmpty() &&
+                  !named(ui.categories(), "Comunicação").isEmpty() &&
+                  !named(ui.categories(), "Finanças").isEmpty() &&
+                  !named(ui.categories(), "Ciência").isEmpty(),
               "initial complete native library and categories");
         check(!ui.createProject(" "), "empty project names rejected");
         check(ui.createProject("Minha história"), "create managed project");

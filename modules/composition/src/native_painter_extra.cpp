@@ -47,7 +47,7 @@ void backdrop(QPainter &p, const std::string &id, const QColor &a, std::int64_t 
         rect(p,0,552,1280,168,QColor("#0a1520"),0);
         stroke(p,{{0,591},{1280,591}},bright,2);
         if(id=="financial-district") {
-            for(int i=0;i<6;++i) stroke(p,{{260+i*125,160},{260+i*125,550}},dim,2);
+            for(int i=0;i<6;++i) stroke(p,{{260.0+i*125,160},{260.0+i*125,550}},dim,2);
             stroke(p,{{200,460},{430,390},{690,423},{930,275},{1100,185}},a,9);
         }
     } else if(id=="server-room") {
@@ -57,7 +57,7 @@ void backdrop(QPainter &p, const std::string &id, const QColor &a, std::int64_t 
             for(int j=0;j<10;++j) {
                 rect(p,x+29,103+j*47,160,33,QColor("#071820"),5);
                 oval(p,x+145,113+j*47,12,12,j%3?bright:QColor("#ffbe75"));
-                stroke(p,{{x+43,120+j*47},{x+120,120+j*47}},dim,3);
+                stroke(p,{{x+43,120.0+j*47},{x+120,120.0+j*47}},dim,3);
             }
         }
         rect(p,0,633,1280,87,QColor("#09121b"),0);
@@ -71,7 +71,7 @@ void backdrop(QPainter &p, const std::string &id, const QColor &a, std::int64_t 
         rect(p,225,475,830,85,QColor("#294052"),12);
         label(p,"BREAKING   /   DOCUMENTARY",300,486,680,57,29,QColor("#e0ebf0"));
     } else if(id=="laboratory-scene") {
-        for(int i=0;i<5;++i) stroke(p,{{i*320,0},{640+(i-2)*65,480}},dim,4);
+        for(int i=0;i<5;++i) stroke(p,{{i*320.0,0},{640.0+(i-2)*65,480}},dim,4);
         rect(p,145,116,990,395,QColor("#173142"),14);
         rect(p,185,151,410,280,QColor("#0c2030"),8);
         for(int i=0;i<3;++i) ring(p,230+i*105,213,70,70,dim,4);
@@ -79,8 +79,8 @@ void backdrop(QPainter &p, const std::string &id, const QColor &a, std::int64_t 
         rect(p,0,530,1280,190,QColor("#102431"),0);
         for(int i=0;i<6;++i) {rect(p,200+i*150,493,65,65,QColor("#b0c1ca"),7);oval(p,213+i*150,483,38,19,a);}
     } else if(id=="map-room") {
-        for(int i=0;i<10;++i) stroke(p,{{i*140,0},{i*140,720}},dim,2);
-        for(int i=0;i<7;++i) stroke(p,{{0,i*120},{1280,i*120}},dim,2);
+        for(int i=0;i<10;++i) stroke(p,{{i*140.0,0},{i*140.0,720}},dim,2);
+        for(int i=0;i<7;++i) stroke(p,{{0,i*120.0},{1280,i*120.0}},dim,2);
         QPainterPath land; land.moveTo(128,180); land.lineTo(295,122); land.lineTo(432,210);
         land.lineTo(385,364); land.lineTo(265,430); land.lineTo(156,311); land.closeSubpath();
         p.fillPath(land,QColor("#214958"));
@@ -89,7 +89,7 @@ void backdrop(QPainter &p, const std::string &id, const QColor &a, std::int64_t 
         stroke(p,{{270,280},{520,210},{774,301},{1040,180}},a,8);
         for(const auto &pt:{QPointF(270,280),QPointF(774,301),QPointF(1040,180)}) {oval(p,pt.x()-17,pt.y()-17,34,34,a);oval(p,pt.x()-6,pt.y()-6,12,12,QColor("#061520"));}
     } else if(id=="cyber-grid") {
-        for(int i=0;i<23;++i) stroke(p,{{i*70,0},{640+(i-11)*155,720}},dim,2);
+        for(int i=0;i<23;++i) stroke(p,{{i*70.0,0},{640.0+(i-11)*155,720}},dim,2);
         for(int i=0;i<12;++i) stroke(p,{{0,260+i*i*4.0},{1280,260+i*i*4.0}},dim,2);
         oval(p,415,112,450,450,QColor(a.red(),a.green(),a.blue(),23));
         ring(p,447,144,386,386,a,7);ring(p,525,222,230,230,dim,4);
@@ -159,19 +159,19 @@ bool paintExtendedNative(QPainter &p, const Node &n, std::int64_t frame) {
     } else if(id=="microphone") {
         rect(p,125,25,70,127,accent,31);stroke(p,{{101,113},{101,157},{120,178},{159,188},{198,178},{219,155},{219,113}},white,9);
         stroke(p,{{160,189},{160,220}},secondary,9);stroke(p,{{110,223},{210,223}},secondary,9);
-        for(int i=0;i<4;++i)stroke(p,{{137,57+i*21},{183,57+i*21}},dark,2);
+        for(int i=0;i<4;++i)stroke(p,{{137,57.0+i*21},{183,57.0+i*21}},dark,2);
     } else if(id=="headphones") {
         p.setBrush(Qt::NoBrush);p.setPen(QPen(white,16));p.drawArc(QRectF(79,23,162,175),0,180*16);
         rect(p,66,111,42,86,accent,11);rect(p,212,111,42,86,accent,11);
         rect(p,92,128,14,50,secondary,4);rect(p,214,128,14,50,secondary,4);
     } else if(id=="chip") {
         rect(p,85,45,150,150,accent,17);rect(p,105,65,110,110,dark,9);
-        for(int i=0;i<5;++i){stroke(p,{{113+i*23,24},{113+i*23,45}},secondary,8);stroke(p,{{113+i*23,195},{113+i*23,218}},secondary,8);}
-        for(int i=0;i<5;++i){stroke(p,{{62,73+i*24},{85,73+i*24}},secondary,8);stroke(p,{{235,73+i*24},{258,73+i*24}},secondary,8);}
+        for(int i=0;i<5;++i){stroke(p,{{113.0+i*23,24},{113.0+i*23,45}},secondary,8);stroke(p,{{113.0+i*23,195},{113.0+i*23,218}},secondary,8);}
+        for(int i=0;i<5;++i){stroke(p,{{62,73.0+i*24},{85,73.0+i*24}},secondary,8);stroke(p,{{235,73.0+i*24},{258,73.0+i*24}},secondary,8);}
         label(p,"AI",119,91,82,58,52,white);
     } else if(id=="server") {
         for(int i=0;i<3;++i){rect(p,60,32+i*65,200,54,shade,10);rect(p,73,43+i*65,20,20,accent,5);
-            stroke(p,{{117,59+i*65},{223,59+i*65}},secondary,5);oval(p,234,48+i*65,12,12,white);}
+            stroke(p,{{117,59.0+i*65},{223,59.0+i*65}},secondary,5);oval(p,234,48+i*65,12,12,white);}
     } else if(id=="cloud") {
         oval(p,65,92,108,104,accent);oval(p,119,42,122,145,accent);oval(p,181,96,82,91,accent);
         rect(p,72,130,190,57,accent,11);stroke(p,{{161,104},{161,197}},dark,7);
@@ -209,7 +209,7 @@ bool paintExtendedNative(QPainter &p, const Node &n, std::int64_t frame) {
         QPainterPath pg;pg.moveTo(160,60);pg.quadTo(116,30,55,49);pg.lineTo(55,195);
         pg.quadTo(115,177,160,207);pg.quadTo(212,177,265,195);pg.lineTo(265,49);pg.quadTo(205,30,160,60);
         p.fillPath(pg,accent);stroke(p,{{160,58},{160,208}},dark,5);
-        for(int i=0;i<4;++i){stroke(p,{{76,79+i*25},{135,79+i*25}},dark,4);stroke(p,{{183,79+i*25},{243,79+i*25}},dark,4);}
+        for(int i=0;i<4;++i){stroke(p,{{76,79.0+i*25},{135,79.0+i*25}},dark,4);stroke(p,{{183,79.0+i*25},{243,79.0+i*25}},dark,4);}
     } else if(id=="calendar") {
         rect(p,67,35,186,182,white,12);rect(p,67,35,186,54,accent,12);
         stroke(p,{{109,23},{109,62}},shade,12);stroke(p,{{211,23},{211,62}},shade,12);
@@ -243,7 +243,7 @@ bool paintExtendedNative(QPainter &p, const Node &n, std::int64_t frame) {
         if(id=="chart-donut")oval(p,126,84,67,67,dark);
     } else if(id=="timeline") {
         stroke(p,{{43,123},{277,123}},secondary,7);
-        for(int i=0;i<4;++i){double x=55+i*70;oval(p,x-12,111,24,24,i==2?white:accent);
+        for(int i=0;i<4;++i){double x=55+i*70.0;oval(p,x-12,111,24,24,i==2?white:accent);
             rect(p,x-23,i%2?142:60,46,40,shade,7);stroke(p,{{x, i%2?135.0:100.0},{x,i%2?142.0:100.0}},accent,3);}
     } else if(id=="flowchart") {
         rect(p,113,20,94,46,accent,7);rect(p,28,163,112,51,shade,6);rect(p,180,163,112,51,shade,6);
@@ -263,8 +263,8 @@ bool paintExtendedNative(QPainter &p, const Node &n, std::int64_t frame) {
         label(p,"75%",109,83,104,60,37,white);
     } else if(id=="data-table") {
         rect(p,33,31,254,184,shade,9);rect(p,44,43,232,35,accent,4);
-        for(int i=1;i<5;++i)stroke(p,{{43,78+i*27},{276,78+i*27}},secondary,2);
-        for(int i=1;i<4;++i)stroke(p,{{44+i*58,78},{44+i*58,211}},secondary,2);
+        for(int i=1;i<5;++i)stroke(p,{{43,78.0+i*27},{276,78.0+i*27}},secondary,2);
+        for(int i=1;i<4;++i)stroke(p,{{44.0+i*58,78},{44.0+i*58,211}},secondary,2);
     } else if(id=="bank") {
         QPainterPath roof;roof.moveTo(35,86);roof.lineTo(160,20);roof.lineTo(285,86);roof.closeSubpath();p.fillPath(roof,accent);
         for(int i=0;i<4;++i){rect(p,56+i*60,101,26,101,white,4);rect(p,48+i*60,91,42,13,shade,3);}
@@ -339,7 +339,7 @@ bool paintExtendedNative(QPainter &p, const Node &n, std::int64_t frame) {
     } else if(id=="lightbulb") {
         oval(p,95,24,130,137,accent);rect(p,124,145,72,48,secondary,9);
         rect(p,132,201,57,14,white,5);stroke(p,{{133,112},{155,135},{181,112}},dark,6);
-        for(int i=0;i<3;++i)stroke(p,{{134,158+i*14},{187,158+i*14}},dark,3);
+        for(int i=0;i<3;++i)stroke(p,{{134,158.0+i*14},{187,158.0+i*14}},dark,3);
     }
     p.restore();
     return true;
