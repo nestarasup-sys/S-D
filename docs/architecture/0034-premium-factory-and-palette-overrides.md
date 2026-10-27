@@ -20,8 +20,8 @@ A Premium Factory de código reutilizava nós, papéis, slots e animações, mas
 ### Slots de receita e paletas
 
 - Referências `kind: "library"` a premium oficial em receitas v2/v3 aceitam `slots` e `palette` opcionais simultaneamente.
-- `slots` é um objeto de `id-curto-do-manifesto` para valor: texto para slot `text`, caminho local relativo ao JSON ou absoluto para slot `image`. O parser resolve somente IDs declarados pelo manifesto e os mapeia a camadas registradas; a IA não pode direcionar um ID arbitrário de nó interno.
-- Texto respeita `maxLength` do manifesto quando definido e os limites globais existentes. Imagem aceita PNG/JPEG/WebP/BMP, caminho existente e canônico, decodificação válida, até 32 MiB e 40 megapixels. URLs, traversal e symlinks que escapem da receita são rejeitados. Só o slot de tela do Smartphone aceita imagem nesta versão; nenhum premium aceita vídeo ou ícone.
+- `slots` é um objeto de `id-curto-do-manifesto` para valor: texto para slot `text`; somente caminhos relativos seguros à pasta da receita para slot `image`. Caminhos absolutos, UNC, URLs e traversal são rejeitados. O parser resolve somente IDs declarados pelo manifesto e os mapeia a camadas registradas; a IA não pode direcionar um ID arbitrário de nó interno.
+- Texto respeita `maxLength` do manifesto quando definido e os limites globais existentes. Imagem aceita PNG/JPEG/WebP/BMP, caminho existente e canônico, decodificação válida, até 32 MiB e 40 megapixels. Symlinks que resolvem para fora da pasta da receita são rejeitados; symlinks internos permanecem sujeitos à validação canônica do destino. Só o slot de tela do Smartphone aceita imagem nesta versão; nenhum premium aceita vídeo ou ícone.
 - `slots` altera conteúdo da instância, preservando IDs remapeados, parent/child, animações e demais atributos. `palette` aplica apenas tokens autorizados pelo manifesto. Ambas as operações são determinísticas e independentes; projetos antigos sem esses campos permanecem iguais.
 - Antes da compilação no worker, imagem de slot é copiada por conteúdo para a mídia gerenciada do workspace e o nó do projeto aponta para a cópia. O projeto continua referindo-se a esse workspace; não afirmamos que a cópia seja um pacote portátil entre computadores.
 - `premiumAssets[].slots` permanece a lista de papéis semânticos para compatibilidade. `premiumAssets[].slotDefinitions` adiciona o contrato executável (ID curto, tipo, nó, papel, opcionalidade e máximo de texto) para geração confiável por IA. O guia e o catálogo são gerados de manifestos embutidos, não de exemplos escritos manualmente.
@@ -45,6 +45,14 @@ Slots textuais por receita estão disponíveis nos nove recursos segundo seus ma
 ## Validação
 
 Os exemplos em `examples/` são executados pelo parser e compilador de produção. As fixtures de câmera verificam keyframes, ausência do segundo alvo no primeiro quadro, entrada espacial durante o trajeto e estado de opacidade antes/depois do beat combinado. O teste de slots confere instâncias independentes, paletas simultâneas, mídia local, paths maliciosos, serialização/reabertura e cópia gerenciada. O teste QPainter de templates cobre nove recursos em 1280×720, 1920×1080 e 1080×1920.
+
+## Revisão de qualidade visual e layout textual
+
+Projetos schema 15 podem declarar `textLayout: {"mode":"shrink","minimumFontSize":N,"padding":N}` em nós de texto gerados por slots premium autorizados no manifesto. O compositor mede a fonte Qt, aplica quebra de linha e procura deterministicamente o maior tamanho que cabe sem passar do mínimo; se nem o mínimo couber, mantém o texto completo e a análise reporta overflow. Nós antigos sem essa política preservam o layout anterior.
+
+O `VisualQualityAnalyzer` usa snapshots do compositor para amostrar frames de shots, início/fim de texto, beats e pontos de câmera. A revisão no editor é consultiva e não bloqueia exportação. Ela informa overflow e cortes de texto, margens seguras dos papéis essenciais, colisões de texto/legenda, contraste quando há uma superfície sólida identificável, visibilidade de `show` e bounds de alvos `camera.path`. Ela não reconhece intenção artística, conteúdo factual, fundos fotográficos, objetos decorativos sobrepostos ou qualidade estética geral; um relatório sem avisos não é certificado de publicação.
+
+O editor abre a revisão ao solicitar exportação e grava `visual-quality-last.json` na pasta de logs do app. O worker também aceita `--quality-report <arquivo.json>` junto a `--project <arquivo.studio.json>` para produzir o mesmo relatório sem gerar MP4. Avisos e erros de composição são recomendações; erros estruturais continuam sendo responsabilidade da validação existente. A análise não modifica o projeto nem a receita.
 
 ## Consequências
 

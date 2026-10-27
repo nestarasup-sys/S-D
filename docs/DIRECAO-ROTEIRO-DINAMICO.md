@@ -89,3 +89,13 @@ Exemplos pequenos e validados pelo parser:
 - [Demonstração combinada da Premium Factory](../examples/premium-factory-motion-showcase-v3.production.json)
 
 Antes de exportar, revise a composição no primeiro quadro, nos quadros imediatamente antes/depois de cada beat e no destino de cada movimento de câmera. Confira paisagem e retrato quando o template for usado nos dois formatos.
+
+## Revisão automática antes da exportação
+
+No editor, **Qualidade visual** abre uma checagem consultiva; **Exportar MP4** abre a mesma checagem antes do seletor de arquivo. Ela procura cortes e overflow de texto, colisões entre textos/legendas, margens de papéis essenciais, contraste em texto sobre forma sólida, estado de beats `show` e enquadramento de alvos guardados por `camera.path`. O relatório também aparece em Logs como `visual-quality-last.json`. Um aviso não é bloqueio nem mudança automática: revise o frame e edite a composição conforme a intenção.
+
+O analisador usa alguns frames de shots, alterações de câmera, slots de texto e Visual Beats. Ele não prova que cada frame está perfeito, não entende imagens ou intenção artística, não verifica fatos e pode não determinar se uma sobreposição decorativa é deliberada. A ausência de avisos não substitui preview e inspeção da exportação.
+
+Os slots textuais com política declarada `textLayout` podem reorganizar a quebra e reduzir a fonte até o mínimo indicado no catálogo. Nenhuma palavra é apagada ou encurtada; se o conteúdo exceder até o mínimo, corrija o tamanho/quantidade de texto ou edite o template. Para slot de imagem do Smartphone, use apenas arquivo local relativo à pasta do `.production.json`; caminhos absolutos, URLs, UNC, traversal e symlink que saia dessa pasta são recusados. Após importação, a imagem é copiada para mídia gerenciada do workspace. O projeto ainda depende desse workspace até que uma função de empacotamento seja usada.
+
+Para uma tarefa autocontida destinada a outra IA, use o [pacote de avaliação criativa](ai-evaluation/README.md). Ele pede uma receita com premium, slots, paletas, travelling espacial e reveal temporal, e explica como importar e registrar os avisos. A etapa de avaliação externa depende de o usuário executar esse desafio; nenhum serviço externo foi invocado.
