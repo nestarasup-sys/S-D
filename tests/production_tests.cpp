@@ -748,6 +748,34 @@ int main(int argc, char **argv) {
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 7 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
+        auto titledSceneJson = shotRecipeJson;
+        auto titledScenes = titledSceneJson["scenes"].toArray();
+        auto titledSceneObject = titledScenes.at(0).toObject();
+        titledSceneObject["title"] = "Rótulo da cena na timeline";
+        titledScenes[0] = titledSceneObject;
+        titledSceneJson["scenes"] = titledScenes;
+        const auto parsedTitledScene =
+            studio::parseRecipe(QJsonDocument(titledSceneJson).toJson(), directory.path());
+        auto compiledTitledScene = parsedTitledScene.error.isEmpty()
+                                       ? studio::compileProduction(parsedTitledScene.recipe, shotAudio,
+                                                                   "titled-scene.wav")
+                                       : studio::CompileResult{};
+        const bool duplicateSceneHeading = std::any_of(
+            compiledTitledScene.project.nodes.begin(), compiledTitledScene.project.nodes.end(),
+            [](const auto &node) { return node.id == "heading-car-story"; });
+        check(parsedTitledScene.error.isEmpty() && compiledTitledScene.error.isEmpty() &&
+                  compiledTitledScene.project.scenes.front().name == "Rótulo da cena na timeline" &&
+                  !duplicateSceneHeading,
+              "v3 scene title is retained as timeline metadata without duplicating a visible heading over shots");
+        auto unknownSceneJson = titledSceneJson;
+        titledScenes = unknownSceneJson["scenes"].toArray();
+        titledSceneObject = titledScenes.at(0).toObject();
+        titledSceneObject["inventedSceneField"] = true;
+        titledScenes[0] = titledSceneObject;
+        unknownSceneJson["scenes"] = titledScenes;
+        check(studio::parseRecipe(QJsonDocument(unknownSceneJson).toJson(), directory.path())
+                      .error.contains("inventedSceneField"),
+              "unknown v3 scene fields name the unsupported key in the parser error");
         const auto compiledCameraPreset =
             studio::compileProduction(parsedCameraPreset.recipe, shotAudio, "camera-preset.wav");
         const auto cameraPresetShot = std::find_if(

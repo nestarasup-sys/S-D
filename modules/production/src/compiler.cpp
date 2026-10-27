@@ -572,7 +572,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             kicker.role = "header";
             p.nodes.push_back(kicker);
         }
-        if (!scene.title.isEmpty()) {
+        // In v3 the scene title labels the scene in the project/timeline. Shots
+        // own the visible composition, so do not repeat that label over every shot.
+        if (recipe.version < 3 && !scene.title.isEmpty()) {
             auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(),
                                   sceneThemed ? sceneArt.safeMargin : 70, 92,
                                   sceneThemed ? p.width - sceneArt.safeMargin * 2 : p.width - 140, 140,

@@ -60,7 +60,7 @@ QJsonObject capabilities() {
             {"productionVersion", 3},
             {"projectVersion", 15},
             {"productionCapabilities",
-             QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
+             QJsonArray{"free-scene-layout", "nested-groups", "v3-scene-title-metadata", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
                         "reusable-group-presets", "optional-visual-captions", "fixed-duration-timing",
                         "automatic-duration-extension", "cue-progress-sync", "pitch-preserving-atempo", "independent-shots",
@@ -343,7 +343,7 @@ A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots
 
 ## Composição, grupos e câmera
 
-Não há cabeçalho, título de cena ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior. Texto comum, títulos e legendas são desenhados no espaço da composição e acompanham pan, zoom e rotação da câmera; esta versão não possui uma camada de texto presa ao viewport. Ao anunciar uma técnica enquanto a câmera percorre conteúdo abaixo, mantenha ambos no enquadramento e reserve margem segura para a legenda.
+Não há cabeçalho ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Em v3, `title` opcional nomeia a cena na timeline/projeto e não é desenhado por cima dos shots; crie cabeçalhos visuais como elementos nos próprios shots. `kicker` e `background` não são campos de cena v3. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior. Texto comum, títulos e legendas são desenhados no espaço da composição e acompanham pan, zoom e rotação da câmera; esta versão não possui uma camada de texto presa ao viewport. Ao anunciar uma técnica enquanto a câmera percorre conteúdo abaixo, mantenha ambos no enquadramento e reserve margem segura para a legenda.
 
 `group` exige `children` e pode aninhar até 8 níveis. Coordenadas dos filhos são locais ao canto superior esquerdo do grupo pai. A ordem da lista determina a ordem de desenho. Um grupo pode ter `x`, `y`, `width`, `height`, `rotation`, `scale`, `opacity`, `cue`, `offsetSeconds` e `span` como outro elemento.
 

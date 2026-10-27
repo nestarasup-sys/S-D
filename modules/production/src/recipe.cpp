@@ -1074,7 +1074,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             sceneKeys << "title" << "kicker" << "background" << "elements";
         else {
             sceneKeys << "shots";
-            sceneKeys << "artDirection" << "artDirectionPreset";
+            sceneKeys << "title" << "artDirection" << "artDirectionPreset";
         }
         if (version >= 3)
             sceneKeys << "audioTracks";
@@ -1082,11 +1082,15 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             sceneKeys << "camera";
         if (version >= 2)
             sceneKeys << "targetDurationSeconds";
-        if (!allowed(s, sceneKeys))
-            return fail("Campo de cena desconhecido.");
+        QStringList unknownSceneKeys;
+        for (auto key = s.begin(); key != s.end(); ++key)
+            if (!sceneKeys.contains(key.key()))
+                unknownSceneKeys.append(key.key());
+        if (!unknownSceneKeys.isEmpty())
+            return fail("Campo de cena desconhecido: " + unknownSceneKeys.join(", ") + ".");
         if (!s["id"].isString() ||
-            (version < 3 && ((s.contains("title") && !s["title"].isString()) ||
-                             (s.contains("kicker") && !s["kicker"].isString()) ||
+            (s.contains("title") && !s["title"].isString()) ||
+            (version < 3 && ((s.contains("kicker") && !s["kicker"].isString()) ||
                              (s.contains("background") && !s["background"].isString()))))
             return fail("Identificação, título, kicker ou cenário da cena inválidos.");
         DirectedScene scene;

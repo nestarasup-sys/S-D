@@ -1163,6 +1163,7 @@
     "productionCapabilities": [
         "free-scene-layout",
         "nested-groups",
+        "v3-scene-title-metadata",
         "transform-keyframes-linear",
         "camera-2d-keyframes",
         "keyframe-easing-curves",
