@@ -524,6 +524,13 @@ int main(int argc, char **argv) {
                   studio::capabilities()["productionCapabilities"].toArray().contains("named-visual-style-presets") &&
                   studio::capabilities()["productionCapabilities"].toArray().contains("external-library-fonts"),
               "generated AI guide and capability manifest expose only the supported local styles and fonts");
+        const auto visualBeatGuide = studio::aiGuide({});
+        check(visualBeatGuide.contains("opacity` inicial seja 0") &&
+                  visualBeatGuide.contains("não interpolam antes do quadro marcado") &&
+                  visualBeatGuide.contains("revelação sequencial de três objetos") &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains(
+                      "instant-visual-beat-show-hide"),
+              "AI guide and capability catalog describe exact-frame Visual Beat visibility");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
         auto wordShots = wordScene["shots"].toArray();
@@ -864,9 +871,10 @@ int main(int argc, char **argv) {
                                                             nullptr, &wordMap);
         const auto *wordTimedPrice = studio::findNode(alignedWordElement.project, "price");
         check(alignedWordElement.error.isEmpty() && wordTimedPrice && wordTimedPrice->start == 3 &&
-                  wordTimedPrice->keyframes.size() == 3 && wordTimedPrice->keyframes[1].frame == 6 &&
-                  wordTimedPrice->keyframes[2].frame == 8,
-              "word alignment resolves element entry and editable transform keyframes");
+                  wordTimedPrice->keyframes.size() == 4 && wordTimedPrice->keyframes[0].frame == 4 &&
+                  wordTimedPrice->keyframes[1].frame == 5 && wordTimedPrice->keyframes[2].frame == 6 &&
+                  wordTimedPrice->keyframes[3].frame == 8,
+              "word alignment preserves a pre-reveal hold and editable transform keyframes");
         const auto persistedShots = studio::deserialize(studio::serialize(compiledShots.project));
         check(persistedShots.error.isEmpty() &&
                   persistedShots.project.shots.back().transitionIn == "dissolve" &&

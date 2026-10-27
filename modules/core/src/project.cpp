@@ -516,10 +516,10 @@ VisualState evaluate(const Node &n, std::int64_t frame) {
     const auto upper =
         std::upper_bound(n.keyframes.begin(), n.keyframes.end(), frame,
                          [](std::int64_t f, const TransformKeyframe &key) { return f < key.frame; });
-    if (upper == n.keyframes.begin()) {
-        const auto &key = *upper;
-        return {key.x, key.y, key.opacity, key.rotation, key.scale};
-    }
+    // A future key must not leak backward in time. Before the first key, keep
+    // the node's own animated/base state; the first key takes effect on its frame.
+    if (upper == n.keyframes.begin())
+        return state;
     if (upper == n.keyframes.end()) {
         const auto &key = n.keyframes.back();
         return {key.x, key.y, key.opacity, key.rotation, key.scale};

@@ -267,10 +267,10 @@ bool narrationShotStarts(const DirectedScene &scene,
     }
     return true;
 }
-VisualState beatState(const VisualState &current, const DirectedBeat &beat, double baseOpacity) {
+VisualState beatState(const VisualState &current, const DirectedBeat &beat, double visibleOpacity) {
     auto next = current;
     if (beat.action == "show")
-        next.opacity = baseOpacity;
+        next.opacity = visibleOpacity;
     else if (beat.action == "hide")
         next.opacity = 0;
     if (beat.x)
@@ -702,9 +702,11 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                   beat.id;
                         return r;
                     }
-                std::sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
+                std::stable_sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
                     return resolveTime(a.at, cues, wordStarts) < resolveTime(b.at, cues, wordStarts);
                 });
+                std::unordered_map<std::string, double> visibleOpacityByNode;
+                std::unordered_map<std::string, std::vector<TransformKeyframe>> opacityKeyframesByNode;
                 for (const auto &beat : beats) {
                     const auto beatFrame = resolveTime(beat.at, cues, wordStarts);
                     if (beatFrame < shotStart || beatFrame >= shotEnd ||
@@ -746,6 +748,10 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                             p.camera.push_back({beatFrame, shotCamera.x, shotCamera.y, shotCamera.zoom,
                                                 shotCamera.rotation, "linear",
                                                 directedShot.id.toStdString()});
+                        else if (beatFrame > shotStart)
+                            p.camera.push_back({beatFrame - 1, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                                shotCamera.rotation, "linear",
+                                                directedShot.id.toStdString()});
                         p.camera.push_back({beatFrame + beat.durationFrames, target.x, target.y, target.zoom,
                                             target.rotation, "linear", directedShot.id.toStdString()});
                         shotCamera = target;
@@ -759,10 +765,34 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                         }
                         auto &node = p.nodes[nodeFound->second];
                         auto current = evaluate(node, beatFrame);
-                        const auto target = beatState(current, beat, node.opacity);
+                        auto sourceKeyframes = opacityKeyframesByNode.find(node.id);
+                        if (sourceKeyframes == opacityKeyframesByNode.end())
+                            sourceKeyframes = opacityKeyframesByNode.emplace(node.id, node.keyframes).first;
+                        auto visibleOpacity = visibleOpacityByNode.find(node.id);
+                        if (visibleOpacity == visibleOpacityByNode.end()) {
+                            double initialOpacity = node.opacity;
+                            for (const auto &key : sourceKeyframes->second)
+                                if (key.frame <= beatFrame && key.opacity > 0)
+                                    initialOpacity = key.opacity;
+                            visibleOpacity = visibleOpacityByNode.emplace(
+                                node.id, initialOpacity > 0 ? initialOpacity : 1.0).first;
+                        }
+                        for (const auto &key : sourceKeyframes->second)
+                            if (key.frame <= beatFrame && key.opacity > 0)
+                                visibleOpacity->second = key.opacity;
+                        if (beat.action == "transform" && beat.opacity && *beat.opacity > 0)
+                            visibleOpacity->second = *beat.opacity;
+                        const auto target = beatState(current, beat, visibleOpacity->second);
                         std::map<std::int64_t, TransformKeyframe> keysByFrame;
                         for (const auto &key : node.keyframes)
                             keysByFrame[key.frame] = key;
+                        if ((beat.action == "show" || beat.action == "hide" || beat.durationFrames == 0) &&
+                            node.start < beatFrame) {
+                            const auto beforeFrame = beatFrame - 1;
+                            const auto before = evaluate(node, beforeFrame);
+                            keysByFrame[beforeFrame] = {beforeFrame, before.x, before.y, before.rotation,
+                                                        before.scale, before.opacity};
+                        }
                         if (beat.durationFrames > 0)
                             keysByFrame[beatFrame] = {beatFrame,        current.x,     current.y,
                                                       current.rotation, current.scale, current.opacity};
