@@ -564,15 +564,25 @@
             "kind": "premium-object",
             "manifestVersion": 1,
             "name": "Smartphone premium",
+            "paletteTokens": [
+                "surface",
+                "frame",
+                "highlight",
+                "accent",
+                "screen",
+                "notification",
+                "muted",
+                "text"
+            ],
             "responsiveCanvases": [
                 "1280x720",
                 "1920x1080",
                 "1080x1920"
             ],
             "slots": [
-                "premium:image:screen",
                 "premium:text:screen-title",
-                "premium:text:notification"
+                "premium:text:notification",
+                "premium:image:screen"
             ],
             "status": "implemented"
         },
@@ -581,15 +591,22 @@
             "kind": "premium-typography-template",
             "manifestVersion": 1,
             "name": "Title Reveal · título cinematográfico",
+            "paletteTokens": [
+                "accent",
+                "secondary",
+                "highlight",
+                "text",
+                "muted"
+            ],
             "responsiveCanvases": [
                 "1280x720",
                 "1920x1080",
                 "1080x1920"
             ],
             "slots": [
-                "premium:title:editorial",
                 "premium:title:main",
-                "premium:title:subtitle"
+                "premium:title:subtitle",
+                "premium:title:editorial"
             ],
             "status": "implemented"
         },
@@ -598,6 +615,16 @@
             "kind": "premium-motion-template",
             "manifestVersion": 1,
             "name": "Comparison Pack · comparação editorial",
+            "paletteTokens": [
+                "left",
+                "right",
+                "primary",
+                "secondary",
+                "accent",
+                "highlight",
+                "text",
+                "muted"
+            ],
             "responsiveCanvases": [
                 "1280x720",
                 "1920x1080",
@@ -605,11 +632,103 @@
             ],
             "slots": [
                 "premium:comparison:left-title",
-                "premium:comparison:left-value",
-                "premium:comparison:left-description",
                 "premium:comparison:right-title",
+                "premium:comparison:left-value",
                 "premium:comparison:right-value",
+                "premium:comparison:left-description",
                 "premium:comparison:right-description"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:dramatic-quote-01",
+            "kind": "premium-typography-template",
+            "manifestVersion": 1,
+            "name": "Dramatic Quote · citação editorial",
+            "paletteTokens": [
+                "accent",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:quote:text",
+                "premium:quote:attribution",
+                "premium:quote:source"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:lower-third-editorial-01",
+            "kind": "premium-overlay",
+            "manifestVersion": 1,
+            "name": "Lower Third Editorial · identificação",
+            "paletteTokens": [
+                "surface",
+                "accent",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:lower-third:title",
+                "premium:lower-third:subtitle",
+                "premium:lower-third:source"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:source-label-01",
+            "kind": "premium-overlay",
+            "manifestVersion": 1,
+            "name": "Source Label · referência editorial",
+            "paletteTokens": [
+                "surface",
+                "highlight",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:source-label:title",
+                "premium:source-label:detail"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:number-emphasis-01",
+            "kind": "premium-motion-template",
+            "manifestVersion": 1,
+            "name": "Number Emphasis · dado em destaque",
+            "paletteTokens": [
+                "surface",
+                "accent",
+                "text",
+                "muted",
+                "secondary"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slots": [
+                "premium:number:value",
+                "premium:number:unit",
+                "premium:number:description",
+                "premium:number:source"
             ],
             "status": "implemented"
         }
@@ -649,6 +768,8 @@
         "voice-sidechain-ducking",
         "audio-track-fades",
         "audio-gain-automation-easing",
+        "premium-palette-overrides",
+        "premium-factory-editorial-templates",
         "video-layer-broll",
         "video-source-trim",
         "video-speed-control",

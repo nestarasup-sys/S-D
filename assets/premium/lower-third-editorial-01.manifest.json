@@ -1,0 +1,34 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 1,
+  "id": "premium:lower-third-editorial-01",
+  "name": "Lower Third Editorial · identificação",
+  "description": "Tarja editorial discreta para identificar pessoas, temas e contextos com hierarquia clara.",
+  "version": "1.0.0",
+  "type": "premium-overlay",
+  "category": "editorial-overlays",
+  "tags": ["lower-third", "documentary", "identity", "editorial"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "lower-third-root",
+  "layers": [
+    { "id": "lower-third-root", "kind": "group", "role": "root" },
+    { "id": "lower-third-surface", "parentId": "lower-third-root", "kind": "shape", "role": "surface" },
+    { "id": "lower-third-accent", "parentId": "lower-third-root", "kind": "shape", "role": "accent" },
+    { "id": "lower-third-kicker", "parentId": "lower-third-root", "kind": "text", "role": "editorial-kicker" },
+    { "id": "lower-third-name", "parentId": "lower-third-root", "kind": "text", "role": "title" },
+    { "id": "lower-third-subtitle", "parentId": "lower-third-root", "kind": "text", "role": "subtitle" },
+    { "id": "lower-third-source", "parentId": "lower-third-root", "kind": "text", "role": "source" }
+  ],
+  "hierarchy": { "root": "lower-third-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["fade-rise", "slide-in-left", "stagger-sequence"],
+  "palette": { "tokens": ["surface", "accent", "text", "muted"] },
+  "slots": [
+    { "id": "title", "kind": "text", "nodeId": "lower-third-name", "role": "premium:lower-third:title", "editable": true },
+    { "id": "subtitle", "kind": "text", "nodeId": "lower-third-subtitle", "role": "premium:lower-third:subtitle", "editable": true },
+    { "id": "source", "kind": "text", "nodeId": "lower-third-source", "role": "premium:lower-third:source", "editable": true, "optional": true }
+  ],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

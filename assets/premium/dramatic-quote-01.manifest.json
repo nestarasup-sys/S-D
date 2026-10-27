@@ -1,0 +1,33 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 1,
+  "id": "premium:dramatic-quote-01",
+  "name": "Dramatic Quote · citação editorial",
+  "description": "Composição tipográfica cinematográfica com frase, autoria e referência editáveis.",
+  "version": "1.0.0",
+  "type": "premium-typography-template",
+  "category": "kinetic-typography",
+  "tags": ["quote", "documentary", "typography", "editorial"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "dramatic-quote-root",
+  "layers": [
+    { "id": "dramatic-quote-root", "kind": "group", "role": "root" },
+    { "id": "quote-rule", "parentId": "dramatic-quote-root", "kind": "shape", "role": "accent-rule" },
+    { "id": "quote-mark", "parentId": "dramatic-quote-root", "kind": "text", "role": "quote-mark" },
+    { "id": "quote-copy", "parentId": "dramatic-quote-root", "kind": "text", "role": "quote" },
+    { "id": "quote-attribution", "parentId": "dramatic-quote-root", "kind": "text", "role": "attribution" },
+    { "id": "quote-source", "parentId": "dramatic-quote-root", "kind": "text", "role": "source" }
+  ],
+  "hierarchy": { "root": "dramatic-quote-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["fade-rise", "slide-in-left", "line-draw"],
+  "palette": { "tokens": ["accent", "text", "muted"] },
+  "slots": [
+    { "id": "quote", "kind": "text", "nodeId": "quote-copy", "role": "premium:quote:text", "editable": true },
+    { "id": "attribution", "kind": "text", "nodeId": "quote-attribution", "role": "premium:quote:attribution", "editable": true },
+    { "id": "source", "kind": "text", "nodeId": "quote-source", "role": "premium:quote:source", "editable": true, "optional": true }
+  ],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

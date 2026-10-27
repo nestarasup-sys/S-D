@@ -106,9 +106,19 @@ const PremiumRegistry &premiumRegistry() {
             const auto manifest = document.object();
             const auto manifestError = validatePremiumManifest(manifest, {});
             const auto nodes = definition.build(1280, 720);
+            QJsonArray manifestSlotRoles, definitionSlotRoles;
+            for (const auto &slot : manifest["slots"].toArray())
+                manifestSlotRoles.append(slot.toObject()["role"]);
+            for (const auto &role : definition.slotRoles)
+                definitionSlotRoles.append(QString::fromUtf8(role.data(), int(role.size())));
+            QJsonArray manifestPaletteTokens;
+            for (const auto &token : definition.paletteTokens)
+                manifestPaletteTokens.append(QString::fromUtf8(token.data(), int(token.size())));
             if (!manifestError.isEmpty() || manifest["id"].toString() != string(definition.id) ||
                 manifest["name"].toString() != string(definition.name) ||
                 manifest["type"].toString() != string(definition.type) ||
+                manifestSlotRoles != definitionSlotRoles ||
+                manifest["palette"]["tokens"].toArray() != manifestPaletteTokens ||
                 manifest["layers"].toArray().size() != int(nodes.size()) || nodes.empty() ||
                 manifest["rootNodeId"].toString() != QString::fromStdString(nodes.front().id)) {
                 result.error = "Manifesto e definição premium divergiram: " + string(definition.id) +
@@ -306,6 +316,22 @@ QString validatePremiumManifest(const QJsonObject &manifest, const QString &pack
         !manifest["slots"].isArray() || manifest["slots"].toArray().size() > 64 ||
         !manifest["dependencies"].isArray() || manifest["dependencies"].toArray().size() > 64)
         return "Metadados, limites, ID ou tipo de pacote premium inválidos.";
+    if (manifest.contains("palette")) {
+        const auto palette = manifest["palette"].toObject();
+        if (manifest["palette"].isObject() == false || palette.size() != 1 ||
+            !palette["tokens"].isArray() || palette["tokens"].toArray().isEmpty() ||
+            palette["tokens"].toArray().size() > 12)
+            return "Metadados de paleta premium inválidos.";
+        static const QSet<QString> tokens{"primary", "secondary", "accent", "surface", "text", "muted",
+                                           "highlight", "left", "right", "frame", "screen", "notification"};
+        QSet<QString> declared;
+        for (const auto &value : palette["tokens"].toArray()) {
+            const auto token = value.toString();
+            if (!value.isString() || !tokens.contains(token) || declared.contains(token))
+                return "Token de cor premium desconhecido ou repetido.";
+            declared.insert(token);
+        }
+    }
     QSet<QString> layerIds, slotIds, dependencies;
     QMap<QString, QString> layerParents;
     const auto insidePackage = [&](const QString &relative) {

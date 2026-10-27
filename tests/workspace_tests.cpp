@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
               "versioned smartphone premium is visible with generated preview");
         ui.setAssetTypeFilter("premium");
         const auto premiumAssets = ui.assets();
-        check(premiumAssets.size() == 3, "all three registered premium assets appear in the library");
+        check(premiumAssets.size() == 7, "all seven registered premium assets appear in the library");
         for (const auto &entryValue : premiumAssets) {
             const auto entry = entryValue.toMap();
             const QImage thumbnail(QUrl(entry["thumbnail"].toString()).toLocalFile());

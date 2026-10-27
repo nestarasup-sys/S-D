@@ -112,26 +112,27 @@ std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight) {
         return n;
     };
     child("shadow", "Sombra simulada", NodeKind::Shape, 8, 12, 244, 480, "#030609").opacity = .75;
-    child("rail", "Aro externo", NodeKind::Shape, 0, 0, 244, 480, "#71808c");
-    child("body", "Corpo em grafite", NodeKind::Shape, 4, 4, 236, 472, "#171e27");
-    child("inner-rail", "Moldura metálica", NodeKind::Shape, 10, 10, 224, 460, "#323e49");
+    child("rail", "Aro externo", NodeKind::Shape, 0, 0, 244, 480, "#71808c", "palette:frame");
+    child("body", "Corpo em grafite", NodeKind::Shape, 4, 4, 236, 472, "#171e27", "palette:surface");
+    child("inner-rail", "Moldura metálica", NodeKind::Shape, 10, 10, 224, 460, "#323e49", "palette:frame");
     child("glass", "Vidro frontal", NodeKind::Shape, 14, 14, 216, 452, "#05090e");
     child("screen", "Slot de imagem da tela", NodeKind::Shape, 24, 42, 196, 394, "#102539", "premium:image:screen");
-    child("reflection", "Reflexo de vidro", NodeKind::Shape, 24, 42, 196, 394, "#496579").opacity = .13;
+    child("reflection", "Reflexo de vidro", NodeKind::Shape, 24, 42, 196, 394, "#496579", "palette:highlight").opacity = .13;
     auto &camera = child("camera-island", "Ilha de sensores", NodeKind::Shape, 82, 18, 80, 20, "#020407");
     camera.opacity = .98;
     child("earpiece", "Alto-falante", NodeKind::Shape, 104, 24, 36, 4, "#53616c");
     auto &clock = child("clock", "Hora da tela", NodeKind::Text, 39, 64, 125, 38, "#f2f6f8", "premium:text:screen-title");
     clock.text = "09:41"; clock.fontSize = 27;
-    auto &status = child("status", "Indicadores", NodeKind::Text, 40, 92, 165, 18, "#d8e1e8");
+    auto &status = child("status", "Indicadores", NodeKind::Text, 40, 92, 165, 18, "#d8e1e8", "palette:muted");
     status.text = "●  5G                             98%"; status.fontSize = 9;
-    child("divider", "Filete de luz", NodeKind::Shape, 30, 119, 184, 2, "#9bc9e3").opacity = .65;
+    child("divider", "Filete de luz", NodeKind::Shape, 30, 119, 184, 2, "#9bc9e3", "palette:accent").opacity = .65;
     auto &notification = child("notification", "Grupo de notificação", NodeKind::Group, 34, 142, 176, 92, "#dbe6eb");
     notification.opacity = 0;
     notification.keyframes = {{0,34,142,0,1,0,"linear"},{30,34,142,0,1,0,"ease-out"},
                               {42,34,142,0,1,1,"ease-out"},{92,34,130,0,1,1,"ease-in-out"}};
     auto &notificationCard = add("notification-card", "Cartão da notificação", NodeKind::Shape,
                                  0, 0, 176, 92, "#dbe6eb", "notification");
+    notificationCard.role = "palette:notification";
     notificationCard.animated = false; notificationCard.motion = "none";
     auto &app = add("app-name", "Aplicativo da notificação", NodeKind::Text, 12, 10, 150, 20,
                     "#233545", "notification");
@@ -148,7 +149,7 @@ std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight) {
                            {92, part->x, part->y, 0, 1, 1, "ease-in-out"}};
     }
     child("home", "Indicador inferior", NodeKind::Shape, 93, 451, 58, 4, "#d6dfe4");
-    child("edge-highlight", "Brilho de borda", NodeKind::Shape, 6, 8, 3, 456, "#b4d7e9").opacity = .5;
+    child("edge-highlight", "Brilho de borda", NodeKind::Shape, 6, 8, 3, 456, "#b4d7e9", "palette:highlight").opacity = .5;
     return nodes;
 }
 namespace {
@@ -178,6 +179,7 @@ std::vector<Node> makePremiumTitleRevealImpl(int width, int height) {
     const double markerH = portrait ? height * .20 : height * .25;
     auto &rule = add("title-editorial-rule", "Filete editorial", NodeKind::Shape,
                      margin, top, 5 * s, markerH, "#b4f078", "title-reveal-root");
+    rule.role = "palette:accent";
     rule.opacity = .95;
     rule.keyframes = {{0, margin, top, 0, .12, 0, "ease-out"},
                       {22, margin, top, 0, 1, 1, "ease-out"}};
@@ -209,6 +211,7 @@ std::vector<Node> makePremiumTitleRevealImpl(int width, int height) {
     auto &tick = add("title-editorial-tick", "Detalhe editorial", NodeKind::Shape,
                      width - margin - 44 * s, titleY + titleH + 5 * s,
                      44 * s, 2 * s, "#efb873", "title-reveal-root");
+    tick.role = "palette:secondary";
     tick.keyframes = {{0, tick.x, tick.y, 0, .1, 0, "ease-out"},
                       {30, tick.x, tick.y, 0, 1, 1, "ease-out"}};
     return nodes;
@@ -244,6 +247,7 @@ std::vector<Node> makePremiumComparisonPack(int width, int height) {
     auto &eyebrow = add("comparison-eyebrow", "Identificação editorial", NodeKind::Text,
                         margin, height * .15, width - 2 * margin, 24 * scale,
                         "#b4f078", "comparison-root");
+    eyebrow.role = "palette:highlight";
     eyebrow.text = "COMPARAÇÃO  /  TEMPLATE DEMONSTRATIVO";
     eyebrow.fontSize = 15 * scale;
     auto &heading = add("comparison-heading", "Título da comparação", NodeKind::Text,
@@ -274,10 +278,12 @@ std::vector<Node> makePremiumComparisonPack(int width, int height) {
         panel.opacity = 0;
         panel.keyframes = {{0, panel.x + (i == 0 ? -26 : 26), panel.y, 0, .96, 0, "ease-out"},
                            {34 + i * 8, panel.x, panel.y, 0, 1, 1, "ease-out"}};
-        add("comparison-panel-bg-" + std::to_string(i), "Superfície do painel", NodeKind::Shape,
-            0, 0, panelWidth, panelHeight, panelColors[i], panel.id);
-        add("comparison-panel-accent-" + std::to_string(i), "Acento do painel", NodeKind::Shape,
-            0, 0, panelWidth * .24, 5 * scale, accents[i], panel.id);
+        auto &panelSurface = add("comparison-panel-bg-" + std::to_string(i), "Superfície do painel", NodeKind::Shape,
+                                 0, 0, panelWidth, panelHeight, panelColors[i], panel.id);
+        panelSurface.role = i == 0 ? "palette:left" : "palette:right";
+        auto &panelAccent = add("comparison-panel-accent-" + std::to_string(i), "Acento do painel", NodeKind::Shape,
+                                0, 0, panelWidth * .24, 5 * scale, accents[i], panel.id);
+        panelAccent.role = i == 0 ? "palette:primary" : "palette:secondary";
         const double inset = panelWidth * .075;
         auto &label = add(i == 0 ? "comparison-left-title" : "comparison-right-title",
                           i == 0 ? "Título esquerdo" : "Título direito", NodeKind::Text,
@@ -307,6 +313,7 @@ std::vector<Node> makePremiumComparisonPack(int width, int height) {
         const double dividerH = portrait ? 3 * scale : panelHeight - 56 * scale;
         auto &divider = add("comparison-divider", "Separador central", NodeKind::Shape,
                             dividerX, dividerY, dividerW, dividerH, "#71898b", "comparison-root");
+        divider.role = "palette:accent";
         divider.opacity = .65;
     }
     auto &footer = add("comparison-footer", "Nota do template", NodeKind::Text,
@@ -319,11 +326,35 @@ std::vector<Node> makePremiumComparisonPack(int width, int height) {
 const std::vector<PremiumAssetDefinition> &premiumLibrary() {
     static const std::vector<PremiumAssetDefinition> assets{
         {"premium:smartphone-premium-01", "Smartphone premium", "premium-object", "technology",
-         "smartphone-premium-01.manifest.json", makePremiumSmartphone},
+         "smartphone-premium-01.manifest.json", makePremiumSmartphone,
+         {"premium:text:screen-title", "premium:text:notification", "premium:image:screen"},
+         {"surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"}},
         {"premium:title-reveal-01", "Title Reveal · título cinematográfico", "premium-typography-template",
-         "typography", "title-reveal-01.manifest.json", makePremiumTitleReveal},
+         "typography", "title-reveal-01.manifest.json", makePremiumTitleReveal,
+         {"premium:title:main", "premium:title:subtitle", "premium:title:editorial"},
+         {"accent", "secondary", "highlight", "text", "muted"}},
         {"premium:comparison-pack-01", "Comparison Pack · comparação editorial", "premium-motion-template",
-         "data", "comparison-pack-01.manifest.json", makePremiumComparisonPack}};
+         "data", "comparison-pack-01.manifest.json", makePremiumComparisonPack,
+         {"premium:comparison:left-title", "premium:comparison:right-title",
+          "premium:comparison:left-value", "premium:comparison:right-value",
+          "premium:comparison:left-description", "premium:comparison:right-description"},
+         {"left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"}},
+        {"premium:dramatic-quote-01", "Dramatic Quote · citação editorial", "premium-typography-template",
+         "typography", "dramatic-quote-01.manifest.json", makePremiumDramaticQuote,
+         {"premium:quote:text", "premium:quote:attribution", "premium:quote:source"},
+         {"accent", "text", "muted"}},
+        {"premium:lower-third-editorial-01", "Lower Third Editorial · identificação", "premium-overlay",
+         "typography", "lower-third-editorial-01.manifest.json", makePremiumLowerThirdEditorial,
+         {"premium:lower-third:title", "premium:lower-third:subtitle", "premium:lower-third:source"},
+         {"surface", "accent", "text", "muted"}},
+        {"premium:source-label-01", "Source Label · referência editorial", "premium-overlay",
+         "communication", "source-label-01.manifest.json", makePremiumSourceLabel,
+         {"premium:source-label:title", "premium:source-label:detail"},
+         {"surface", "highlight", "text", "muted"}},
+        {"premium:number-emphasis-01", "Number Emphasis · dado em destaque", "premium-motion-template",
+         "data", "number-emphasis-01.manifest.json", makePremiumNumberEmphasis,
+         {"premium:number:value", "premium:number:unit", "premium:number:description", "premium:number:source"},
+         {"surface", "accent", "text", "muted", "secondary"}}};
     return assets;
 }
 const PremiumAssetDefinition *premiumAsset(const std::string &id) {

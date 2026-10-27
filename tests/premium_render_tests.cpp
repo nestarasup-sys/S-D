@@ -1,4 +1,5 @@
 #include <QElapsedTimer>
+#include <QHash>
 #include <QGuiApplication>
 #include <QImage>
 #include <QFontDatabase>
@@ -6,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDir>
+#include <QRectF>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -18,12 +20,32 @@ void check(bool ok, const char *message) {
     if (!ok)
         throw std::runtime_error(message);
 }
-double sampledDifference(const QImage &a, const QImage &b) {
+QRect contentBounds(const studio::Project &project) {
+    QHash<QString, QPointF> origins;
+    QRectF bounds;
+    bool hasBounds = false;
+    for (const auto &node : project.nodes) {
+        auto origin = QPointF(node.x, node.y);
+        if (!node.parentId.empty())
+            origin += origins.value(QString::fromStdString(node.parentId));
+        origins.insert(QString::fromStdString(node.id), origin);
+        if (node.kind == studio::NodeKind::Group)
+            continue;
+        const auto rect = QRectF(origin, QSizeF(std::max(1.0, node.width), std::max(1.0, node.height)));
+        bounds = hasBounds ? bounds.united(rect) : rect;
+        hasBounds = true;
+    }
+    if (!hasBounds)
+        return QRect(0, 0, project.width, project.height);
+    return bounds.adjusted(-8, -8, 8, 8).toAlignedRect().intersected(QRect(0, 0, project.width, project.height));
+}
+double sampledDifference(const QImage &a, const QImage &b, QRect roi) {
     if (a.size() != b.size()) return 0;
+    roi = roi.intersected(a.rect());
     double sum = 0;
     int samples = 0;
-    for (int y = 0; y < a.height(); y += 12)
-        for (int x = 0; x < a.width(); x += 12) {
+    for (int y = roi.top(); y <= roi.bottom(); y += 8)
+        for (int x = roi.left(); x <= roi.right(); x += 8) {
             const auto xColor = a.pixelColor(x, y);
             const auto yColor = b.pixelColor(x, y);
             sum += std::abs(xColor.red() - yColor.red()) +
@@ -70,7 +92,7 @@ int main(int argc, char **argv) {
         const auto systemFontId = QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeui.ttf"));
         check(systemFontId >= 0, "load the existing Windows Segoe UI font for deterministic offscreen text rendering");
         const std::pair<int, int> canvases[]{{1280, 720}, {1920, 1080}, {1080, 1920}};
-        const QString output = QStringLiteral(STUDIO_SOURCE_DIR) + "/artifacts/premium-stage10";
+        const QString output = QStringLiteral(STUDIO_SOURCE_DIR) + "/artifacts/premium-factory-stage12-13";
         check(QDir().mkpath(output), "create premium visual report directory");
         QJsonArray results;
         for (const auto &definition : studio::premiumLibrary()) {
@@ -95,11 +117,13 @@ int main(int argc, char **argv) {
                 studio::CompositionPainter painter;
                 const auto entrance = painter.frame(project, 12);
                 const auto settled = painter.frame(project, 56);
-                check(!entrance.isNull() && !settled.isNull() &&
-                          sampledDifference(entrance, settled) > .08,
-                      "premium animation changes visible composition over time");
+                const auto roi = contentBounds(project);
                 const auto id = QString::fromUtf8(definition.id.data(), int(definition.id.size()))
                                     .section(':', 1).replace(':', '-');
+                if (entrance.isNull() || settled.isNull() || sampledDifference(entrance, settled, roi) <= .08)
+                    throw std::runtime_error(("premium animation has insufficient visual change: " +
+                                              id + " at " + QString::number(width) + "x" +
+                                              QString::number(height)).toStdString());
                 if (width == 1280 || height == 1920) {
                     entrance.save(output + "/" + id + "-" + QString::number(width) + "x" +
                                   QString::number(height) + "-entrance.png");

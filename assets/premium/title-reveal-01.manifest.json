@@ -22,6 +22,7 @@
   ],
   "hierarchy": { "root": "title-reveal-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
   "suggestedAnimation": ["editorial-wipe", "subtitle-rise", "fade-out"],
+  "palette": { "tokens": ["accent", "secondary", "highlight", "text", "muted"] },
   "slots": [
     { "id": "main-title", "kind": "text", "nodeId": "title-main", "role": "premium:title:main", "editable": true },
     { "id": "subtitle", "kind": "text", "nodeId": "title-subtitle", "role": "premium:title:subtitle", "editable": true },

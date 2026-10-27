@@ -1,94 +1,81 @@
 # Direção de roteiro dinâmico — Studio Dark
 
-Guia criativo complementar ao [GUIA-PARA-IA.md](GUIA-PARA-IA.md). Versão 1.1, outubro de 2026.
+Guia criativo complementar ao [guia técnico para IA](GUIA-PARA-IA.md). Versão 1.2, outubro de 2026. Esta página orienta composição e ritmo; o guia técnico define os campos JSON aceitos.
 
-## Princípio diretor
+## Diagnóstico de staging e câmera
 
-A narração informa **o quê**; a direção visual escolhe **como descobrir**. O objetivo é compor um documentário editável que se desenvolve diante do espectador, não uma apresentação de slides. Cada transição, movimento ou destaque precisa carregar informação, hierarquia, emoção ou mudança de escala.
+Na receita original do Laboratório de Movimento, os pontos do travelling vertical e horizontal já ficavam dentro do enquadramento inicial e estavam visíveis ao mesmo tempo. A câmera percorria apenas uma fração da distância entre eles. Isso explica a sensação de elementos dispersos: a receita demonstrava deslocamento, mas não preparava uma revelação progressiva. A inspeção não apontou defeito geral na avaliação da câmera nem no layout automático do editor.
 
-## Linguagens visuais complementares
+Para cada movimento, pergunte: qual informação está visível no começo, o que muda durante o trajeto e onde a câmera deve parar? Distribua o assunto principal e os próximos pontos em enquadramentos distintos. Pontos futuros devem ficar fora do campo atual ou começar com `opacity: 0` e aparecer com Visual Beat `show`. Reserve margem para título, legendas e bordas seguras; não compacte todos os objetos no centro do canvas.
 
-1. **Tipografia cinética:** um quadro pode conter apenas texto, formas e fundo escuro. Aplique entrada discreta; realce palavras-chave, sem duplicar legendas completas.
-2. **Travelling horizontal/vertical:** distribua uma sequência lógica de elementos na composição (A → B → C). Anime a câmera pelos pontos, mantenha continuidade espacial e evite trajetórias sem revelação.
-3. **2.5D simulado:** use grupos e camadas frente/meio/fundo com deslocamentos de intensidade diferente. O motor possui câmera 2D; não trate como 3D real.
-4. **Infográfico contextual:** prefira comparação, causa–efeito, linha do tempo, processo ou escala. `bars`, `chart-line`, `chart-pie`, `chart-donut`, `timeline`, `network` e `data-table` não carregam dados reais automaticamente.
-5. **Objeto + texto:** combine um objeto nativo ou mídia local com um título curto. O objeto explica a metáfora; o texto fixa a ideia.
-6. **Respiro cinematográfico:** reduza elementos e movimentos antes de revelações importantes.
+`camera.x` e `camera.y` indicam o centro do quadro em coordenadas da cena. Pan, zoom e rotação afetam todos os conteúdos do shot, inclusive textos comuns e legendas. Não existe texto ancorado ao viewport. Se um título deve permanecer estático durante um travelling, coloque-o em outro shot ou mantenha a câmera parada enquanto ele está na tela.
 
-## Ritmo sugerido para vídeos de 30 segundos
+## Gramática visual
 
-Um exemplo de variação, não uma regra de relógio: gancho tipográfico; cena de objeto com profundidade; travelling contínuo; infográfico; pausa visual; conclusão. Misture shots curtos e um plano mais longo. Evite repetir `pop` ou `zoom` em toda frase.
+### Cena didática
 
-## Recursos premium e escolhas artísticas
+Mostre a técnica que está sendo explicada. Para um travelling vertical, empilhe pontos A, B e C fora das bordas do quadro inicial. Comece centrado em A; mova a câmera até B quando a narração introduzir a segunda ideia; depois avance a C. Deixe somente o ponto atual e um indício do próximo visíveis. Use uma forma simples para indicar direção e um título curto para nomear a técnica.
 
-Recursos premium disponíveis: `premium:smartphone-premium-01` para planos de produto/notificação; `premium:title-reveal-01` para aberturas com hierarquia editorial e revelação; `premium:comparison-pack-01` para contrastar duas condições sem inventar estatísticas. Use valores placeholders apenas enquanto compõe e substitua-os por informação verificada antes de publicar. Imagem da tela do telefone pode ser substituída; os textos e demais camadas são editáveis depois da inserção. Todos usam layouts próprios em paisagem e retrato e são animados no compositor QPainter. Esta seção contém direção artística: os IDs, slots executáveis e o JSON aceito ficam no [guia técnico para IA](GUIA-PARA-IA.md). Os outros 27 itens continuam planejados, conforme [catálogo premium](premium/PREMIUM-CATALOG.md).
+### Cena editorial
 
-## Biblioteca editorial (72 recursos nativos)
+Organize a informação conforme a narrativa, não conforme a lista de capacidades do aplicativo. Alterne enquadramentos amplos, detalhes, objetos, imagens e pausas tipográficas. Use movimentos quando eles conectarem ideias, revelarem escala ou mudarem o foco. Evite aplicar a mesma entrada e o mesmo zoom a todos os elementos.
 
-O catálogo agora contém 72 desenhos vetoriais, incluindo 58 recursos novos; o exportador de guia lista os IDs atuais. Famílias sugeridas:
+### Composição comparativa
 
-- **Tecnologia:** `chip`, `server`, `notification`, `robot`, `laptop`, `cloud`.
-- **Comunicação:** `newspaper`, `chat-bubble`, `calendar`, `eye`, `target`.
-- **Dados:** `timeline`, `chart-line`, `network`, `dashboard`, `progress-ring`.
-- **Finanças:** `credit-card`, `bank`, `receipt`, `factory`.
-- **Ciência:** `atom`, `dna`, `brain`, `satellite`, `globe`.
-- **Cenários:** `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid`, `archive-room`.
+Use dois lados somente quando houver duas condições reais a comparar. Mantenha cabeçalhos alinhados, unidades equivalentes e texto curto. O Comparison Pack contém placeholders demonstrativos; substitua-os por conteúdo verificado e identifique a fonte antes de publicar.
 
-**Limitação editorial:** vetores nativos dão variedade e permitem montagem offline, mas não substituem fotografias, B-roll e assets pessoais quando o assunto exigir representação realista.
+### Template premium
 
-## Direção de câmera suportada
+Os recursos premium são composições editáveis com layouts próprios em 1280×720, 1920×1080 e 1080×1920. Escolha o template pelo papel narrativo, não apenas pela aparência. Separe uma abertura tipográfica de um plano de objeto e de um dado comparativo. Veja [catálogo e status](premium/PREMIUM-CATALOG.md).
 
-Use `cameraPresets` para trajetórias reutilizáveis com estados em `offsetSeconds` **somente quando a duração mínima do shot estiver garantida**. Para cortes e revelações presos à fala, prefira `beats` de ação `camera`, com `at: {"cue":0,"cueProgress":0.5}`. Não combine câmera por preset com Visual Beats de câmera no mesmo shot. A câmera interpolada possui `x`, `y`, `zoom`, `rotation` e curvas lineares/ease; não há trajetórias Bézier personalizadas.
+## Câmera e movimentos
 
-Dica para travelling: no shot, componha cartões/objetos em posições horizontais progressivas e defina o ponto de partida da câmera centralizado em A. Use beats com `durationFrames` para deslocá-la até B e C. Não há teto fixo agregado de objetos; expansões de grupos, presets e legendas contam como camadas e aumentam o uso de CPU, RAM e tempo de renderização. Prefira detalhe visual que sirva à narrativa e monitore o custo durante a prévia.
+- **Travelling horizontal:** coloque os centros A, B e C em sequência no eixo X. Comece no centro de A; depois mova a câmera a cada mudança de ideia. `examples/camera-travelling-horizontal-v3.production.json` demonstra o percurso x=250 → 900 → 1550, mantendo os pontos futuros ocultos até seus beats.
+- **Travelling vertical:** distribua os centros no eixo Y, não em uma linha que caiba inteira no enquadramento inicial. `examples/camera-travelling-vertical-v3.production.json` usa y=310 → 940 → 1570 com revelações progressivas.
+- **Pan:** conecta duas áreas da cena. Se o destino já estiver plenamente visível no primeiro quadro, o movimento não produz uma revelação clara.
+- **Zoom:** use valores próximos de 1 para preservar contexto e aumente o zoom para enfatizar um detalhe. Não combine grande zoom com deslocamento extenso sem conferir que o assunto permanece dentro do canvas.
+- **Rotação:** reserve para situações em que a inclinação comunica instabilidade ou mudança de perspectiva. Pequenos ângulos são mais legíveis para conteúdo editorial.
+- **Parallax simulado:** coloque fundo, meio e frente em grupos separados e mova-os com amplitudes diferentes. A câmera e as transformações são 2D; não há profundidade física automática.
+- **Tracking:** o aplicativo oferece movimento de câmera dirigido por keyframes, presets e beats; não oferece rastreamento automático de um alvo por visão computacional. Anime o centro da câmera junto às posições do assunto.
 
-## Dirigir movimento sem repetir a mesma fórmula
+Use `cameraPresets` ou Visual Beats de câmera em cada shot, sem combinar os dois no mesmo shot. Para movimento definido em relação à narração, prefira beats com `cueProgress` ou `wordIndex` alinhado pela voz real. Não estime tempo de palavra pelo texto.
 
-- **Slide nas quatro direções:** distribua dois ou mais objetos no espaço da composição e use keyframes de posição para entrar da esquerda, direita, de cima ou de baixo. Respeite os limites do canvas e não faça todos os elementos deslizarem juntos.
-- **Movimento de câmera:** use pan para conectar pontos que tenham relação narrativa; use zoom para passar do contexto ao detalhe; rotação deve ser rara e motivada. Um beat de câmera altera o enquadramento de todo o conteúdo do shot.
-- **Parallax simulado:** coloque camadas de fundo, meio e frente em grupos diferentes e mova cada grupo com deslocamentos menores/maiores. É composição 2D; não há profundidade ou paralaxe física automática.
-- **Visual Beats de revelação:** comece os alvos com `opacity: 0` e dispare `show` por `cueProgress` ou palavra com timestamp real. O objeto aparece no quadro do evento e permanece visível. Use `hide` para retirar e `show` posterior para reapresentar.
-- **Visual Beats de transformação:** escolha uma ou duas propriedades com mudança legível e use `durationFrames` para interpolar. Uma mudança curta de posição, escala ou opacidade pode explicar crescimento, contraste ou consequência; evite animar todas as propriedades ao mesmo tempo.
-- **Infográficos:** revele primeiro a pergunta ou eixo, depois os valores e por fim a conclusão. Dados nativos são elementos visuais ilustrativos, não uma fonte de números.
-- **Tipografia cinética:** alterne título isolado, palavra-chave e texto explicativo. Reserve contraste, tempo de leitura e uma região livre para legendas. Evite repetir o mesmo fade em cada shot.
-- **Easing:** `linear` serve a deslocamentos constantes; `ease-in` acelera; `ease-out` desacelera; `ease-in-out` suaviza entrada e parada. A curva da keyframe de destino é aplicada ao trecho que termina nela.
-- **Premium:** use o Title Reveal para abertura tipográfica, Smartphone para produto/notificação e Comparison Pack para duas condições. Mude enquadramento, escala e ritmo ao alternar templates; não os use como cartões genéricos em sequência.
+## Revelações e ritmo
 
-Para produzir variedade, escreva primeiro o que o espectador deve perceber em cada beat. Faça o movimento responder a essa informação. Intercale composições largas, detalhes, planos tipográficos e pausas. Deixe alguns elementos imóveis enquanto outros se movem. Um shot pode permanecer estático durante uma frase importante.
+- Comece o objeto futuro com `opacity: 0`; `show` o revela no frame do beat e o mantém visível. `hide` oculta nesse frame; outro `show` pode reapresentá-lo.
+- Em uma sequência, revele uma camada ou um pequeno conjunto relacionado por vez. Não ligue todos os elementos a um único beat se o objetivo é construir uma ideia progressivamente.
+- Use `transform` com duração para mudança gradual de posição, escala ou opacidade. Use `show`/`hide` para cortes instantâneos de visibilidade.
+- Reproduza a fixture [revelação sequencial](../examples/visual-beats-sequential-reveal-v3.production.json) para um exemplo executável com três elementos.
+- Deixe tempo de leitura após uma revelação. Movimento contínuo durante toda a fala reduz a clareza e pode dificultar a leitura das legendas.
 
-## As cinco operações temporais
+## Variedade de composição
 
-- `transitionIn` define como o novo shot substitui/combina visualmente com o shot anterior; não anima os elementos por conta própria.
-- `motion` é a animação padrão de entrada/saída de um elemento.
-- `keyframes` armazenam valores editáveis de posição, rotação, escala e opacidade ao longo do tempo.
-- `beats` são comandos pontuais sincronizados à fala: mostram/ocultam, transformam um alvo, movem a câmera ou disparam som.
-- `camera` enquadra todos os elementos no espaço da composição. Texto comum e legendas também acompanham pan, zoom e rotação; não existe camada de texto fixa no viewport. Planeje o enquadramento para manter títulos legíveis junto ao conteúdo.
+1. **Tipografia cinética:** alterne título isolado, palavra-chave e texto explicativo. Preserve contraste e uma área para legendas.
+2. **Infográfico:** revele a pergunta, depois os elementos ou valores, depois a conclusão. `bars`, `chart-line`, `chart-pie`, `chart-donut`, `timeline`, `network` e `data-table` são ilustrações; não recebem dados verificados automaticamente.
+3. **Objeto e contexto:** associe um nativo, premium ou mídia real a uma frase curta. O objeto deve esclarecer a ideia, não decorar sem função.
+4. **Quatro direções:** faça slides entrarem pela esquerda, direita, cima ou baixo quando a direção corresponder à mudança de assunto. Não use as quatro direções no mesmo shot sem necessidade.
+5. **Pausa:** um quadro parado antes ou depois de uma revelação pode dar mais ênfase do que outra animação.
 
-Os exemplos completos e aceitos pelo importador estão em [revelação sequencial](../examples/visual-beats-sequential-reveal-v3.production.json) e [transformação + câmera](../examples/visual-beats-transform-camera-v3.production.json). O guia técnico define a sintaxe e a sincronização real pela voz.
+Use easing como direção de aceleração: `linear` para movimento constante, `ease-in` para acelerar, `ease-out` para desacelerar, `ease-in-out` para iniciar e terminar suavemente. A curva do keyframe de destino controla o trecho que termina nele.
 
-## Sincronização e durações
+## Cinco operações temporais que não devem ser confundidas
 
-- Divida a voz em trechos `narration` faláveis, máximo 150 caracteres cada.
-- Posicione shots, beats e keyframes usando `cueProgress` (0 a 1) ou `wordIndex` com alinhamento real do sintetizador.
-- Não invente timestamps para palavras ou duração exata da voz antes do WAV.
-- `targetDurationSeconds` é meta. O compilador pode ampliar duração se a voz exigir.
-- `transitionIn` aceita `cut`, `fade`, `dissolve`, `slide` e `zoom`; não existe transição arbitrária por máscara no contrato atual.
+- `transitionIn` define como um shot entra em relação ao anterior.
+- `motion` define a entrada e a saída padrão de um elemento.
+- `keyframes` alteram propriedades do elemento ao longo de um intervalo.
+- Visual Beats executam `show`, `hide`, `transform`, `camera` ou `sound` em momentos sincronizados à fala.
+- Movimento de câmera altera o enquadramento compartilhado do shot inteiro.
 
-## Critérios de qualidade
+## Direção de voz e exemplo
 
-Antes de produzir, pergunte: cada shot acrescenta uma ideia? O movimento responde à narração? A composição preserva as legendas? Houve alternância entre texto puro, objeto, profundidade e dado visual? Nenhum elemento é apresentado como evidência ou estatística não verificada? Os IDs pertencem ao catálogo?
+Divida a narração em trechos curtos e faláveis. Primeiro escreva o que o espectador deve descobrir; depois escolha quando e como cada camada entra. Não use os placeholders `00,0` dos templates como fatos. Consulte o contrato JSON, IDs e tokens de cor em [GUIA-PARA-IA.md](GUIA-PARA-IA.md).
 
-## Exemplo mínimo: objeto nativo
+Exemplos pequenos e validados pelo parser:
 
-```json
-{
-  "id": "chip",
-  "kind": "native",
-  "asset": "chip",
-  "x": 410, "y": 180,
-  "width": 320, "height": 240,
-  "color": "#55E2C4"
-}
-```
+- [Travelling horizontal](../examples/camera-travelling-horizontal-v3.production.json)
+- [Travelling vertical](../examples/camera-travelling-vertical-v3.production.json)
+- [Revelação sequencial](../examples/visual-beats-sequential-reveal-v3.production.json)
+- [Premium com paleta JSON](../examples/premium-palette-v2.production.json)
+- [Demonstração combinada da Premium Factory](../examples/premium-factory-motion-showcase-v3.production.json)
 
-Para imagens e vídeos externos, adicione arquivos locais à biblioteca pessoal e use seus `assetId` **reais**, ou caminhos existentes com `source`. O app não baixa mídia automaticamente.
+Antes de exportar, revise a composição no primeiro quadro, nos quadros imediatamente antes/depois de cada beat e no destino de cada movimento de câmera. Confira paisagem e retrato quando o template for usado nos dois formatos.

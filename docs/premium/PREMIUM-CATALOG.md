@@ -1,10 +1,10 @@
 # Biblioteca premium — catálogo de 30 recursos
 
-Status em 26/10/2026. “Implementado e validado” significa pacote oficial registrado, manifesto conferido contra o construtor, composição editável no QPainter e fluxo biblioteca/receita testado. Itens planejados não aparecem como disponíveis no app.
+Estado revisado em 26/10/2026. “Implementado” significa que o recurso está registrado no aplicativo, possui manifesto conferido com seu construtor e pode ser editado no compositor QPainter. As demonstrações de receita são validadas separadamente; nenhum item planejado aparece como disponível.
 
 | # | ID | Família | Estado |
 |---|---|---|---|
-| 1 | `premium:smartphone-premium-01` | Technology | Implementado e validado: biblioteca, edição QPainter, slots de texto/imagem, receita IA e exportação MP4 |
+| 1 | `premium:smartphone-premium-01` | Technology | Implementado: camadas editáveis, slots de texto/imagem, cores via JSON e layouts paisagem/retrato |
 | 2 | `laptop-premium-01` | Technology | Planejado |
 | 3 | `server-rack-premium-01` | Technology | Planejado |
 | 4 | `ai-chip-premium-01` | Technology | Planejado |
@@ -16,7 +16,7 @@ Status em 26/10/2026. “Implementado e validado” significa pacote oficial reg
 | 10 | `dark-city-premium-01` | Documentary Scenes | Planejado |
 | 11 | `graph-pack-01` | Motion Graphics | Planejado |
 | 12 | `timeline-pack-01` | Motion Graphics | Planejado |
-| 13 | `premium:comparison-pack-01` | Motion Graphics | Implementado e validado: dois painéis responsivos, seis slots de texto, animação, receita IA e renderização QPainter |
+| 13 | `premium:comparison-pack-01` | Motion Graphics | Implementado: dois painéis responsivos, seis slots textuais, animação e cores via JSON |
 | 14 | `flowchart-pack-01` | Motion Graphics | Planejado |
 | 15 | `statistic-callout-pack-01` | Motion Graphics | Planejado |
 | 16 | `cause-effect-pack-01` | Motion Graphics | Planejado |
@@ -25,16 +25,18 @@ Status em 26/10/2026. “Implementado e validado” significa pacote oficial reg
 | 19 | `scanline-overlay-01` | Editorial Overlays | Planejado |
 | 20 | `vignette-overlay-01` | Editorial Overlays | Planejado |
 | 21 | `lens-glow-overlay-01` | Editorial Overlays | Planejado |
-| 22 | `lower-third-editorial-01` | Editorial Overlays | Planejado |
-| 23 | `source-label-01` | Editorial Overlays | Planejado |
-| 24 | `premium:title-reveal-01` | Kinetic Typography | Implementado e validado: wipe progressivo QPainter, subtítulo/identificação editáveis, ajuste para texto longo e layout retrato |
-| 25 | `dramatic-quote-01` | Kinetic Typography | Planejado |
+| 22 | `premium:lower-third-editorial-01` | Editorial Overlays | Implementado: título, subtítulo e fonte editáveis, cores via JSON |
+| 23 | `premium:source-label-01` | Editorial Overlays | Implementado: identificação e detalhe editáveis, cores via JSON |
+| 24 | `premium:title-reveal-01` | Kinetic Typography | Implementado: wipe QPainter, três slots textuais e paleta editorial |
+| 25 | `premium:dramatic-quote-01` | Kinetic Typography | Implementado: frase, atribuição e fonte editáveis, cores via JSON |
 | 26 | `punch-word-01` | Kinetic Typography | Planejado |
 | 27 | `side-caption-01` | Kinetic Typography | Planejado |
 | 28 | `stacked-headline-01` | Kinetic Typography | Planejado |
-| 29 | `number-emphasis-01` | Kinetic Typography | Planejado |
+| 29 | `premium:number-emphasis-01` | Kinetic Typography | Implementado: valor, unidade, descrição e fonte editáveis, cores via JSON |
 | 30 | `question-hook-01` | Kinetic Typography | Planejado |
 
-Os manifestos versionados são embutidos no aplicativo e conferidos no início contra ID, tipo, árvore, tipos de camada e papéis de slot gerados pelo registro C++ em assets/premium/. A inicialização falha claramente se manifesto e construtor divergirem. Os 11 filtros temáticos existentes permanecem disponíveis. Os seis slots do Comparison Pack são somente textos; ele não anuncia slots de imagem. Receitas IA referenciam IDs reais por `kind: library`; a personalização dos slots ocorre depois de inserir o recurso no editor. Valores demonstrativos não são dados factuais. Slots de vídeo/ícone, pacotes externos e 27 recursos planejados continuam indisponíveis.
+**Estado do registro:** 7 recursos implementados e 23 planejados. Os 7 manifestos oficiais v1 são embutidos e verificados contra a árvore criada em C++; os manifestos descrevem metadados e não executam código. A fábrica interna fornece componentes e presets de animação a quatro dos construtores novos. Não existe ainda um interpretador de pacotes externos.
 
-Arquivos de inspeção visual e benchmarks locais ficam em artifacts/premium-stage10/ (ignorado pelo Git).
+Os 11 filtros temáticos existentes continuam preservados. Os slots de imagem atualmente implementados pertencem ao Smartphone; os demais slots são texto. Nenhum pacote premium anuncia slot de vídeo ou ícone. Cores por JSON são restritas aos tokens declarados em cada manifesto. A inserção de recursos usa o mesmo grafo de nós e o compositor QPainter; o protótipo GPU não é requisito.
+
+Exemplos de composição, travelling e paletas ficam em `examples/`. Evidências visuais temporárias são gravadas em `artifacts/` e não fazem parte do catálogo distribuído.

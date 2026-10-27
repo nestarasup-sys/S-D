@@ -1,4 +1,4 @@
-add_library(studio_core STATIC src/project.cpp src/editor.cpp src/library.cpp)
+add_library(studio_core STATIC src/project.cpp src/editor.cpp src/library.cpp src/premium_factory.cpp)
 target_include_directories(studio_core PUBLIC include)
 if(MINGW)
   target_compile_options(studio_core PRIVATE -Wall -Wextra -Wpedantic)

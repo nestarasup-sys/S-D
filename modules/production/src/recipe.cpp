@@ -1,4 +1,5 @@
 #include <QDir>
+#include <QColor>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QJsonArray>
@@ -92,6 +93,67 @@ bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &er
     }
     if (!object.contains("captionHighlightColor"))
         art.captionHighlightColor = art.primaryColor;
+    return true;
+}
+bool applyPremiumPalette(std::vector<Node> &nodes, const QJsonObject &palette, QString &error) {
+    static const QStringList supported{
+        "primary", "secondary", "accent", "surface", "text", "muted", "highlight",
+        "left", "right", "frame", "screen", "notification"};
+    QMap<QString, QString> colors;
+    for (auto it = palette.begin(); it != palette.end(); ++it) {
+        const auto value = it.value().toString();
+        static const QRegularExpression hexColor("^#[0-9A-Fa-f]{6}$");
+        if (!supported.contains(it.key()) || !it.value().isString() || !hexColor.match(value).hasMatch() ||
+            !QColor(value).isValid()) {
+            error = "palette aceita apenas tokens documentados e cores #RRGGBB.";
+            return false;
+        }
+        colors.insert(it.key(), value);
+    }
+    auto semanticRole = [](const Node &node) -> QString {
+        const auto role = QString::fromStdString(node.role);
+        if (role.startsWith("palette:"))
+            return role.mid(8);
+        if (role == "premium:title:main" || role == "premium:comparison:left-value" ||
+            role == "premium:comparison:right-value" || role == "premium:quote:text" ||
+            role == "premium:lower-third:title" || role == "premium:source-label:title" ||
+            role == "premium:number:value")
+            return "text";
+        if (role == "premium:title:subtitle" || role == "premium:comparison:left-description" ||
+            role == "premium:comparison:right-description" || role == "premium:quote:attribution" ||
+            role == "premium:quote:source" || role == "premium:lower-third:subtitle" ||
+            role == "premium:lower-third:source" || role == "premium:source-label:detail" ||
+            role == "premium:number:description" || role == "premium:number:source" ||
+            role == "palette:muted")
+            return "muted";
+        if (role == "premium:title:editorial" || role == "premium:comparison:editorial" ||
+            role == "premium:number:editorial")
+            return "highlight";
+        if (role == "premium:comparison:left-title")
+            return "left";
+        if (role == "premium:comparison:right-title")
+            return "right";
+        if (role == "premium:text:screen-title" || role == "premium:text:notification")
+            return "text";
+        if (role == "premium:image:screen")
+            return "screen";
+        if (role == "premium:number:unit")
+            return "secondary";
+        return {};
+    };
+    QSet<QString> applied;
+    for (auto &node : nodes) {
+        const auto token = semanticRole(node);
+        if (!token.isEmpty() && colors.contains(token)) {
+            node.color = colors.value(token).toStdString();
+            applied.insert(token);
+        }
+    }
+    for (auto it = colors.cbegin(); it != colors.cend(); ++it)
+        if (!applied.contains(it.key())) {
+            error = "O recurso premium não expõe o token de cor '" + it.key() + "'.";
+            return false;
+        }
     return true;
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
@@ -212,7 +274,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                      "offsetSeconds",
                      "span"};
     if (version >= 2)
-        keys << "assetId" << "children" << "keyframes" << "cueProgress";
+        keys << "assetId" << "children" << "keyframes" << "cueProgress" << "palette";
     if (version >= 3)
         keys << "progress" << "wordIndex" << "video";
     if (!allowed(e, keys))
@@ -435,6 +497,29 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             n.secondaryColor = artDirection->secondaryColor;
         if (n.kind == NodeKind::Text && !e.contains("fontSize"))
             n.fontSize = artDirection->bodySize;
+    }
+    if (e.contains("palette")) {
+        if (version < 2 || !e["palette"].isObject() || e["palette"].toObject().isEmpty())
+            return fail("palette exige um objeto de cores não vazio em receitas v2/v3.");
+        const auto palette = e["palette"].toObject();
+        static const QRegularExpression hexColor("^#[0-9A-Fa-f]{6}$");
+        if (n.kind == NodeKind::Native) {
+            if (!allowed(palette, {"primary", "secondary"}))
+                return fail("Objetos nativos aceitam palette.primary e palette.secondary.");
+            for (auto it = palette.begin(); it != palette.end(); ++it)
+                if (!it.value().isString() || !hexColor.match(it.value().toString()).hasMatch() ||
+                    !QColor(it.value().toString()).isValid())
+                    return fail("palette de objetos nativos aceita cores #RRGGBB.");
+            if (palette.contains("primary"))
+                n.color = palette["primary"].toString().toStdString();
+            if (palette.contains("secondary"))
+                n.secondaryColor = palette["secondary"].toString().toStdString();
+        } else if (kind == "library" && element.premiumTemplate) {
+            QString paletteError;
+            if (!applyPremiumPalette(presetNodes, palette, paletteError))
+                return fail(paletteError);
+        } else
+            return fail("palette só pode personalizar nativos e templates premium registrados.");
     }
     for (auto key : {"cue", "motionFrames", "exitFrames"})
         if (e.contains(key) && (!e[key].isDouble() || std::floor(e[key].toDouble()) != e[key].toDouble()))

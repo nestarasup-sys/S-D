@@ -35,6 +35,7 @@
   ],
   "hierarchy": { "root": "phone-premium", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
   "suggestedAnimation": ["entrance-fade-rise", "soft-float", "notification-reveal"],
+  "palette": { "tokens": ["surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"] },
   "slots": [
     { "id": "screen-title", "kind": "text", "nodeId": "clock", "role": "premium:text:screen-title", "editable": true },
     { "id": "notification", "kind": "text", "nodeId": "message", "role": "premium:text:notification", "editable": true },

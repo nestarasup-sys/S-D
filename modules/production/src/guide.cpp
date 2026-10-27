@@ -22,14 +22,16 @@ QJsonObject capabilities() {
         poses.append(QString::fromStdString(pose));
     QJsonArray premiumItems;
     for (const auto &asset : premiumLibrary()) {
-        QJsonArray slotRoles;
-        for (const auto &node : asset.build(1280, 720))
-            if (!node.role.empty())
-                slotRoles.append(QString::fromStdString(node.role));
+        QJsonArray slotRoles, paletteTokens;
+        for (const auto &role : asset.slotRoles)
+            slotRoles.append(QString::fromUtf8(role.data(), int(role.size())));
+        for (const auto &token : asset.paletteTokens)
+            paletteTokens.append(QString::fromUtf8(token.data(), int(token.size())));
         premiumItems.append(QJsonObject{{"id", QString::fromUtf8(asset.id.data(), int(asset.id.size()))},
                                         {"name", QString::fromUtf8(asset.name.data(), int(asset.name.size()))},
                                         {"kind", QString::fromUtf8(asset.type.data(), int(asset.type.size()))},
                                         {"manifestVersion", 1}, {"slots", slotRoles},
+                                        {"paletteTokens", paletteTokens},
                                         {"responsiveCanvases", QJsonArray{"1280x720", "1920x1080", "1080x1920"}},
                                         {"status", "implemented"}});
     }
@@ -54,6 +56,7 @@ QJsonObject capabilities() {
                         "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
+                        "premium-palette-overrides", "premium-factory-editorial-templates",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
                         "personal-library-video-assets",
                         "landscape-and-portrait-canvas-presets",
@@ -430,11 +433,19 @@ Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":
 
 Escolha entre **Nativos básicos** (objetos vetoriais incluídos), **Recursos premium** (composições editáveis com hierarquia e slots) e **Imagens e vídeos reais** (arquivos locais do usuário). As 11 categorias temáticas continuam filtros da biblioteca. Os IDs premium reais são:
 
-- `premium:smartphone-premium-01` — smartphone em camadas, entrada/flutuação, textos de tela/notificação e slot de imagem da tela.
-- `premium:title-reveal-01` — abertura tipográfica com wipe progressivo, subtítulo e identificação editorial editáveis.
-- `premium:comparison-pack-01` — comparação com dois painéis, seis slots de texto e revelação escalonada.
+- `premium:smartphone-premium-01` — smartphone em camadas, animação, slots de texto/imagem e paleta de moldura, superfície, tela, notificação e acentos.
+- `premium:title-reveal-01` — abertura tipográfica com wipe progressivo, slots de texto e paleta editorial.
+- `premium:comparison-pack-01` — dois painéis, seis slots de texto e paletas independentes para os lados.
+- `premium:dramatic-quote-01` — citação cinematográfica com frase, autoria e fonte editáveis.
+- `premium:lower-third-editorial-01` — identificação editorial com título, subtítulo e referência.
+- `premium:source-label-01` — etiqueta compacta para publicação e contexto verificável.
+- `premium:number-emphasis-01` — número, unidade, descrição e referência com entrada escalonada.
 
-Use cada ID por `{"kind":"library","assetId":"ID-REAL","cue":0}`. A receita instancia o layout responsivo de acordo com seu canvas (1280×720, 1920×1080 ou 1080×1920). Os slots são editados depois da inserção, pelo inspetor; receitas não aceitam campos extras para personalizar slots. No Comparison Pack, os valores iniciais são placeholders demonstrativos, não dados jornalísticos. Troque-os por informações com fontes verificadas. Imagens de slots são copiadas para `workspace/library/media` por conteúdo e o projeto aponta para essa cópia gerenciada. Isso evita dependência do caminho original no mesmo workspace; não empacota automaticamente mídia para transportar o projeto a outro computador. Se um arquivo gerenciado faltar, o inspetor sinaliza a imagem ausente e permite substituí-la. Imagens e vídeos reais também podem entrar na biblioteca; receita v3 referencia um vídeo catalogado por `kind: "library"`. Não há slot premium de vídeo ou ícone.
+Use cada ID por `{"kind":"library","assetId":"ID-REAL","cue":0}`. Os sete recursos têm construtores registrados, manifestos verificados, prévias QPainter e layouts específicos para 1280×720, 1920×1080 e 1080×1920. Slots de texto e imagem podem ser editados depois da inserção no inspetor. Para definir cores antes da importação, inclua um objeto `palette` na referência do recurso; use somente os tokens declarados para aquele ID em `premiumAssets[].paletteTokens` no catálogo. Cores devem usar `#RRGGBB`; tokens não suportados e nomes de campo desconhecidos geram erro. `palette.primary` e `palette.secondary` também personalizam cores dos elementos `native`. Exemplo mínimo: `{"id":"citacao","kind":"library","assetId":"premium:dramatic-quote-01","cue":0,"palette":{"accent":"#5CD6C2","text":"#F4E1A1","muted":"#AEC3D4"}}`. Veja `examples/premium-palette-v2.production.json` para o exemplo completo que passa pelo parser.
+
+Tokens implementados: smartphone `surface`, `frame`, `highlight`, `accent`, `screen`, `notification`, `muted`, `text`; Title Reveal `accent`, `secondary`, `highlight`, `text`, `muted`; Comparison Pack `left`, `right`, `primary`, `secondary`, `accent`, `highlight`, `text`, `muted`; Dramatic Quote `accent`, `text`, `muted`; Lower Third `surface`, `accent`, `text`, `muted`; Source Label `surface`, `highlight`, `text`, `muted`; Number Emphasis `surface`, `accent`, `text`, `muted`, `secondary`. A paleta altera as camadas semanticamente associadas, sem substituir seus slots de conteúdo.
+
+Os valores iniciais de comparação e número são placeholders demonstrativos, não dados jornalísticos. Troque-os por informações com fontes verificadas. Imagens de slots são copiadas para `workspace/library/media` por conteúdo e o projeto aponta para essa cópia gerenciada. Isso evita dependência do caminho original no mesmo workspace; não empacota automaticamente mídia para transportar o projeto a outro computador. Se um arquivo gerenciado faltar, o inspetor sinaliza a imagem ausente e permite substituí-la. Receitas v3 podem referenciar vídeo real catalogado por `kind: "library"`. Premiums ainda não têm slots de vídeo ou ícone.
 
 Exemplo de abertura, smartphone e comparação usando IDs reais do registro:
 
@@ -442,7 +453,13 @@ Exemplo de abertura, smartphone e comparação usando IDs reais do registro:
 {"format":"studio-dark-production","version":2,"catalogVersion":1,"title":"Template editorial demonstrativo","voice":"auto","captions":false,"musicGain":0,"effectsGain":0,"scenes":[{"id":"abertura","narration":["Uma ideia começa com um título que se revela aos poucos."],"elements":[{"id":"abertura-tipografica","kind":"library","assetId":"premium:title-reveal-01","cue":0}]},{"id":"objeto","narration":["O smartphone premium apresenta uma composição editável."],"elements":[{"id":"smartphone","kind":"library","assetId":"premium:smartphone-premium-01","cue":0}]},{"id":"comparacao","narration":["Compare os cenários com informação verificada."],"elements":[{"id":"comparacao-editorial","kind":"library","assetId":"premium:comparison-pack-01","cue":0}]}]}
 ```
 
-Os três pacotes usam QPainter de produção. O Title Reveal usa recorte determinístico no texto principal e keyframes de entrada/saída. Ao compilar uma receita, o tempo interno de animação dos pacotes oficiais é ajustado ao intervalo medido da cena/shot, mantendo a ordem das chaves e evitando keyframes além da duração da fala. Os templates oferecem layouts paisagem e retrato; o construtor escolhe posições específicas para o canvas. Reflexo/sombra do smartphone são camadas vetoriais; blur/GPU não são requisitos. Personalização dos slots via JSON, slots de vídeo/ícone, instalação de pacotes premium externos e os outros templates premium ainda não estão implementados. O smartphone abre com superfície vetorial substituível, não com foto.
+Os sete pacotes usam QPainter de produção; não dependem do protótipo GPU. O Title Reveal conserva o recorte tipográfico, e os novos templates compartilham componentes de superfície, filete, texto de slot e presets de entrada escalonada. O compilador ajusta as animações internas ao intervalo medido da fala. A paleta é executável no JSON; slots de texto continuam editáveis depois da inserção. Instalação de pacotes de terceiros e slots premium de vídeo/ícone ainda não existem.
+
+### Câmera, staging e revelação
+
+`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos comuns, formas e nativos movem-se juntos. Não existe texto fixo ao viewport. Para um travelling, posicione cada ponto de interesse ao longo da trajetória, coloque a câmera no centro do primeiro enquadramento e mantenha pontos futuros fora do quadro ou com `opacity: 0`. Mova a câmera quando a narração passar ao ponto seguinte e revele seu elemento com `action: "show"`. Evite colocar todos os marcos dentro do primeiro campo de visão. Use shots separados para títulos que precisem permanecer imóveis enquanto a câmera se move.
+
+Os exemplos completos e validados estão em `examples/camera-travelling-vertical-v3.production.json`, `examples/camera-travelling-horizontal-v3.production.json`, `examples/visual-beats-sequential-reveal-v3.production.json` e `examples/premium-palette-v2.production.json`. O roteiro combinado de demonstração está em `examples/premium-factory-motion-showcase-v3.production.json`. O horizontal avança do centro x=250 para x=900 e x=1550; o vertical vai de y=310 para y=940 e y=1570. Os dois ocultam pontos futuros e só os revelam quando a narração chega a eles. Use `cameraPresets` ou beats de câmera num shot, nunca ambos. `transitionIn` muda entre shots; `motion` anima a entrada/saída de um elemento; keyframes definem sua transformação; Visual Beats disparam ações num instante da fala; câmera move o enquadramento compartilhado da cena.
 
 ## Presets compostos na biblioteca pessoal
 

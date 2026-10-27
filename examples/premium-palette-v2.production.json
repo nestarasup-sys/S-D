@@ -1,0 +1,25 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Paleta premium demonstrativa",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [{
+    "id": "citacao-editorial",
+    "narration": ["Uma frase ganha força quando tem hierarquia visual e contexto."],
+    "elements": [{
+      "id": "citacao",
+      "kind": "library",
+      "assetId": "premium:dramatic-quote-01",
+      "cue": 0,
+      "palette": {
+        "accent": "#5CD6C2",
+        "text": "#F4E1A1",
+        "muted": "#AEC3D4"
+      }
+    }]
+  }]
+}

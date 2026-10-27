@@ -33,6 +33,7 @@
   ],
   "hierarchy": { "root": "comparison-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
   "suggestedAnimation": ["panel-reveal-left", "panel-reveal-right", "fade-out"],
+  "palette": { "tokens": ["left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"] },
   "slots": [
     { "id": "left-title", "kind": "text", "nodeId": "comparison-left-title", "role": "premium:comparison:left-title", "editable": true },
     { "id": "right-title", "kind": "text", "nodeId": "comparison-right-title", "role": "premium:comparison:right-title", "editable": true },

@@ -1154,8 +1154,149 @@ int main(int argc, char **argv) {
         check(studio::aiGuide(catalog.data()).contains("premium:smartphone-premium-01") &&
                   studio::aiGuide(catalog.data()).contains("premium:title-reveal-01") &&
                   studio::aiGuide(catalog.data()).contains("premium:comparison-pack-01") &&
-                  studio::capabilities()["premiumAssets"].toArray().size() == 3,
-              "AI guide and generated capability catalogue match the three implemented premium assets");
+                  studio::aiGuide(catalog.data()).contains("premium:dramatic-quote-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:lower-third-editorial-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:source-label-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:number-emphasis-01") &&
+                  studio::capabilities()["premiumAssets"].toArray().size() == 7,
+              "AI guide and generated capability catalogue match the seven implemented premium assets");
+        auto quotePaletteScene = QJsonObject{
+            {"id", "quote"},
+            {"narration", QJsonArray{"Uma frase forte ganha espaço e uma referência clara."}},
+            {"elements", QJsonArray{QJsonObject{
+                {"id", "quote-template"}, {"kind", "library"},
+                {"assetId", "premium:dramatic-quote-01"}, {"cue", 0},
+                {"palette", QJsonObject{{"accent", "#5CD6C2"}, {"text", "#F4E1A1"},
+                                         {"muted", "#AEC3D4"}}}}}}};
+        auto paletteRecipe = QJsonObject{{"format", "studio-dark-production"}, {"version", 2},
+                                         {"catalogVersion", 1}, {"title", "Paleta premium"},
+                                         {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
+                                         {"scenes", QJsonArray{quotePaletteScene}}};
+        const auto paletteParsed = studio::parseRecipe(QJsonDocument(paletteRecipe).toJson(),
+                                                       directory.path(), catalog.data());
+        const auto findRole = [](const auto &self, const studio::DirectedElement &element,
+                                 const std::string &role) -> const studio::Node * {
+            if (element.node.role == role)
+                return &element.node;
+            for (const auto &child : element.children)
+                if (const auto *found = self(self, child, role))
+                    return found;
+            return nullptr;
+        };
+        const auto *quoteColorNode = !paletteParsed.error.isEmpty() || paletteParsed.recipe.scenes.empty()
+                                         ? nullptr
+                                         : findRole(findRole, paletteParsed.recipe.scenes.front().elements.front(),
+                                                    "premium:quote:text");
+        const auto *quoteAccentNode = !paletteParsed.error.isEmpty() || paletteParsed.recipe.scenes.empty()
+                                          ? nullptr
+                                          : findRole(findRole, paletteParsed.recipe.scenes.front().elements.front(),
+                                                     "palette:accent");
+        check(paletteParsed.error.isEmpty() && !paletteParsed.recipe.scenes.empty() &&
+                  quoteColorNode && quoteColorNode->color == "#F4E1A1" && quoteAccentNode &&
+                  quoteAccentNode->color == "#5CD6C2",
+              "validated JSON palette recolors real premium slot and reusable accent component");
+        const auto findColor = [](const auto &self, const studio::DirectedElement &element,
+                                  const std::string &color) -> bool {
+            if (element.node.color == color)
+                return true;
+            for (const auto &child : element.children)
+                if (self(self, child, color))
+                    return true;
+            return false;
+        };
+        for (const auto &asset : studio::premiumLibrary()) {
+            for (const auto tokenView : asset.paletteTokens) {
+                const auto token = QString::fromUtf8(tokenView.data(), int(tokenView.size()));
+                const auto assetId = QString::fromUtf8(asset.id.data(), int(asset.id.size()));
+                const auto scene = QJsonObject{
+                    {"id", "palette-token-test"}, {"narration", QJsonArray{"Teste de paleta."}},
+                    {"elements", QJsonArray{QJsonObject{
+                        {"id", "premium-palette-test"}, {"kind", "library"}, {"assetId", assetId},
+                        {"cue", 0}, {"palette", QJsonObject{{token, "#C85CB4"}}}}}}};
+                auto recipe = paletteRecipe;
+                recipe["scenes"] = QJsonArray{scene};
+                const auto parsed = studio::parseRecipe(QJsonDocument(recipe).toJson(),
+                                                        directory.path(), catalog.data());
+                if (!parsed.error.isEmpty())
+                    throw std::runtime_error((assetId + ".palette." + token + ": " + parsed.error).toStdString());
+                const auto &elements = parsed.recipe.scenes.front().elements;
+                check(!elements.empty() && findColor(findColor, elements.front(), "#C85CB4"),
+                      "each manifest palette token recolors an actual registered premium layer");
+            }
+        }
+        const auto premiumCatalog = studio::capabilities()["premiumAssets"].toArray();
+        bool catalogSlotsAreEditableOnly = premiumCatalog.size() == 7;
+        for (const auto &assetValue : premiumCatalog) {
+            const auto asset = assetValue.toObject();
+            const auto registered = studio::premiumAsset(asset["id"].toString().toStdString());
+            const auto roles = asset["slots"].toArray();
+            catalogSlotsAreEditableOnly = catalogSlotsAreEditableOnly && registered &&
+                                          roles.size() == int(registered->slotRoles.size());
+            for (const auto &role : roles)
+                catalogSlotsAreEditableOnly = catalogSlotsAreEditableOnly &&
+                                               role.toString().startsWith("premium:");
+        }
+        check(catalogSlotsAreEditableOnly,
+              "AI catalog separates editable premium slots from palette component roles");
+        auto badPaletteRecipe = paletteRecipe;
+        auto badPaletteScene = badPaletteRecipe["scenes"].toArray().at(0).toObject();
+        auto badPaletteElement = badPaletteScene["elements"].toArray().at(0).toObject();
+        badPaletteElement["palette"] = QJsonObject{{"invented", "#123456"}};
+        QJsonArray badPaletteElements;
+        badPaletteElements.append(badPaletteElement);
+        badPaletteScene["elements"] = badPaletteElements;
+        QJsonArray badPaletteScenes;
+        badPaletteScenes.append(badPaletteScene);
+        badPaletteRecipe["scenes"] = badPaletteScenes;
+        check(!studio::parseRecipe(QJsonDocument(badPaletteRecipe).toJson(), directory.path(), catalog.data())
+                   .error.isEmpty(),
+              "palette rejects unknown semantic tokens rather than silently ignoring them");
+        auto nativePaletteScene = QJsonObject{
+            {"id", "native-colors"}, {"narration", QJsonArray{"A forma recebe uma paleta."}},
+            {"elements", QJsonArray{QJsonObject{{"id", "chip"}, {"kind", "native"}, {"asset", "chip"},
+                                                {"palette", QJsonObject{{"primary", "#34AADC"},
+                                                                         {"secondary", "#F2B64B"}}}}}}};
+        auto nativePaletteRecipe = paletteRecipe;
+        nativePaletteRecipe["scenes"] = QJsonArray{nativePaletteScene};
+        const auto nativePaletteParsed = studio::parseRecipe(QJsonDocument(nativePaletteRecipe).toJson(),
+                                                             directory.path());
+        check(nativePaletteParsed.error.isEmpty() &&
+                  nativePaletteParsed.recipe.scenes.front().elements.front().node.color == "#34AADC" &&
+                  nativePaletteParsed.recipe.scenes.front().elements.front().node.secondaryColor == "#F2B64B",
+              "native palette.primary and palette.secondary alter the registered native colors");
+        const QStringList premiumFactoryFixtures{
+            "camera-travelling-horizontal-v3.production.json",
+            "camera-travelling-vertical-v3.production.json",
+            "premium-palette-v2.production.json",
+            "premium-factory-motion-showcase-v3.production.json",
+            "visual-beats-sequential-reveal-v3.production.json"};
+        for (const auto &fixtureName : premiumFactoryFixtures) {
+            QFile fixture(QStringLiteral(STUDIO_SOURCE_DIR) + "/examples/" + fixtureName);
+            check(fixture.open(QIODevice::ReadOnly), "read a published small recipe example");
+            const auto parsedFixture = studio::parseRecipe(fixture.readAll(), directory.path(), catalog.data());
+            if (!parsedFixture.error.isEmpty())
+                throw std::runtime_error((fixtureName + ": " + parsedFixture.error).toStdString());
+            QMap<QString, studio::PcmAudio> measuredFixtures;
+            for (const auto &scene : parsedFixture.recipe.scenes)
+                for (const auto &utterance : scene.narration) {
+                    studio::PcmAudio audio;
+                    audio.samples.resize(2 * 48000, .02f);
+                    measuredFixtures.insert(utterance.id, std::move(audio));
+                }
+            const auto fixtureProject = studio::compileProduction(
+                parsedFixture.recipe, measuredFixtures, directory.filePath(fixtureName + ".wav"));
+            if (!fixtureProject.error.isEmpty())
+                throw std::runtime_error((fixtureName + " compile: " + fixtureProject.error).toStdString());
+            check(studio::validate(fixtureProject.project).empty() && fixtureProject.project.duration > 0,
+                  "official example parses, compiles and validates into an editable project");
+            studio::CompositionPainter fixturePainter;
+            const auto proofFrame = fixturePainter.frame(fixtureProject.project,
+                std::min<std::int64_t>(fixtureProject.project.duration - 1,
+                                       fixtureProject.project.duration / 2));
+            check(!proofFrame.isNull() && proofFrame.size() ==
+                      QSize(fixtureProject.project.width, fixtureProject.project.height),
+                  "official camera, reveal and color examples render a real QPainter frame");
+        }
         check(studio::capabilities()["productionCapabilities"].toArray().contains("personal-library-video-assets"),
               "AI capability catalogue distinguishes real library video from premium slots");
         auto production = QJsonObject{

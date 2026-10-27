@@ -7,4 +7,8 @@ qt_add_resources(studio_storage premium_manifests
     FILES
         "${PROJECT_SOURCE_DIR}/assets/premium/smartphone-premium-01.manifest.json"
         "${PROJECT_SOURCE_DIR}/assets/premium/title-reveal-01.manifest.json"
-        "${PROJECT_SOURCE_DIR}/assets/premium/comparison-pack-01.manifest.json")
+        "${PROJECT_SOURCE_DIR}/assets/premium/comparison-pack-01.manifest.json"
+        "${PROJECT_SOURCE_DIR}/assets/premium/dramatic-quote-01.manifest.json"
+        "${PROJECT_SOURCE_DIR}/assets/premium/lower-third-editorial-01.manifest.json"
+        "${PROJECT_SOURCE_DIR}/assets/premium/source-label-01.manifest.json"
+        "${PROJECT_SOURCE_DIR}/assets/premium/number-emphasis-01.manifest.json")
