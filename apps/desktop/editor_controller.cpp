@@ -293,7 +293,6 @@ void EditorController::selectNode(QString id) {
         return;
     selectedId_ = std::move(id);
     selectedIds_ = selectedId_.isEmpty() ? QStringList{} : QStringList{selectedId_};
-    emit documentChanged();
     emit selectedChanged();
 }
 void EditorController::toggleNodeSelection(QString id) {
@@ -308,7 +307,6 @@ void EditorController::toggleNodeSelection(QString id) {
         selectedIds_.append(id);
         selectedId_ = id;
     }
-    emit documentChanged();
     emit selectedChanged();
 }
 void EditorController::beginGesture() {
@@ -1438,12 +1436,18 @@ void EditorController::resizeShotTransition(QString shotId, int durationFrames) 
         notify(q(error));
 }
 void EditorController::undo() {
+    const bool available = editor_.canUndo();
     if (editor_.undo())
         changed();
+    else if (available)
+        notify("Memória insuficiente para desfazer sem comprometer o projeto atual.");
 }
 void EditorController::redo() {
+    const bool available = editor_.canRedo();
     if (editor_.redo())
         changed();
+    else if (available)
+        notify("Memória insuficiente para refazer sem comprometer o projeto atual.");
 }
 void EditorController::setFrame(int frame) {
     if (playing_)

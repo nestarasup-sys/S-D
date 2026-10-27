@@ -7,6 +7,7 @@
 #include <QLockFile>
 #include <QSaveFile>
 #include <cmath>
+#include <new>
 #include <studio/storage/project_store.hpp>
 
 namespace studio {
@@ -271,7 +272,7 @@ QByteArray serialize(const Project &p) {
     }
     return QJsonDocument(document).toJson();
 }
-LoadResult deserialize(const QByteArray &bytes) {
+LoadResult deserialize(const QByteArray &bytes) try {
     LoadResult result;
     QJsonParseError parse;
     auto document = QJsonDocument::fromJson(bytes, &parse);
@@ -385,8 +386,6 @@ LoadResult deserialize(const QByteArray &bytes) {
         }
         p.scenes.push_back(std::move(marker));
     }
-    if (o["nodes"].toArray().size() > 200)
-        return fail("Máximo de 200 objetos neste protótipo.");
     for (auto value : o["nodes"].toArray()) {
         if (!value.isObject())
             return fail("Objeto inválido.");
@@ -606,21 +605,30 @@ LoadResult deserialize(const QByteArray &bytes) {
     result.project = std::move(p);
     result.revision = hash(bytes);
     return result;
+} catch (const std::bad_alloc &) {
+    LoadResult result;
+    result.error = "Memória insuficiente para analisar o projeto.";
+    return result;
 }
-LoadResult loadProject(const QString &path) {
+LoadResult loadProject(const QString &path) try {
     QFile file(path);
     LoadResult r;
     if (!file.open(QIODevice::ReadOnly)) {
         r.error = "Não foi possível abrir: " + file.errorString();
         return r;
     }
-    if (file.size() > 4 * 1024 * 1024) {
-        r.error = "Arquivo excede 4 MiB.";
+    const auto bytes = file.readAll();
+    if (file.error() != QFileDevice::NoError) {
+        r.error = "Falha ao ler o projeto: " + file.errorString();
         return r;
     }
-    return deserialize(file.readAll());
+    return deserialize(bytes);
+} catch (const std::bad_alloc &) {
+    LoadResult result;
+    result.error = "Memória insuficiente para ler ou analisar o projeto.";
+    return result;
 }
-SaveResult saveProject(const QString &path, const Project &p, const QByteArray &expected) {
+SaveResult saveProject(const QString &path, const Project &p, const QByteArray &expected) try {
     SaveResult r;
     if (auto error = validate(p); !error.empty()) {
         r.error = text(error);
@@ -637,11 +645,11 @@ SaveResult saveProject(const QString &path, const Project &p, const QByteArray &
             r.error = existing.errorString();
             return r;
         }
-        if (existing.size() > 4 * 1024 * 1024) {
-            r.error = "Arquivo existente excede o limite; preservado.";
+        auto old = existing.readAll();
+        if (existing.error() != QFileDevice::NoError) {
+            r.error = "Falha ao ler a versão existente; arquivo preservado: " + existing.errorString();
             return r;
         }
-        auto old = existing.readAll();
         existing.close();
         if (expected.isEmpty() || hash(old) != expected) {
             r.error = "O arquivo mudou no disco. Abra a versão atual ou salve uma nova cópia.";
@@ -653,9 +661,19 @@ SaveResult saveProject(const QString &path, const Project &p, const QByteArray &
         r.error = "O arquivo original foi removido. Salve uma nova cópia.";
         return r;
     }
-    auto bytes = serialize(p);
+    QByteArray bytes;
+    try {
+        bytes = serialize(p);
+    } catch (const std::bad_alloc &) {
+        r.error = "Memória insuficiente para serializar o projeto; o arquivo atual foi preservado.";
+        return r;
+    }
     if (writeAtomic(path, bytes, r.error))
         r.revision = hash(bytes);
     return r;
+} catch (const std::bad_alloc &) {
+    SaveResult result;
+    result.error = "Memória insuficiente ao salvar o projeto; a versão anterior foi preservada.";
+    return result;
 }
 } // namespace studio

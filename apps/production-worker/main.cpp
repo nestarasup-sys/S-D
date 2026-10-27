@@ -13,6 +13,7 @@
 #include <QTextStream>
 #include <QMap>
 #include <memory>
+#include <new>
 #include <cmath>
 #include <algorithm>
 #include <vector>
@@ -121,7 +122,7 @@ static bool alignWordEvents(const QJsonArray &events, const QString &text, std::
         sample = std::clamp<std::int64_t>(sample, 0, audioSamples - 1);
     return true;
 }
-int main(int argc, char **argv) {
+int main(int argc, char **argv) try {
     QCoreApplication app(argc, argv);
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -143,9 +144,11 @@ int main(int argc, char **argv) {
         return 1;
     };
     QFile input(parser.value("recipe"));
-    if (!input.open(QIODevice::ReadOnly) || input.size() > 1024 * 1024)
-        return fail("Não foi possível ler a receita (máximo 1 MiB).");
+    if (!input.open(QIODevice::ReadOnly))
+        return fail("Não foi possível abrir a receita: " + input.errorString());
     auto bytes = input.readAll();
+    if (input.error() != QFileDevice::NoError)
+        return fail("Falha ao ler a receita: " + input.errorString());
     auto parsed = studio::parseRecipe(bytes, QFileInfo(input).absolutePath(),
                                       workspace ? workspace->data() : QJsonObject{});
     if (!parsed.error.isEmpty())
@@ -361,4 +364,7 @@ int main(int argc, char **argv) {
               .toJson());
     report("Pronto", 100);
     return 0;
+} catch (const std::bad_alloc &) {
+    report("failed", 0, "Memória insuficiente durante a importação ou compilação da produção.");
+    return 1;
 }

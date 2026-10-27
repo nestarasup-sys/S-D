@@ -302,7 +302,7 @@ QString validatePremiumManifest(const QJsonObject &manifest, const QString &pack
         !manifest["tags"].isArray() || manifest["tags"].toArray().size() > 32 ||
         !manifest["preview"].isObject() || !manifest["hierarchy"].isObject() ||
         !manifest["layers"].isArray() ||
-        manifest["layers"].toArray().isEmpty() || manifest["layers"].toArray().size() > 200 ||
+        manifest["layers"].toArray().isEmpty() ||
         !manifest["slots"].isArray() || manifest["slots"].toArray().size() > 64 ||
         !manifest["dependencies"].isArray() || manifest["dependencies"].toArray().size() > 64)
         return "Metadados, limites, ID ou tipo de pacote premium inválidos.";
@@ -688,8 +688,8 @@ WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &c
     const auto name = input.trimmed();
     if (!validName(name))
         return {{}, "Informe um nome de até 120 caracteres."};
-    if (nodes.empty() || nodes.size() > 200)
-        return {{}, "Seleção vazia ou maior que 200 objetos."};
+    if (nodes.empty())
+        return {{}, "Selecione ao menos um objeto para criar o preset."};
     const auto origin = nodes.front().start;
     const auto clipDuration = nodes.front().duration;
     if (origin < 0 || clipDuration < 1 || clipDuration > 18000)

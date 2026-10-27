@@ -40,7 +40,7 @@ O catálogo agora contém 72 desenhos vetoriais, incluindo 58 recursos novos; o 
 
 Use `cameraPresets` para trajetórias reutilizáveis com estados em `offsetSeconds` **somente quando a duração mínima do shot estiver garantida**. Para cortes e revelações presos à fala, prefira `beats` de ação `camera`, com `at: {"cue":0,"cueProgress":0.5}`. Não combine câmera por preset com Visual Beats de câmera no mesmo shot. A câmera interpolada possui `x`, `y`, `zoom`, `rotation` e curvas lineares/ease; não há trajetórias Bézier personalizadas.
 
-Dica para travelling: no shot, componha cartões/objetos em posições horizontais progressivas e defina o ponto de partida da câmera centralizado em A. Use beats com `durationFrames` para deslocá-la até B e C. Atenção: o compositor da receita aceita até 200 nós por produção; distribua detalhes de forma intencional.
+Dica para travelling: no shot, componha cartões/objetos em posições horizontais progressivas e defina o ponto de partida da câmera centralizado em A. Use beats com `durationFrames` para deslocá-la até B e C. Não há teto fixo agregado de objetos; expansões de grupos, presets e legendas contam como camadas e aumentam o uso de CPU, RAM e tempo de renderização. Prefira detalhe visual que sirva à narrativa e monitore o custo durante a prévia.
 
 ## Sincronização e durações
 

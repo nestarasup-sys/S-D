@@ -142,6 +142,10 @@ A IA externa prepara a receita; o app executa capacidades reais. Personagens sã
 
 Alterar texto falado ou os volumes da trilha exige recompilar a receita. Editar uma legenda visual não regenera a voz. Imagens e áudio dependem dos caminhos locais; o projeto ainda não é um pacote portátil. Use uma janela do editor por vez. Instalador e redistribuição pública das dependências ficam para uma etapa própria.
 
+### Escalabilidade de projetos
+
+Receitas e projetos não possuem teto fixo agregado de nós nem corte por tamanho total de JSON/projeto. A leitura valida o conteúdo e a estrutura; o processamento continua limitado pela memória e pelo tempo disponíveis. Permanecem limites independentes para duração, cenas, shots, keyframes, pistas, profundidade de grupos e texto. A timeline usa `QAbstractListModel`/`ListView` virtualizada e indexa IDs para seleção; renderização e exportação ainda avaliam as camadas ativas do quadro inteiro, portanto documentos maiores custam mais CPU, RAM e tempo e não têm garantia de taxa de quadros. O benchmark estrutural e seus tempos/memória ficam em `artifacts/large-project-scaling/report.json`, reproduzido por `scripts/benchmark-large-projects.ps1`. Política e consequências: [ADR 0033 — escala de projetos grandes](docs/architecture/0033-large-project-scaling.md).
+
 
 ## Biblioteca documental expandida
 

@@ -13,7 +13,7 @@
     "height": 720,
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
-    "maxNodes": 200,
+    "maxNodes": null,
     "maxScenes": 20,
     "maxShots": 256,
     "maxShotsPerScene": 64,
@@ -546,6 +546,7 @@
             "width": 1280
         }
     ],
+    "nodeLimitPolicy": "resource-bound",
     "poses": [
         "neutral",
         "point",

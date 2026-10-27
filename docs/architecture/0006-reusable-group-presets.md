@@ -11,7 +11,7 @@ A biblioteca aceitava um único nó sem keyframes, apesar de projetos schema 3 j
 - O comando **Salvar seleção do editor** admite um nó raiz e todos os descendentes, coletados pelos vínculos `parentId`, independentemente da ordem das linhas.
 - O preset é armazenado no formato de projeto schema 3, com início normalizado para frame zero, duração da raiz, hierarquia e keyframes relativos. Imagens e SVGs são copiados por hash para a biblioteca; a categoria e o tombstone continuam gerenciados pelo catálogo.
 - A reinserção no editor gera IDs novos para cada nó, remapeia os pais, preserva a animação e faz uma única transação de histórico. Se a composição não couber no intervalo restante da cena, falha sem alterar o documento.
-- A receita `studio-dark-production` v2 permite `kind: "library"` apontando para um preset composto. O parser expande filhos em memória e os inclui no limite de 200 nós/8 níveis. O compilador resolve o tempo de cada parte e keyframe relativo ao cue medido da voz. Chaves que excedem o trecho resultam em erro explícito.
+- A receita `studio-dark-production` v2 permite `kind: "library"` apontando para um preset composto. O parser expande filhos em memória, sem teto agregado de nós, e mantém profundidade máxima de oito níveis. O compilador resolve o tempo de cada parte e keyframe relativo ao cue medido da voz. Chaves que excedem o trecho resultam em erro explícito.
 - Presets legados de nó único sem keyframes continuam sendo estendidos até o final da cena, como antes.
 
 ## Limitações

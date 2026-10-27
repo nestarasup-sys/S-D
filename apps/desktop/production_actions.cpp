@@ -524,11 +524,6 @@ void EditorController::importProduction(QUrl recipe) {
         notify("Não foi possível abrir a receita. Veja Logs.");
         return;
     }
-    if (file.size() > 1024 * 1024) {
-        logProductionEvent("preflight-error", "Receita excede 1 MiB.");
-        notify("Receita excede 1 MiB. Veja Logs.");
-        return;
-    }
     const auto workspaceRoot =
         QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/workspace";
     studio::WorkspaceStore workspace(workspaceRoot);
@@ -537,7 +532,13 @@ void EditorController::importProduction(QUrl recipe) {
         notify(workspace.error() + " (veja Logs)");
         return;
     }
-    auto parsed = studio::parseRecipe(file.readAll(), QFileInfo(file).absolutePath(), workspace.data());
+    const auto recipeBytes = file.readAll();
+    if (file.error() != QFileDevice::NoError) {
+        logProductionEvent("preflight-error", "Falha ao ler a receita: " + file.errorString());
+        notify("Falha ao ler a receita: " + file.errorString() + " (veja Logs)");
+        return;
+    }
+    auto parsed = studio::parseRecipe(recipeBytes, QFileInfo(file).absolutePath(), workspace.data());
     if (!parsed.error.isEmpty()) {
         logProductionEvent("recipe-invalid", parsed.error);
         notify(parsed.error + " (veja Logs)");

@@ -299,8 +299,13 @@ bool WorkspaceController::importProject(QUrl path) {
     if (busy())
         return false;
     QFile source(path.toLocalFile());
-    if (source.open(QIODevice::ReadOnly) && source.size() <= 1024 * 1024) {
-        const auto document = QJsonDocument::fromJson(source.readAll());
+    if (source.open(QIODevice::ReadOnly)) {
+        const auto bytes = source.readAll();
+        if (source.error() != QFileDevice::NoError) {
+            notify("Falha ao ler o arquivo: " + source.errorString());
+            return false;
+        }
+        const auto document = QJsonDocument::fromJson(bytes);
         if (document.isObject() && document.object()["format"] == "studio-dark-production") {
             editor_->importProduction(path);
             navigate("editor");

@@ -16,7 +16,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 - Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
 - `offsetSeconds` varia de 0 a 10; `cueProgress` usa de 0 a 1 para acompanhar a fala final. Sem duração fixa, a duração natural depende da voz pt-BR e só é conhecida depois de sintetizar o WAV.
 - Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, `video`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
-- Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Sem `canvas`, use 1280×720; nos outros formatos aceitos, componha elementos dentro das dimensões escolhidas e mantenha margens para legendas. Respeite o limite de oito níveis de grupo.
+- Não há teto fixo de objetos. Grupos, presets premium e legendas geradas contam como camadas e consomem CPU, RAM e tempo de renderização conforme a complexidade; IDs devem permanecer únicos. Sem `canvas`, use 1280×720; nos outros formatos aceitos, componha elementos dentro das dimensões escolhidas e mantenha margens para legendas. Grupos de receita continuam limitados a oito níveis.
 - Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
 - Revise antes de responder: JSON parseável, IDs únicos, no máximo 20 cenas, de 1 a 10 falas por cena, propriedades dentro dos limites e narração coerente com os visuais.
 
@@ -63,7 +63,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 }
 ```
 
-Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; com `voice: "auto"`, prefere uma voz masculina e usa outra voz pt-BR se nenhuma masculina estiver instalada. Também é possível informar o nome exato da voz instalada. `speechRate` vai de -3 a 3.
+Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. Não existe limite fixo agregado de elementos: expansões de grupos, recursos premium e legendas podem aumentar o projeto e o custo de CPU, RAM, importação e renderização. A aplicação valida IDs, referências, profundidade e limites próprios de duração/texto. Áudio por voz usa uma voz pt-BR instalada no Windows; com `voice: "auto"`, prefere uma voz masculina e usa outra voz pt-BR se nenhuma masculina estiver instalada. Também é possível informar o nome exato da voz instalada. `speechRate` vai de -3 a 3.
 
 `captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.captionHighlightColor`; quando omitida, herda `primaryColor`. A cor pode ser configurada globalmente, por cena ou por shot. O projeto guarda os intervalos em quadros no schema 7 e a cor independente no schema 14. Depois da importação, o inspetor permite ajustar início e fim de cada palavra alinhada numericamente; na faixa da legenda da timeline, arraste um limite para aproximar ao quadro mais próximo. Limites compartilhados mantêm palavras vizinhas contíguas e um gesto inteiro pode ser desfeito. Esses ajustes ficam no projeto compilado e não são campos de entrada da receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
@@ -1469,7 +1469,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
     "height": 720,
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
-    "maxNodes": 200,
+    "maxNodes": null,
     "maxScenes": 20,
     "maxShots": 256,
     "maxShotsPerScene": 64,
@@ -2002,6 +2002,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "width": 1280
         }
     ],
+    "nodeLimitPolicy": "resource-bound",
     "poses": [
         "neutral",
         "point",

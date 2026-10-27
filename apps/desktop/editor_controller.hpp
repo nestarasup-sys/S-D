@@ -25,8 +25,8 @@ class EditorController : public QObject {
     Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY artDirectionChanged)
     Q_PROPERTY(QString artDirectionScope READ artDirectionScope NOTIFY artDirectionScopeChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
-    Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
-    Q_PROPERTY(QVariantList selectedIds READ selectedIds NOTIFY documentChanged)
+    Q_PROPERTY(QString selectedId READ selectedId NOTIFY selectedChanged)
+    Q_PROPERTY(QVariantList selectedIds READ selectedIds NOTIFY selectedChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
     Q_PROPERTY(int duration READ duration NOTIFY documentChanged)
     Q_PROPERTY(double fps READ fps NOTIFY documentChanged)
@@ -57,6 +57,7 @@ class EditorController : public QObject {
         return editor_.project();
     }
     QVariantList nodes() const;
+    Q_INVOKABLE int nodeRow(const QString &id) const { return nodeModel_.rowForId(id); }
     QVariantList library() const;
     QVariantList scenes() const;
     QVariantList shots() const;

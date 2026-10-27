@@ -1,5 +1,7 @@
 #pragma once
 #include <QAbstractListModel>
+#include <QHash>
+#include <QString>
 #include <QVariantMap>
 
 // Stable row identity keeps active mouse gestures alive while values change.
@@ -16,6 +18,7 @@ class NodeListModel : public QAbstractListModel {
     QHash<int, QByteArray> roleNames() const override {
         return {{Qt::UserRole, "modelData"}};
     }
+    int rowForId(const QString &id) const { return rowById_.value(id, -1); }
     void sync(QVariantList rows) {
         bool same = rows.size() == rows_.size();
         for (int i = 0; same && i < rows.size(); ++i)
@@ -23,6 +26,7 @@ class NodeListModel : public QAbstractListModel {
         if (!same) {
             beginResetModel();
             rows_ = std::move(rows);
+            rebuildIndex();
             endResetModel();
             return;
         }
@@ -34,5 +38,12 @@ class NodeListModel : public QAbstractListModel {
     }
 
   private:
+    void rebuildIndex() {
+        rowById_.clear();
+        rowById_.reserve(rows_.size());
+        for (int i = 0; i < rows_.size(); ++i)
+            rowById_.insert(rows_[i].toMap().value("id").toString(), i);
+    }
     QVariantList rows_;
+    QHash<QString, int> rowById_;
 };

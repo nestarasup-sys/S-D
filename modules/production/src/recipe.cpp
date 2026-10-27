@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <map>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
@@ -175,7 +176,7 @@ bool applyVisualStylePreset(const QJsonObject &library, const QString &id, ArtDi
     return true;
 }
 bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJsonObject &library, int version,
-                  int cueCount, QSet<QString> &ids, int &elementCount, DirectedElement &element,
+                  int cueCount, QSet<QString> &ids, std::size_t &elementCount, DirectedElement &element,
                   QString &error, int depth = 0, DirectedTime defaultStart = {}, int editingIntensity = -1,
                   const ArtDirection *artDirection = nullptr, bool shotStartDeferred = false,
                   int canvasWidth = 1280, int canvasHeight = 720) {
@@ -222,8 +223,9 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (id.isEmpty() || id.size() > 80 || ids.contains(id))
         return fail("ID de elemento vazio ou duplicado.");
     ids.insert(id);
-    if (++elementCount > 200)
-        return fail("Produção excede 200 elementos, incluindo grupos.");
+    if (elementCount == std::numeric_limits<std::size_t>::max())
+        return fail("Quantidade de elementos excede a capacidade de endereçamento deste processo.");
+    ++elementCount;
     auto &n = element.node;
     n.id = id.toStdString();
     n.name = n.id;
@@ -611,8 +613,11 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     DirectedElement child;
                     child.node = part;
                     const auto childId = recipeId + "-preset-" + QString::number(expanded++);
-                    if (ids.contains(childId) || ++elementCount > 200)
-                        return fail("Composição da biblioteca ultrapassa IDs ou limite de 200 elementos.");
+                    if (ids.contains(childId))
+                        return fail("Composição da biblioteca gerou um ID duplicado.");
+                    if (elementCount == std::numeric_limits<std::size_t>::max())
+                        return fail("Quantidade de elementos excede a capacidade de endereçamento deste processo.");
+                    ++elementCount;
                     ids.insert(childId);
                     child.node.id = childId.toStdString();
                     child.node.parentId = parent.node.id;
@@ -648,14 +653,12 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     return true;
 }
 } // namespace
-RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, const QJsonObject &library) {
+RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, const QJsonObject &library) try {
     RecipeResult result;
     auto fail = [&](QString message) {
         result.error = std::move(message);
         return result;
     };
-    if (bytes.size() > 1024 * 1024)
-        return fail("Receita excede 1 MiB.");
     QJsonParseError error;
     auto doc = QJsonDocument::fromJson(bytes, &error);
     if (error.error != QJsonParseError::NoError) {
@@ -855,8 +858,8 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
     if (!o["scenes"].isArray() || o["scenes"].toArray().isEmpty() || o["scenes"].toArray().size() > 20)
         return fail("Use de 1 a 20 cenas.");
     QSet<QString> ids;
-    int totalText = 0, totalNodes = 0, totalCameraKeys = 0, totalShots = 0, totalBeats = 0,
-        totalAudioTracks = 0;
+    std::size_t totalText = 0;
+    int totalCameraKeys = 0, totalShots = 0, totalBeats = 0, totalAudioTracks = 0;
     QString elementError;
     for (const auto sceneValue : o["scenes"].toArray()) {
         if (!sceneValue.isObject())
@@ -948,7 +951,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
             totalText += text.size();
             scene.narration.push_back({scene.id + "-u" + QString::number(++cue), text, target});
         }
-        int elementCount = 0;
+        std::size_t elementCount = 0;
         if (version == 3) {
             if (!s["shots"].isArray() || s["shots"].toArray().isEmpty() || s["shots"].toArray().size() > 64)
                 return fail("Cada cena v3 precisa de 1 a 64 shots visuais.");
@@ -1288,7 +1291,6 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     scene.audioTracks.push_back(std::move(track));
                 }
             }
-            totalNodes += elementCount + (r.renderCaptions ? int(scene.narration.size()) : 0);
             r.scenes.push_back(std::move(scene));
             continue;
         }
@@ -1344,14 +1346,10 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 scene.camera.push_back(key);
             }
         }
-        const int headers = version == 1 ? 2 : int(!scene.title.isEmpty()) + int(!scene.kicker.isEmpty());
-        const int background = int(!scene.background.isEmpty());
-        totalNodes +=
-            elementCount + (r.renderCaptions ? int(scene.narration.size()) : 0) + headers + background;
         r.scenes.push_back(std::move(scene));
     }
-    if (totalText > 12000 || totalNodes > 200)
-        return fail("Produção excede os limites de texto ou 200 objetos.");
+    if (totalText > 12000)
+        return fail("Produção excede o limite agregado de 12.000 caracteres de narração.");
     if (o.contains("sources")) {
         if (!o["sources"].isArray())
             return fail("Fontes devem ser uma lista.");
@@ -1364,6 +1362,10 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
         }
     }
     result.recipe = std::move(r);
+    return result;
+} catch (const std::bad_alloc &) {
+    RecipeResult result;
+    result.error = "Memória insuficiente para analisar ou expandir a receita.";
     return result;
 }
 } // namespace studio

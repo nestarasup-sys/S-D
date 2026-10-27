@@ -882,17 +882,17 @@ A prévia e o vídeo exportado devem utilizar a mesma lógica de sincronização
 
 ## 20. EVOLUIR OS LIMITES TÉCNICOS COM SEGURANÇA
 
-O guia atual documenta:
+Na versão em que este item foi escrito, o guia documentava:
 
 - 1280 × 720.
 - 30 FPS.
 - Até 20 cenas.
-- Até 200 elementos.
+- Sem teto fixo agregado de elementos; capacidade limitada por memória e tempo disponíveis (Etapa 10.5).
 - Até 10 trechos de narração por cena.
 - Até 150 caracteres por trecho.
 - Até 8 níveis de grupos aninhados.
 
-Quero que você avalie se esses limites continuam adequados após a criação de shots e Visual Beats.
+Na Etapa 10.5, o limite agregado de objetos/elementos foi removido de ponta a ponta; a quantidade agora depende dos recursos e do custo de renderização. Os demais limites citados continuam independentes e devem ser conferidos no guia atual. O objetivo deste item de planejamento foi concluído para a quantidade de objetos.
 
 Se necessário, implemente uma arquitetura que permita muitos eventos temporais sem criar centenas de elementos simultâneos.
 
