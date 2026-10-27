@@ -42,6 +42,30 @@ Use `cameraPresets` para trajetórias reutilizáveis com estados em `offsetSecon
 
 Dica para travelling: no shot, componha cartões/objetos em posições horizontais progressivas e defina o ponto de partida da câmera centralizado em A. Use beats com `durationFrames` para deslocá-la até B e C. Não há teto fixo agregado de objetos; expansões de grupos, presets e legendas contam como camadas e aumentam o uso de CPU, RAM e tempo de renderização. Prefira detalhe visual que sirva à narrativa e monitore o custo durante a prévia.
 
+## Dirigir movimento sem repetir a mesma fórmula
+
+- **Slide nas quatro direções:** distribua dois ou mais objetos no espaço da composição e use keyframes de posição para entrar da esquerda, direita, de cima ou de baixo. Respeite os limites do canvas e não faça todos os elementos deslizarem juntos.
+- **Movimento de câmera:** use pan para conectar pontos que tenham relação narrativa; use zoom para passar do contexto ao detalhe; rotação deve ser rara e motivada. Um beat de câmera altera o enquadramento de todo o conteúdo do shot.
+- **Parallax simulado:** coloque camadas de fundo, meio e frente em grupos diferentes e mova cada grupo com deslocamentos menores/maiores. É composição 2D; não há profundidade ou paralaxe física automática.
+- **Visual Beats de revelação:** comece os alvos com `opacity: 0` e dispare `show` por `cueProgress` ou palavra com timestamp real. O objeto aparece no quadro do evento e permanece visível. Use `hide` para retirar e `show` posterior para reapresentar.
+- **Visual Beats de transformação:** escolha uma ou duas propriedades com mudança legível e use `durationFrames` para interpolar. Uma mudança curta de posição, escala ou opacidade pode explicar crescimento, contraste ou consequência; evite animar todas as propriedades ao mesmo tempo.
+- **Infográficos:** revele primeiro a pergunta ou eixo, depois os valores e por fim a conclusão. Dados nativos são elementos visuais ilustrativos, não uma fonte de números.
+- **Tipografia cinética:** alterne título isolado, palavra-chave e texto explicativo. Reserve contraste, tempo de leitura e uma região livre para legendas. Evite repetir o mesmo fade em cada shot.
+- **Easing:** `linear` serve a deslocamentos constantes; `ease-in` acelera; `ease-out` desacelera; `ease-in-out` suaviza entrada e parada. A curva da keyframe de destino é aplicada ao trecho que termina nela.
+- **Premium:** use o Title Reveal para abertura tipográfica, Smartphone para produto/notificação e Comparison Pack para duas condições. Mude enquadramento, escala e ritmo ao alternar templates; não os use como cartões genéricos em sequência.
+
+Para produzir variedade, escreva primeiro o que o espectador deve perceber em cada beat. Faça o movimento responder a essa informação. Intercale composições largas, detalhes, planos tipográficos e pausas. Deixe alguns elementos imóveis enquanto outros se movem. Um shot pode permanecer estático durante uma frase importante.
+
+## As cinco operações temporais
+
+- `transitionIn` define como o novo shot substitui/combina visualmente com o shot anterior; não anima os elementos por conta própria.
+- `motion` é a animação padrão de entrada/saída de um elemento.
+- `keyframes` armazenam valores editáveis de posição, rotação, escala e opacidade ao longo do tempo.
+- `beats` são comandos pontuais sincronizados à fala: mostram/ocultam, transformam um alvo, movem a câmera ou disparam som.
+- `camera` enquadra todos os elementos no espaço da composição. Texto comum e legendas também acompanham pan, zoom e rotação; não existe camada de texto fixa no viewport. Planeje o enquadramento para manter títulos legíveis junto ao conteúdo.
+
+Os exemplos completos e aceitos pelo importador estão em [revelação sequencial](../examples/visual-beats-sequential-reveal-v3.production.json) e [transformação + câmera](../examples/visual-beats-transform-camera-v3.production.json). O guia técnico define a sintaxe e a sincronização real pela voz.
+
 ## Sincronização e durações
 
 - Divida a voz em trechos `narration` faláveis, máximo 150 caracteres cada.

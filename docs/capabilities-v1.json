@@ -629,6 +629,7 @@
         "pitch-preserving-atempo",
         "independent-shots",
         "visual-beats-show-hide-transform-camera-sound",
+        "instant-visual-beat-show-hide",
         "shot-cut-camera",
         "narration-content-shot-rhythm",
         "shot-transitions-fade-dissolve-slide-zoom",
