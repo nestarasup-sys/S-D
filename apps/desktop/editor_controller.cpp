@@ -14,7 +14,9 @@
 #include <functional>
 #include <limits>
 #include <studio/core/library.hpp>
+#include <studio/composition/visual_quality.hpp>
 #include <studio/media/wave.hpp>
+#include <QSaveFile>
 #include <unordered_map>
 
 namespace {
@@ -1013,6 +1015,8 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     auto error = editor_.execute([&](studio::Project &p) {
         if (n.kind == studio::NodeKind::Video)
             p.schemaVersion = std::max(p.schemaVersion, 10);
+        if (n.textAutoFit)
+            p.schemaVersion = std::max(p.schemaVersion, 15);
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
         else
@@ -1066,7 +1070,10 @@ bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
     }
     const auto rootId = nodes.front().id;
     const auto error = editor_.execute([&](studio::Project &p) {
-        p.schemaVersion = std::max(p.schemaVersion, 3);
+        const bool hasVersion15Data = std::any_of(nodes.begin(), nodes.end(), [](const auto &node) {
+            return node.textAutoFit;
+        });
+        p.schemaVersion = std::max(p.schemaVersion, hasVersion15Data ? 15 : 3);
         p.nodes.insert(p.nodes.end(), nodes.begin(), nodes.end());
     });
     if (!error.empty()) {
@@ -1702,6 +1709,24 @@ void EditorController::exportVideo(QUrl url) {
     notify(hasAudio() ? "Exportando vídeo com narração e trilha. Você pode continuar editando."
                       : "Exportando composição sem áudio. Você pode continuar editando.");
     emit exportChanged();
+}
+QVariantList EditorController::analyzeVisualQuality() {
+    const auto quality = studio::VisualQualityAnalyzer::analyze(project());
+    QDir().mkpath(diagnosticsDirectory_);
+    QSaveFile file(diagnosticsDirectory_ + "/visual-quality-last.json");
+    const auto bytes = QJsonDocument(quality.toJson()).toJson(QJsonDocument::Indented);
+    if (file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size())
+        file.commit();
+    QVariantList issues;
+    for (const auto &issue : quality.issues)
+        issues.append(QVariantMap{{"type", issue.type},
+                                  {"severity", issue.toJson()["severity"].toString()},
+                                  {"frame", qlonglong(issue.firstFrame)},
+                                  {"message", issue.displayText()}});
+    notify(quality.issues.empty()
+               ? "Análise concluída: nenhum problema automático encontrado. Isso não substitui a revisão visual."
+               : QString("Análise visual encontrou %1 apontamento(s). Revise antes da exportação.").arg(issues.size()));
+    return issues;
 }
 void EditorController::cancelExport() {
     if (!exporting())

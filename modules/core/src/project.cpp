@@ -42,7 +42,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) try {
-    if (p.schemaVersion < 2 || p.schemaVersion > 14)
+    if (p.schemaVersion < 2 || p.schemaVersion > 15)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -109,6 +109,13 @@ std::string validate(const Project &p) try {
             n.width > 10000 || n.height > 10000 || !std::isfinite(n.opacity) || n.opacity < 0 ||
             n.opacity > 1 || !std::isfinite(n.fontSize) || n.fontSize < 8 || n.fontSize > 300)
             return "Propriedade visual inválida.";
+        if (n.textAutoFit && (p.schemaVersion < 15 || n.kind != NodeKind::Text ||
+                              !std::isfinite(n.textMinFontSize) || n.textMinFontSize < 8 ||
+                              n.textMinFontSize > n.fontSize || !std::isfinite(n.textPadding) ||
+                              n.textPadding < 0 || n.textPadding * 2 >= std::min(n.width, n.height)))
+            return "Política de ajuste de texto inválida ou exige schema 15.";
+        if (!n.textAutoFit && (std::abs(n.textMinFontSize - 12) > 1e-9 || std::abs(n.textPadding) > 1e-9))
+            return "Parâmetros de ajuste de texto exigem uma política habilitada.";
         if (n.color.size() != 7 || n.color[0] != '#' ||
             !std::all_of(n.color.begin() + 1, n.color.end(),
                          [](unsigned char c) { return std::isxdigit(c); }))
@@ -354,6 +361,16 @@ std::string validate(const Project &p) try {
             std::abs(key.y) > 10000 || !std::isfinite(key.zoom) || key.zoom < 0.1 || key.zoom > 10 ||
             !std::isfinite(key.rotation) || std::abs(key.rotation) > 360 || !supportedEasing(key.easing))
             return "Keyframes da câmera inválidos ou fora de ordem.";
+        const bool hasPathMetadata = !key.targetId.empty() || !key.revealMode.empty() || key.safeMargin != 0 ||
+                                     key.captionSafeBottom != 0;
+        if (hasPathMetadata && (p.schemaVersion < 15 || key.targetId.empty() ||
+                                (key.revealMode != "spatial" && key.revealMode != "temporal" &&
+                                 key.revealMode != "combined") || !std::isfinite(key.safeMargin) ||
+                                key.safeMargin < 0 || key.safeMargin > .2 ||
+                                !std::isfinite(key.captionSafeBottom) || key.captionSafeBottom < 0 ||
+                                key.captionSafeBottom > .35 || key.safeMargin * 2 + key.captionSafeBottom >= .65 ||
+                                !nodesById.contains(key.targetId)))
+            return "Metadados de enquadramento de camera.path inválidos ou exigem schema 15.";
         if (!key.shotId.empty()) {
             const auto shot = shotsById.find(key.shotId);
             if (shot == shotsById.end() || key.frame < std::max<std::int64_t>(0, shot->second->start - 1) ||

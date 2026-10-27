@@ -64,11 +64,63 @@
   "suggestedAnimation": ["fade-rise", "pop-scale", "line-draw", "stagger-reveal"],
   "palette": { "tokens": ["surface", "accent", "highlight", "text", "secondary", "muted"] },
   "slots": [
-    { "id": "value", "kind": "text", "nodeId": "stat-value", "role": "premium:statistic-callout:value", "editable": true, "optional": false, "maxLength": 48 },
-    { "id": "unit", "kind": "text", "nodeId": "stat-unit", "role": "premium:statistic-callout:unit", "editable": true, "optional": true, "maxLength": 40 },
-    { "id": "description", "kind": "text", "nodeId": "stat-description", "role": "premium:statistic-callout:description", "editable": true, "optional": false, "maxLength": 260 },
-    { "id": "source", "kind": "text", "nodeId": "stat-source", "role": "premium:statistic-callout:source", "editable": true, "optional": false, "maxLength": 180 }
-  ],
+  {
+    "id": "value",
+    "kind": "text",
+    "nodeId": "stat-value",
+    "role": "premium:statistic-callout:value",
+    "editable": true,
+    "optional": false,
+    "maxLength": 48,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "unit",
+    "kind": "text",
+    "nodeId": "stat-unit",
+    "role": "premium:statistic-callout:unit",
+    "editable": true,
+    "optional": true,
+    "maxLength": 40,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 16,
+      "padding": 4
+    }
+  },
+  {
+    "id": "description",
+    "kind": "text",
+    "nodeId": "stat-description",
+    "role": "premium:statistic-callout:description",
+    "editable": true,
+    "optional": false,
+    "maxLength": 260,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 15,
+      "padding": 4
+    }
+  },
+  {
+    "id": "source",
+    "kind": "text",
+    "nodeId": "stat-source",
+    "role": "premium:statistic-callout:source",
+    "editable": true,
+    "optional": false,
+    "maxLength": 180,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 13,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

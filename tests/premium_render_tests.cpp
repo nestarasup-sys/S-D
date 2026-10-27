@@ -59,6 +59,7 @@ double sampledDifference(const QImage &a, const QImage &b, QRect roi) {
 }
 QJsonObject benchmark(const studio::PremiumAssetDefinition &definition, int width, int height) {
     auto project = studio::makeEmpty();
+    project.schemaVersion = 15;
     project.name = std::string(definition.name);
     project.width = width;
     project.height = height;
@@ -101,6 +102,7 @@ int main(int argc, char **argv) {
         for (const auto &definition : studio::premiumLibrary()) {
             for (const auto &[width, height] : canvases) {
                 auto project = studio::makeEmpty();
+                project.schemaVersion = 15;
                 project.name = std::string(definition.name);
                 project.width = width;
                 project.height = height;

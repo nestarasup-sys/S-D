@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
                   "every registered premium asset has a real generated library thumbnail");
             const auto assetId = entry["id"].toString().toStdString();
             auto project = studio::makeEmpty();
+            project.schemaVersion = 15;
             project.nodes = studio::makePremiumAsset(assetId, 1280, 720);
             check(!studio::validate(project).size(), "registered premium factory produces a valid project");
             const auto manifest = QJsonObject::fromVariantMap(entry["manifest"].toMap());

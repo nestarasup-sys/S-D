@@ -37,10 +37,45 @@
   "suggestedAnimation": ["entrance-fade-rise", "soft-float", "notification-reveal"],
   "palette": { "tokens": ["surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"] },
   "slots": [
-    { "id": "screen-title", "kind": "text", "nodeId": "clock", "role": "premium:text:screen-title", "editable": true },
-    { "id": "notification", "kind": "text", "nodeId": "message", "role": "premium:text:notification", "editable": true },
-    { "id": "screen", "kind": "image", "nodeId": "screen", "role": "premium:image:screen", "editable": true, "acceptedFormats": ["png", "jpg", "jpeg", "webp", "bmp"] }
-  ],
+  {
+    "id": "screen-title",
+    "kind": "text",
+    "nodeId": "clock",
+    "role": "premium:text:screen-title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "notification",
+    "kind": "text",
+    "nodeId": "message",
+    "role": "premium:text:notification",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 13,
+      "padding": 4
+    }
+  },
+  {
+    "id": "screen",
+    "kind": "image",
+    "nodeId": "screen",
+    "role": "premium:image:screen",
+    "editable": true,
+    "acceptedFormats": [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "bmp"
+    ]
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

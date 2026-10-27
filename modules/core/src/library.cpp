@@ -329,33 +329,33 @@ std::vector<PremiumAssetDefinition> &premiumRegistry() {
         {"premium:smartphone-premium-01", "Smartphone premium", "premium-object", "technology",
          "smartphone-premium-01.manifest.json", makePremiumSmartphone,
          {"premium:text:screen-title", "premium:text:notification", "premium:image:screen"},
-         {"surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"}, {}, {}, 1},
+         {"surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"}, {}, {}, 1, {}},
         {"premium:title-reveal-01", "Title Reveal · título cinematográfico", "premium-typography-template",
          "typography", "title-reveal-01.manifest.json", makePremiumTitleReveal,
          {"premium:title:main", "premium:title:subtitle", "premium:title:editorial"},
-         {"accent", "secondary", "highlight", "text", "muted"}, {}, {}, 1},
+         {"accent", "secondary", "highlight", "text", "muted"}, {}, {}, 1, {}},
         {"premium:comparison-pack-01", "Comparison Pack · comparação editorial", "premium-motion-template",
          "data", "comparison-pack-01.manifest.json", makePremiumComparisonPack,
          {"premium:comparison:left-title", "premium:comparison:right-title",
           "premium:comparison:left-value", "premium:comparison:right-value",
           "premium:comparison:left-description", "premium:comparison:right-description"},
-         {"left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"}, {}, {}, 1},
+         {"left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"}, {}, {}, 1, {}},
         {"premium:dramatic-quote-01", "Dramatic Quote · citação editorial", "premium-typography-template",
          "typography", "dramatic-quote-01.manifest.json", makePremiumDramaticQuote,
          {"premium:quote:text", "premium:quote:attribution", "premium:quote:source"},
-         {"accent", "text", "muted"}, {}, {}, 1},
+         {"accent", "text", "muted"}, {}, {}, 1, {}},
         {"premium:lower-third-editorial-01", "Lower Third Editorial · identificação", "premium-overlay",
          "typography", "lower-third-editorial-01.manifest.json", makePremiumLowerThirdEditorial,
          {"premium:lower-third:title", "premium:lower-third:subtitle", "premium:lower-third:source"},
-         {"surface", "accent", "text", "muted"}, {}, {}, 1},
+         {"surface", "accent", "text", "muted"}, {}, {}, 1, {}},
         {"premium:source-label-01", "Source Label · referência editorial", "premium-overlay",
          "communication", "source-label-01.manifest.json", makePremiumSourceLabel,
          {"premium:source-label:title", "premium:source-label:detail"},
-         {"surface", "highlight", "text", "muted"}, {}, {}, 1},
+         {"surface", "highlight", "text", "muted"}, {}, {}, 1, {}},
         {"premium:number-emphasis-01", "Number Emphasis · dado em destaque", "premium-motion-template",
          "data", "number-emphasis-01.manifest.json", makePremiumNumberEmphasis,
          {"premium:number:value", "premium:number:unit", "premium:number:description", "premium:number:source"},
-         {"surface", "accent", "text", "muted", "secondary"}, {}, {}, 1}};
+         {"surface", "accent", "text", "muted", "secondary"}, {}, {}, 1, {}}};
     return assets;
 }
 } // namespace
@@ -377,6 +377,30 @@ bool registerDeclarativePremium(PremiumAssetDefinition definition, std::string &
     assets.push_back(std::move(definition));
     return true;
 }
+bool registerPremiumTextLayoutPolicies(const std::string &assetId,
+                                       std::vector<PremiumTextLayoutPolicy> policies,
+                                       std::string &error) {
+    auto &assets = premiumRegistry();
+    auto asset = std::find_if(assets.begin(), assets.end(),
+                              [&](const auto &candidate) { return candidate.id == assetId; });
+    if (asset == assets.end()) {
+        error = "Recurso premium ausente ao registrar política textual: " + assetId;
+        return false;
+    }
+    std::unordered_set<std::string> roles;
+    for (const auto &policy : policies) {
+        if (policy.role.empty() || !roles.insert(policy.role).second ||
+            std::find(asset->slotRoles.begin(), asset->slotRoles.end(), policy.role) == asset->slotRoles.end() ||
+            !std::isfinite(policy.minimumFontSize) || policy.minimumFontSize < 8 ||
+            policy.minimumFontSize > 72 || !std::isfinite(policy.padding) || policy.padding < 0 ||
+            policy.padding > 64) {
+            error = "Política textual inválida para o premium " + assetId + ".";
+            return false;
+        }
+    }
+    asset->textLayoutPolicies = std::move(policies);
+    return true;
+}
 const PremiumAssetDefinition *premiumAsset(const std::string &id) {
     const auto &assets = premiumLibrary();
     const auto it = std::find_if(assets.begin(), assets.end(),
@@ -389,8 +413,20 @@ std::vector<Node> makePremiumAsset(const std::string &id, int width, int height)
         return {};
     const auto canvasWidth = std::clamp(width, 1, 30000);
     const auto canvasHeight = std::clamp(height, 1, 30000);
-    return asset->build ? asset->build(canvasWidth, canvasHeight)
-                        : buildDeclarativePremium(*asset, canvasWidth, canvasHeight);
+    auto nodes = asset->build ? asset->build(canvasWidth, canvasHeight)
+                              : buildDeclarativePremium(*asset, canvasWidth, canvasHeight);
+    const int referenceWidth = canvasHeight > canvasWidth ? 1080 : 1280;
+    const int referenceHeight = canvasHeight > canvasWidth ? 1920 : 720;
+    const double scale = std::min(double(canvasWidth) / referenceWidth,
+                                  double(canvasHeight) / referenceHeight);
+    for (const auto &policy : asset->textLayoutPolicies)
+        for (auto &node : nodes)
+            if (node.role == policy.role) {
+                node.textAutoFit = true;
+                node.textMinFontSize = std::min(node.fontSize, policy.minimumFontSize * scale);
+                node.textPadding = policy.padding * scale;
+            }
+    return nodes;
 }
 bool premiumSlotRole(const std::string &role) {
     if (role.empty()) return false;

@@ -104,6 +104,7 @@ std::vector<Node> dramaticQuote(int width, int height) {
     f.animate(rule, Motion::LineDraw, 0, 26);
     auto &mark = f.text("quote-mark", "Aspas editoriais", "dramatic-quote-root", quoteX, quoteY - 62 * s,
                         100 * s, 78 * s, "“", 106 * s, {}, "#84bfc0");
+    mark.role = "premium:quote:mark";
     f.animate(mark, Motion::FadeRise, 0, 22);
     auto &quote = f.text("quote-copy", "Frase principal", "dramatic-quote-root", quoteX, quoteY + 18 * s,
                          quoteW, quoteH, "UMA FRASE\nQUE FICA.", (portrait ? 56 : 68) * s,

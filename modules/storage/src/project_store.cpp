@@ -166,6 +166,10 @@ QByteArray serialize(const Project &p) {
                                                                         {"y", n.videoCropY},
                                                                         {"width", n.videoCropWidth},
                                                                         {"height", n.videoCropHeight}}}};
+        if (p.schemaVersion >= 15 && n.textAutoFit)
+            serializedNode["textLayout"] = QJsonObject{{"mode", "shrink"},
+                                                        {"minimumFontSize", n.textMinFontSize},
+                                                        {"padding", n.textPadding}};
         nodes.append(serializedNode);
     }
     QJsonArray scenes;
@@ -180,14 +184,22 @@ QByteArray serialize(const Project &p) {
         scenes.append(scene);
     }
     QJsonArray camera;
-    for (const auto &key : p.camera)
-        camera.append(QJsonObject{{"frame", double(key.frame)},
+    for (const auto &key : p.camera) {
+        QJsonObject value{{"frame", double(key.frame)},
                                   {"x", key.x},
                                   {"y", key.y},
                                   {"zoom", key.zoom},
                                   {"rotation", key.rotation},
                                   {"easing", text(key.easing)},
-                                  {"shotId", text(key.shotId)}});
+                                  {"shotId", text(key.shotId)}};
+        if (p.schemaVersion >= 15 && !key.targetId.empty()) {
+            value["targetId"] = text(key.targetId);
+            value["reveal"] = text(key.revealMode);
+            value["safeMargin"] = key.safeMargin;
+            value["captionSafeBottom"] = key.captionSafeBottom;
+        }
+        camera.append(value);
+    }
     QJsonObject shots;
     QJsonArray shotArray;
     for (const auto &shot : p.shots) {
@@ -290,7 +302,8 @@ LoadResult deserialize(const QByteArray &bytes) try {
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
                                          o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
-                                         o["schemaVersion"] != 13 && o["schemaVersion"] != 14))
+                                         o["schemaVersion"] != 13 && o["schemaVersion"] != 14 &&
+                                         o["schemaVersion"] != 15))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -422,6 +435,17 @@ LoadResult deserialize(const QByteArray &bytes) try {
         n.text = str(v, "text");
         n.color = str(v, "color");
         n.source = str(v, "source");
+        if (v.contains("textLayout")) {
+            if (p.schemaVersion < 15 || n.kind != NodeKind::Text || !v["textLayout"].isObject())
+                return fail("Política adaptativa de texto exige um texto e schema 15.");
+            const auto layout = v["textLayout"].toObject();
+            if (layout.size() != 3 || layout["mode"] != "shrink" ||
+                !layout["minimumFontSize"].isDouble() || !layout["padding"].isDouble())
+                return fail("Política de ajuste de texto inválida ou com campos desconhecidos.");
+            n.textAutoFit = true;
+            n.textMinFontSize = layout["minimumFontSize"].toDouble();
+            n.textPadding = layout["padding"].toDouble();
+        }
         if (v.contains("video")) {
             if (p.schemaVersion < 10 || n.kind != NodeKind::Video || !v["video"].isObject())
                 return fail("Controles de vídeo exigem vídeo e schema 10.");
@@ -533,9 +557,20 @@ LoadResult deserialize(const QByteArray &bytes) try {
             return fail("Curva de câmera inválida.");
         if (key.contains("shotId") && !key["shotId"].isString())
             return fail("Vínculo de câmera com shot inválido.");
+        const bool hasPathMetadata = key.contains("targetId") || key.contains("reveal") ||
+                                     key.contains("safeMargin") || key.contains("captionSafeBottom");
+        if (hasPathMetadata && (p.schemaVersion < 15 || !key["targetId"].isString() ||
+                                !key["reveal"].isString() || !key["safeMargin"].isDouble() ||
+                                !key["captionSafeBottom"].isDouble()))
+            return fail("Metadados de camera.path exigem schema 15 e valores completos.");
         p.camera.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                             key["zoom"].toDouble(), key["rotation"].toDouble(),
                             key["easing"].toString("linear").toStdString(), str(key, "shotId")});
+        auto &loadedKey = p.camera.back();
+        loadedKey.targetId = str(key, "targetId");
+        loadedKey.revealMode = str(key, "reveal");
+        loadedKey.safeMargin = key["safeMargin"].toDouble(0);
+        loadedKey.captionSafeBottom = key["captionSafeBottom"].toDouble(0);
     }
     if (o.contains("shots") && !o["shots"].isArray())
         return fail("Lista de shots inválida.");

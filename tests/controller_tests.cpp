@@ -2,6 +2,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QGuiApplication>
+#include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
@@ -17,6 +18,7 @@ static void check(bool condition, const char *message) {
         throw std::runtime_error(message);
 }
 int main(int argc, char **argv) {
+    QStandardPaths::setTestModeEnabled(true);
     QGuiApplication app(argc, argv);
     QTemporaryDir directory;
     try {

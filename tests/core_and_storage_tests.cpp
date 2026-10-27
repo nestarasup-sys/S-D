@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 15;
+        malformed["schemaVersion"] = 16;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -181,6 +181,30 @@ int main(int argc, char **argv) {
                   loadedHighlight.project.artDirection.primaryColor == "#22aa44" &&
                   loadedHighlight.project.artDirection.captionHighlightColor == "#ff0055",
               "schema 14 preserves caption highlight independently of the primary art color");
+        auto visualLayoutProject = studio::makeEmpty();
+        visualLayoutProject.schemaVersion = 15;
+        visualLayoutProject.duration = 120;
+        visualLayoutProject.scenes = {{"visual-scene", "Visual", "", 0, 120}};
+        visualLayoutProject.shots = {{"visual-shot", "visual-scene", "Título", "cut", 0, 120}};
+        studio::Node fittedTitle;
+        fittedTitle.id = "visual-title";
+        fittedTitle.kind = studio::NodeKind::Text;
+        fittedTitle.role = "header";
+        fittedTitle.name = "Pergunta";
+        fittedTitle.text = "Texto de teste";
+        fittedTitle.textAutoFit = true;
+        fittedTitle.textMinFontSize = 28;
+        fittedTitle.textPadding = 4;
+        fittedTitle.duration = 120;
+        visualLayoutProject.nodes.push_back(fittedTitle);
+        visualLayoutProject.camera = {{0, 640, 360, 1, 0, "linear", "visual-shot",
+                                       "visual-title", "spatial", .06, .16}};
+        const auto visualLayoutRoundTrip = studio::deserialize(studio::serialize(visualLayoutProject));
+        check(studio::validate(visualLayoutProject).empty() && visualLayoutRoundTrip.error.isEmpty() &&
+                  studio::serialize(visualLayoutRoundTrip.project) == studio::serialize(visualLayoutProject),
+              "schema 15 premium text policy and camera target provenance survive a project roundtrip");
+        visualLayoutProject.schemaVersion = 14;
+        check(!studio::validate(visualLayoutProject).empty(), "premium text layout requires schema 15");
         auto linkedAudioProject = studio::makeEmpty();
         linkedAudioProject.schemaVersion = 13;
         linkedAudioProject.duration = 120;

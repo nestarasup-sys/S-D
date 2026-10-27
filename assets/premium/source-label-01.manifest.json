@@ -23,9 +23,31 @@
   "suggestedAnimation": ["slide-in-left", "fade-rise", "stagger-sequence"],
   "palette": { "tokens": ["surface", "highlight", "text", "muted"] },
   "slots": [
-    { "id": "title", "kind": "text", "nodeId": "source-label-title", "role": "premium:source-label:title", "editable": true },
-    { "id": "detail", "kind": "text", "nodeId": "source-label-detail", "role": "premium:source-label:detail", "editable": true }
-  ],
+  {
+    "id": "title",
+    "kind": "text",
+    "nodeId": "source-label-title",
+    "role": "premium:source-label:title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "detail",
+    "kind": "text",
+    "nodeId": "source-label-detail",
+    "role": "premium:source-label:detail",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 14,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

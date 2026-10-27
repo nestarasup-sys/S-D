@@ -41,6 +41,8 @@ QJsonObject capabilities() {
                                        {"optional", slot.value("optional").toBool(false)}};
                 if (slot.value("maxLength").isDouble())
                     definition.insert("maxLength", slot.value("maxLength"));
+                if (slot.value("textLayout").isObject())
+                    definition.insert("textLayout", slot.value("textLayout"));
                 slotDefinitions.append(definition);
             }
         }
@@ -56,7 +58,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 14},
+            {"projectVersion", 15},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -73,6 +75,8 @@ QJsonObject capabilities() {
                         "declarative-premium-templates", "premium-content-slot-overrides",
                         "premium-image-slot-overrides", "camera-path-assisted-framing",
                         "camera-spatial-reveal", "camera-spatial-and-temporal-reveal",
+                        "premium-slot-adaptive-text-layout", "visual-quality-analysis-before-export",
+                        "camera-path-target-framing-diagnostics", "premium-slot-image-relative-paths",
                         "embedded-video-audio-with-source-trim-and-speed",
                         "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
@@ -459,7 +463,13 @@ Instancie com `{"kind":"library","assetId":"ID-REAL","cue":0}`. Todos os nove ap
 
 Slots podem ser preenchidos durante a importação. Use `slots` no mesmo elemento `kind: "library"`; as chaves são os IDs curtos definidos no manifesto, e os valores são texto ou caminho local para um slot `image`. Campos desconhecidos, tipos errados, textos acima do limite ou mídia inválida causam erro com o ID do recurso/slot. Exemplo válido: `{"id":"citacao","kind":"library","assetId":"premium:dramatic-quote-01","cue":0,"slots":{"quote":"A mudança começa com uma pergunta.","attribution":"Contexto editorial","source":"Referência demonstrativa"},"palette":{"accent":"#5CD6C2","text":"#F4E1A1","muted":"#AEC3D4"}}`. `palette` e `slots` são aplicados juntos; os valores viram conteúdo dos nós daquela instância e mantêm a hierarquia e animação do template.
 
-O Smartphone aceita slots textuais `screen-title` e `notification`, e imagem `screen`. O caminho de imagem é local e relativo ao arquivo `.production.json` (ou absoluto), usa PNG/JPEG/WebP/BMP, deve existir e decodificar. Ao importar, o worker copia a imagem para mídia gerenciada do workspace por conteúdo. Isso mantém o projeto ligado à cópia daquele workspace, mas não cria um pacote portátil entre computadores. Os demais slots devem ser consultados em `premiumAssets[].slotDefinitions`; atualmente são textuais. Premiums não têm slot de vídeo ou ícone.
+O Smartphone aceita slots textuais `screen-title` e `notification`, e imagem `screen`. O caminho de imagem de slot premium precisa ser relativo ao arquivo `.production.json`, sem `..`, URL, caminho absoluto, UNC ou symlink que escape da pasta da receita; usa PNG/JPEG/WebP/BMP, precisa existir e decodificar. Ao importar, o worker copia a imagem para mídia gerenciada do workspace por conteúdo. Isso mantém o projeto ligado à cópia daquele workspace, mas não cria um pacote portátil entre computadores. Os demais slots devem ser consultados em `premiumAssets[].slotDefinitions`; atualmente são textuais. Premiums não têm slot de vídeo ou ícone.
+
+Slots de texto premium anunciam `textLayout` quando o manifesto permite ajuste. A política atual é `{"mode":"shrink","minimumFontSize":N,"padding":N}`: o compositor usa métricas Qt e quebra de linha da fonte efetiva, depois reduz a fonte apenas até o mínimo declarado. Nenhuma palavra é removida. Se a fonte diminuir, o relatório inclui uma informação `text-adapted` no primeiro quadro visível; se o texto ainda não couber, aponta o overflow. Slots sem política mantêm o comportamento anterior. `premiumAssets[].slotDefinitions[].textLayout` mostra apenas políticas reais dos manifestos.
+
+Antes de exportar, use **Qualidade visual** ou o botão **Exportar MP4** para abrir a revisão local. Ela verifica overflow/margens de texto premium, colisões entre textos e legendas, contraste somente sobre superfícies sólidas identificáveis, beats `show` que não aparecem no momento ou surgem totalmente fora do viewport e enquadramento de alvos `camera.path`. Os apontamentos não bloqueiam a exportação e não substituem revisão artística. O botão salva `visual-quality-last.json` na pasta Logs. O worker também aceita `--quality-report <arquivo.json>` para analisar um projeto salvo sem renderizar o vídeo. `sampledFrames` lista os quadros examinados: são pontos representativos de shots, textos, câmera e beats, não uma inspeção de todos os quadros nem uma garantia de que nenhum erro visual exista.
+
+Para testar uma receita criada por outra IA, consulte o pacote `docs/ai-evaluation/`: ele contém o desafio, a rubrica e o fluxo local de importação/análise. Nenhuma IA externa é chamada pelo aplicativo.
 
 Personalize cores em `palette`, usando apenas `premiumAssets[].paletteTokens` e valores `#RRGGBB`. Elementos `native` aceitam `palette.primary` e `palette.secondary`. A paleta muda as camadas sem substituir o conteúdo dos slots. Veja os exemplos executáveis `examples/premium-dramatic-quote-slots-v2.production.json`, `examples/premium-comparison-slots-v2.production.json`, `examples/premium-smartphone-slots-v2.production.json`, `examples/premium-question-hook-slots-v2.production.json` e `examples/premium-statistic-callout-slots-v2.production.json`.
 
@@ -479,11 +489,13 @@ Valores de Comparison Pack/Statistic Callout são demonstrativos quando assim in
 - **Temporal:** mantenha `opacity: 0` e use Visual Beat `show`; a visibilidade muda no frame do beat e persiste. A câmera pode estar parada, chegando ao alvo ou já além dele.
 - **Combinada:** a câmera percorre a trajetória e um Visual Beat faz o alvo oculto aparecer durante o deslocamento. Marque o ponto com `reveal:"combined"`.
 
-`camera.path` opcional no objeto `camera` do shot cria keyframes de câmera editáveis a partir de uma lista de alvos ordenada. Cada target exige `target` (ID de elemento ou grupo daquele shot) e `at` (referência real de `cue` com `cueProgress`, `progress`, `offsetSeconds` ou `wordIndex` alinhado); `padding` (1–4) e `easing` (`linear`, `ease-in`, `ease-out`, `ease-in-out`) são opcionais. `safeMargin` vai de 0 a 0,2 e `captionSafeBottom` de 0 a 0,35; juntos precisam deixar área visível. Use dois a 24 alvos, o primeiro deve estar no início do shot e os tempos devem crescer. O app percorre a hierarquia dos grupos, calcula bounds transformados e enquadra cada alvo respeitando margem e a faixa inferior de legendas. A ordem da IA é mantida. Cada ponto depois do primeiro vira um keyframe real; não use junto com `focus`, `focus.follow`, `cameraPreset` ou beats de câmera no mesmo shot.
+`camera.path` opcional no objeto `camera` do shot cria keyframes de câmera editáveis a partir de uma lista de alvos ordenada. Cada target exige `target` (ID de elemento ou grupo daquele shot) e `at` (referência real de `cue` com `cueProgress`, `progress`, `offsetSeconds` ou `wordIndex` alinhado); `padding` (1–4) e `easing` (`linear`, `ease-in`, `ease-out`, `ease-in-out`) são opcionais. `safeMargin` vai de 0 a 0,2 e `captionSafeBottom` de 0 a 0,35; juntos precisam deixar área visível. Use dois a 24 alvos, o primeiro deve estar no início do shot e os tempos devem crescer. O app percorre a hierarquia dos grupos, calcula bounds transformados e enquadra cada alvo respeitando margem e a faixa inferior de legendas. A ordem da IA é mantida. Cada ponto depois do primeiro vira um keyframe real; o projeto schema 15 conserva alvo, modo de revelação e margens para a análise local. Não use junto com `focus`, `focus.follow`, `cameraPreset` ou beats de câmera no mesmo shot.
 
 O padrão é `reveal:"spatial"`: o alvo precisa estar visível no frame em que será enquadrado e não pode ter um `show` destinado a revelá-lo. Para `temporal` ou `combined`, o mesmo alvo precisa começar com opacidade efetiva zero e ter Visual Beat `show`. Um alvo temporal ainda pode ser revelado antes, durante ou depois do travelling, controlando o `cueProgress` do beat e do ponto de câmera. `camera.path` não altera o enquadramento por conta própria fora dos pontos pedidos e não faz tracking por visão computacional.
 
 Exemplos validados pelo parser, compilador e QPainter: `examples/camera-path-spatial-v3.production.json` (entrada espacial sem beats), `examples/camera-path-combined-v3.production.json` (show durante o movimento), `examples/camera-travelling-vertical-v3.production.json`, `examples/camera-travelling-horizontal-v3.production.json`, `examples/visual-beats-sequential-reveal-v3.production.json` e `examples/premium-palette-v2.production.json`. A demonstração integrada de aproximadamente 25 segundos está em `examples/premium-factory-stage14-demo-v3.production.json`. `transitionIn` muda entre shots; `motion` anima a entrada/saída padrão; keyframes definem propriedades ao longo do tempo; Visual Beats executam ações pontuais; câmera move o enquadramento compartilhado do shot.
+
+Para verificar o ajuste de texto e os diagnósticos de composição, `examples/visual-quality-review-demo-v3.production.json` é uma receita integrada com slots longos, paletas, comparison pack, travelling espacial e reveal combinado. `examples/visual-quality-problematic-v3.production.json` é uma fixture intencionalmente problemática: o slot da pergunta contém uma palavra sem pontos de quebra e deve gerar avisos de overflow/corte. Compare o relatório local, não use essa fixture como modelo visual.
 
 ## Presets compostos na biblioteca pessoal
 
@@ -512,7 +524,7 @@ Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilust
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v14 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12 e trim/velocidade da fonte de áudio usam schema 13 e cor independente do destaque de palavra usa schema 14.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14 e políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15.
 
 ## Checklist de limites e publicação
 

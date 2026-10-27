@@ -49,9 +49,35 @@
   "suggestedAnimation": ["fade-rise", "line-draw", "stagger-reveal"],
   "palette": { "tokens": ["accent", "highlight", "muted", "text"] },
   "slots": [
-    { "id": "question", "kind": "text", "nodeId": "question-main", "role": "premium:question-hook:question", "editable": true, "optional": false, "maxLength": 280 },
-    { "id": "context", "kind": "text", "nodeId": "question-context", "role": "premium:question-hook:context", "editable": true, "optional": true, "maxLength": 300 }
-  ],
+  {
+    "id": "question",
+    "kind": "text",
+    "nodeId": "question-main",
+    "role": "premium:question-hook:question",
+    "editable": true,
+    "optional": false,
+    "maxLength": 280,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "context",
+    "kind": "text",
+    "nodeId": "question-context",
+    "role": "premium:question-hook:context",
+    "editable": true,
+    "optional": true,
+    "maxLength": 300,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 24,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

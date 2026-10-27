@@ -16,6 +16,7 @@
 #include <optional>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
+#include <studio/composition/text_layout.hpp>
 #include <studio/composition/render_snapshot.hpp>
 #include <vector>
 
@@ -186,7 +187,9 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                                      QFileInfo(QString::fromStdString(node.source)).fileName());
             }
         } else if (node.kind == NodeKind::Text) {
-            const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds;
+            const auto textLayout = resolvePremiumTextLayout(node, art);
+            const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8)
+                                                               : (node.textAutoFit ? textLayout.contentBounds : bounds);
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
                 auto captionBackground = QColor(QString::fromStdString(art.captionBackgroundColor));
@@ -195,7 +198,7 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                 painter.drawRoundedRect(bounds, 12, 12);
             }
             QFont font(QString::fromStdString(art.fontFamily));
-            font.setPixelSize(qRound(node.fontSize));
+            font.setPixelSize(textLayout.pixelSize);
             font.setWeight(QFont::DemiBold);
             if (node.role == "caption" && !node.captionWords.empty()) {
                 painter.setFont(font);
@@ -288,20 +291,6 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                                                                 : Qt::AlignLeft | Qt::AlignTop) |
                                        Qt::TextWordWrap;
                 const auto displayText = QString::fromStdString(node.text);
-                if (node.role.rfind("premium:", 0) == 0) {
-                    const int requestedSize = qRound(node.fontSize);
-                    int fittedSize = requestedSize;
-                    while (fittedSize > 12) {
-                        font.setPixelSize(fittedSize);
-                        const QFontMetricsF metrics(font);
-                        const auto measured = metrics.boundingRect(
-                            QRectF(0, 0, textBounds.width(), 10000), alignment, displayText);
-                        if (measured.height() <= textBounds.height())
-                            break;
-                        fittedSize = std::max(12, fittedSize - 2);
-                    }
-                    font.setPixelSize(fittedSize);
-                }
                 painter.setFont(font);
                 painter.setPen(QColor(QString::fromStdString(node.color)));
                 if (node.role == "premium:title:main") {

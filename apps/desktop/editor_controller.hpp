@@ -198,6 +198,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void newProject(bool demo = false);
     Q_INVOKABLE void recover();
     Q_INVOKABLE void exportVideo(QUrl output);
+    Q_INVOKABLE QVariantList analyzeVisualQuality();
     Q_INVOKABLE void cancelExport();
     Q_INVOKABLE QString timecode(int frame) const;
     bool hasPath() const {

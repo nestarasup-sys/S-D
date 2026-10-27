@@ -27,6 +27,11 @@ struct PremiumPaletteBinding {
     std::string token;
     std::vector<std::string> nodeIds;
 };
+struct PremiumTextLayoutPolicy {
+    std::string role;
+    double minimumFontSize{12};
+    double padding{0};
+};
 struct PremiumAssetDefinition {
     std::string id, name, type, category, manifestResource;
     std::vector<Node> (*build)(int canvasWidth, int canvasHeight){nullptr};
@@ -35,10 +40,13 @@ struct PremiumAssetDefinition {
     std::shared_ptr<const PremiumDeclarativeDefinition> declarative;
     std::vector<PremiumPaletteBinding> paletteBindings;
     int manifestVersion{1};
+    std::vector<PremiumTextLayoutPolicy> textLayoutPolicies;
 };
 const std::vector<PremiumAssetDefinition> &premiumLibrary();
 const PremiumAssetDefinition *premiumAsset(const std::string &id);
 bool registerDeclarativePremium(PremiumAssetDefinition definition, std::string &error);
+bool registerPremiumTextLayoutPolicies(const std::string &assetId,
+                                      std::vector<PremiumTextLayoutPolicy> policies, std::string &error);
 std::vector<Node> buildDeclarativePremium(const PremiumAssetDefinition &definition, int canvasWidth,
                                          int canvasHeight);
 std::vector<Node> makePremiumAsset(const std::string &id, int canvasWidth = 1280, int canvasHeight = 720);

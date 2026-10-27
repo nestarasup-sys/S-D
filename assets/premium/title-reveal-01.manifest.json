@@ -24,10 +24,44 @@
   "suggestedAnimation": ["editorial-wipe", "subtitle-rise", "fade-out"],
   "palette": { "tokens": ["accent", "secondary", "highlight", "text", "muted"] },
   "slots": [
-    { "id": "main-title", "kind": "text", "nodeId": "title-main", "role": "premium:title:main", "editable": true },
-    { "id": "subtitle", "kind": "text", "nodeId": "title-subtitle", "role": "premium:title:subtitle", "editable": true },
-    { "id": "editorial-id", "kind": "text", "nodeId": "title-editorial-id", "role": "premium:title:editorial", "editable": true, "optional": true }
-  ],
+  {
+    "id": "main-title",
+    "kind": "text",
+    "nodeId": "title-main",
+    "role": "premium:title:main",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "subtitle",
+    "kind": "text",
+    "nodeId": "title-subtitle",
+    "role": "premium:title:subtitle",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "editorial-id",
+    "kind": "text",
+    "nodeId": "title-editorial-id",
+    "role": "premium:title:editorial",
+    "editable": true,
+    "optional": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 14,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

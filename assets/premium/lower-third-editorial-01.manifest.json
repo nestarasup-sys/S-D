@@ -25,10 +25,44 @@
   "suggestedAnimation": ["fade-rise", "slide-in-left", "stagger-sequence"],
   "palette": { "tokens": ["surface", "accent", "text", "muted"] },
   "slots": [
-    { "id": "title", "kind": "text", "nodeId": "lower-third-name", "role": "premium:lower-third:title", "editable": true },
-    { "id": "subtitle", "kind": "text", "nodeId": "lower-third-subtitle", "role": "premium:lower-third:subtitle", "editable": true },
-    { "id": "source", "kind": "text", "nodeId": "lower-third-source", "role": "premium:lower-third:source", "editable": true, "optional": true }
-  ],
+  {
+    "id": "title",
+    "kind": "text",
+    "nodeId": "lower-third-name",
+    "role": "premium:lower-third:title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "subtitle",
+    "kind": "text",
+    "nodeId": "lower-third-subtitle",
+    "role": "premium:lower-third:subtitle",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "source",
+    "kind": "text",
+    "nodeId": "lower-third-source",
+    "role": "premium:lower-third:source",
+    "editable": true,
+    "optional": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 13,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }

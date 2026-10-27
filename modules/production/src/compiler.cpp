@@ -758,8 +758,17 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     p.camera.push_back({shotStart - 1, previousShotCamera.x, previousShotCamera.y,
                                         previousShotCamera.zoom, previousShotCamera.rotation, "linear",
                                         directedShot.id.toStdString()});
-                p.camera.push_back({shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
-                                    shotCamera.rotation, "linear", directedShot.id.toStdString()});
+                CameraKeyframe initialCamera{shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                             shotCamera.rotation, "linear", directedShot.id.toStdString()};
+                if (!resolvedCameraPath.empty()) {
+                    const auto &firstTarget = resolvedCameraPath.front();
+                    initialCamera.targetId = firstTarget.source->targetId.toStdString();
+                    initialCamera.revealMode = firstTarget.source->reveal.toStdString();
+                    initialCamera.safeMargin = directedShot.cameraPath->safeMargin;
+                    initialCamera.captionSafeBottom = directedShot.cameraPath->captionSafeBottom;
+                    p.schemaVersion = 15;
+                }
+                p.camera.push_back(std::move(initialCamera));
                 if (!resolvedCameraPath.empty()) {
                     for (std::size_t i = 1; i < resolvedCameraPath.size(); ++i) {
                         const auto &target = resolvedCameraPath[i];
@@ -767,9 +776,14 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                             r.error = "A produção excede 4096 pontos compilados de camera.path.";
                             return r;
                         }
-                        p.camera.push_back({target.frame, target.camera.x, target.camera.y,
-                                            target.camera.zoom, target.camera.rotation,
-                                            target.source->easing, directedShot.id.toStdString()});
+                        CameraKeyframe cameraKey{target.frame, target.camera.x, target.camera.y,
+                                                 target.camera.zoom, target.camera.rotation,
+                                                 target.source->easing, directedShot.id.toStdString()};
+                        cameraKey.targetId = target.source->targetId.toStdString();
+                        cameraKey.revealMode = target.source->reveal.toStdString();
+                        cameraKey.safeMargin = directedShot.cameraPath->safeMargin;
+                        cameraKey.captionSafeBottom = directedShot.cameraPath->captionSafeBottom;
+                        p.camera.push_back(std::move(cameraKey));
                         shotCamera = target.camera;
                     }
                 } else if (!directedShot.cameraPreset.isEmpty()) {
@@ -962,6 +976,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     node.videoCropY != 0 || node.videoCropWidth != 1 || node.videoCropHeight != 1);
         }))
         p.schemaVersion = std::max(p.schemaVersion, 10);
+    if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.textAutoFit; }))
+        p.schemaVersion = 15;
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

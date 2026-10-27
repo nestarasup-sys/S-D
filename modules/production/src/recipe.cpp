@@ -131,10 +131,8 @@ bool applyPremiumPalette(std::vector<Node> &nodes, const PremiumAssetDefinition 
         if (role == "premium:title:editorial" || role == "premium:comparison:editorial" ||
             role == "premium:number:editorial")
             return "highlight";
-        if (role == "premium:comparison:left-title")
-            return "left";
-        if (role == "premium:comparison:right-title")
-            return "right";
+        if (role == "premium:comparison:left-title" || role == "premium:comparison:right-title")
+            return "accent";
         if (role == "premium:text:screen-title" || role == "premium:text:notification")
             return "text";
         if (role == "premium:image:screen")

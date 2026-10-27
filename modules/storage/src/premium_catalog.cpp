@@ -224,11 +224,28 @@ bool loadDeclarativeDefinitions(QString &error) {
             return false;
         }
         const auto manifest = document.object();
-        if (manifest.value("manifestVersion").toInt() != 2)
-            continue;
         if (const auto invalid = validatePremiumManifest(manifest, {}); !invalid.isEmpty()) {
-            error = "Manifesto declarativo inválido '" + manifest.value("id").toString() + "': " + invalid;
+            error = "Manifesto premium inválido '" + manifest.value("id").toString() + "': " + invalid;
             return false;
+        }
+        std::vector<PremiumTextLayoutPolicy> textPolicies;
+        for (const auto &slotValue : manifest.value("slots").toArray()) {
+            const auto slot = slotValue.toObject();
+            if (!slot.contains("textLayout"))
+                continue;
+            const auto policy = slot.value("textLayout").toObject();
+            textPolicies.push_back({slot.value("role").toString().toStdString(),
+                                    policy.value("minimumFontSize").toDouble(),
+                                    policy.value("padding").toDouble()});
+        }
+        if (manifest.value("manifestVersion").toInt() == 1) {
+            std::string registrationError;
+            if (!registerPremiumTextLayoutPolicies(manifest.value("id").toString().toStdString(),
+                                                   std::move(textPolicies), registrationError)) {
+                error = QString::fromStdString(registrationError);
+                return false;
+            }
+            continue;
         }
         const auto definition = manifest.value("definition").toObject();
         if (!manifest.value("definition").isObject() || definition.value("definitionVersion").toInt() != 1) {
@@ -293,6 +310,11 @@ bool loadDeclarativeDefinitions(QString &error) {
         }
         std::string registrationError;
         if (!registerDeclarativePremium(std::move(asset), registrationError)) {
+            error = QString::fromStdString(registrationError);
+            return false;
+        }
+        if (!registerPremiumTextLayoutPolicies(manifest.value("id").toString().toStdString(),
+                                               std::move(textPolicies), registrationError)) {
             error = QString::fromStdString(registrationError);
             return false;
         }

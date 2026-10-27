@@ -1358,6 +1358,63 @@ int main(int argc, char **argv) {
                   quoteColorNode && quoteColorNode->color == "#F4E1A1" && quoteAccentNode &&
                   quoteAccentNode->color == "#5CD6C2",
               "validated JSON palette recolors real premium slot and reusable accent component");
+        auto comparisonPaletteScene = QJsonObject{
+            {"id", "comparison-palette"},
+            {"narration", QJsonArray{"Cores de painel e títulos têm papéis independentes."}},
+            {"elements", QJsonArray{QJsonObject{
+                {"id", "comparison-template"}, {"kind", "library"},
+                {"assetId", "premium:comparison-pack-01"}, {"cue", 0},
+                {"palette", QJsonObject{{"left", "#205C50"}, {"right", "#5B3A20"},
+                                         {"accent", "#E9D08C"}, {"text", "#F3F4EE"}}}}}}};
+        auto comparisonPaletteRecipe = paletteRecipe;
+        comparisonPaletteRecipe["scenes"] = QJsonArray{comparisonPaletteScene};
+        const auto comparisonPaletteParsed = studio::parseRecipe(
+            QJsonDocument(comparisonPaletteRecipe).toJson(), directory.path(), catalog.data());
+        const auto *comparisonLeftTitle = comparisonPaletteParsed.error.isEmpty()
+                                              ? findRole(findRole,
+                                                         comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                         "premium:comparison:left-title")
+                                              : nullptr;
+        const auto *comparisonRightTitle = comparisonPaletteParsed.error.isEmpty()
+                                               ? findRole(findRole,
+                                                          comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                          "premium:comparison:right-title")
+                                               : nullptr;
+        const auto *comparisonLeftSurface = comparisonPaletteParsed.error.isEmpty()
+                                                ? findRole(findRole,
+                                                           comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                           "palette:left")
+                                                : nullptr;
+        const auto *comparisonRightSurface = comparisonPaletteParsed.error.isEmpty()
+                                                 ? findRole(findRole,
+                                                            comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                            "palette:right")
+                                                 : nullptr;
+        check(comparisonPaletteParsed.error.isEmpty() && comparisonLeftTitle && comparisonRightTitle &&
+                  comparisonLeftTitle->color == "#E9D08C" && comparisonRightTitle->color == "#E9D08C" &&
+                  comparisonLeftSurface && comparisonLeftSurface->color == "#205C50" &&
+                  comparisonRightSurface && comparisonRightSurface->color == "#5B3A20",
+              "comparison palette keeps panel surfaces distinct from high-contrast headings");
+        bool visualReviewExamplesParse = true;
+        QString visualReviewExampleError;
+        for (const auto &example : {QStringLiteral("visual-quality-review-demo-v3.production.json"),
+                                    QStringLiteral("visual-quality-problematic-v3.production.json")}) {
+            QFile exampleFile(QStringLiteral(STUDIO_SOURCE_DIR) + "/examples/" + example);
+            if (!exampleFile.open(QIODevice::ReadOnly)) {
+                visualReviewExamplesParse = false;
+                visualReviewExampleError = "missing " + example;
+                break;
+            }
+            const auto parsedExample = studio::parseRecipe(exampleFile.readAll(), directory.path(), catalog.data());
+            if (!parsedExample.error.isEmpty()) {
+                visualReviewExamplesParse = false;
+                visualReviewExampleError = example + ": " + parsedExample.error;
+                break;
+            }
+        }
+        check(visualReviewExamplesParse,
+              ("visual-quality review examples parse with the real production parser: " +
+               visualReviewExampleError).toStdString().c_str());
         const auto findColor = [](const auto &self, const studio::DirectedElement &element,
                                   const std::string &color) -> bool {
             if (element.node.color == color)

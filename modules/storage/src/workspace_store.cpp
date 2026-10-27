@@ -164,6 +164,7 @@ const PremiumRegistry &premiumRegistry() {
             }
             auto project = makeEmpty();
             project.name = string(definition.name).toStdString();
+            project.schemaVersion = 15;
             project.nodes = nodes;
             if (!layersMatch || !validate(project).empty()) {
                 result.error = "Camadas, slots ou projeto premium divergiram do manifesto: " +
@@ -403,6 +404,15 @@ QString validatePremiumManifest(const QJsonObject &manifest, const QString &pack
             return "Tamanho máximo de slot premium inválido.";
         if (kind == "text" && slot.contains("maxLength") && slot["maxLength"].toInt() > 1000)
             return "Slot de texto premium não pode exceder 1000 caracteres.";
+        if (slot.contains("textLayout")) {
+            const auto policy = slot["textLayout"].toObject();
+            if (kind != "text" || !slot["textLayout"].isObject() || policy.size() != 3 ||
+                policy["mode"] != "shrink" || !policy["minimumFontSize"].isDouble() ||
+                !policy["padding"].isDouble() || policy["minimumFontSize"].toDouble() < 8 ||
+                policy["minimumFontSize"].toDouble() > 72 || policy["padding"].toDouble() < 0 ||
+                policy["padding"].toDouble() > 64)
+                return "Política de adequação textual inválida no slot premium '" + slotId + "'.";
+        }
     }
     for (const auto &value : manifest["dependencies"].toArray()) {
         if (!value.isString() || value.toString().isEmpty() || value.toString() == id ||

@@ -35,13 +35,79 @@
   "suggestedAnimation": ["panel-reveal-left", "panel-reveal-right", "fade-out"],
   "palette": { "tokens": ["left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"] },
   "slots": [
-    { "id": "left-title", "kind": "text", "nodeId": "comparison-left-title", "role": "premium:comparison:left-title", "editable": true },
-    { "id": "right-title", "kind": "text", "nodeId": "comparison-right-title", "role": "premium:comparison:right-title", "editable": true },
-    { "id": "left-value", "kind": "text", "nodeId": "comparison-left-value", "role": "premium:comparison:left-value", "editable": true },
-    { "id": "right-value", "kind": "text", "nodeId": "comparison-right-value", "role": "premium:comparison:right-value", "editable": true },
-    { "id": "left-description", "kind": "text", "nodeId": "comparison-left-description", "role": "premium:comparison:left-description", "editable": true },
-    { "id": "right-description", "kind": "text", "nodeId": "comparison-right-description", "role": "premium:comparison:right-description", "editable": true }
-  ],
+  {
+    "id": "left-title",
+    "kind": "text",
+    "nodeId": "comparison-left-title",
+    "role": "premium:comparison:left-title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "right-title",
+    "kind": "text",
+    "nodeId": "comparison-right-title",
+    "role": "premium:comparison:right-title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "left-value",
+    "kind": "text",
+    "nodeId": "comparison-left-value",
+    "role": "premium:comparison:left-value",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "right-value",
+    "kind": "text",
+    "nodeId": "comparison-right-value",
+    "role": "premium:comparison:right-value",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "left-description",
+    "kind": "text",
+    "nodeId": "comparison-left-description",
+    "role": "premium:comparison:left-description",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 15,
+      "padding": 4
+    }
+  },
+  {
+    "id": "right-description",
+    "kind": "text",
+    "nodeId": "comparison-right-description",
+    "role": "premium:comparison:right-description",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 15,
+      "padding": 4
+    }
+  }
+],
   "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
   "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
 }
