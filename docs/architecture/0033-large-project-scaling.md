@@ -32,7 +32,7 @@ O artefato `artifacts/large-project-scaling/report.json` é local e ignorado pel
 | 1.000 | 18,56 ms | 14,74 ms | 55,51 ms | 35,85 ms | 1,13 ms | 0,54 ms | 184,89 ms | 27,5 MB |
 | 3.000 | 56,99 ms | 19,12 ms | 162,48 ms | 107,13 ms | 3,70 ms | 1,52 ms | 559,35 ms | 62,1 MB |
 
-No maior caso, a receita tinha 3,50 MiB, o projeto 6,08 MiB; o working set de pico amostrado foi 77,2 MB. Medições de uma execução e uma fixture, não garantias de orçamento ou taxa de quadros. O custo de edição/undo/redo medido para 3.000 nós foi 9,84 ms. O render de milhares de camadas custa centenas de milissegundos por quadro neste cenário.
+No maior caso, a receita tinha 3.497.527 bytes (3,34 MiB), o projeto 6.075.908 bytes (5,79 MiB); o working set de pico amostrado foi 77,2 MB decimais. Medições de uma execução e uma fixture, não garantias de orçamento ou taxa de quadros. O custo de edição/undo/redo medido para 3.000 nós foi 9,84 ms. O render de milhares de camadas custa centenas de milissegundos por quadro neste cenário.
 
 O arquivo original `STUDIO-DARK-LABORATORIO-DE-MOVIMENTO.production.json` (66.376 bytes; SHA-256 registrado localmente como `FD61B9BC6898126EB034C87C182035B4C317D3671B141652F56D4AD86C908037`) foi compilado sem alteração e expandiu para 217 nós, 7 cenas, 23 shots, 28 Visual Beats e legenda automática. Microsoft Daniel gerou voz e eventos de sincronização; a receita pedia 73 s, mas a fala medida exigiu 120,17 s com o limite de velocidade de 1,15×, e o relatório avisou sobre expansão dos intervalos. O projeto abriu no editor e o MP4 com áudio foi decodificado por inteiro: 3.605 quadros H.264 1920×1080 a 30 fps e AAC mono. O projeto, o log e o MP4 de validação permanecem em `artifacts/large-production-regression-laboratorio/`, fora do Git.
 
