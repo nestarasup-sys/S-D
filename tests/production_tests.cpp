@@ -1,7 +1,11 @@
 #include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
+#include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QPainter>
 #include <QTemporaryDir>
 #include <algorithm>
 #include <cmath>
@@ -38,6 +42,14 @@ int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QTemporaryDir directory;
     try {
+        check(studio::premiumSlotRole("premium:quote:text"),
+              "legacy premium role cache can initialize before declarative manifests load");
+        QString premiumCatalogError;
+        check(studio::initializePremiumCatalog(&premiumCatalogError) && premiumCatalogError.isEmpty() &&
+                  studio::premiumSlotRole("accent-rule") &&
+                  studio::premiumSlotRole("premium:question-hook:question") &&
+                  studio::premiumSlotRole("illustrative-bar"),
+              "declarative semantic roles become valid after the workspace-first initialization order");
         QFile fixture(QString(STUDIO_SOURCE_DIR) + "/examples/carros-caros.production.json");
         check(fixture.open(QIODevice::ReadOnly), "example exists");
         auto bytes = fixture.readAll();
@@ -1091,7 +1103,7 @@ int main(int argc, char **argv) {
         check(!studio::validatePremiumManifest(duplicateManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
               "premium manifests reject duplicate layer IDs");
         auto futureManifest = manifest;
-        futureManifest["manifestVersion"] = 2;
+        futureManifest["manifestVersion"] = 3;
         check(!studio::validatePremiumManifest(futureManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
               "unknown future manifest versions fail clearly without corrupting older packages");
         auto premiumScene = [](QString sceneId, QString narration, QString elementId, QString assetId) {
@@ -1158,8 +1170,10 @@ int main(int argc, char **argv) {
                   studio::aiGuide(catalog.data()).contains("premium:lower-third-editorial-01") &&
                   studio::aiGuide(catalog.data()).contains("premium:source-label-01") &&
                   studio::aiGuide(catalog.data()).contains("premium:number-emphasis-01") &&
-                  studio::capabilities()["premiumAssets"].toArray().size() == 7,
-              "AI guide and generated capability catalogue match the seven implemented premium assets");
+                  studio::aiGuide(catalog.data()).contains("premium:question-hook-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:statistic-callout-pack-01") &&
+                  studio::capabilities()["premiumAssets"].toArray().size() == 9,
+              "AI guide and generated capability catalogue match the nine implemented premium assets");
         auto quotePaletteScene = QJsonObject{
             {"id", "quote"},
             {"narration", QJsonArray{"Uma frase forte ganha espaço e uma referência clara."}},
@@ -1183,6 +1197,155 @@ int main(int argc, char **argv) {
                     return found;
             return nullptr;
         };
+        const QString slotImagePath = directory.filePath("premium-slot-media/screen.png");
+        check(QDir().mkpath(QFileInfo(slotImagePath).absolutePath()), "create isolated premium slot fixture folder");
+        QImage screenFixture(240, 480, QImage::Format_ARGB32_Premultiplied);
+        screenFixture.fill(QColor("#10223a"));
+        {
+            QPainter painter(&screenFixture);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor("#4c83a4"));
+            painter.drawRoundedRect(QRect(24, 48, 192, 84), 18, 18);
+            painter.setBrush(QColor("#b4f078"));
+            painter.drawEllipse(QRect(84, 172, 72, 72));
+            painter.setBrush(QColor("#dbe8ef"));
+            painter.drawRoundedRect(QRect(34, 282, 172, 16), 8, 8);
+        }
+        check(screenFixture.save(slotImagePath), "save a local original smartphone screen fixture");
+        const auto customQuote = [](QString elementId, QString quote, QString attribution, QString source,
+                                   QString color) {
+            return QJsonObject{{"id", elementId}, {"kind", "library"},
+                               {"assetId", "premium:dramatic-quote-01"}, {"cue", 0},
+                               {"slots", QJsonObject{{"quote", quote}, {"attribution", attribution},
+                                                       {"source", source}}},
+                               {"palette", QJsonObject{{"accent", color}, {"text", "#f5ebca"},
+                                                        {"muted", "#b9c6cb"}}}};
+        };
+        const QJsonObject customizedPhone{
+            {"id", "phone-custom"}, {"kind", "library"},
+            {"assetId", "premium:smartphone-premium-01"}, {"cue", 0},
+            {"slots", QJsonObject{{"screen-title", "14:28"},
+                                    {"notification", "Sua análise semanal está disponível."},
+                                    {"screen", "premium-slot-media/screen.png"}}},
+            {"palette", QJsonObject{{"surface", "#18222b"}, {"screen", "#101d2f"},
+                                     {"accent", "#67d8b7"}, {"notification", "#e9f2f4"},
+                                     {"frame", "#8ea3ad"}, {"highlight", "#dbbd71"},
+                                     {"muted", "#c7d6dc"}, {"text", "#f7fbfc"}}}};
+        auto personalizedScene = QJsonObject{
+            {"id", "personalizados"},
+            {"narration", QJsonArray{"Duas citações e um smartphone mostram slots preenchidos pela receita."}},
+            {"elements", QJsonArray{customQuote("quote-one", "A mudança começa\ncom uma pergunta.",
+                                                "CONTEXTO EDITORIAL", "FONTE EXEMPLO · 2026", "#54c9af"),
+                                    customQuote("quote-two", "O dado precisa\nde uma fonte.",
+                                                "NOTA DE PESQUISA", "REFERÊNCIA DEMONSTRATIVA", "#dc9b57"),
+                                    customizedPhone}}};
+        const auto personalizedRecipe = QJsonObject{
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Slots premium por receita"}, {"captions", false}, {"musicGain", 0},
+            {"effectsGain", 0}, {"scenes", QJsonArray{personalizedScene}}};
+        const auto personalizedParsed = studio::parseRecipe(QJsonDocument(personalizedRecipe).toJson(),
+                                                            directory.path(), catalog.data());
+        const auto *quoteOneText = personalizedParsed.error.isEmpty()
+                                       ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[0],
+                                                  "premium:quote:text")
+                                       : nullptr;
+        const auto *quoteTwoText = personalizedParsed.error.isEmpty()
+                                       ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[1],
+                                                  "premium:quote:text")
+                                       : nullptr;
+        const auto *phoneText = personalizedParsed.error.isEmpty()
+                                    ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[2],
+                                               "premium:text:notification")
+                                    : nullptr;
+        const auto *quoteOneAccent = personalizedParsed.error.isEmpty()
+                                         ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[0],
+                                                    "palette:accent")
+                                         : nullptr;
+        const auto *quoteTwoAccent = personalizedParsed.error.isEmpty()
+                                         ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[1],
+                                                    "palette:accent")
+                                         : nullptr;
+        const auto *phoneImage = personalizedParsed.error.isEmpty()
+                                     ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[2],
+                                                "premium:image:screen")
+                                     : nullptr;
+        check(personalizedParsed.error.isEmpty() && quoteOneText && quoteTwoText && phoneText && phoneImage &&
+                  quoteOneText->text == "A mudança começa\ncom uma pergunta." &&
+                  quoteTwoText->text == "O dado precisa\nde uma fonte." &&
+                  quoteOneAccent && quoteTwoAccent && quoteOneAccent->color == "#54c9af" &&
+                  quoteTwoAccent->color == "#dc9b57" &&
+                  phoneText->text == "Sua análise semanal está disponível." &&
+                  phoneImage->kind == studio::NodeKind::Image &&
+                  phoneImage->source == QFileInfo(slotImagePath).canonicalFilePath().toStdString() &&
+                  personalizedParsed.recipe.scenes.front().elements[0].children.size() > 0 &&
+                  personalizedParsed.recipe.scenes.front().elements[1].children.size() > 0,
+              "manifest slot IDs populate separate text/image layers without removing their animation hierarchy");
+        auto unknownSlotRecipe = personalizedRecipe;
+        auto unknownSlotScenes = unknownSlotRecipe["scenes"].toArray();
+        auto unknownSlotScene = unknownSlotScenes[0].toObject();
+        auto unknownSlotElements = unknownSlotScene["elements"].toArray();
+        auto unknownSlotElement = unknownSlotElements[0].toObject();
+        auto unknownSlots = unknownSlotElement["slots"].toObject();
+        unknownSlots["internal-layer-id"] = "Do not allow direct internal layer addressing.";
+        unknownSlotElement["slots"] = unknownSlots;
+        unknownSlotElements[0] = unknownSlotElement;
+        unknownSlotScene["elements"] = unknownSlotElements;
+        unknownSlotScenes[0] = unknownSlotScene;
+        unknownSlotRecipe["scenes"] = unknownSlotScenes;
+        const auto unknownSlotParsed = studio::parseRecipe(QJsonDocument(unknownSlotRecipe).toJson(),
+                                                           directory.path(), catalog.data());
+        check(unknownSlotParsed.error.contains("premium:dramatic-quote-01") &&
+                  unknownSlotParsed.error.contains("internal-layer-id"),
+              "unknown premium layer/slot overrides are rejected with asset and slot IDs");
+        auto unsafeImageRecipe = personalizedRecipe;
+        auto unsafeScenes = unsafeImageRecipe["scenes"].toArray();
+        auto unsafeScene = unsafeScenes[0].toObject();
+        auto unsafeElements = unsafeScene["elements"].toArray();
+        auto unsafePhone = unsafeElements[2].toObject();
+        auto unsafeSlots = unsafePhone["slots"].toObject();
+        unsafeSlots["screen"] = "../../outside.png";
+        unsafePhone["slots"] = unsafeSlots;
+        unsafeElements[2] = unsafePhone;
+        unsafeScene["elements"] = unsafeElements;
+        unsafeScenes[0] = unsafeScene;
+        unsafeImageRecipe["scenes"] = unsafeScenes;
+        const auto unsafeImageParsed = studio::parseRecipe(QJsonDocument(unsafeImageRecipe).toJson(),
+                                                            directory.path(), catalog.data());
+        check(unsafeImageParsed.error.contains("premium:smartphone-premium-01") &&
+                  unsafeImageParsed.error.contains("screen"),
+              "premium image slots reject traversal and identify the offending slot");
+        QMap<QString, studio::PcmAudio> personalizedAudio;
+        studio::PcmAudio personalizedCue;
+        personalizedCue.samples.resize(48000, .05f);
+        personalizedAudio.insert("personalizados-u1", std::move(personalizedCue));
+        auto personalizedCompiled = studio::compileProduction(
+            personalizedParsed.recipe, personalizedAudio, directory.filePath("personalized.wav"));
+        const auto serializedPersonalized = studio::deserialize(studio::serialize(personalizedCompiled.project));
+        const auto findSavedSlot = [](const studio::Project &project, const std::string &rootId,
+                                      const std::string &role) -> const studio::Node * {
+            const auto found = std::find_if(project.nodes.begin(), project.nodes.end(), [&](const auto &node) {
+                return node.id.rfind(rootId + "-preset-", 0) == 0 && node.role == role;
+            });
+            return found == project.nodes.end() ? nullptr : &*found;
+        };
+        const auto *savedQuoteOne = findSavedSlot(serializedPersonalized.project, "quote-one", "premium:quote:text");
+        const auto *savedQuoteTwo = findSavedSlot(serializedPersonalized.project, "quote-two", "premium:quote:text");
+        const auto *savedAccentOne = findSavedSlot(serializedPersonalized.project, "quote-one", "palette:accent");
+        const auto *savedAccentTwo = findSavedSlot(serializedPersonalized.project, "quote-two", "palette:accent");
+        studio::WorkspaceStore managedSlotWorkspace(directory.filePath("slot-media-workspace"));
+        const auto importedScreen = managedSlotWorkspace.importSlotMedia(slotImagePath);
+        check(personalizedCompiled.error.isEmpty() && serializedPersonalized.error.isEmpty() &&
+                  savedQuoteOne && savedQuoteTwo &&
+                  savedQuoteOne->text == "A mudança começa\ncom uma pergunta." &&
+                  savedQuoteTwo->text == "O dado precisa\nde uma fonte." &&
+                  savedQuoteOne->color == "#f5ebca" && savedQuoteTwo->color == "#f5ebca" &&
+                  savedAccentOne && savedAccentTwo && savedAccentOne->color == "#54c9af" &&
+                  savedAccentTwo->color == "#dc9b57" &&
+                  !importedScreen.id.isEmpty() && QFileInfo::exists(importedScreen.id),
+              "slot values and per-instance palette survive production compilation and project reopen; image copy is managed");
+        QFile::remove(slotImagePath);
+        check(QFileInfo::exists(importedScreen.id),
+              "managed premium image remains available after the original recipe image is removed");
         const auto *quoteColorNode = !paletteParsed.error.isEmpty() || paletteParsed.recipe.scenes.empty()
                                          ? nullptr
                                          : findRole(findRole, paletteParsed.recipe.scenes.front().elements.front(),
@@ -1225,7 +1388,7 @@ int main(int argc, char **argv) {
             }
         }
         const auto premiumCatalog = studio::capabilities()["premiumAssets"].toArray();
-        bool catalogSlotsAreEditableOnly = premiumCatalog.size() == 7;
+        bool catalogSlotsAreEditableOnly = premiumCatalog.size() == 9;
         for (const auto &assetValue : premiumCatalog) {
             const auto asset = assetValue.toObject();
             const auto registered = studio::premiumAsset(asset["id"].toString().toStdString());
@@ -1269,11 +1432,20 @@ int main(int argc, char **argv) {
             "camera-travelling-vertical-v3.production.json",
             "premium-palette-v2.production.json",
             "premium-factory-motion-showcase-v3.production.json",
-            "visual-beats-sequential-reveal-v3.production.json"};
+            "visual-beats-sequential-reveal-v3.production.json",
+            "premium-dramatic-quote-slots-v2.production.json",
+            "premium-comparison-slots-v2.production.json",
+            "premium-smartphone-slots-v2.production.json",
+            "premium-question-hook-slots-v2.production.json",
+            "premium-statistic-callout-slots-v2.production.json",
+            "camera-path-spatial-v3.production.json",
+            "camera-path-combined-v3.production.json",
+            "premium-factory-stage14-demo-v3.production.json"};
         for (const auto &fixtureName : premiumFactoryFixtures) {
             QFile fixture(QStringLiteral(STUDIO_SOURCE_DIR) + "/examples/" + fixtureName);
             check(fixture.open(QIODevice::ReadOnly), "read a published small recipe example");
-            const auto parsedFixture = studio::parseRecipe(fixture.readAll(), directory.path(), catalog.data());
+            const auto parsedFixture = studio::parseRecipe(fixture.readAll(),
+                QFileInfo(fixture.fileName()).absolutePath(), catalog.data());
             if (!parsedFixture.error.isEmpty())
                 throw std::runtime_error((fixtureName + ": " + parsedFixture.error).toStdString());
             QMap<QString, studio::PcmAudio> measuredFixtures;
@@ -1296,6 +1468,101 @@ int main(int argc, char **argv) {
             check(!proofFrame.isNull() && proofFrame.size() ==
                       QSize(fixtureProject.project.width, fixtureProject.project.height),
                   "official camera, reveal and color examples render a real QPainter frame");
+            if (fixtureName == "premium-dramatic-quote-slots-v2.production.json" ||
+                fixtureName == "premium-comparison-slots-v2.production.json" ||
+                fixtureName == "premium-smartphone-slots-v2.production.json" ||
+                fixtureName == "premium-question-hook-slots-v2.production.json" ||
+                fixtureName == "premium-statistic-callout-slots-v2.production.json") {
+                const auto projectRoundTrip = studio::deserialize(studio::serialize(fixtureProject.project));
+                check(projectRoundTrip.error.isEmpty() &&
+                          studio::validate(projectRoundTrip.project).empty() &&
+                          projectRoundTrip.project.nodes.size() == fixtureProject.project.nodes.size(),
+                      "slot/palette example survives project save and reopen without losing expanded layers");
+            }
+            if (fixtureName == "premium-dramatic-quote-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) {
+                                      return node.text == "Toda mudança\ncomeça com uma pergunta.";
+                                  }),
+                      "Dramatic Quote JSON replaces the actual quote text layer");
+            if (fixtureName == "premium-comparison-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) { return node.text == "CENÁRIO A"; }) &&
+                          std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                      [](const auto &node) { return node.text == "12,4"; }),
+                      "Comparison Pack JSON replaces panel headings and values in real nodes");
+            if (fixtureName == "premium-question-hook-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) {
+                                      return node.text == "QUEM DECIDE\nO QUE MERECE RESPOSTA?";
+                                  }),
+                      "Question Hook JSON populates its declared question slot");
+            if (fixtureName == "premium-statistic-callout-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) { return node.text == "12,4"; }) &&
+                          std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                      [](const auto &node) {
+                                          return node.text == "NÃO É UM DADO REAL · SUBSTITUA POR FONTE VERIFICADA";
+                                      }),
+                      "Statistic Callout JSON populates value and source slots while marking its example");
+            if (fixtureName == "premium-smartphone-slots-v2.production.json") {
+                const auto imageNode = std::find_if(fixtureProject.project.nodes.begin(),
+                    fixtureProject.project.nodes.end(), [](const auto &node) {
+                        return node.role == "premium:image:screen";
+                    });
+                check(imageNode != fixtureProject.project.nodes.end() &&
+                          imageNode->kind == studio::NodeKind::Image &&
+                          QFileInfo::exists(QString::fromStdString(imageNode->source)),
+                      "official smartphone slot recipe resolves its bundled local demo image");
+            }
+            if (fixtureName == "camera-path-spatial-v3.production.json" ||
+                fixtureName == "camera-path-combined-v3.production.json") {
+                const bool combined = fixtureName == "camera-path-combined-v3.production.json";
+                const auto &cameraProject = fixtureProject.project;
+                const auto pathKeys = std::vector<studio::CameraKeyframe>(cameraProject.camera.begin(),
+                                                                           cameraProject.camera.end());
+                check(pathKeys.size() >= 2 &&
+                          pathKeys.back().x != pathKeys.front().x,
+                      "camera.path compiles target framing to editable camera keyframes");
+                const auto colorPixels = [](const QImage &image, const QColor &color) {
+                    qsizetype count = 0;
+                    for (int y = 0; y < image.height(); ++y)
+                        for (int x = 0; x < image.width(); ++x)
+                            if (image.pixelColor(x, y) == color)
+                                ++count;
+                    return count;
+                };
+                studio::CompositionPainter cameraPainter;
+                const QColor chipColor("#4CC9A9");
+                const QColor serverColor("#DC9B57");
+                const auto startFrame = pathKeys.front().frame;
+                const auto endFrame = pathKeys.back().frame;
+                const auto startImage = cameraPainter.frame(cameraProject, startFrame);
+                const auto endImage = cameraPainter.frame(cameraProject, endFrame);
+                check(colorPixels(startImage, chipColor) > 0 && colorPixels(endImage, chipColor) == 0 &&
+                          colorPixels(startImage, serverColor) == 0 &&
+                          colorPixels(endImage, serverColor) > 0,
+                      "camera path moves from the first target to the next, framing one at a time");
+                if (!combined) {
+                    bool spatialEntryObserved = false;
+                    for (auto frame = startFrame + 1; frame < endFrame; ++frame)
+                        if (colorPixels(cameraPainter.frame(cameraProject, frame), serverColor) > 0) {
+                            spatialEntryObserved = true;
+                            break;
+                        }
+                    check(spatialEntryObserved && cameraProject.visualBeats.empty(),
+                          "spatial reveal enters during camera travel without a Visual Beat show");
+                } else {
+                    const auto beat = std::find_if(cameraProject.visualBeats.begin(),
+                        cameraProject.visualBeats.end(), [](const auto &item) {
+                            return item.id == "reveal-server-during-travel";
+                        });
+                    check(beat != cameraProject.visualBeats.end() &&
+                              colorPixels(cameraPainter.frame(cameraProject, beat->frame - 1), serverColor) == 0 &&
+                              colorPixels(cameraPainter.frame(cameraProject, beat->frame), serverColor) > 0,
+                          "combined spatial and temporal reveal stays hidden until its exact Visual Beat frame");
+                }
+            }
         }
         check(studio::capabilities()["productionCapabilities"].toArray().contains("personal-library-video-assets"),
               "AI capability catalogue distinguishes real library video from premium slots");

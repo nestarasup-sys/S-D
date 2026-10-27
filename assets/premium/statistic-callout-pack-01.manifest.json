@@ -1,0 +1,74 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 2,
+  "definition": {
+    "definitionVersion": 1,
+    "landscape": {
+      "canvas": { "width": 1280, "height": 720 },
+      "layers": [
+        { "id": "stat-callout-root", "component": "group", "kind": "group", "role": "root", "name": "Statistic Callout", "layout": { "x": 0, "y": 0, "width": 1280, "height": 720 } },
+        { "id": "stat-surface", "parentId": "stat-callout-root", "component": "panel", "kind": "shape", "role": "surface", "name": "Painel de dados", "layout": { "x": 92, "y": 122, "width": 1096, "height": 500 }, "color": "#142128", "opacity": 0.94, "paletteToken": "surface", "animation": { "preset": "fade-rise", "durationFrames": 22 } },
+        { "id": "stat-accent", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "accent-rule", "name": "Filete de destaque", "layout": { "x": 92, "y": 122, "width": 7, "height": 500 }, "color": "#66d1b2", "paletteToken": "accent", "animation": { "preset": "line-draw", "durationFrames": 25 } },
+        { "id": "stat-kicker", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "demonstrative-label", "name": "Rótulo demonstrativo", "layout": { "x": 142, "y": 160, "width": 775, "height": 32 }, "text": "INDICADOR DEMONSTRATIVO", "fontSize": 16, "color": "#e4bc74", "paletteToken": "highlight", "animation": { "preset": "fade-rise", "delayFrames": 3, "durationFrames": 18 } },
+        { "id": "stat-value", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:value", "name": "Valor principal", "layout": { "x": 142, "y": 224, "width": 560, "height": 162 }, "text": "00,0", "fontSize": 126, "color": "#edf4ed", "paletteToken": "text", "animation": { "preset": "pop-scale", "delayFrames": 6, "durationFrames": 28 } },
+        { "id": "stat-unit", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:unit", "name": "Unidade", "layout": { "x": 146, "y": 382, "width": 560, "height": 60 }, "text": "UNIDADE", "fontSize": 34, "color": "#86b7ad", "paletteToken": "secondary", "animation": { "preset": "stagger-reveal", "delayFrames": 16, "durationFrames": 20, "staggerFrames": 4 } },
+        { "id": "stat-bar-one", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa A", "layout": { "x": 900, "y": 402, "width": 42, "height": 116 }, "color": "#66d1b2", "paletteToken": "accent", "animation": { "preset": "line-draw", "delayFrames": 18, "durationFrames": 25 } },
+        { "id": "stat-bar-two", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa B", "layout": { "x": 968, "y": 348, "width": 42, "height": 170 }, "color": "#86b7ad", "paletteToken": "secondary", "animation": { "preset": "line-draw", "delayFrames": 22, "durationFrames": 25 } },
+        { "id": "stat-bar-three", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa C", "layout": { "x": 1036, "y": 294, "width": 42, "height": 224 }, "color": "#e4bc74", "paletteToken": "highlight", "animation": { "preset": "line-draw", "delayFrames": 26, "durationFrames": 25 } },
+        { "id": "stat-description", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:description", "name": "Contexto do indicador", "layout": { "x": 146, "y": 474, "width": 850, "height": 54 }, "text": "Descrição contextual, sem apresentar o valor demonstrativo como fato.", "fontSize": 23, "color": "#afc0c4", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 30, "durationFrames": 22 } },
+        { "id": "stat-source", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:source", "name": "Fonte verificável", "layout": { "x": 146, "y": 540, "width": 850, "height": 34 }, "text": "EXEMPLO DEMONSTRATIVO · NÃO É DADO REAL", "fontSize": 15, "color": "#82999f", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 36, "durationFrames": 18 } }
+      ]
+    },
+    "portrait": {
+      "canvas": { "width": 1080, "height": 1920 },
+      "layers": [
+        { "id": "stat-callout-root", "component": "group", "kind": "group", "role": "root", "name": "Statistic Callout", "layout": { "x": 0, "y": 0, "width": 1080, "height": 1920 } },
+        { "id": "stat-surface", "parentId": "stat-callout-root", "component": "panel", "kind": "shape", "role": "surface", "name": "Painel de dados", "layout": { "x": 70, "y": 430, "width": 940, "height": 1030 }, "color": "#142128", "opacity": 0.94, "paletteToken": "surface", "animation": { "preset": "fade-rise", "durationFrames": 22 } },
+        { "id": "stat-accent", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "accent-rule", "name": "Filete de destaque", "layout": { "x": 70, "y": 430, "width": 8, "height": 1030 }, "color": "#66d1b2", "paletteToken": "accent", "animation": { "preset": "line-draw", "durationFrames": 25 } },
+        { "id": "stat-kicker", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "demonstrative-label", "name": "Rótulo demonstrativo", "layout": { "x": 126, "y": 495, "width": 800, "height": 40 }, "text": "INDICADOR DEMONSTRATIVO", "fontSize": 18, "color": "#e4bc74", "paletteToken": "highlight", "animation": { "preset": "fade-rise", "delayFrames": 3, "durationFrames": 18 } },
+        { "id": "stat-value", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:value", "name": "Valor principal", "layout": { "x": 126, "y": 590, "width": 800, "height": 190 }, "text": "00,0", "fontSize": 136, "color": "#edf4ed", "paletteToken": "text", "animation": { "preset": "pop-scale", "delayFrames": 6, "durationFrames": 28 } },
+        { "id": "stat-unit", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:unit", "name": "Unidade", "layout": { "x": 132, "y": 790, "width": 780, "height": 70 }, "text": "UNIDADE", "fontSize": 40, "color": "#86b7ad", "paletteToken": "secondary", "animation": { "preset": "stagger-reveal", "delayFrames": 16, "durationFrames": 20, "staggerFrames": 4 } },
+        { "id": "stat-bar-one", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa A", "layout": { "x": 160, "y": 1045, "width": 82, "height": 126 }, "color": "#66d1b2", "paletteToken": "accent", "animation": { "preset": "line-draw", "delayFrames": 18, "durationFrames": 25 } },
+        { "id": "stat-bar-two", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa B", "layout": { "x": 286, "y": 990, "width": 82, "height": 181 }, "color": "#86b7ad", "paletteToken": "secondary", "animation": { "preset": "line-draw", "delayFrames": 22, "durationFrames": 25 } },
+        { "id": "stat-bar-three", "parentId": "stat-callout-root", "component": "rule", "kind": "shape", "role": "illustrative-bar", "name": "Barra ilustrativa C", "layout": { "x": 412, "y": 930, "width": 82, "height": 241 }, "color": "#e4bc74", "paletteToken": "highlight", "animation": { "preset": "line-draw", "delayFrames": 26, "durationFrames": 25 } },
+        { "id": "stat-description", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:description", "name": "Contexto do indicador", "layout": { "x": 132, "y": 1200, "width": 790, "height": 112 }, "text": "Descrição contextual, sem apresentar o valor demonstrativo como fato.", "fontSize": 28, "color": "#afc0c4", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 30, "durationFrames": 22 } },
+        { "id": "stat-source", "parentId": "stat-callout-root", "component": "text", "kind": "text", "role": "premium:statistic-callout:source", "name": "Fonte verificável", "layout": { "x": 132, "y": 1340, "width": 790, "height": 52 }, "text": "EXEMPLO DEMONSTRATIVO · NÃO É DADO REAL", "fontSize": 17, "color": "#82999f", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 36, "durationFrames": 18 } }
+      ]
+    }
+  },
+  "id": "premium:statistic-callout-pack-01",
+  "name": "Statistic Callout Pack · dado contextualizado",
+  "description": "Destaque editorial de estatística com unidade, contexto, fonte e gráfico visual ilustrativo.",
+  "version": "1.0.0",
+  "type": "premium-motion-template",
+  "category": "motion-graphics",
+  "tags": ["statistic", "data", "documentary", "editorial"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "stat-callout-root",
+  "layers": [
+    { "id": "stat-callout-root", "kind": "group", "role": "root" },
+    { "id": "stat-surface", "parentId": "stat-callout-root", "kind": "shape", "role": "surface" },
+    { "id": "stat-accent", "parentId": "stat-callout-root", "kind": "shape", "role": "accent-rule" },
+    { "id": "stat-kicker", "parentId": "stat-callout-root", "kind": "text", "role": "demonstrative-label" },
+    { "id": "stat-value", "parentId": "stat-callout-root", "kind": "text", "role": "premium:statistic-callout:value" },
+    { "id": "stat-unit", "parentId": "stat-callout-root", "kind": "text", "role": "premium:statistic-callout:unit" },
+    { "id": "stat-bar-one", "parentId": "stat-callout-root", "kind": "shape", "role": "illustrative-bar" },
+    { "id": "stat-bar-two", "parentId": "stat-callout-root", "kind": "shape", "role": "illustrative-bar" },
+    { "id": "stat-bar-three", "parentId": "stat-callout-root", "kind": "shape", "role": "illustrative-bar" },
+    { "id": "stat-description", "parentId": "stat-callout-root", "kind": "text", "role": "premium:statistic-callout:description" },
+    { "id": "stat-source", "parentId": "stat-callout-root", "kind": "text", "role": "premium:statistic-callout:source" }
+  ],
+  "hierarchy": { "root": "stat-callout-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["fade-rise", "pop-scale", "line-draw", "stagger-reveal"],
+  "palette": { "tokens": ["surface", "accent", "highlight", "text", "secondary", "muted"] },
+  "slots": [
+    { "id": "value", "kind": "text", "nodeId": "stat-value", "role": "premium:statistic-callout:value", "editable": true, "optional": false, "maxLength": 48 },
+    { "id": "unit", "kind": "text", "nodeId": "stat-unit", "role": "premium:statistic-callout:unit", "editable": true, "optional": true, "maxLength": 40 },
+    { "id": "description", "kind": "text", "nodeId": "stat-description", "role": "premium:statistic-callout:description", "editable": true, "optional": false, "maxLength": 260 },
+    { "id": "source", "kind": "text", "nodeId": "stat-source", "role": "premium:statistic-callout:source", "editable": true, "optional": false, "maxLength": 180 }
+  ],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

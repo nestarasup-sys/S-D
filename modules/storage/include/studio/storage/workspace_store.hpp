@@ -9,6 +9,7 @@
 namespace studio {
 QStringList loadWorkspaceFonts(const QString &workspaceDirectory);
 QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot);
+bool initializePremiumCatalog(QString *error = nullptr);
 struct WorkspaceResult {
     QString id, error;
 };

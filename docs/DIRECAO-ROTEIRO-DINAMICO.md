@@ -6,7 +6,7 @@ Guia criativo complementar ao [guia técnico para IA](GUIA-PARA-IA.md). Versão 
 
 Na receita original do Laboratório de Movimento, os pontos do travelling vertical e horizontal já ficavam dentro do enquadramento inicial e estavam visíveis ao mesmo tempo. A câmera percorria apenas uma fração da distância entre eles. Isso explica a sensação de elementos dispersos: a receita demonstrava deslocamento, mas não preparava uma revelação progressiva. A inspeção não apontou defeito geral na avaliação da câmera nem no layout automático do editor.
 
-Para cada movimento, pergunte: qual informação está visível no começo, o que muda durante o trajeto e onde a câmera deve parar? Distribua o assunto principal e os próximos pontos em enquadramentos distintos. Pontos futuros devem ficar fora do campo atual ou começar com `opacity: 0` e aparecer com Visual Beat `show`. Reserve margem para título, legendas e bordas seguras; não compacte todos os objetos no centro do canvas.
+Para cada movimento, pergunte: qual informação está visível no começo, o que muda durante o trajeto e onde a câmera deve parar? Distribua os assuntos em enquadramentos distintos. Escolha explicitamente a **revelação espacial** (objeto já visível no espaço e fora do quadro até a câmera chegar), a **revelação temporal** (objeto oculto com `opacity: 0` até `show`) ou a combinação. Não use `show` para simular movimento espacial. Reserve margem para títulos, legendas e bordas seguras; não compacte todos os objetos no centro do canvas.
 
 `camera.x` e `camera.y` indicam o centro do quadro em coordenadas da cena. Pan, zoom e rotação afetam todos os conteúdos do shot, inclusive textos comuns e legendas. Não existe texto ancorado ao viewport. Se um título deve permanecer estático durante um travelling, coloque-o em outro shot ou mantenha a câmera parada enquanto ele está na tela.
 
@@ -37,6 +37,8 @@ Os recursos premium são composições editáveis com layouts próprios em 1280�
 - **Rotação:** reserve para situações em que a inclinação comunica instabilidade ou mudança de perspectiva. Pequenos ângulos são mais legíveis para conteúdo editorial.
 - **Parallax simulado:** coloque fundo, meio e frente em grupos separados e mova-os com amplitudes diferentes. A câmera e as transformações são 2D; não há profundidade física automática.
 - **Tracking:** o aplicativo oferece movimento de câmera dirigido por keyframes, presets e beats; não oferece rastreamento automático de um alvo por visão computacional. Anime o centro da câmera junto às posições do assunto.
+
+Para sequenciar enquadramentos sem estimar centros e zoom manualmente, use `camera.path` no shot. A lista mantém a ordem declarada e cada ponto mira um ID de elemento ou grupo. O compilador mede bounds pelas transformações locais e grupos ancestrais, centraliza o alvo, calcula zoom com `padding`, respeita `safeMargin` e reserva `captionSafeBottom`; os estados resultantes são keyframes reais no projeto. O primeiro alvo precisa coincidir com o corte, e os tempos precisam crescer. Os alvos podem usar `reveal: "spatial"` (padrão), `"temporal"` ou `"combined"`. Para temporal/combinado, mantenha a opacidade inicial efetiva em zero e inclua `show`; para espacial, deixe visível e não use `show` para o mesmo alvo. Use `motion: "none"` quando o fade padrão impedir que um objeto espacial já esteja visível no começo do trajeto.
 
 Use `cameraPresets` ou Visual Beats de câmera em cada shot, sem combinar os dois no mesmo shot. Para movimento definido em relação à narração, prefira beats com `cueProgress` ou `wordIndex` alinhado pela voz real. Não estime tempo de palavra pelo texto.
 
@@ -74,8 +76,16 @@ Exemplos pequenos e validados pelo parser:
 
 - [Travelling horizontal](../examples/camera-travelling-horizontal-v3.production.json)
 - [Travelling vertical](../examples/camera-travelling-vertical-v3.production.json)
+- [Travelling espacial com enquadramento assistido](../examples/camera-path-spatial-v3.production.json)
+- [Travelling combinado com Visual Beat](../examples/camera-path-combined-v3.production.json)
 - [Revelação sequencial](../examples/visual-beats-sequential-reveal-v3.production.json)
 - [Premium com paleta JSON](../examples/premium-palette-v2.production.json)
+- [Dramatic Quote personalizado](../examples/premium-dramatic-quote-slots-v2.production.json)
+- [Comparison Pack personalizado](../examples/premium-comparison-slots-v2.production.json)
+- [Smartphone com texto, imagem e paleta](../examples/premium-smartphone-slots-v2.production.json)
+- [Question Hook declarativo](../examples/premium-question-hook-slots-v2.production.json)
+- [Statistic Callout declarativo](../examples/premium-statistic-callout-slots-v2.production.json)
+- [Demonstração integrada da Etapa 14](../examples/premium-factory-stage14-demo-v3.production.json)
 - [Demonstração combinada da Premium Factory](../examples/premium-factory-motion-showcase-v3.production.json)
 
 Antes de exportar, revise a composição no primeiro quadro, nos quadros imediatamente antes/depois de cada beat e no destino de cada movimento de câmera. Confira paisagem e retrato quando o template for usado nos dois formatos.

@@ -323,39 +323,59 @@ std::vector<Node> makePremiumComparisonPack(int width, int height) {
     footer.fontSize = 17 * scale;
     return nodes;
 }
-const std::vector<PremiumAssetDefinition> &premiumLibrary() {
-    static const std::vector<PremiumAssetDefinition> assets{
+namespace {
+std::vector<PremiumAssetDefinition> &premiumRegistry() {
+    static std::vector<PremiumAssetDefinition> assets{
         {"premium:smartphone-premium-01", "Smartphone premium", "premium-object", "technology",
          "smartphone-premium-01.manifest.json", makePremiumSmartphone,
          {"premium:text:screen-title", "premium:text:notification", "premium:image:screen"},
-         {"surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"}},
+         {"surface", "frame", "highlight", "accent", "screen", "notification", "muted", "text"}, {}, {}, 1},
         {"premium:title-reveal-01", "Title Reveal · título cinematográfico", "premium-typography-template",
          "typography", "title-reveal-01.manifest.json", makePremiumTitleReveal,
          {"premium:title:main", "premium:title:subtitle", "premium:title:editorial"},
-         {"accent", "secondary", "highlight", "text", "muted"}},
+         {"accent", "secondary", "highlight", "text", "muted"}, {}, {}, 1},
         {"premium:comparison-pack-01", "Comparison Pack · comparação editorial", "premium-motion-template",
          "data", "comparison-pack-01.manifest.json", makePremiumComparisonPack,
          {"premium:comparison:left-title", "premium:comparison:right-title",
           "premium:comparison:left-value", "premium:comparison:right-value",
           "premium:comparison:left-description", "premium:comparison:right-description"},
-         {"left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"}},
+         {"left", "right", "primary", "secondary", "accent", "highlight", "text", "muted"}, {}, {}, 1},
         {"premium:dramatic-quote-01", "Dramatic Quote · citação editorial", "premium-typography-template",
          "typography", "dramatic-quote-01.manifest.json", makePremiumDramaticQuote,
          {"premium:quote:text", "premium:quote:attribution", "premium:quote:source"},
-         {"accent", "text", "muted"}},
+         {"accent", "text", "muted"}, {}, {}, 1},
         {"premium:lower-third-editorial-01", "Lower Third Editorial · identificação", "premium-overlay",
          "typography", "lower-third-editorial-01.manifest.json", makePremiumLowerThirdEditorial,
          {"premium:lower-third:title", "premium:lower-third:subtitle", "premium:lower-third:source"},
-         {"surface", "accent", "text", "muted"}},
+         {"surface", "accent", "text", "muted"}, {}, {}, 1},
         {"premium:source-label-01", "Source Label · referência editorial", "premium-overlay",
          "communication", "source-label-01.manifest.json", makePremiumSourceLabel,
          {"premium:source-label:title", "premium:source-label:detail"},
-         {"surface", "highlight", "text", "muted"}},
+         {"surface", "highlight", "text", "muted"}, {}, {}, 1},
         {"premium:number-emphasis-01", "Number Emphasis · dado em destaque", "premium-motion-template",
          "data", "number-emphasis-01.manifest.json", makePremiumNumberEmphasis,
          {"premium:number:value", "premium:number:unit", "premium:number:description", "premium:number:source"},
-         {"surface", "accent", "text", "muted", "secondary"}}};
+         {"surface", "accent", "text", "muted", "secondary"}, {}, {}, 1}};
     return assets;
+}
+} // namespace
+const std::vector<PremiumAssetDefinition> &premiumLibrary() {
+    return premiumRegistry();
+}
+bool registerDeclarativePremium(PremiumAssetDefinition definition, std::string &error) {
+    if (!definition.declarative || definition.id.empty() || definition.build ||
+        definition.manifestVersion != 2 || definition.declarative->landscape.layers.empty() ||
+        definition.declarative->portrait.layers.empty()) {
+        error = "Definição premium declarativa incompleta.";
+        return false;
+    }
+    auto &assets = premiumRegistry();
+    if (std::any_of(assets.begin(), assets.end(), [&](const auto &asset) { return asset.id == definition.id; })) {
+        error = "ID premium duplicado: " + definition.id;
+        return false;
+    }
+    assets.push_back(std::move(definition));
+    return true;
 }
 const PremiumAssetDefinition *premiumAsset(const std::string &id) {
     const auto &assets = premiumLibrary();
@@ -365,19 +385,33 @@ const PremiumAssetDefinition *premiumAsset(const std::string &id) {
 }
 std::vector<Node> makePremiumAsset(const std::string &id, int width, int height) {
     const auto *asset = premiumAsset(id);
-    return asset ? asset->build(std::clamp(width, 1, 30000), std::clamp(height, 1, 30000))
-                 : std::vector<Node>{};
+    if (!asset)
+        return {};
+    const auto canvasWidth = std::clamp(width, 1, 30000);
+    const auto canvasHeight = std::clamp(height, 1, 30000);
+    return asset->build ? asset->build(canvasWidth, canvasHeight)
+                        : buildDeclarativePremium(*asset, canvasWidth, canvasHeight);
 }
 bool premiumSlotRole(const std::string &role) {
     if (role.empty()) return false;
     static const auto roles = [] {
         std::unordered_set<std::string> result;
         for (const auto &asset : premiumLibrary())
-            for (const auto &node : asset.build(1280, 720))
+            for (const auto &node : makePremiumAsset(asset.id, 1280, 720))
                 if (!node.role.empty()) result.insert(node.role);
         return result;
     }();
-    return roles.contains(role);
+    if (roles.contains(role))
+        return true;
+    // The core role cache may have been built before Storage loads declarative manifests.
+    // Check the live registry so nodes created after that point are valid too.
+    for (const auto &asset : premiumLibrary())
+        if (asset.declarative)
+            for (const auto *layout : {&asset.declarative->landscape, &asset.declarative->portrait})
+                for (const auto &layer : layout->layers)
+                    if (layer.role == role)
+                        return true;
+    return false;
 }
 const LibraryItem *libraryItem(const std::string &id) {
     const auto &items = nativeLibrary();

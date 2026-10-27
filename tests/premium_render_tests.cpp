@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <studio/composition/painter.hpp>
 #include <studio/core/library.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 namespace {
 void check(bool ok, const char *message) {
@@ -62,7 +63,7 @@ QJsonObject benchmark(const studio::PremiumAssetDefinition &definition, int widt
     project.width = width;
     project.height = height;
     project.duration = 360;
-    project.nodes = definition.build(width, height);
+    project.nodes = studio::makePremiumAsset(definition.id, width, height);
     check(studio::validate(project).empty(), "responsive premium composition validates");
     studio::CompositionPainter painter;
     QJsonArray repeats;
@@ -89,6 +90,8 @@ QJsonObject benchmark(const studio::PremiumAssetDefinition &definition, int widt
 int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     try {
+        QString catalogError;
+        check(studio::initializePremiumCatalog(&catalogError), "initialize declarative premium registry");
         const auto systemFontId = QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeui.ttf"));
         check(systemFontId >= 0, "load the existing Windows Segoe UI font for deterministic offscreen text rendering");
         const std::pair<int, int> canvases[]{{1280, 720}, {1920, 1080}, {1080, 1920}};
@@ -102,7 +105,7 @@ int main(int argc, char **argv) {
                 project.width = width;
                 project.height = height;
                 project.duration = 360;
-                project.nodes = definition.build(width, height);
+                project.nodes = studio::makePremiumAsset(definition.id, width, height);
                 check(!project.nodes.empty() && studio::validate(project).empty(),
                       "registered premium factory and canvas dimensions validate");
                 for (const auto &node : project.nodes) {

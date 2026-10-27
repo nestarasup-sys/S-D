@@ -57,16 +57,15 @@ int main(int argc, char **argv) {
               "versioned smartphone premium is visible with generated preview");
         ui.setAssetTypeFilter("premium");
         const auto premiumAssets = ui.assets();
-        check(premiumAssets.size() == 7, "all seven registered premium assets appear in the library");
+        check(premiumAssets.size() == 9, "all nine registered premium assets appear in the library");
         for (const auto &entryValue : premiumAssets) {
             const auto entry = entryValue.toMap();
             const QImage thumbnail(QUrl(entry["thumbnail"].toString()).toLocalFile());
             check(!thumbnail.isNull() && thumbnail.width() <= 480 && thumbnail.height() <= 270,
                   "every registered premium asset has a real generated library thumbnail");
             const auto assetId = entry["id"].toString().toStdString();
-            const auto &definition = studio::premiumAsset(assetId)->build;
             auto project = studio::makeEmpty();
-            project.nodes = definition(1280, 720);
+            project.nodes = studio::makePremiumAsset(assetId, 1280, 720);
             check(!studio::validate(project).size(), "registered premium factory produces a valid project");
             const auto manifest = QJsonObject::fromVariantMap(entry["manifest"].toMap());
             const auto nodes = project.nodes;

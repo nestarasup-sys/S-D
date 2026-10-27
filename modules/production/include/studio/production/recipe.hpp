@@ -40,6 +40,18 @@ struct DirectedCameraPresetKeyframe {
     double x{640}, y{360}, zoom{1}, rotation{0};
     std::string easing{"linear"};
 };
+struct DirectedCameraTarget {
+    QString targetId;
+    QString reveal{"spatial"};
+    DirectedTime at;
+    double padding{1.25};
+    std::string easing{"ease-in-out"};
+};
+struct DirectedCameraPath {
+    double safeMargin{0.08};
+    double captionSafeBottom{0.16};
+    std::vector<DirectedCameraTarget> targets;
+};
 struct DirectedElement {
     Node node;
     std::int64_t videoDurationFrames{0};
@@ -83,6 +95,7 @@ struct DirectedShot {
     QString focusTargetId;
     double focusPadding{1.25};
     bool focusFollow{false};
+    std::optional<DirectedCameraPath> cameraPath;
     std::optional<ArtDirection> artDirection;
     std::vector<DirectedElement> elements;
     std::vector<DirectedBeat> beats;

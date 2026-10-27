@@ -41,7 +41,7 @@ target_compile_definitions(studio_render_snapshot_tests PRIVATE
     STUDIO_REFERENCE_DIR="${PROJECT_SOURCE_DIR}/tests/reference/render-snapshot")
 add_test(NAME render_snapshot_visual_regression COMMAND studio_render_snapshot_tests)
 add_executable(studio_premium_render_tests premium_render_tests.cpp)
-target_link_libraries(studio_premium_render_tests PRIVATE studio_composition Qt6::Gui)
+target_link_libraries(studio_premium_render_tests PRIVATE studio_composition studio_storage Qt6::Gui)
 target_compile_definitions(studio_premium_render_tests PRIVATE STUDIO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME premium_templates_qpainter_profiles COMMAND studio_premium_render_tests)
 set_tests_properties(premium_templates_qpainter_profiles PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

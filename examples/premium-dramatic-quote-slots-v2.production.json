@@ -1,0 +1,30 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Citação premium personalizada",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "citacao",
+      "narration": ["Toda mudança começa quando alguém decide fazer uma pergunta diferente."],
+      "elements": [
+        {
+          "id": "quote-personalizada",
+          "kind": "library",
+          "assetId": "premium:dramatic-quote-01",
+          "cue": 0,
+          "slots": {
+            "quote": "Toda mudança\ncomeça com uma pergunta.",
+            "attribution": "NOTA EDITORIAL",
+            "source": "EXEMPLO · REFERÊNCIA A VALIDAR"
+          },
+          "palette": { "accent": "#55CBB1", "text": "#F2E6C6", "muted": "#B8C8CC" }
+        }
+      ]
+    }
+  ]
+}

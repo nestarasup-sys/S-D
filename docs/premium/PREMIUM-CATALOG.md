@@ -1,6 +1,6 @@
 # Biblioteca premium — catálogo de 30 recursos
 
-Estado revisado em 26/10/2026. “Implementado” significa que o recurso está registrado no aplicativo, possui manifesto conferido com seu construtor e pode ser editado no compositor QPainter. As demonstrações de receita são validadas separadamente; nenhum item planejado aparece como disponível.
+Estado revisado em 27/10/2026. “Implementado” significa que o recurso está registrado na biblioteca, possui camadas verificadas e pode ser editado no compositor QPainter. As demonstrações de receita são validadas separadamente; nenhum item planejado aparece como disponível.
 
 | # | ID | Família | Estado |
 |---|---|---|---|
@@ -18,7 +18,7 @@ Estado revisado em 26/10/2026. “Implementado” significa que o recurso está 
 | 12 | `timeline-pack-01` | Motion Graphics | Planejado |
 | 13 | `premium:comparison-pack-01` | Motion Graphics | Implementado: dois painéis responsivos, seis slots textuais, animação e cores via JSON |
 | 14 | `flowchart-pack-01` | Motion Graphics | Planejado |
-| 15 | `statistic-callout-pack-01` | Motion Graphics | Planejado |
+| 15 | `premium:statistic-callout-pack-01` | Motion Graphics | Implementado por manifesto declarativo v2: valor, unidade, descrição e fonte via slots JSON, gráfico ilustrativo e layouts paisagem/retrato |
 | 16 | `cause-effect-pack-01` | Motion Graphics | Planejado |
 | 17 | `film-grain-overlay-01` | Editorial Overlays | Planejado |
 | 18 | `light-streak-overlay-01` | Editorial Overlays | Planejado |
@@ -33,10 +33,10 @@ Estado revisado em 26/10/2026. “Implementado” significa que o recurso está 
 | 27 | `side-caption-01` | Kinetic Typography | Planejado |
 | 28 | `stacked-headline-01` | Kinetic Typography | Planejado |
 | 29 | `premium:number-emphasis-01` | Kinetic Typography | Implementado: valor, unidade, descrição e fonte editáveis, cores via JSON |
-| 30 | `question-hook-01` | Kinetic Typography | Planejado |
+| 30 | `premium:question-hook-01` | Kinetic Typography | Implementado por manifesto declarativo v2: pergunta/contexto via slots JSON, animação tipográfica e layouts paisagem/retrato |
 
-**Estado do registro:** 7 recursos implementados e 23 planejados. Os 7 manifestos oficiais v1 são embutidos e verificados contra a árvore criada em C++; os manifestos descrevem metadados e não executam código. A fábrica interna fornece componentes e presets de animação a quatro dos construtores novos. Não existe ainda um interpretador de pacotes externos.
+**Estado do registro:** 9 recursos implementados e 21 planejados. Sete recursos legados usam manifestos v1 e construtores C++ registrados; Question Hook e Statistic Callout usam manifestos v2 com definições visuais declarativas. O builder genérico instancia camadas `group`, `panel`, `rule`, `badge` e `text`, aplica layouts responsivos e converte presets permitidos em keyframes normais. As definições são dados validados, não código executável. A aplicação não instala pacotes premium externos.
 
-Os 11 filtros temáticos existentes continuam preservados. Os slots de imagem atualmente implementados pertencem ao Smartphone; os demais slots são texto. Nenhum pacote premium anuncia slot de vídeo ou ícone. Cores por JSON são restritas aos tokens declarados em cada manifesto. A inserção de recursos usa o mesmo grafo de nós e o compositor QPainter; o protótipo GPU não é requisito.
+Os 11 filtros temáticos existentes continuam preservados. Slots de texto podem ser preenchidos pela receita em qualquer dos nove premium; a troca de imagem via receita é suportada no slot `screen` do Smartphone. Os demais slots são textuais. Nenhum pacote premium anuncia slot de vídeo ou ícone. `premiumAssets[].slotDefinitions` no catálogo de capacidades informa IDs, tipos, nós, papéis, opcionais e tamanhos quando aplicáveis. Paletas e slots podem estar juntos na mesma instância. Cores são limitadas aos tokens declarados por manifesto. As imagens selecionadas são copiadas para mídia gerenciada do workspace; isso não empacota o projeto para outro computador. A inserção usa os nós normais e QPainter; o protótipo GPU não é requisito.
 
-Exemplos de composição, travelling e paletas ficam em `examples/`. Evidências visuais temporárias são gravadas em `artifacts/` e não fazem parte do catálogo distribuído.
+Exemplos de composição, slots, travelling espacial/temporal e paletas ficam em `examples/`. `camera.path` opcional enquadra IDs de alvos em ordem, respeita bounds transformados de grupos e margens de legenda, e gera keyframes editáveis. A revelação espacial mantém o objeto visível fora do enquadramento; a temporal exige opacidade inicial zero e Visual Beat `show`; a combinada usa ambos. Evidências visuais temporárias são gravadas em `artifacts/` e não fazem parte do catálogo distribuído.

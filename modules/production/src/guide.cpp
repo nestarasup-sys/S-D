@@ -1,4 +1,5 @@
 #include <QImageReader>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMap>
@@ -6,9 +7,11 @@
 #include <QSvgRenderer>
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 namespace studio {
 QJsonObject capabilities() {
+    initializePremiumCatalog();
     QJsonArray items, motions, poses;
     for (const auto &asset : nativeLibrary())
         items.append(QJsonObject{{"id", QString::fromStdString(asset.id)},
@@ -22,15 +25,30 @@ QJsonObject capabilities() {
         poses.append(QString::fromStdString(pose));
     QJsonArray premiumItems;
     for (const auto &asset : premiumLibrary()) {
-        QJsonArray slotRoles, paletteTokens;
+        QJsonArray slotRoles, slotDefinitions, paletteTokens;
         for (const auto &role : asset.slotRoles)
             slotRoles.append(QString::fromUtf8(role.data(), int(role.size())));
         for (const auto &token : asset.paletteTokens)
             paletteTokens.append(QString::fromUtf8(token.data(), int(token.size())));
+        QFile manifest(QStringLiteral(":/studio/premium/") +
+                       QString::fromStdString(asset.manifestResource));
+        if (manifest.open(QIODevice::ReadOnly)) {
+            const auto document = QJsonDocument::fromJson(manifest.readAll());
+            for (const auto &slotValue : document.object().value("slots").toArray()) {
+                const auto slot = slotValue.toObject();
+                QJsonObject definition{{"id", slot.value("id")}, {"kind", slot.value("kind")},
+                                       {"nodeId", slot.value("nodeId")}, {"role", slot.value("role")},
+                                       {"optional", slot.value("optional").toBool(false)}};
+                if (slot.value("maxLength").isDouble())
+                    definition.insert("maxLength", slot.value("maxLength"));
+                slotDefinitions.append(definition);
+            }
+        }
         premiumItems.append(QJsonObject{{"id", QString::fromUtf8(asset.id.data(), int(asset.id.size()))},
                                         {"name", QString::fromUtf8(asset.name.data(), int(asset.name.size()))},
                                         {"kind", QString::fromUtf8(asset.type.data(), int(asset.type.size()))},
-                                        {"manifestVersion", 1}, {"slots", slotRoles},
+                                        {"manifestVersion", asset.manifestVersion}, {"slots", slotRoles},
+                                        {"slotDefinitions", slotDefinitions},
                                         {"paletteTokens", paletteTokens},
                                         {"responsiveCanvases", QJsonArray{"1280x720", "1920x1080", "1080x1920"}},
                                         {"status", "implemented"}});
@@ -52,6 +70,9 @@ QJsonObject capabilities() {
                         "reusable-camera-keyframe-presets",
                         "global-art-direction", "scene-shot-art-direction", "word-aligned-visual-beats",
                         "external-library-fonts", "named-visual-style-presets",
+                        "declarative-premium-templates", "premium-content-slot-overrides",
+                        "premium-image-slot-overrides", "camera-path-assisted-framing",
+                        "camera-spatial-reveal", "camera-spatial-and-temporal-reveal",
                         "embedded-video-audio-with-source-trim-and-speed",
                         "word-aligned-elements-keyframes",
                         "multi-track-audio", "visual-beat-sound-effects",
@@ -99,6 +120,7 @@ QJsonObject capabilities() {
                                  "voice-sidechain-ducking"}}};
 }
 QString aiGuide(const QJsonObject &library) {
+    initializePremiumCatalog();
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
 Catálogo 1 · Receita 3 · Projeto 14 · Native Lab 0.5
@@ -431,35 +453,37 @@ Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":
 
 ## Categorias visuais e recursos premium
 
-Escolha entre **Nativos básicos** (objetos vetoriais incluídos), **Recursos premium** (composições editáveis com hierarquia e slots) e **Imagens e vídeos reais** (arquivos locais do usuário). As 11 categorias temáticas continuam filtros da biblioteca. Os IDs premium reais são:
+Escolha entre **Nativos básicos**, **Recursos premium** e **Imagens e vídeos reais**. As 11 categorias temáticas continuam como filtros da biblioteca. Os nove IDs premium reais são: `premium:smartphone-premium-01`, `premium:title-reveal-01`, `premium:comparison-pack-01`, `premium:dramatic-quote-01`, `premium:lower-third-editorial-01`, `premium:source-label-01`, `premium:number-emphasis-01`, `premium:question-hook-01` e `premium:statistic-callout-pack-01`. Consulte `premiumAssets` neste catálogo para nomes, tokens e `slotDefinitions` exatos.
 
-- `premium:smartphone-premium-01` — smartphone em camadas, animação, slots de texto/imagem e paleta de moldura, superfície, tela, notificação e acentos.
-- `premium:title-reveal-01` — abertura tipográfica com wipe progressivo, slots de texto e paleta editorial.
-- `premium:comparison-pack-01` — dois painéis, seis slots de texto e paletas independentes para os lados.
-- `premium:dramatic-quote-01` — citação cinematográfica com frase, autoria e fonte editáveis.
-- `premium:lower-third-editorial-01` — identificação editorial com título, subtítulo e referência.
-- `premium:source-label-01` — etiqueta compacta para publicação e contexto verificável.
-- `premium:number-emphasis-01` — número, unidade, descrição e referência com entrada escalonada.
+Instancie com `{"kind":"library","assetId":"ID-REAL","cue":0}`. Todos os nove aparecem na biblioteca, têm preview renderizado, camadas editáveis, layouts para 1280×720/1920×1080/1080×1920 e usam o compositor de produção QPainter. Sete mantêm construtores C++ registrados; Question Hook e Statistic Callout são montados diretamente de manifestos declarativos v2, sem um construtor por ID.
 
-Use cada ID por `{"kind":"library","assetId":"ID-REAL","cue":0}`. Os sete recursos têm construtores registrados, manifestos verificados, prévias QPainter e layouts específicos para 1280×720, 1920×1080 e 1080×1920. Slots de texto e imagem podem ser editados depois da inserção no inspetor. Para definir cores antes da importação, inclua um objeto `palette` na referência do recurso; use somente os tokens declarados para aquele ID em `premiumAssets[].paletteTokens` no catálogo. Cores devem usar `#RRGGBB`; tokens não suportados e nomes de campo desconhecidos geram erro. `palette.primary` e `palette.secondary` também personalizam cores dos elementos `native`. Exemplo mínimo: `{"id":"citacao","kind":"library","assetId":"premium:dramatic-quote-01","cue":0,"palette":{"accent":"#5CD6C2","text":"#F4E1A1","muted":"#AEC3D4"}}`. Veja `examples/premium-palette-v2.production.json` para o exemplo completo que passa pelo parser.
+Slots podem ser preenchidos durante a importação. Use `slots` no mesmo elemento `kind: "library"`; as chaves são os IDs curtos definidos no manifesto, e os valores são texto ou caminho local para um slot `image`. Campos desconhecidos, tipos errados, textos acima do limite ou mídia inválida causam erro com o ID do recurso/slot. Exemplo válido: `{"id":"citacao","kind":"library","assetId":"premium:dramatic-quote-01","cue":0,"slots":{"quote":"A mudança começa com uma pergunta.","attribution":"Contexto editorial","source":"Referência demonstrativa"},"palette":{"accent":"#5CD6C2","text":"#F4E1A1","muted":"#AEC3D4"}}`. `palette` e `slots` são aplicados juntos; os valores viram conteúdo dos nós daquela instância e mantêm a hierarquia e animação do template.
 
-Tokens implementados: smartphone `surface`, `frame`, `highlight`, `accent`, `screen`, `notification`, `muted`, `text`; Title Reveal `accent`, `secondary`, `highlight`, `text`, `muted`; Comparison Pack `left`, `right`, `primary`, `secondary`, `accent`, `highlight`, `text`, `muted`; Dramatic Quote `accent`, `text`, `muted`; Lower Third `surface`, `accent`, `text`, `muted`; Source Label `surface`, `highlight`, `text`, `muted`; Number Emphasis `surface`, `accent`, `text`, `muted`, `secondary`. A paleta altera as camadas semanticamente associadas, sem substituir seus slots de conteúdo.
+O Smartphone aceita slots textuais `screen-title` e `notification`, e imagem `screen`. O caminho de imagem é local e relativo ao arquivo `.production.json` (ou absoluto), usa PNG/JPEG/WebP/BMP, deve existir e decodificar. Ao importar, o worker copia a imagem para mídia gerenciada do workspace por conteúdo. Isso mantém o projeto ligado à cópia daquele workspace, mas não cria um pacote portátil entre computadores. Os demais slots devem ser consultados em `premiumAssets[].slotDefinitions`; atualmente são textuais. Premiums não têm slot de vídeo ou ícone.
 
-Os valores iniciais de comparação e número são placeholders demonstrativos, não dados jornalísticos. Troque-os por informações com fontes verificadas. Imagens de slots são copiadas para `workspace/library/media` por conteúdo e o projeto aponta para essa cópia gerenciada. Isso evita dependência do caminho original no mesmo workspace; não empacota automaticamente mídia para transportar o projeto a outro computador. Se um arquivo gerenciado faltar, o inspetor sinaliza a imagem ausente e permite substituí-la. Receitas v3 podem referenciar vídeo real catalogado por `kind: "library"`. Premiums ainda não têm slots de vídeo ou ícone.
+Personalize cores em `palette`, usando apenas `premiumAssets[].paletteTokens` e valores `#RRGGBB`. Elementos `native` aceitam `palette.primary` e `palette.secondary`. A paleta muda as camadas sem substituir o conteúdo dos slots. Veja os exemplos executáveis `examples/premium-dramatic-quote-slots-v2.production.json`, `examples/premium-comparison-slots-v2.production.json`, `examples/premium-smartphone-slots-v2.production.json`, `examples/premium-question-hook-slots-v2.production.json` e `examples/premium-statistic-callout-slots-v2.production.json`.
 
-Exemplo de abertura, smartphone e comparação usando IDs reais do registro:
+### Premium Factory declarativa
 
-```json
-{"format":"studio-dark-production","version":2,"catalogVersion":1,"title":"Template editorial demonstrativo","voice":"auto","captions":false,"musicGain":0,"effectsGain":0,"scenes":[{"id":"abertura","narration":["Uma ideia começa com um título que se revela aos poucos."],"elements":[{"id":"abertura-tipografica","kind":"library","assetId":"premium:title-reveal-01","cue":0}]},{"id":"objeto","narration":["O smartphone premium apresenta uma composição editável."],"elements":[{"id":"smartphone","kind":"library","assetId":"premium:smartphone-premium-01","cue":0}]},{"id":"comparacao","narration":["Compare os cenários com informação verificada."],"elements":[{"id":"comparacao-editorial","kind":"library","assetId":"premium:comparison-pack-01","cue":0}]}]}
-```
+Definições oficiais manifest v2 em `assets/premium/*.manifest.json` podem conter `definition.definitionVersion: 1`, variantes `landscape` e `portrait`, canvas de referência e uma lista ordenada de camadas. Os componentes validados são `group`, `panel`, `rule`, `badge` e `text`; cada camada descreve layout, cor/token, papel, texto e, opcionalmente, um preset de animação suportado (`fade-rise`, `slide-left/right/up/down`, `pop-scale`, `soft-float`, `line-draw`, `stagger-reveal`). As keyframes resultantes são keyframes normais dos nós. A definição é dado validado, não código: não há scripts, caminhos de assets, plugins nem execução arbitrária. Manifesto, variantes, hierarquia, papéis, slots e tokens são comparados ao registro antes de aceitar o item.
 
-Os sete pacotes usam QPainter de produção; não dependem do protótipo GPU. O Title Reveal conserva o recorte tipográfico, e os novos templates compartilham componentes de superfície, filete, texto de slot e presets de entrada escalonada. O compilador ajusta as animações internas ao intervalo medido da fala. A paleta é executável no JSON; slots de texto continuam editáveis depois da inserção. Instalação de pacotes de terceiros e slots premium de vídeo/ícone ainda não existem.
+Para novos templates compatíveis, adicione um manifesto v2 seguindo `question-hook-01.manifest.json` ou `statistic-callout-pack-01.manifest.json`; o build embute `assets/premium/*.manifest.json` automaticamente. As variantes precisam ter os mesmos IDs, pais, componentes e papéis; apenas geometria, texto, estilo e animação podem mudar entre variantes. A definição precisa passar pelo teste da biblioteca e do manifesto. Templates declarativos são instanciados por um builder genérico, sem `if assetId` ou função C++ de composição exclusiva.
+
+Valores de Comparison Pack/Statistic Callout são demonstrativos quando assim indicados pelo template. Não apresente uma estatística demonstrativa como fato. Instalação de pacotes externos permanece fora do escopo.
 
 ### Câmera, staging e revelação
 
-`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos comuns, formas e nativos movem-se juntos. Não existe texto fixo ao viewport. Para um travelling, posicione cada ponto de interesse ao longo da trajetória, coloque a câmera no centro do primeiro enquadramento e mantenha pontos futuros fora do quadro ou com `opacity: 0`. Mova a câmera quando a narração passar ao ponto seguinte e revele seu elemento com `action: "show"`. Evite colocar todos os marcos dentro do primeiro campo de visão. Use shots separados para títulos que precisem permanecer imóveis enquanto a câmera se move.
+`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos, formas e nativos do shot movem-se juntos. Não existe texto fixo ao viewport. Há duas formas de revelar o próximo ponto:
 
-Os exemplos completos e validados estão em `examples/camera-travelling-vertical-v3.production.json`, `examples/camera-travelling-horizontal-v3.production.json`, `examples/visual-beats-sequential-reveal-v3.production.json` e `examples/premium-palette-v2.production.json`. O roteiro combinado de demonstração está em `examples/premium-factory-motion-showcase-v3.production.json`. O horizontal avança do centro x=250 para x=900 e x=1550; o vertical vai de y=310 para y=940 e y=1570. Os dois ocultam pontos futuros e só os revelam quando a narração chega a eles. Use `cameraPresets` ou beats de câmera num shot, nunca ambos. `transitionIn` muda entre shots; `motion` anima a entrada/saída de um elemento; keyframes definem sua transformação; Visual Beats disparam ações num instante da fala; câmera move o enquadramento compartilhado da cena.
+- **Espacial:** o alvo já está visível no espaço da cena, mas fora do primeiro enquadramento; a câmera percorre a cena e ele entra na tela. Não use `show` para esse alvo. Se o fade padrão da propriedade `motion` o deixar transparente no instante em que a trajetória começa, use `"motion":"none"` ou posicione o evento de enquadramento depois de o alvo estar visível.
+- **Temporal:** mantenha `opacity: 0` e use Visual Beat `show`; a visibilidade muda no frame do beat e persiste. A câmera pode estar parada, chegando ao alvo ou já além dele.
+- **Combinada:** a câmera percorre a trajetória e um Visual Beat faz o alvo oculto aparecer durante o deslocamento. Marque o ponto com `reveal:"combined"`.
+
+`camera.path` opcional no objeto `camera` do shot cria keyframes de câmera editáveis a partir de uma lista de alvos ordenada. Cada target exige `target` (ID de elemento ou grupo daquele shot) e `at` (referência real de `cue` com `cueProgress`, `progress`, `offsetSeconds` ou `wordIndex` alinhado); `padding` (1–4) e `easing` (`linear`, `ease-in`, `ease-out`, `ease-in-out`) são opcionais. `safeMargin` vai de 0 a 0,2 e `captionSafeBottom` de 0 a 0,35; juntos precisam deixar área visível. Use dois a 24 alvos, o primeiro deve estar no início do shot e os tempos devem crescer. O app percorre a hierarquia dos grupos, calcula bounds transformados e enquadra cada alvo respeitando margem e a faixa inferior de legendas. A ordem da IA é mantida. Cada ponto depois do primeiro vira um keyframe real; não use junto com `focus`, `focus.follow`, `cameraPreset` ou beats de câmera no mesmo shot.
+
+O padrão é `reveal:"spatial"`: o alvo precisa estar visível no frame em que será enquadrado e não pode ter um `show` destinado a revelá-lo. Para `temporal` ou `combined`, o mesmo alvo precisa começar com opacidade efetiva zero e ter Visual Beat `show`. Um alvo temporal ainda pode ser revelado antes, durante ou depois do travelling, controlando o `cueProgress` do beat e do ponto de câmera. `camera.path` não altera o enquadramento por conta própria fora dos pontos pedidos e não faz tracking por visão computacional.
+
+Exemplos validados pelo parser, compilador e QPainter: `examples/camera-path-spatial-v3.production.json` (entrada espacial sem beats), `examples/camera-path-combined-v3.production.json` (show durante o movimento), `examples/camera-travelling-vertical-v3.production.json`, `examples/camera-travelling-horizontal-v3.production.json`, `examples/visual-beats-sequential-reveal-v3.production.json` e `examples/premium-palette-v2.production.json`. A demonstração integrada de aproximadamente 25 segundos está em `examples/premium-factory-stage14-demo-v3.production.json`. `transitionIn` muda entre shots; `motion` anima a entrada/saída padrão; keyframes definem propriedades ao longo do tempo; Visual Beats executam ações pontuais; câmera move o enquadramento compartilhado do shot.
 
 ## Presets compostos na biblioteca pessoal
 

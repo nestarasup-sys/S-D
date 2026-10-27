@@ -9,6 +9,7 @@
 #include <cmath>
 #include <new>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 namespace studio {
 namespace {
@@ -611,8 +612,13 @@ LoadResult deserialize(const QByteArray &bytes) try {
     return result;
 }
 LoadResult loadProject(const QString &path) try {
-    QFile file(path);
     LoadResult r;
+    QString catalogError;
+    if (!initializePremiumCatalog(&catalogError)) {
+        r.error = "Catálogo premium indisponível: " + catalogError;
+        return r;
+    }
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         r.error = "Não foi possível abrir: " + file.errorString();
         return r;

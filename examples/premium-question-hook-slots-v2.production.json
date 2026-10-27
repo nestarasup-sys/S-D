@@ -1,0 +1,29 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Question Hook declarativo",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "pergunta",
+      "narration": ["Quem decide quais perguntas merecem uma resposta?"],
+      "elements": [
+        {
+          "id": "question-hook",
+          "kind": "library",
+          "assetId": "premium:question-hook-01",
+          "cue": 0,
+          "slots": {
+            "question": "QUEM DECIDE\nO QUE MERECE RESPOSTA?",
+            "context": "ABERTURA DEMONSTRATIVA · ajuste ao roteiro e às fontes"
+          },
+          "palette": { "accent": "#53C9AE", "highlight": "#E0B86F", "text": "#F0F2E7", "muted": "#B1C2C6" }
+        }
+      ]
+    }
+  ]
+}

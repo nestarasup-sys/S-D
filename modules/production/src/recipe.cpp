@@ -17,6 +17,7 @@
 #include <studio/core/library.hpp>
 #include <studio/production/recipe.hpp>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 namespace studio {
 namespace {
@@ -95,17 +96,18 @@ bool parseArtDirection(const QJsonObject &object, ArtDirection &art, QString &er
         art.captionHighlightColor = art.primaryColor;
     return true;
 }
-bool applyPremiumPalette(std::vector<Node> &nodes, const QJsonObject &palette, QString &error) {
-    static const QStringList supported{
-        "primary", "secondary", "accent", "surface", "text", "muted", "highlight",
-        "left", "right", "frame", "screen", "notification"};
+bool applyPremiumPalette(std::vector<Node> &nodes, const PremiumAssetDefinition &definition,
+                         const QJsonObject &palette, QString &error) {
     QMap<QString, QString> colors;
     for (auto it = palette.begin(); it != palette.end(); ++it) {
         const auto value = it.value().toString();
         static const QRegularExpression hexColor("^#[0-9A-Fa-f]{6}$");
-        if (!supported.contains(it.key()) || !it.value().isString() || !hexColor.match(value).hasMatch() ||
+        const bool allowedToken = std::find(definition.paletteTokens.begin(), definition.paletteTokens.end(),
+                                            it.key().toStdString()) != definition.paletteTokens.end();
+        if (!allowedToken || !it.value().isString() || !hexColor.match(value).hasMatch() ||
             !QColor(value).isValid()) {
-            error = "palette aceita apenas tokens documentados e cores #RRGGBB.";
+            error = "premium '" + QString::fromStdString(definition.id) +
+                    "': palette aceita apenas tokens declarados e cores #RRGGBB.";
             return false;
         }
         colors.insert(it.key(), value);
@@ -142,18 +144,118 @@ bool applyPremiumPalette(std::vector<Node> &nodes, const QJsonObject &palette, Q
         return {};
     };
     QSet<QString> applied;
+    for (const auto &binding : definition.paletteBindings) {
+        const auto token = QString::fromStdString(binding.token);
+        if (!colors.contains(token))
+            continue;
+        for (const auto &id : binding.nodeIds) {
+            auto node = std::find_if(nodes.begin(), nodes.end(), [&](const auto &candidate) {
+                return candidate.id == id;
+            });
+            if (node == nodes.end()) {
+                error = "premium '" + QString::fromStdString(definition.id) +
+                        "': token aponta para camada ausente '" + QString::fromStdString(id) + "'.";
+                return false;
+            }
+            node->color = colors.value(token).toStdString();
+        }
+        applied.insert(token);
+    }
     for (auto &node : nodes) {
         const auto token = semanticRole(node);
-        if (!token.isEmpty() && colors.contains(token)) {
+        if (definition.paletteBindings.empty() && !token.isEmpty() && colors.contains(token)) {
             node.color = colors.value(token).toStdString();
             applied.insert(token);
         }
     }
     for (auto it = colors.cbegin(); it != colors.cend(); ++it)
         if (!applied.contains(it.key())) {
-            error = "O recurso premium não expõe o token de cor '" + it.key() + "'.";
+            error = "premium '" + QString::fromStdString(definition.id) +
+                    "' não expõe o token de cor '" + it.key() + "'.";
             return false;
         }
+    return true;
+}
+bool applyPremiumSlots(std::vector<Node> &nodes, const QJsonObject &manifest, const QJsonObject &overrides,
+                       const QString &baseDirectory, const QString &assetId, QString &error) {
+    if (overrides.isEmpty()) {
+        error = "premium '" + assetId + "': slots deve conter ao menos uma substituição.";
+        return false;
+    }
+    QMap<QString, QJsonObject> declared;
+    for (const auto &value : manifest.value("slots").toArray()) {
+        const auto slot = value.toObject();
+        declared.insert(slot.value("id").toString(), slot);
+    }
+    for (auto it = overrides.begin(); it != overrides.end(); ++it) {
+        const auto slot = declared.value(it.key());
+        if (slot.isEmpty()) {
+            error = "premium '" + assetId + "': slot desconhecido '" + it.key() + "'.";
+            return false;
+        }
+        if (!it.value().isString()) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': o valor deve ser texto.";
+            return false;
+        }
+        auto node = std::find_if(nodes.begin(), nodes.end(), [&](const auto &candidate) {
+            return candidate.id == slot.value("nodeId").toString().toStdString();
+        });
+        if (node == nodes.end() || node->role != slot.value("role").toString().toStdString()) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': o vínculo com a camada declarada está inválido.";
+            return false;
+        }
+        const auto kind = slot.value("kind").toString();
+        if (kind == "text") {
+            const int limit = slot.value("maxLength").toInt(500);
+            const auto text = it.value().toString();
+            if (node->kind != NodeKind::Text || text.size() > limit ||
+                (!slot.value("optional").toBool(false) && text.trimmed().isEmpty())) {
+                error = "premium '" + assetId + "', slot '" + it.key() + "': texto vazio ou acima de " +
+                        QString::number(limit) + " caracteres.";
+                return false;
+            }
+            node->text = text.toStdString();
+            continue;
+        }
+        if (kind != "image" || (node->kind != NodeKind::Shape && node->kind != NodeKind::Image)) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': tipo de slot ainda não pode ser preenchido pela receita.";
+            return false;
+        }
+        const auto relativeSource = it.value().toString();
+        const auto normalized = QDir::cleanPath(relativeSource);
+        const auto base = QFileInfo(baseDirectory).canonicalFilePath();
+        if (relativeSource.isEmpty() || relativeSource.size() > 512 || QFileInfo(relativeSource).isAbsolute() ||
+            relativeSource.contains("://") || relativeSource.startsWith("//") ||
+            relativeSource.startsWith("\\\\") || normalized == ".." || normalized.startsWith("../") ||
+            normalized.startsWith("..\\") || normalized.contains("/../") || normalized.contains("\\..\\") ||
+            base.isEmpty()) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': informe um caminho relativo seguro dentro da pasta da receita.";
+            return false;
+        }
+        const auto source = QFileInfo(QDir(base).filePath(normalized)).canonicalFilePath();
+        const auto relative = QDir(base).relativeFilePath(source);
+        const QFileInfo info(source);
+        if (source.isEmpty() || !info.isFile() || relative == ".." || relative.startsWith("../") ||
+            relative.startsWith("..\\") || QFileInfo(relative).isAbsolute() || info.size() < 1 ||
+            info.size() > 32 * 1024 * 1024) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': imagem ausente, insegura ou acima de 32 MiB.";
+            return false;
+        }
+        const auto accepted = slot.value("acceptedFormats").toArray();
+        const auto suffix = info.suffix().toLower();
+        bool acceptedFormat = accepted.isEmpty();
+        for (const auto &format : accepted)
+            acceptedFormat |= format.toString().toLower() == suffix;
+        QImageReader reader(source);
+        const auto dimensions = reader.size();
+        if (!acceptedFormat || !reader.canRead() || dimensions.isEmpty() ||
+            qint64(dimensions.width()) * dimensions.height() > 40000000 || reader.read().isNull()) {
+            error = "premium '" + assetId + "', slot '" + it.key() + "': formato, decodificação ou dimensões da imagem inválidos.";
+            return false;
+        }
+        node->kind = NodeKind::Image;
+        node->source = source.toStdString();
+    }
     return true;
 }
 bool parseTimeRef(const QJsonObject &o, int cueCount, DirectedTime &time, QString &error,
@@ -274,7 +376,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                      "offsetSeconds",
                      "span"};
     if (version >= 2)
-        keys << "assetId" << "children" << "keyframes" << "cueProgress" << "palette";
+        keys << "assetId" << "children" << "keyframes" << "cueProgress" << "palette" << "slots";
     if (version >= 3)
         keys << "progress" << "wordIndex" << "video";
     if (!allowed(e, keys))
@@ -293,6 +395,9 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     n.name = n.id;
     const auto kind = e["kind"].toString();
     std::vector<Node> presetNodes;
+    QJsonObject premiumManifest;
+    QString premiumId;
+    const PremiumAssetDefinition *premiumDefinition = nullptr;
     if (kind == "group") {
         if (version < 2 || !e["children"].isArray() || e["children"].toArray().isEmpty())
             return fail("Grupo exige uma lista não vazia de filhos na receita v2.");
@@ -319,6 +424,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
         if (asset.isEmpty() || asset["deleted"].toBool())
             return fail("Item pessoal não está disponível na biblioteca: " + assetId);
         const auto assetKind = asset["kind"].toString();
+        premiumId = assetId;
+        premiumManifest = asset.value("manifest").toObject();
         if (assetKind == "native") {
             n.kind = NodeKind::Native;
             n.nativeId = asset["nativeId"].toString().toStdString();
@@ -372,6 +479,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                                                 ? premiumAsset(assetId.toStdString())
                                                 : nullptr;
             if (registeredPremium) {
+                premiumDefinition = registeredPremium;
                 presetNodes = makePremiumAsset(assetId.toStdString(), canvasWidth, canvasHeight);
                 if (presetNodes.empty())
                     return fail("Construtor registrado do recurso premium indisponível: " + assetId);
@@ -516,7 +624,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                 n.secondaryColor = palette["secondary"].toString().toStdString();
         } else if (kind == "library" && element.premiumTemplate) {
             QString paletteError;
-            if (!applyPremiumPalette(presetNodes, palette, paletteError))
+            if (!premiumDefinition || !applyPremiumPalette(presetNodes, *premiumDefinition, palette, paletteError))
                 return fail(paletteError);
         } else
             return fail("palette só pode personalizar nativos e templates premium registrados.");
@@ -597,6 +705,14 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
         return fail("Campo asset só vale para elementos native.");
     if (e.contains("assetId") && kind != "library")
         return fail("Campo assetId só vale para elementos library.");
+    if (e.contains("slots")) {
+        if (version < 2 || kind != "library" || !element.premiumTemplate || !e["slots"].isObject())
+            return fail("slots exige um premium oficial registrado e um objeto em receita v2/v3.");
+        QString slotError;
+        if (!applyPremiumSlots(presetNodes, premiumManifest, e["slots"].toObject(), baseDirectory,
+                              premiumId, slotError))
+            return fail(slotError);
+    }
     if (e.contains("source") && kind != "image" && kind != "svg" && kind != "video")
         return fail("Campo source só vale para imagem, SVG ou vídeo.");
     if (e.contains("text") && kind != "text")
@@ -740,6 +856,11 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
 } // namespace
 RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, const QJsonObject &library) try {
     RecipeResult result;
+    QString catalogError;
+    if (!initializePremiumCatalog(&catalogError)) {
+        result.error = "Catálogo premium indisponível: " + catalogError;
+        return result;
+    }
     auto fail = [&](QString message) {
         result.error = std::move(message);
         return result;
@@ -1147,7 +1268,7 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                 }
                 if (shotObject["camera"].isObject()) {
                     const auto camera = shotObject["camera"].toObject();
-                    if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus", "follow"}) ||
+                    if (!allowed(camera, {"x", "y", "zoom", "rotation", "focus", "follow", "path"}) ||
                         !number(camera, "x", shot.cameraX) || !number(camera, "y", shot.cameraY) ||
                         !number(camera, "zoom", shot.cameraZoom) ||
                         !number(camera, "rotation", shot.cameraRotation) || shot.cameraZoom < .1 ||
@@ -1168,6 +1289,45 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                         shot.focusTargetId = focus["target"].toString();
                         shot.focusFollow = focus["follow"].toBool(camera["follow"].toBool(false));
                     }
+                    if (camera.contains("path")) {
+                        if (!camera["path"].isObject() || camera.contains("focus") || camera.contains("follow"))
+                            return fail("camera.path não pode ser combinado com focus ou follow no mesmo shot.");
+                        const auto path = camera["path"].toObject();
+                        if (!allowed(path, {"targets", "safeMargin", "captionSafeBottom"}) ||
+                            !path["targets"].isArray() || path["targets"].toArray().size() < 2 ||
+                            path["targets"].toArray().size() > 24)
+                            return fail("camera.path exige de 2 a 24 targets ordenados.");
+                        DirectedCameraPath parsedPath;
+                        if (!number(path, "safeMargin", parsedPath.safeMargin) ||
+                            !number(path, "captionSafeBottom", parsedPath.captionSafeBottom) ||
+                            parsedPath.safeMargin < 0 || parsedPath.safeMargin > .2 ||
+                            parsedPath.captionSafeBottom < 0 || parsedPath.captionSafeBottom > .35 ||
+                            parsedPath.safeMargin * 2 + parsedPath.captionSafeBottom >= .65)
+                            return fail("camera.path safeMargin/captionSafeBottom excede a área útil do quadro.");
+                        for (const auto &targetValue : path["targets"].toArray()) {
+                            if (!targetValue.isObject())
+                                return fail("camera.path.targets deve conter objetos.");
+                            const auto target = targetValue.toObject();
+                            if (!allowed(target, {"target", "at", "padding", "easing", "reveal"}) ||
+                                !target["target"].isString() || target["target"].toString().isEmpty() ||
+                                !target["at"].isObject())
+                                return fail("Cada camera.path target exige target e at válidos.");
+                            DirectedCameraTarget point;
+                            point.targetId = target["target"].toString();
+                            point.reveal = target["reveal"].toString("spatial");
+                            point.easing = target["easing"].toString("ease-in-out").toStdString();
+                            if (!parseTimeRef(target["at"].toObject(), int(scene.narration.size()), point.at,
+                                              timeError, "camera.path target at"))
+                                return fail(timeError);
+                            if (!number(target, "padding", point.padding) || point.padding < 1 ||
+                                point.padding > 4 || !supportedEasing(point.easing) ||
+                                (point.reveal != "spatial" && point.reveal != "temporal" &&
+                                 point.reveal != "combined"))
+                                return fail("camera.path target exige padding 1–4, easing suportado e reveal espacial/temporal/combined.");
+                            parsedPath.targets.push_back(std::move(point));
+                        }
+                        shot.cameraPath = std::move(parsedPath);
+                    }
                 } else
                     return fail("Cada shot precisa declarar sua câmera inicial.");
                 for (const auto elementValue : shotObject["elements"].toArray()) {
@@ -1187,6 +1347,13 @@ RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, 
                     }))
                     return fail("focus da câmera aponta para elemento que não pertence ao shot: " +
                                 shot.focusTargetId);
+                if (shot.cameraPath)
+                    for (const auto &target : shot.cameraPath->targets)
+                        if (std::none_of(shot.elements.begin(), shot.elements.end(), [&](const auto &element) {
+                                return containsDirectedElement(element, target.targetId);
+                            }))
+                            return fail("camera.path aponta para elemento que não pertence ao shot: " +
+                                        target.targetId);
                 if (shotObject.contains("beats")) {
                     if (!shotObject["beats"].isArray() || shotObject["beats"].toArray().size() > 512)
                         return fail("Visual Beats devem ser uma lista de até 512 eventos por shot.");

@@ -43,6 +43,26 @@ static QString missingMedia(const studio::DirectedElement &element) {
             return missing;
     return {};
 }
+static bool managePremiumSlotMedia(studio::DirectedElement &element, studio::WorkspaceStore *workspace,
+                                  QString &error) {
+    if (element.node.role.rfind("premium:image:", 0) == 0 &&
+        element.node.kind == studio::NodeKind::Image) {
+        if (!workspace) {
+            error = "Slots de imagem premium precisam de um workspace para armazenar a cópia gerenciada.";
+            return false;
+        }
+        const auto imported = workspace->importSlotMedia(QString::fromStdString(element.node.source));
+        if (!imported.error.isEmpty()) {
+            error = "Falha no slot '" + QString::fromStdString(element.node.role) + "': " + imported.error;
+            return false;
+        }
+        element.node.source = imported.id.toStdString();
+    }
+    for (auto &child : element.children)
+        if (!managePremiumSlotMedia(child, workspace, error))
+            return false;
+    return true;
+}
 static bool alignWordEvents(const QJsonArray &events, const QString &text, std::int64_t audioSamples,
                             std::vector<std::int64_t> &starts, QString &error) {
     struct TokenSpan { int begin; int end; };
@@ -132,6 +152,10 @@ int main(int argc, char **argv) try {
     std::unique_ptr<studio::WorkspaceStore> workspace;
     if (parser.isSet("workspace-root"))
         workspace = std::make_unique<studio::WorkspaceStore>(parser.value("workspace-root"));
+    if (workspace && !workspace->error().isEmpty()) {
+        report("failed", 0, workspace->error());
+        return 1;
+    }
     if (parser.isSet("guide"))
         return write(parser.value("guide"),
                      studio::aiGuide(workspace ? workspace->data() : QJsonObject{}).toUtf8())
@@ -153,10 +177,22 @@ int main(int argc, char **argv) try {
                                       workspace ? workspace->data() : QJsonObject{});
     if (!parsed.error.isEmpty())
         return fail(parsed.error);
-    for (const auto &scene : parsed.recipe.scenes)
-        for (const auto &element : scene.elements)
+    QString slotMediaError;
+    for (auto &scene : parsed.recipe.scenes) {
+        for (auto &element : scene.elements) {
+            if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+                return fail(slotMediaError);
             if (auto missing = missingMedia(element); !missing.isEmpty())
                 return fail("Mídia local ausente: " + missing);
+        }
+        for (auto &shot : scene.shots)
+            for (auto &element : shot.elements) {
+                if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+                    return fail(slotMediaError);
+                if (auto missing = missingMedia(element); !missing.isEmpty())
+                    return fail("Mídia local ausente: " + missing);
+            }
+    }
     auto output = QDir(parser.value("output-dir")).absolutePath();
     if (parser.value("output-dir").isEmpty() || QDir(output).exists())
         return fail("Escolha uma pasta de produção nova.");

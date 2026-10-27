@@ -79,7 +79,7 @@ QString manifestKind(NodeKind kind) {
 }
 QString workspacePremiumCategory(std::string_view category) {
     if (category == "technology") return "technology";
-    if (category == "data") return "data";
+    if (category == "data" || category == "motion-graphics") return "data";
     if (category == "communication" || category == "typography") return "communication";
     return "uncategorized";
 }
@@ -91,6 +91,8 @@ const PremiumRegistry &premiumRegistry() {
     static const PremiumRegistry registry = [] {
         initializePremiumManifestResources();
         PremiumRegistry result;
+        if (!initializePremiumCatalog(&result.error))
+            return result;
         for (const auto &definition : premiumLibrary()) {
             QFile file(":/studio/premium/" + string(definition.manifestResource));
             if (!file.open(QIODevice::ReadOnly) || file.size() > 512 * 1024) {
@@ -105,7 +107,7 @@ const PremiumRegistry &premiumRegistry() {
             }
             const auto manifest = document.object();
             const auto manifestError = validatePremiumManifest(manifest, {});
-            const auto nodes = definition.build(1280, 720);
+            const auto nodes = makePremiumAsset(definition.id, 1280, 720);
             QJsonArray manifestSlotRoles, definitionSlotRoles;
             for (const auto &slot : manifest["slots"].toArray())
                 manifestSlotRoles.append(slot.toObject()["role"]);
@@ -173,7 +175,7 @@ const PremiumRegistry &premiumRegistry() {
                 roles.append(slot.toObject()["role"]);
             result.assets.append(QJsonObject{
                 {"id", string(definition.id)}, {"name", string(definition.name)}, {"kind", "premium"},
-                {"premiumType", string(definition.type)}, {"manifestVersion", manifest["manifestVersion"]},
+                {"premiumType", string(definition.type)}, {"manifestVersion", definition.manifestVersion},
                 {"manifest", manifest},
                 {"preset", QJsonDocument::fromJson(serialize(project)).object()},
                 {"categoryId", workspacePremiumCategory(definition.category)}, {"deleted", false},
@@ -293,7 +295,12 @@ QStringList loadWorkspaceFonts(const QString &workspaceDirectory) {
     return loadedFamilies;
 }
 QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot) {
-    if (manifest["format"] != "studio-dark-premium" || manifest["manifestVersion"] != 1)
+    const int manifestVersion = manifest["manifestVersion"].toInt();
+    if (manifest["format"] != "studio-dark-premium" ||
+        (manifestVersion != 1 && manifestVersion != 2) ||
+        (manifestVersion == 1 && manifest.contains("definition")) ||
+        (manifestVersion == 2 && (!manifest["definition"].isObject() ||
+                                  manifest["definition"]["definitionVersion"] != 1)))
         return "Formato ou versão de manifesto premium não suportado.";
     const auto id = manifest["id"].toString();
     static const QRegularExpression validId("^premium:[a-z0-9][a-z0-9-]{2,78}$");
@@ -389,6 +396,13 @@ QString validatePremiumManifest(const QJsonObject &manifest, const QString &pack
             !layerIds.contains(slot["nodeId"].toString()))
             return "Slot premium inválido, duplicado ou aponta para camada ausente.";
         slotIds.insert(slotId);
+        if (slot.contains("maxLength") &&
+            (!slot["maxLength"].isDouble() || std::floor(slot["maxLength"].toDouble()) !=
+                                                  slot["maxLength"].toDouble() ||
+             slot["maxLength"].toInt() < 1 || slot["maxLength"].toInt() > 2000))
+            return "Tamanho máximo de slot premium inválido.";
+        if (kind == "text" && slot.contains("maxLength") && slot["maxLength"].toInt() > 1000)
+            return "Slot de texto premium não pode exceder 1000 caracteres.";
     }
     for (const auto &value : manifest["dependencies"].toArray()) {
         if (!value.isString() || value.toString().isEmpty() || value.toString() == id ||

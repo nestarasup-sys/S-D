@@ -221,6 +221,98 @@ std::vector<Node> numberEmphasis(int width, int height) {
     f.animate(source, Motion::FadeRise, 30, 18);
     return f.finish();
 }
+
+std::vector<Node> buildDeclarative(const PremiumAssetDefinition &definition, int width, int height) {
+    if (!definition.declarative)
+        return {};
+    const auto &layout = height > width ? definition.declarative->portrait
+                                        : definition.declarative->landscape;
+    if (layout.referenceWidth < 1 || layout.referenceHeight < 1 || layout.layers.empty())
+        return {};
+    const double sx = double(width) / layout.referenceWidth;
+    const double sy = double(height) / layout.referenceHeight;
+    const double ss = std::min(sx, sy);
+    std::vector<Node> nodes;
+    nodes.reserve(layout.layers.size());
+    int staggerIndex = 0;
+    for (const auto &layer : layout.layers) {
+        Node node;
+        node.id = layer.id;
+        node.parentId = layer.parentId;
+        node.name = layer.name;
+        node.kind = layer.component == "group" ? NodeKind::Group
+                    : layer.component == "text" ? NodeKind::Text : NodeKind::Shape;
+        node.role = layer.role;
+        node.text = layer.text;
+        node.color = layer.color.empty() ? "#e4f5e9" : layer.color;
+        node.x = layer.x * sx;
+        node.y = layer.y * sy;
+        node.width = layer.width * sx;
+        node.height = layer.height * sy;
+        node.fontSize = layer.fontSize * ss;
+        node.opacity = layer.opacity;
+        node.rotation = layer.rotation;
+        node.scale = layer.scale;
+        node.start = 0;
+        node.duration = 360;
+        node.animated = false;
+        node.motion = "none";
+        if (!layer.paletteToken.empty()) {
+            auto binding = std::find_if(definition.paletteBindings.begin(), definition.paletteBindings.end(),
+                                        [&](const auto &candidate) {
+                                            return candidate.token == layer.paletteToken;
+                                        });
+            if (binding == definition.paletteBindings.end())
+                return {};
+            if (std::find(binding->nodeIds.begin(), binding->nodeIds.end(), layer.id) ==
+                binding->nodeIds.end())
+                return {};
+        }
+        if (layer.animation.empty()) {
+            nodes.push_back(std::move(node));
+            continue;
+        }
+        const auto &animation = layer.animation;
+        int delay = layer.animationDelayFrames;
+        if (animation == "stagger-reveal") {
+            delay += staggerIndex * layer.staggerFrames;
+            ++staggerIndex;
+        }
+        delay = std::clamp(delay, 0, 300);
+        const int duration = std::clamp(layer.animationDurationFrames, 4, 120);
+        const double x = node.x, y = node.y, scale = node.scale;
+        double fromX = x, fromY = y, fromScale = scale;
+        if (animation == "fade-rise" || animation == "stagger-reveal")
+            fromY += std::max(8.0, layout.referenceHeight * .018 * sy);
+        else if (animation == "slide-left")
+            fromX -= std::max(16.0, layout.referenceWidth * .035 * sx);
+        else if (animation == "slide-right")
+            fromX += std::max(16.0, layout.referenceWidth * .035 * sx);
+        else if (animation == "slide-up")
+            fromY += std::max(16.0, layout.referenceHeight * .035 * sy);
+        else if (animation == "slide-down")
+            fromY -= std::max(16.0, layout.referenceHeight * .035 * sy);
+        else if (animation == "pop-scale")
+            fromScale *= .88;
+        else if (animation == "line-draw")
+            fromScale = .04;
+        else if (animation != "soft-float")
+            return {};
+        node.opacity = 0;
+        node.keyframes.push_back({0, fromX, fromY, node.rotation, fromScale, 0, "linear"});
+        if (delay > 0)
+            node.keyframes.push_back({delay, fromX, fromY, node.rotation, fromScale, 0, "linear"});
+        node.keyframes.push_back({delay + duration, x, y, node.rotation, scale, layer.opacity, "ease-out"});
+        if (animation == "soft-float") {
+            node.keyframes.push_back({delay + duration + 30, x, y - 5 * sy, node.rotation, scale,
+                                      layer.opacity, "ease-in-out"});
+            node.keyframes.push_back({delay + duration + 60, x, y, node.rotation, scale,
+                                      layer.opacity, "ease-in-out"});
+        }
+        nodes.push_back(std::move(node));
+    }
+    return nodes;
+}
 } // namespace
 
 std::vector<Node> makePremiumDramaticQuote(int width, int height) {
@@ -234,5 +326,10 @@ std::vector<Node> makePremiumSourceLabel(int width, int height) {
 }
 std::vector<Node> makePremiumNumberEmphasis(int width, int height) {
     return numberEmphasis(std::clamp(width, 1, 30000), std::clamp(height, 1, 30000));
+}
+std::vector<Node> buildDeclarativePremium(const PremiumAssetDefinition &definition, int canvasWidth,
+                                          int canvasHeight) {
+    return buildDeclarative(definition, std::clamp(canvasWidth, 1, 30000),
+                            std::clamp(canvasHeight, 1, 30000));
 }
 } // namespace studio

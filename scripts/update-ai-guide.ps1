@@ -23,25 +23,42 @@ $premiumIds = @(
     'premium:dramatic-quote-01',
     'premium:lower-third-editorial-01',
     'premium:source-label-01',
-    'premium:number-emphasis-01'
+    'premium:number-emphasis-01',
+    'premium:question-hook-01',
+    'premium:statistic-callout-pack-01'
 )
 $catalogPremiumIds = @($catalog.premiumAssets | ForEach-Object { $_.id })
-if ($catalogPremiumIds.Count -ne 7 -or
+if ($catalogPremiumIds.Count -ne 9 -or
     $catalog.productionCapabilities -notcontains 'premium-palette-overrides' -or
-    $catalog.productionCapabilities -notcontains 'premium-factory-editorial-templates') {
-    throw 'O catálogo precisa refletir os sete templates premium e as capacidades de paleta/fábrica.'
+    $catalog.productionCapabilities -notcontains 'premium-factory-editorial-templates' -or
+    $catalog.productionCapabilities -notcontains 'declarative-premium-templates' -or
+    $catalog.productionCapabilities -notcontains 'premium-content-slot-overrides' -or
+    $catalog.productionCapabilities -notcontains 'camera-path-assisted-framing' -or
+    $catalog.productionCapabilities -notcontains 'camera-spatial-reveal' -or
+    $catalog.productionCapabilities -notcontains 'camera-spatial-and-temporal-reveal') {
+    throw 'O catálogo precisa refletir os nove premiums, slots via receita e os modos de enquadramento/revelação da câmera.'
 }
 foreach ($id in $premiumIds) {
     $asset = $catalog.premiumAssets | Where-Object { $_.id -eq $id } | Select-Object -First 1
     if ($null -eq $asset -or $asset.paletteTokens.Count -eq 0 -or $guideText -notmatch [regex]::Escape($id)) {
         throw "O guia ou o catálogo omitiu o premium registrado '$id' ou seus tokens de paleta."
     }
-    if ($asset.slots.Count -eq 0 -or @($asset.slots | Where-Object { $_ -notmatch '^premium:' }).Count -gt 0) {
-        throw "O catálogo mistura componentes de cor com slots editáveis em '$id'."
+    if ($asset.slots.Count -eq 0 -or @($asset.slots | Where-Object { $_ -notmatch '^premium:' }).Count -gt 0 -or
+        $asset.slotDefinitions.Count -eq 0 -or
+        @($asset.slotDefinitions | Where-Object { -not $_.id -or -not $_.nodeId -or -not $_.kind }).Count -gt 0) {
+        throw "O catálogo precisa separar papéis editáveis e definições reais de slots em '$id'."
     }
 }
 if ($guideText -notmatch 'premium-palette-v2.production.json' -or
     $guideText -notmatch 'camera-travelling-horizontal-v3.production.json' -or
-    $guideText -notmatch 'camera-travelling-vertical-v3.production.json') {
-    throw 'O guia não inclui exemplos executáveis de cor e direção de câmera.'
+    $guideText -notmatch 'camera-travelling-vertical-v3.production.json' -or
+    $guideText -notmatch 'camera-path-spatial-v3.production.json' -or
+    $guideText -notmatch 'camera-path-combined-v3.production.json' -or
+    $guideText -notmatch 'premium-dramatic-quote-slots-v2.production.json' -or
+    $guideText -notmatch 'premium-smartphone-slots-v2.production.json' -or
+    $guideText -notmatch 'premium-question-hook-slots-v2.production.json' -or
+    $guideText -notmatch 'premium-statistic-callout-slots-v2.production.json' -or
+    $guideText -notmatch 'premium-factory-stage14-demo-v3.production.json' -or
+    $guideText -notmatch 'definitionVersion') {
+    throw 'O guia não inclui o contrato declarativo, os slots personalizados e os exemplos executáveis de câmera.'
 }

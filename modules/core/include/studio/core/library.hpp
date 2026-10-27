@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <string_view>
+#include <memory>
 #include <vector>
 #include <studio/core/project.hpp>
 
@@ -11,18 +11,36 @@ struct LibraryItem {
 };
 const std::vector<LibraryItem> &nativeLibrary();
 const LibraryItem *libraryItem(const std::string &id);
+struct PremiumDeclarativeLayer {
+    std::string id, parentId, name, component, role, text, color, paletteToken, animation;
+    double x{0}, y{0}, width{0}, height{0}, fontSize{44}, opacity{1}, rotation{0}, scale{1};
+    int animationDelayFrames{0}, animationDurationFrames{24}, staggerFrames{0};
+};
+struct PremiumDeclarativeLayout {
+    int referenceWidth{1280}, referenceHeight{720};
+    std::vector<PremiumDeclarativeLayer> layers;
+};
+struct PremiumDeclarativeDefinition {
+    PremiumDeclarativeLayout landscape, portrait;
+};
+struct PremiumPaletteBinding {
+    std::string token;
+    std::vector<std::string> nodeIds;
+};
 struct PremiumAssetDefinition {
-    std::string_view id;
-    std::string_view name;
-    std::string_view type;
-    std::string_view category;
-    std::string_view manifestResource;
-    std::vector<Node> (*build)(int canvasWidth, int canvasHeight);
-    std::vector<std::string_view> slotRoles;
-    std::vector<std::string_view> paletteTokens;
+    std::string id, name, type, category, manifestResource;
+    std::vector<Node> (*build)(int canvasWidth, int canvasHeight){nullptr};
+    std::vector<std::string> slotRoles;
+    std::vector<std::string> paletteTokens;
+    std::shared_ptr<const PremiumDeclarativeDefinition> declarative;
+    std::vector<PremiumPaletteBinding> paletteBindings;
+    int manifestVersion{1};
 };
 const std::vector<PremiumAssetDefinition> &premiumLibrary();
 const PremiumAssetDefinition *premiumAsset(const std::string &id);
+bool registerDeclarativePremium(PremiumAssetDefinition definition, std::string &error);
+std::vector<Node> buildDeclarativePremium(const PremiumAssetDefinition &definition, int canvasWidth,
+                                         int canvasHeight);
 std::vector<Node> makePremiumAsset(const std::string &id, int canvasWidth = 1280, int canvasHeight = 720);
 std::vector<Node> makePremiumSmartphone();
 std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight);
