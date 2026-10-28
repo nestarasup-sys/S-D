@@ -1,26 +1,31 @@
-# ADR 0035 — Variantes ilustradas da AI Asset Library v1
+# ADR 0035: AI artwork replaces the default native appearance
 
-Data: 28/10/2026. Estado: implementado.
+- Status: accepted
+- Date: 2026-10-28
 
-## Contexto
+## Context
 
-O pacote fornecido contém 48 ilustrações PNG transparentes associadas a IDs nativos existentes e 12 cenários rasterizados de 482–483×271–272 pixels. Substituir os desenhos existentes por PNGs alteraria projetos antigos e removeria recursos vetoriais/procedurais úteis, como poses e cores.
+The user-provided AI Asset Library v1 contains 48 transparent object PNGs and 12 low-resolution scene previews. The first integration briefly exposed those images under additional `illustrated:<nativeId>` entries. That created duplicate library items and left the simpler procedural art as the default, contrary to the intended visual direction.
 
-## Decisão
+## Decision
 
-- Os 72 nativos originais permanecem registrados em `nativeLibrary()` e seus IDs e resultados visuais não mudam.
-- As novas aparências são registradas separadamente como variantes estáticas com IDs estáveis `illustrated:<nativeId>`: por exemplo, `illustrated:car` deriva de `car`.
-- Variantes são itens integrados `kind: native`, listados na biblioteca e no catálogo de capacidades. A receita pode usar `{"kind":"native","asset":"illustrated:car"}`; o mesmo ID também pode ser usado pelo item de biblioteca local.
-- `LibraryItem` guarda o recurso embutido, dimensões lógicas, dimensões-fonte, nativo de fallback e marcação `previewOnly`. O catálogo foi semeado/migrado pelo `WorkspaceStore`, sem substituir ou reativar itens que o usuário moveu à lixeira.
-- PNGs são empacotados como recursos Qt no compositor. O QPainter os compõe com o alpha e o filtro já usado para imagens; o movimento, a escala, a rotação, a opacidade, os keyframes, os grupos e a câmera continuam sendo os do nó comum. Se um recurso não puder ser lido, o compositor desenha o nativo procedural associado.
-- Aparências PNG não aceitam cor/paleta, pose ou animação interna. A importação rejeita esses campos quando enviados para uma variante ilustrada. Propriedades gerais de transformação e animação do nó continuam válidas.
-- As 12 cenas permanecem explicitamente marcadas como prévias de baixa resolução. A interface mostra a resolução real da imagem e o guia alerta contra seu uso como fundos finais Full HD. Os IDs procedurais simples continuam disponíveis.
-- A lista de variantes derivada do pacote é conferida nos testes contra os 60 arquivos do manifesto. `nativeAssets` continua representando apenas os 72 vetores/procedurais; `illustratedAssets` descreve o catálogo rasterizado separadamente.
+- Keep the existing 72 native IDs and registry entries. The 48 object PNGs and 12 scene images are attached as embedded artwork metadata to the corresponding original native IDs.
+- `nativeLibrary()` remains the single source of truth for the library. The QPainter native-art resolver selects embedded PNG art for those 60 IDs and uses the prior procedural renderer only as an internal fallback if the embedded image cannot be loaded.
+- Do not present procedural fallback drawings as a second user-selectable appearance.
+- Keep `person` procedural so its poses remain available. Keep `bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, and `data-table` procedural because their dynamic/programmatic behavior matters.
+- The 12 scene PNGs remain explicitly marked preview-only. Replacing them with Full HD files must preserve their original native IDs and resource paths.
+- Keep compatibility for `illustrated:<nativeId>` values emitted by the short-lived prior integration: the core library resolver maps those aliases to the corresponding original native metadata. Workspace migration marks built-in alias rows as deleted, preserving catalogue history and project data while removing them from active library counts and selections.
+- Do not claim pixel recoloring for PNG artwork. Existing color properties remain accepted for project/recipe compatibility, but they do not change PNG pixels.
 
-## Origem e limite
+## Consequences
 
-O pacote declara que a arte foi gerada para o usuário por IA. Isso registra a origem informada, mas não concede direitos sobre marcas, pessoas ou material de terceiros. O ZIP entregue não incluiu as pastas `sources/` nem `qa/` mencionadas no README do pacote; a integração usa os PNGs finais e o manifesto recebidos. O carrinho de compras foi conferido visualmente e seu último pixel de alpha está transparente, sem recorte na borda direita.
+- Existing recipes using ordinary IDs such as `car` now render the new artwork without schema changes.
+- The library still contains 72 natives, not 132. The personal library and nine premium resources remain separate and unchanged.
+- Transformations, groups, keyframes, camera movement, opacity, and supported Visual Beats continue to apply to the PNG as normal node-level operations.
+- The QPainter image cache stores decoded embedded PNGs and bounds their retained memory. The project stores stable native IDs rather than external file paths.
+- The procedural fallback remains code-only and is never presented as an alternate library item.
+- The artwork package was provided by the user and is identified as AI-generated user content; the package does not grant rights to third-party marks or material.
 
-## Consequências
+## Validation
 
-Os projetos anteriores preservam exatamente os IDs simples e continuam usando os desenhos originais. Novos projetos podem escolher entre forma procedural e arte ilustrada. Variantes incorporadas ao executável não dependem de caminhos de mídia externos. As cenas de baixa resolução funcionam tecnicamente, mas não prometem qualidade de entrega final.
+The registry and capability catalogue should report 72 native IDs, with 60 native entries marked `embedded-ai-png`, 12 marked as low-resolution previews, and the documented dynamic native entries marked `procedural`. UI, workspace migration, project serialization, recipe compilation, QPainter preview and a short MP4 export are verified with focused tests. Long renderer benchmarks and experimental GPU tests are outside this decision.

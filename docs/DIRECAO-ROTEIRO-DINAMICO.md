@@ -30,7 +30,7 @@ Os recursos premium são composições editáveis com layouts próprios em 1280�
 
 ### Variantes ilustradas AI Library
 
-Quando a direção pede ilustração editorial pronta, use `illustrated:<id-nativo>`, como `illustrated:car` ou `illustrated:chip`. O ID simples (`car`, `chip`) preserva a alternativa procedural original. PNGs aceitam movimento, transformação, opacidade, grupos e câmera, mas não pose, recoloração ou animação de partes internas. Cenários `illustrated:*` mostram uma arte de storyboard de 482–483×271–272; a biblioteca os marca como baixa resolução. Para uma exportação Full HD use os cenários procedurais correspondentes ou B-roll/arte Full HD.
+Os IDs nativos originais já selecionam a arte padrão atual: use `car`, `chip` e os demais IDs diretamente. Para 48 objetos e 12 cenários, essa arte é PNG estática; ela aceita movimento, transformação, opacidade, grupos e câmera, mas não pose, recoloração de pixels ou animação de partes internas. Os cenários (`street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room`) estão marcados como prévias de 482–483×271–272 px; use-os para storyboard/prévia ou acrescente mídia real em alta resolução até a substituição Full HD. O personagem `person` e os 11 objetos de gráficos/dados permanecem procedurais e dinâmicos. IDs temporários `illustrated:<id>` ainda abrem projetos anteriores, mas não devem ser usados em receitas novas.
 
 ## Câmera e movimentos
 

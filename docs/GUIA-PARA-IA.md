@@ -1461,81 +1461,17 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 - `archive-room` — Arquivo documental (cenários), 1280×720.
 
 
-### Variantes ilustradas AI Library v1
+### Aparência padrão dos recursos nativos
 
-O catálogo inclui 48 ilustrações PNG estáticas com transparência e 12 cenários rasterizados marcados como prévias de baixa resolução. Cada variante tem ID próprio `illustrated:<id-nativo>`; por exemplo: `{"id":"carro-ilustrado","kind":"native","asset":"illustrated:car","x":410,"y":315,"width":460,"height":210,"motion":"rise","motionFrames":24}`. Ela é uma aparência alternativa do nativo `car`; usar o ID simples `car` continua produzindo o desenho procedural antigo.
+Os 48 objetos ilustrados e os 12 cenários usam os **IDs nativos originais** e agora têm PNG incorporado como aparência padrão. Por exemplo, `asset: "car"` já mostra a nova arte do carro; não existe uma variante separada para selecionar. As imagens aceitam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. Os pixels são estáticos: `color`, `secondaryColor` e `palette` não recolorem a imagem, e poses ou animações internas não se aplicam. Esses campos antigos continuam sendo aceitos para compatibilidade, mas não alteram os pixels desses 60 PNGs.
 
-As imagens herdam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. A arte é estática internamente: não aceita recoloração (`color`, `secondaryColor` ou `palette`), pose nem animação de subpartes. O parser rejeita esses campos nas variantes ilustradas. PNGs são embutidos nesta versão do app. Os 12 cenários têm somente cerca de 482–483×271–272 pixels; a biblioteca os identifica como prévias de baixa resolução. Use-os para storyboard/prévia, não como cenário final Full HD. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
-
-IDs ilustrados válidos:
-- `illustrated:car` — Carro · ilustração IA, variante de `car`; PNG 289×156.
-- `illustrated:house` — Casa · ilustração IA, variante de `house`; PNG 254×197.
-- `illustrated:building` — Prédio · ilustração IA, variante de `building`; PNG 255×232.
-- `illustrated:document` — Documento · ilustração IA, variante de `document`; PNG 188×231.
-- `illustrated:computer` — Computador · ilustração IA, variante de `computer`; PNG 241×218.
-- `illustrated:phone` — Celular · ilustração IA, variante de `phone`; PNG 137×240.
-- `illustrated:coins` — Moedas · ilustração IA, variante de `coins`; PNG 251×216.
-- `illustrated:price-tag` — Etiqueta · ilustração IA, variante de `price-tag`; PNG 159×262.
-- `illustrated:laptop` — Notebook · ilustração IA, variante de `laptop`; PNG 288×215.
-- `illustrated:tablet` — Tablet · ilustração IA, variante de `tablet`; PNG 177×241.
-- `illustrated:camera` — Câmera · ilustração IA, variante de `camera`; PNG 264×215.
-- `illustrated:microphone` — Microfone · ilustração IA, variante de `microphone`; PNG 148×255.
-- `illustrated:headphones` — Fones de ouvido · ilustração IA, variante de `headphones`; PNG 244×251.
-- `illustrated:chip` — Chip de IA · ilustração IA, variante de `chip`; PNG 255×254.
-- `illustrated:server` — Servidor · ilustração IA, variante de `server`; PNG 215×227.
-- `illustrated:cloud` — Nuvem digital · ilustração IA, variante de `cloud`; PNG 272×232.
-- `illustrated:wifi` — Sinal Wi-Fi · ilustração IA, variante de `wifi`; PNG 255×213.
-- `illustrated:lock` — Cadeado digital · ilustração IA, variante de `lock`; PNG 181×243.
-- `illustrated:notification` — Notificação · ilustração IA, variante de `notification`; PNG 196×216.
-- `illustrated:robot` — Robô · ilustração IA, variante de `robot`; PNG 242×250.
-- `illustrated:chat-bubble` — Balão de conversa · ilustração IA, variante de `chat-bubble`; PNG 267×210.
-- `illustrated:email` — E-mail · ilustração IA, variante de `email`; PNG 259×170.
-- `illustrated:newspaper` — Jornal · ilustração IA, variante de `newspaper`; PNG 258×234.
-- `illustrated:book` — Livro · ilustração IA, variante de `book`; PNG 295×213.
-- `illustrated:calendar` — Calendário · ilustração IA, variante de `calendar`; PNG 268×226.
-- `illustrated:clock` — Relógio · ilustração IA, variante de `clock`; PNG 237×237.
-- `illustrated:hourglass` — Ampulheta · ilustração IA, variante de `hourglass`; PNG 180×249.
-- `illustrated:eye` — Olho · ilustração IA, variante de `eye`; PNG 299×187.
-- `illustrated:magnifier` — Lupa · ilustração IA, variante de `magnifier`; PNG 252×259.
-- `illustrated:target` — Alvo · ilustração IA, variante de `target`; PNG 244×246.
-- `illustrated:bank` — Banco · ilustração IA, variante de `bank`; PNG 279×250.
-- `illustrated:wallet` — Carteira · ilustração IA, variante de `wallet`; PNG 241×215.
-- `illustrated:credit-card` — Cartão de crédito · ilustração IA, variante de `credit-card`; PNG 262×184.
-- `illustrated:cash` — Dinheiro · ilustração IA, variante de `cash`; PNG 296×223.
-- `illustrated:receipt` — Recibo · ilustração IA, variante de `receipt`; PNG 182×243.
-- `illustrated:shopping-cart` — Carrinho de compras · ilustração IA, variante de `shopping-cart`; PNG 266×228.
-- `illustrated:factory` — Fábrica · ilustração IA, variante de `factory`; PNG 309×228.
-- `illustrated:briefcase` — Maleta · ilustração IA, variante de `briefcase`; PNG 252×228.
-- `illustrated:atom` — Átomo · ilustração IA, variante de `atom`; PNG 361×363.
-- `illustrated:dna` — DNA · ilustração IA, variante de `dna`; PNG 208×359.
-- `illustrated:flask` — Frasco de laboratório · ilustração IA, variante de `flask`; PNG 292×339.
-- `illustrated:brain` — Cérebro · ilustração IA, variante de `brain`; PNG 387×329.
-- `illustrated:globe` — Globo terrestre · ilustração IA, variante de `globe`; PNG 326×363.
-- `illustrated:map-pin` — Marcador de mapa · ilustração IA, variante de `map-pin`; PNG 248×341.
-- `illustrated:compass` — Bússola · ilustração IA, variante de `compass`; PNG 321×361.
-- `illustrated:rocket` — Foguete · ilustração IA, variante de `rocket`; PNG 292×381.
-- `illustrated:satellite` — Satélite · ilustração IA, variante de `satellite`; PNG 421×320.
-- `illustrated:lightbulb` — Lâmpada · ilustração IA, variante de `lightbulb`; PNG 236×364.
-- `illustrated:street` — Rua · prévia IA, variante de `street`; PNG 483×272 (**prévia baixa resolução**).
-- `illustrated:office` — Escritório · prévia IA, variante de `office`; PNG 482×272 (**prévia baixa resolução**).
-- `illustrated:showroom` — Concessionária · prévia IA, variante de `showroom`; PNG 483×272 (**prévia baixa resolução**).
-- `illustrated:studio` — Estúdio · prévia IA, variante de `studio`; PNG 483×271 (**prévia baixa resolução**).
-- `illustrated:night-city` — Cidade à noite · prévia IA, variante de `night-city`; PNG 482×271 (**prévia baixa resolução**).
-- `illustrated:server-room` — Sala de servidores · prévia IA, variante de `server-room`; PNG 483×271 (**prévia baixa resolução**).
-- `illustrated:newsroom` — Redação de notícias · prévia IA, variante de `newsroom`; PNG 483×271 (**prévia baixa resolução**).
-- `illustrated:laboratory-scene` — Laboratório · prévia IA, variante de `laboratory-scene`; PNG 482×271 (**prévia baixa resolução**).
-- `illustrated:map-room` — Mapa mundial estilizado · prévia IA, variante de `map-room`; PNG 483×271 (**prévia baixa resolução**).
-- `illustrated:financial-district` — Distrito financeiro · prévia IA, variante de `financial-district`; PNG 483×272 (**prévia baixa resolução**).
-- `illustrated:cyber-grid` — Grade digital · prévia IA, variante de `cyber-grid`; PNG 482×272 (**prévia baixa resolução**).
-- `illustrated:archive-room` — Arquivo documental · prévia IA, variante de `archive-room`; PNG 483×272 (**prévia baixa resolução**).
-
-Para animá-los, use `motion` ou keyframes comuns. Não envie campos de paleta/cor ou pose para um PNG; use o ID nativo simples se precisar do desenho procedural com cores ou poses.
+Os 12 cenários nativos — `street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room` — são temporariamente prévias rasterizadas de baixa resolução, aproximadamente 482–483×271–272 pixels. A biblioteca os marca como **PRÉVIA**. Uma atualização futura poderá substituir os arquivos mantendo os mesmos IDs. O personagem `person` e os 11 recursos de gráficos/dados (`bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, `data-table`) continuam procedurais para preservar poses ou evolução dinâmica. Para os outros PNGs, o desenho procedural anterior é apenas fallback técnico interno, não uma opção visual da biblioteca. IDs `illustrated:<id>` publicados temporariamente em versões anteriores ainda são aceitos ao abrir projetos/receitas antigas, mas novos conteúdos devem usar o ID original. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
 
 ### Direção para roteiro dinâmico
 
 Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
 
-**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os novos elementos são vetoriais; use `image`/`video` e fontes locais para fotografias e B-roll reais.
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 60 recursos com arte incorporada são PNGs estáticos transformáveis; os gráficos/dados e `person` continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
@@ -1563,914 +1499,6 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
     "format": "studio-dark-capabilities",
     "fps": 30,
     "height": 720,
-    "illustratedAssetPolicy": {
-        "idPrefix": "illustrated:",
-        "preservesProceduralNativeFallback": true,
-        "recolorable": false,
-        "rendering": "embedded-static-png"
-    },
-    "illustratedAssets": [
-        {
-            "category": "objetos",
-            "height": 210,
-            "id": "illustrated:car",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Carro · ilustração IA",
-            "nativeId": "car",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 156,
-            "sourceWidth": 289,
-            "width": 460
-        },
-        {
-            "category": "objetos",
-            "height": 210,
-            "id": "illustrated:house",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Casa · ilustração IA",
-            "nativeId": "house",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 197,
-            "sourceWidth": 254,
-            "width": 240
-        },
-        {
-            "category": "objetos",
-            "height": 300,
-            "id": "illustrated:building",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Prédio · ilustração IA",
-            "nativeId": "building",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 232,
-            "sourceWidth": 255,
-            "width": 160
-        },
-        {
-            "category": "objetos",
-            "height": 250,
-            "id": "illustrated:document",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Documento · ilustração IA",
-            "nativeId": "document",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 231,
-            "sourceWidth": 188,
-            "width": 200
-        },
-        {
-            "category": "objetos",
-            "height": 210,
-            "id": "illustrated:computer",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Computador · ilustração IA",
-            "nativeId": "computer",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 218,
-            "sourceWidth": 241,
-            "width": 280
-        },
-        {
-            "category": "objetos",
-            "height": 220,
-            "id": "illustrated:phone",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Celular · ilustração IA",
-            "nativeId": "phone",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 240,
-            "sourceWidth": 137,
-            "width": 120
-        },
-        {
-            "category": "objetos",
-            "height": 200,
-            "id": "illustrated:coins",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Moedas · ilustração IA",
-            "nativeId": "coins",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 216,
-            "sourceWidth": 251,
-            "width": 250
-        },
-        {
-            "category": "objetos",
-            "height": 150,
-            "id": "illustrated:price-tag",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Etiqueta · ilustração IA",
-            "nativeId": "price-tag",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 262,
-            "sourceWidth": 159,
-            "width": 250
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:laptop",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Notebook · ilustração IA",
-            "nativeId": "laptop",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 215,
-            "sourceWidth": 288,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:tablet",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Tablet · ilustração IA",
-            "nativeId": "tablet",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 241,
-            "sourceWidth": 177,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:camera",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Câmera · ilustração IA",
-            "nativeId": "camera",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 215,
-            "sourceWidth": 264,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:microphone",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Microfone · ilustração IA",
-            "nativeId": "microphone",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 255,
-            "sourceWidth": 148,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:headphones",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Fones de ouvido · ilustração IA",
-            "nativeId": "headphones",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 251,
-            "sourceWidth": 244,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:chip",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Chip de IA · ilustração IA",
-            "nativeId": "chip",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 254,
-            "sourceWidth": 255,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:server",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Servidor · ilustração IA",
-            "nativeId": "server",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 227,
-            "sourceWidth": 215,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:cloud",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Nuvem digital · ilustração IA",
-            "nativeId": "cloud",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 232,
-            "sourceWidth": 272,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:wifi",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Sinal Wi-Fi · ilustração IA",
-            "nativeId": "wifi",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 213,
-            "sourceWidth": 255,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:lock",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Cadeado digital · ilustração IA",
-            "nativeId": "lock",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 243,
-            "sourceWidth": 181,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:notification",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Notificação · ilustração IA",
-            "nativeId": "notification",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 216,
-            "sourceWidth": 196,
-            "width": 320
-        },
-        {
-            "category": "tecnologia",
-            "height": 240,
-            "id": "illustrated:robot",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Robô · ilustração IA",
-            "nativeId": "robot",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 250,
-            "sourceWidth": 242,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:chat-bubble",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Balão de conversa · ilustração IA",
-            "nativeId": "chat-bubble",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 210,
-            "sourceWidth": 267,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:email",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "E-mail · ilustração IA",
-            "nativeId": "email",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 170,
-            "sourceWidth": 259,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:newspaper",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Jornal · ilustração IA",
-            "nativeId": "newspaper",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 234,
-            "sourceWidth": 258,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:book",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Livro · ilustração IA",
-            "nativeId": "book",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 213,
-            "sourceWidth": 295,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:calendar",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Calendário · ilustração IA",
-            "nativeId": "calendar",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 226,
-            "sourceWidth": 268,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:clock",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Relógio · ilustração IA",
-            "nativeId": "clock",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 237,
-            "sourceWidth": 237,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:hourglass",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Ampulheta · ilustração IA",
-            "nativeId": "hourglass",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 249,
-            "sourceWidth": 180,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:eye",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Olho · ilustração IA",
-            "nativeId": "eye",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 187,
-            "sourceWidth": 299,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:magnifier",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Lupa · ilustração IA",
-            "nativeId": "magnifier",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 259,
-            "sourceWidth": 252,
-            "width": 320
-        },
-        {
-            "category": "comunicação",
-            "height": 240,
-            "id": "illustrated:target",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Alvo · ilustração IA",
-            "nativeId": "target",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 246,
-            "sourceWidth": 244,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:bank",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Banco · ilustração IA",
-            "nativeId": "bank",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 250,
-            "sourceWidth": 279,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:wallet",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Carteira · ilustração IA",
-            "nativeId": "wallet",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 215,
-            "sourceWidth": 241,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:credit-card",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Cartão de crédito · ilustração IA",
-            "nativeId": "credit-card",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 184,
-            "sourceWidth": 262,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:cash",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Dinheiro · ilustração IA",
-            "nativeId": "cash",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 223,
-            "sourceWidth": 296,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:receipt",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Recibo · ilustração IA",
-            "nativeId": "receipt",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 243,
-            "sourceWidth": 182,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:shopping-cart",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Carrinho de compras · ilustração IA",
-            "nativeId": "shopping-cart",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 228,
-            "sourceWidth": 266,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:factory",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Fábrica · ilustração IA",
-            "nativeId": "factory",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 228,
-            "sourceWidth": 309,
-            "width": 320
-        },
-        {
-            "category": "finanças",
-            "height": 240,
-            "id": "illustrated:briefcase",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Maleta · ilustração IA",
-            "nativeId": "briefcase",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 228,
-            "sourceWidth": 252,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:atom",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Átomo · ilustração IA",
-            "nativeId": "atom",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 363,
-            "sourceWidth": 361,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:dna",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "DNA · ilustração IA",
-            "nativeId": "dna",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 359,
-            "sourceWidth": 208,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:flask",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Frasco de laboratório · ilustração IA",
-            "nativeId": "flask",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 339,
-            "sourceWidth": 292,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:brain",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Cérebro · ilustração IA",
-            "nativeId": "brain",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 329,
-            "sourceWidth": 387,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:globe",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Globo terrestre · ilustração IA",
-            "nativeId": "globe",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 363,
-            "sourceWidth": 326,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:map-pin",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Marcador de mapa · ilustração IA",
-            "nativeId": "map-pin",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 341,
-            "sourceWidth": 248,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:compass",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Bússola · ilustração IA",
-            "nativeId": "compass",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 361,
-            "sourceWidth": 321,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:rocket",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Foguete · ilustração IA",
-            "nativeId": "rocket",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 381,
-            "sourceWidth": 292,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:satellite",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Satélite · ilustração IA",
-            "nativeId": "satellite",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 320,
-            "sourceWidth": 421,
-            "width": 320
-        },
-        {
-            "category": "ciência",
-            "height": 240,
-            "id": "illustrated:lightbulb",
-            "internalAnimation": false,
-            "kind": "static-png",
-            "name": "Lâmpada · ilustração IA",
-            "nativeId": "lightbulb",
-            "poseControls": false,
-            "previewOnly": false,
-            "recolorable": false,
-            "sourceHeight": 364,
-            "sourceWidth": 236,
-            "width": 320
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:street",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Rua · prévia IA",
-            "nativeId": "street",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:office",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Escritório · prévia IA",
-            "nativeId": "office",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 482,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:showroom",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Concessionária · prévia IA",
-            "nativeId": "showroom",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:studio",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Estúdio · prévia IA",
-            "nativeId": "studio",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:night-city",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Cidade à noite · prévia IA",
-            "nativeId": "night-city",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 482,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:server-room",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Sala de servidores · prévia IA",
-            "nativeId": "server-room",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:newsroom",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Redação de notícias · prévia IA",
-            "nativeId": "newsroom",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:laboratory-scene",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Laboratório · prévia IA",
-            "nativeId": "laboratory-scene",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 482,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:map-room",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Mapa mundial estilizado · prévia IA",
-            "nativeId": "map-room",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 271,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:financial-district",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Distrito financeiro · prévia IA",
-            "nativeId": "financial-district",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 483,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:cyber-grid",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Grade digital · prévia IA",
-            "nativeId": "cyber-grid",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 482,
-            "width": 1280
-        },
-        {
-            "category": "cenários",
-            "height": 720,
-            "id": "illustrated:archive-room",
-            "internalAnimation": false,
-            "kind": "scene-preview",
-            "name": "Arquivo documental · prévia IA",
-            "nativeId": "archive-room",
-            "poseControls": false,
-            "previewOnly": true,
-            "recolorable": false,
-            "sourceHeight": 272,
-            "sourceWidth": 483,
-            "width": 1280
-        }
-    ],
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": null,
@@ -2506,6 +1534,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "car",
             "name": "Carro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 156,
+            "sourceWidth": 289,
             "width": 460
         },
         {
@@ -2513,6 +1546,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 350,
             "id": "person",
             "name": "Personagem",
+            "rendering": "procedural",
             "width": 180
         },
         {
@@ -2520,6 +1554,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "house",
             "name": "Casa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 197,
+            "sourceWidth": 254,
             "width": 240
         },
         {
@@ -2527,6 +1566,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 300,
             "id": "building",
             "name": "Prédio",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 232,
+            "sourceWidth": 255,
             "width": 160
         },
         {
@@ -2534,6 +1578,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 250,
             "id": "document",
             "name": "Documento",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 231,
+            "sourceWidth": 188,
             "width": 200
         },
         {
@@ -2541,6 +1590,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "computer",
             "name": "Computador",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 218,
+            "sourceWidth": 241,
             "width": 280
         },
         {
@@ -2548,6 +1602,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 220,
             "id": "phone",
             "name": "Celular",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 240,
+            "sourceWidth": 137,
             "width": 120
         },
         {
@@ -2555,6 +1614,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 200,
             "id": "coins",
             "name": "Moedas",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 216,
+            "sourceWidth": 251,
             "width": 250
         },
         {
@@ -2562,6 +1626,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 150,
             "id": "price-tag",
             "name": "Etiqueta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 262,
+            "sourceWidth": 159,
             "width": 250
         },
         {
@@ -2569,6 +1638,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "bars",
             "name": "Barras ilustrativas",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2576,6 +1646,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "street",
             "name": "Rua",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2583,6 +1658,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "office",
             "name": "Escritório",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 482,
             "width": 1280
         },
         {
@@ -2590,6 +1670,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "showroom",
             "name": "Concessionária",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2597,6 +1682,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "studio",
             "name": "Estúdio",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2604,6 +1694,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "laptop",
             "name": "Notebook",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 288,
             "width": 320
         },
         {
@@ -2611,6 +1706,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "tablet",
             "name": "Tablet",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 241,
+            "sourceWidth": 177,
             "width": 320
         },
         {
@@ -2618,6 +1718,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "camera",
             "name": "Câmera",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 264,
             "width": 320
         },
         {
@@ -2625,6 +1730,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "microphone",
             "name": "Microfone",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 255,
+            "sourceWidth": 148,
             "width": 320
         },
         {
@@ -2632,6 +1742,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "headphones",
             "name": "Fones de ouvido",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 251,
+            "sourceWidth": 244,
             "width": 320
         },
         {
@@ -2639,6 +1754,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chip",
             "name": "Chip de IA",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 254,
+            "sourceWidth": 255,
             "width": 320
         },
         {
@@ -2646,6 +1766,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "server",
             "name": "Servidor",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 227,
+            "sourceWidth": 215,
             "width": 320
         },
         {
@@ -2653,6 +1778,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "cloud",
             "name": "Nuvem digital",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 232,
+            "sourceWidth": 272,
             "width": 320
         },
         {
@@ -2660,6 +1790,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "wifi",
             "name": "Sinal Wi-Fi",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 213,
+            "sourceWidth": 255,
             "width": 320
         },
         {
@@ -2667,6 +1802,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "lock",
             "name": "Cadeado digital",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 243,
+            "sourceWidth": 181,
             "width": 320
         },
         {
@@ -2674,6 +1814,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "notification",
             "name": "Notificação",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 216,
+            "sourceWidth": 196,
             "width": 320
         },
         {
@@ -2681,6 +1826,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "robot",
             "name": "Robô",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 250,
+            "sourceWidth": 242,
             "width": 320
         },
         {
@@ -2688,6 +1838,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chat-bubble",
             "name": "Balão de conversa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 210,
+            "sourceWidth": 267,
             "width": 320
         },
         {
@@ -2695,6 +1850,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "email",
             "name": "E-mail",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 170,
+            "sourceWidth": 259,
             "width": 320
         },
         {
@@ -2702,6 +1862,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "newspaper",
             "name": "Jornal",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 234,
+            "sourceWidth": 258,
             "width": 320
         },
         {
@@ -2709,6 +1874,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "book",
             "name": "Livro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 213,
+            "sourceWidth": 295,
             "width": 320
         },
         {
@@ -2716,6 +1886,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "calendar",
             "name": "Calendário",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 226,
+            "sourceWidth": 268,
             "width": 320
         },
         {
@@ -2723,6 +1898,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "clock",
             "name": "Relógio",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 237,
+            "sourceWidth": 237,
             "width": 320
         },
         {
@@ -2730,6 +1910,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "hourglass",
             "name": "Ampulheta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 249,
+            "sourceWidth": 180,
             "width": 320
         },
         {
@@ -2737,6 +1922,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "eye",
             "name": "Olho",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 187,
+            "sourceWidth": 299,
             "width": 320
         },
         {
@@ -2744,6 +1934,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "magnifier",
             "name": "Lupa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 259,
+            "sourceWidth": 252,
             "width": 320
         },
         {
@@ -2751,6 +1946,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "target",
             "name": "Alvo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 246,
+            "sourceWidth": 244,
             "width": 320
         },
         {
@@ -2758,6 +1958,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chart-line",
             "name": "Gráfico de linhas",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2765,6 +1966,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chart-pie",
             "name": "Gráfico de pizza",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2772,6 +1974,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chart-donut",
             "name": "Gráfico de rosca",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2779,6 +1982,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "chart-area",
             "name": "Gráfico de área",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2786,6 +1990,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "timeline",
             "name": "Linha do tempo",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2793,6 +1998,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "flowchart",
             "name": "Fluxograma",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2800,6 +2006,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "network",
             "name": "Rede de conexões",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2807,6 +2014,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "dashboard",
             "name": "Painel de indicadores",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2814,6 +2022,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "progress-ring",
             "name": "Anel de progresso ilustrativo",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2821,6 +2030,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "data-table",
             "name": "Tabela de dados ilustrativa",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -2828,6 +2038,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "bank",
             "name": "Banco",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 250,
+            "sourceWidth": 279,
             "width": 320
         },
         {
@@ -2835,6 +2050,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "wallet",
             "name": "Carteira",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 241,
             "width": 320
         },
         {
@@ -2842,6 +2062,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "credit-card",
             "name": "Cartão de crédito",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 184,
+            "sourceWidth": 262,
             "width": 320
         },
         {
@@ -2849,6 +2074,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "cash",
             "name": "Dinheiro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 223,
+            "sourceWidth": 296,
             "width": 320
         },
         {
@@ -2856,6 +2086,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "receipt",
             "name": "Recibo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 243,
+            "sourceWidth": 182,
             "width": 320
         },
         {
@@ -2863,6 +2098,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "shopping-cart",
             "name": "Carrinho de compras",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 266,
             "width": 320
         },
         {
@@ -2870,6 +2110,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "factory",
             "name": "Fábrica",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 309,
             "width": 320
         },
         {
@@ -2877,6 +2122,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "briefcase",
             "name": "Maleta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 252,
             "width": 320
         },
         {
@@ -2884,6 +2134,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "atom",
             "name": "Átomo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 363,
+            "sourceWidth": 361,
             "width": 320
         },
         {
@@ -2891,6 +2146,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "dna",
             "name": "DNA",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 359,
+            "sourceWidth": 208,
             "width": 320
         },
         {
@@ -2898,6 +2158,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "flask",
             "name": "Frasco de laboratório",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 339,
+            "sourceWidth": 292,
             "width": 320
         },
         {
@@ -2905,6 +2170,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "brain",
             "name": "Cérebro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 329,
+            "sourceWidth": 387,
             "width": 320
         },
         {
@@ -2912,6 +2182,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "globe",
             "name": "Globo terrestre",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 363,
+            "sourceWidth": 326,
             "width": 320
         },
         {
@@ -2919,6 +2194,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "map-pin",
             "name": "Marcador de mapa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 341,
+            "sourceWidth": 248,
             "width": 320
         },
         {
@@ -2926,6 +2206,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "compass",
             "name": "Bússola",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 361,
+            "sourceWidth": 321,
             "width": 320
         },
         {
@@ -2933,6 +2218,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "rocket",
             "name": "Foguete",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 381,
+            "sourceWidth": 292,
             "width": 320
         },
         {
@@ -2940,6 +2230,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "satellite",
             "name": "Satélite",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 320,
+            "sourceWidth": 421,
             "width": 320
         },
         {
@@ -2947,6 +2242,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "lightbulb",
             "name": "Lâmpada",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 364,
+            "sourceWidth": 236,
             "width": 320
         },
         {
@@ -2954,6 +2254,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "night-city",
             "name": "Cidade à noite",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 482,
             "width": 1280
         },
         {
@@ -2961,6 +2266,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "server-room",
             "name": "Sala de servidores",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2968,6 +2278,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "newsroom",
             "name": "Redação de notícias",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2975,6 +2290,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "laboratory-scene",
             "name": "Laboratório",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 482,
             "width": 1280
         },
         {
@@ -2982,6 +2302,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "map-room",
             "name": "Mapa mundial estilizado",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2989,6 +2314,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "financial-district",
             "name": "Distrito financeiro",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -2996,6 +2326,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "cyber-grid",
             "name": "Grade digital",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 482,
             "width": 1280
         },
         {
@@ -3003,6 +2338,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "archive-room",
             "name": "Arquivo documental",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         }
     ],
@@ -3673,9 +3013,8 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "video-speed-control",
         "video-normalized-crop",
         "personal-library-video-assets",
-        "ai-illustrated-static-png-assets",
-        "illustrated-variant-of-native-fallback",
-        "low-resolution-scene-preview-assets",
+        "native-id-ai-png-default-artwork",
+        "low-resolution-native-scene-previews",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",

@@ -261,16 +261,6 @@ QJsonObject defaults() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
-    for (const auto &a : illustratedLibrary())
-        assets.append(QJsonObject{{"id", QString::fromStdString(a.id)},
-                                  {"nativeId", QString::fromStdString(a.id)},
-                                  {"name", QString::fromStdString(a.name)},
-                                  {"kind", "native"},
-                                  {"categoryId", nativeCategory(a.category)},
-                                  {"previewOnly", a.previewOnly},
-                                  {"deleted", false},
-                                  {"builtin", true},
-                                  {"createdAt", now()}});
     for (const auto &asset : premiumRegistry().assets)
         assets.append(asset);
     return {{"format", "studio-dark-workspace"},
@@ -482,6 +472,19 @@ bool WorkspaceStore::reload() {
     ensureCategory(data_, "finance", "Finanças");
     ensureCategory(data_, "science", "Ciência");
     auto assets = data_["assets"].toArray();
+    // The previous release exposed PNG artwork under duplicate `illustrated:*`
+    // IDs. Retire only those built-in catalogue rows; old project node IDs remain
+    // valid aliases in core::libraryItem and render through their original native ID.
+    for (qsizetype index = 0; index < assets.size(); ++index) {
+        auto entry = assets[index].toObject();
+        const auto id = entry["id"].toString();
+        if (entry["builtin"].toBool() && entry["kind"] == "native" &&
+            id.startsWith("illustrated:") && entry["nativeId"].toString() == id &&
+            !entry["deleted"].toBool()) {
+            entry["deleted"] = true;
+            assets[index] = entry;
+        }
+    }
     QSet<QString> known;
     for (const auto &entry : assets)
         known.insert(entry.toObject()["id"].toString());
@@ -494,21 +497,6 @@ bool WorkspaceStore::reload() {
                                   {"name", QString::fromStdString(item.name)},
                                   {"kind", "native"},
                                   {"categoryId", nativeCategory(item.category)},
-                                  {"deleted", false},
-                                  {"builtin", true},
-                                  {"createdAt", now()}});
-        known.insert(id);
-    }
-    for (const auto &item : illustratedLibrary()) {
-        const auto id = QString::fromStdString(item.id);
-        if (known.contains(id))
-            continue;
-        assets.append(QJsonObject{{"id", id},
-                                  {"nativeId", id},
-                                  {"name", QString::fromStdString(item.name)},
-                                  {"kind", "native"},
-                                  {"categoryId", nativeCategory(item.category)},
-                                  {"previewOnly", item.previewOnly},
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});

@@ -115,8 +115,8 @@ void paintBackground(QPainter &painter, const Project &project, const ArtDirecti
     painter.fillRect(QRect(0, 0, project.width, project.height), glow);
 }
 
-void paintNativeOrIllustration(QPainter &painter, const Node &node, std::int64_t frame,
-                               QCache<QString, QImage> &images) {
+void paintNativeArtwork(QPainter &painter, const Node &node, std::int64_t frame,
+                        QCache<QString, QImage> &images) {
     const auto *asset = libraryItem(node.nativeId);
     if (!asset || asset->resourcePath.empty()) {
         paintNative(painter, node, frame);
@@ -142,7 +142,7 @@ void paintNativeOrIllustration(QPainter &painter, const Node &node, std::int64_t
         return;
     }
 
-    // An unavailable embedded image falls back to the original procedural native.
+    // Procedural artwork is an internal recovery path, never a second library choice.
     Node fallback = node;
     fallback.nativeId = asset->fallbackId;
     paintNative(painter, fallback, frame);
@@ -200,7 +200,7 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             painter.setBrush(QColor(QString::fromStdString(node.color)));
             painter.drawRoundedRect(bounds, std::min(12., node.height / 2), std::min(12., node.height / 2));
         } else if (node.kind == NodeKind::Native) {
-            paintNativeOrIllustration(painter, node, frame, images);
+            paintNativeArtwork(painter, node, frame, images);
         } else if (node.kind == NodeKind::Svg) {
             const auto source = QString::fromStdString(node.source);
             const auto key = svgRendererCacheKey(source);

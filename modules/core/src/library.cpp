@@ -1,12 +1,17 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <string_view>
 #include <unordered_set>
 #include <studio/core/library.hpp>
 
 namespace studio {
+namespace {
+void applyAiArtworkMetadata(std::vector<LibraryItem> &items);
+}
 const std::vector<LibraryItem> &nativeLibrary() {
-    static const std::vector<LibraryItem> items{
+    static const std::vector<LibraryItem> items = [] {
+      std::vector<LibraryItem> result{
         {"car", "Carro", "objetos", 460, 210},
         {"person", "Personagem", "personagens", 180, 350},
         {"house", "Casa", "objetos", 240, 210},
@@ -79,10 +84,14 @@ const std::vector<LibraryItem> &nativeLibrary() {
         {"financial-district", "Distrito financeiro", "cenários", 1280, 720},
         {"cyber-grid", "Grade digital", "cenários", 1280, 720},
         {"archive-room", "Arquivo documental", "cenários", 1280, 720}
-    };
+      };
+      applyAiArtworkMetadata(result);
+      return result;
+    }();
     return items;
 }
-const std::vector<LibraryItem> &illustratedLibrary() {
+namespace {
+void applyAiArtworkMetadata(std::vector<LibraryItem> &items) {
     struct Spec {
         const char *nativeId;
         const char *path;
@@ -151,25 +160,20 @@ const std::vector<LibraryItem> &illustratedLibrary() {
         {"cyber-grid", "scenes/cyber-grid.png", 482, 272, true},
         {"archive-room", "scenes/archive-room.png", 483, 272, true},
     };
-    static const std::vector<LibraryItem> items = [] {
-        std::vector<LibraryItem> result;
-        result.reserve(std::size(specs));
-        for (const auto &spec : specs) {
-            const auto base = std::find_if(nativeLibrary().begin(), nativeLibrary().end(), [&](const auto &item) {
-                return item.id == spec.nativeId;
-            });
-            if (base == nativeLibrary().end())
-                continue;
-            const auto id = "illustrated:" + base->id;
-            const auto name = base->name + (spec.previewOnly ? " · prévia IA" : " · ilustração IA");
-            result.push_back({id, name, base->category, base->width, base->height,
-                              ":/studio/ai-library/v1/" + std::string(spec.path), base->id,
-                              spec.sourceWidth, spec.sourceHeight, spec.previewOnly});
-        }
-        return result;
-    }();
-    return items;
+    for (const auto &spec : specs) {
+        const auto item = std::find_if(items.begin(), items.end(), [&](const auto &value) {
+            return value.id == spec.nativeId;
+        });
+        if (item == items.end())
+            continue;
+        item->resourcePath = ":/studio/ai-library/v1/" + std::string(spec.path);
+        item->fallbackId = item->id;
+        item->sourceWidth = spec.sourceWidth;
+        item->sourceHeight = spec.sourceHeight;
+        item->previewOnly = spec.previewOnly;
+    }
 }
+} // namespace
 std::vector<Node> makePremiumSmartphone() { return makePremiumSmartphone(1280, 720); }
 std::vector<Node> makePremiumSmartphone(int canvasWidth, int canvasHeight) {
     std::vector<Node> nodes;
@@ -539,15 +543,15 @@ bool premiumSlotRole(const std::string &role) {
     return false;
 }
 const LibraryItem *libraryItem(const std::string &id) {
+    auto nativeId = id;
+    constexpr std::string_view legacyPrefix = "illustrated:";
+    if (nativeId.rfind(legacyPrefix, 0) == 0)
+        nativeId.erase(0, legacyPrefix.size());
     const auto &items = nativeLibrary();
-    auto it = std::find_if(items.begin(), items.end(), [&](const auto &a) { return a.id == id; });
-    if (it != items.end())
-        return &*it;
-    const auto &illustrations = illustratedLibrary();
-    const auto illustrated = std::find_if(illustrations.begin(), illustrations.end(), [&](const auto &item) {
-        return item.id == id;
+    const auto it = std::find_if(items.begin(), items.end(), [&](const auto &item) {
+        return item.id == nativeId;
     });
-    return illustrated == illustrations.end() ? nullptr : &*illustrated;
+    return it == items.end() ? nullptr : &*it;
 }
 const std::vector<std::string> &motionNames() {
     static const std::vector<std::string> v{"none", "fade", "rise", "slide-left", "slide-right", "pop"};

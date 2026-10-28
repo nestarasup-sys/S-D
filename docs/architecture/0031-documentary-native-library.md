@@ -1,6 +1,6 @@
 # ADR 0031 — ampliação do catálogo nativo documental
 
-- Estado: Implementação proposta em revisão
+- Estado: Implementado; aparência padrão atualizada pela ADR 0035
 - Data: 2026-10-26
 - Branch: `feat/dynamic-documentary-library`
 
@@ -16,6 +16,10 @@ O catálogo inicial tinha apenas 14 itens e não oferecia diversidade suficiente
 - Registrar categorias novas no workspace e, em `WorkspaceStore::reload`, mesclar entradas nativas ausentes para instalações já existentes sem apagar itens pessoais, registros existentes ou exclusões do usuário.
 - Manter `catalogVersion: 1` e receita v3: apenas IDs de ativos foram acrescentados; o formato do JSON permanece compatível.
 - Gerar o guia técnico e capabilities a partir do registro real e publicar um guia criativo adicional de direção narrativa.
+
+## Estado atual do catálogo
+
+A lista de 72 IDs permanece. A aparência vetorial procedural descrita na decisão histórica foi substituída por PNG incorporado para 48 objetos e 12 cenários, mantendo seus IDs originais. `person` e os 11 gráficos/dados continuam procedurais. O desenho procedural dos outros 60 recursos ficou como fallback interno e não é mais uma opção visual separada. A implementação e a migração de bibliotecas existentes estão descritas na [ADR 0035](0035-ai-illustrated-library-variants.md).
 
 ## Considerações de qualidade
 
@@ -33,4 +37,4 @@ O catálogo inicial tinha apenas 14 itens e não oferecia diversidade suficiente
 4. `scripts/smoke-production.ps1`: importar e renderizar `examples/documentario-dinamico-30s.production.json` com voz local pt-BR.
 5. `scripts/update-ai-guide.ps1`: regenerar e conferir `docs/GUIA-PARA-IA.md` e `docs/capabilities-v1.json`.
 
-**Estado de QA:** compatibilidade estática verificada; build, smoke e reprodução visual ainda não executados em máquina Windows com Qt e SAPI. Não mesclar na master antes dessa validação.
+**Estado de QA atualizado em 2026-10-28:** compilação incremental concluída; `production_recipe_audio_library` e `workspace_projects_library` passaram; `scripts/smoke.ps1`, `scripts/smoke-workspace.ps1` e `scripts/smoke-production.ps1` passaram com Microsoft Daniel. O teste visual local confirma os PNGs padrão e as prévias dos cenários. Benchmarks e testes GPU experimentais não foram executados nesta mudança.

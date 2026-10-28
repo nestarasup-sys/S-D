@@ -9,8 +9,8 @@ namespace studio {
 struct LibraryItem {
     std::string id, name, category;
     double width, height;
-    // Optional immutable artwork embedded with the application. Illustrated variants
-    // retain a link to their original procedural native so old projects always work.
+    // Optional immutable artwork embedded for this native ID. The original procedural
+    // renderer remains an internal fallback if the image resource cannot be decoded.
     std::string resourcePath, fallbackId;
     int sourceWidth{0}, sourceHeight{0};
     bool previewOnly{false};
@@ -25,7 +25,6 @@ struct LibraryItem {
           sourceHeight(imageHeight), previewOnly(isPreviewOnly) {}
 };
 const std::vector<LibraryItem> &nativeLibrary();
-const std::vector<LibraryItem> &illustratedLibrary();
 const LibraryItem *libraryItem(const std::string &id);
 struct PremiumDeclarativeLayer {
     std::string id, parentId, name, component, role, text, color, paletteToken, animation;

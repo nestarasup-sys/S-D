@@ -20,6 +20,9 @@
 #include <studio/production/recipe.hpp>
 
 namespace {
+bool isRetiredArtworkAlias(const QJsonObject &asset) {
+    return asset["kind"] == "native" && asset["nativeId"].toString().startsWith("illustrated:");
+}
 QString defaultRoot() {
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/workspace";
 }
@@ -127,7 +130,7 @@ int WorkspaceController::projectCount() const {
 int WorkspaceController::assetCount() const {
     int total = 0;
     for (auto v : store_.data()["assets"].toArray())
-        if (!v.toObject()["deleted"].toBool())
+        if (!v.toObject()["deleted"].toBool() && !isRetiredArtworkAlias(v.toObject()))
             ++total;
     return total;
 }
@@ -184,7 +187,8 @@ QVariantList WorkspaceController::categories() const {
         auto o = value.toObject();
         int count = 0;
         for (auto a : store_.data()["assets"].toArray())
-            if (a.toObject()["categoryId"] == o["id"] && !a.toObject()["deleted"].toBool())
+            if (a.toObject()["categoryId"] == o["id"] && !a.toObject()["deleted"].toBool() &&
+                !isRetiredArtworkAlias(a.toObject()))
                 ++count;
         o["count"] = count;
         result.append(o.toVariantMap());
@@ -195,7 +199,7 @@ QVariantList WorkspaceController::assetChoices() const {
     QVariantList result;
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
-        if (!o["deleted"].toBool() &&
+        if (!o["deleted"].toBool() && !isRetiredArtworkAlias(o) &&
             (o["kind"] == "native" || o["kind"] == "premium" || o["kind"] == "image" || o["kind"] == "svg" ||
              o["kind"] == "preset"))
             result.append(o.toVariantMap());
@@ -207,6 +211,8 @@ QVariantList WorkspaceController::assets() const {
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
         const auto kind = o["kind"].toString();
+        if (isRetiredArtworkAlias(o))
+            continue;
         if ((assetTypeFilter_ == "basic" && kind != "native") ||
             (assetTypeFilter_ == "premium" && kind != "premium" && kind != "preset") ||
             (assetTypeFilter_ == "media" && kind != "image" && kind != "svg" && kind != "video"))
@@ -221,13 +227,11 @@ QVariantList WorkspaceController::assets() const {
         if (kind == "native") {
             o["thumbnail"] = "image://studio/native/" + o["nativeId"].toString();
             const auto *native = studio::libraryItem(o["nativeId"].toString().toStdString());
-            const bool illustrated = native && !native->resourcePath.empty();
-            o["illustrated"] = illustrated;
-            o["previewOnly"] = illustrated && native->previewOnly;
-            if (illustrated) {
+            const bool imageBacked = native && !native->resourcePath.empty();
+            o["previewOnly"] = imageBacked && native->previewOnly;
+            if (imageBacked) {
                 o["sourceWidth"] = native->sourceWidth;
                 o["sourceHeight"] = native->sourceHeight;
-                o["fallbackNativeId"] = QString::fromStdString(native->fallbackId);
             }
         } else if (kind == "preset" || kind == "premium") {
             auto path = thumbnailPath(o["id"].toString());
@@ -254,9 +258,9 @@ QVariantList WorkspaceController::assets() const {
         const auto *native = kind == "native"
                                  ? studio::libraryItem(o["nativeId"].toString().toStdString())
                                  : nullptr;
-        const bool illustrated = native && !native->resourcePath.empty();
-        o["typeLabel"] = kind == "native" && illustrated && native->previewOnly ? "PRÉVIA"
-                         : kind == "native" && illustrated ? "ARTE IA"
+        const bool imageBacked = native && !native->resourcePath.empty();
+        o["typeLabel"] = kind == "native" && imageBacked && native->previewOnly ? "PRÉVIA"
+                         : kind == "native" && imageBacked ? "ARTE IA"
                          : kind == "native"        ? "NATIVO"
                          : kind == "premium"     ? "PREMIUM"
                          : kind == "preset"      ? "PERSONALIZADO"

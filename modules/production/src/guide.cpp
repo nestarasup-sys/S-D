@@ -12,25 +12,21 @@
 namespace studio {
 QJsonObject capabilities() {
     initializePremiumCatalog();
-    QJsonArray items, illustrations, motions, poses;
-    for (const auto &asset : nativeLibrary())
-        items.append(QJsonObject{{"id", QString::fromStdString(asset.id)},
-                                 {"name", QString::fromStdString(asset.name)},
-                                 {"category", QString::fromStdString(asset.category)},
-                                 {"width", asset.width},
-                                 {"height", asset.height}});
-    for (const auto &asset : illustratedLibrary())
-        illustrations.append(QJsonObject{{"id", QString::fromStdString(asset.id)},
-                                         {"nativeId", QString::fromStdString(asset.fallbackId)},
-                                         {"name", QString::fromStdString(asset.name)},
-                                         {"category", QString::fromStdString(asset.category)},
-                                         {"width", asset.width}, {"height", asset.height},
-                                         {"sourceWidth", asset.sourceWidth},
-                                         {"sourceHeight", asset.sourceHeight},
-                                         {"kind", asset.previewOnly ? "scene-preview" : "static-png"},
-                                         {"previewOnly", asset.previewOnly},
-                                         {"recolorable", false}, {"poseControls", false},
-                                         {"internalAnimation", false}});
+    QJsonArray items, motions, poses;
+    for (const auto &asset : nativeLibrary()) {
+        QJsonObject entry{{"id", QString::fromStdString(asset.id)},
+                          {"name", QString::fromStdString(asset.name)},
+                          {"category", QString::fromStdString(asset.category)},
+                          {"width", asset.width}, {"height", asset.height},
+                          {"rendering", asset.resourcePath.empty() ? "procedural" : "embedded-ai-png"}};
+        if (!asset.resourcePath.empty()) {
+            entry.insert("sourceWidth", asset.sourceWidth);
+            entry.insert("sourceHeight", asset.sourceHeight);
+            entry.insert("previewOnly", asset.previewOnly);
+            entry.insert("pixelRecoloring", false);
+        }
+        items.append(entry);
+    }
     for (const auto &motion : motionNames())
         motions.append(QString::fromStdString(motion));
     for (const auto &pose : poseNames())
@@ -95,8 +91,8 @@ QJsonObject capabilities() {
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
                         "premium-palette-overrides", "premium-factory-editorial-templates",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
-                        "personal-library-video-assets", "ai-illustrated-static-png-assets",
-                        "illustrated-variant-of-native-fallback", "low-resolution-scene-preview-assets",
+                        "personal-library-video-assets",
+                        "native-id-ai-png-default-artwork", "low-resolution-native-scene-previews",
                         "landscape-and-portrait-canvas-presets",
                         "word-timed-karaoke-captions", "word-animated-karaoke-captions",
                         "independent-caption-highlight-color"}},
@@ -116,11 +112,6 @@ QJsonObject capabilities() {
                  QJsonObject{{"name", "Retrato"}, {"width", 1080}, {"height", 1920}}}},
             {"fps", 30},
             {"nativeAssets", items},
-            {"illustratedAssets", illustrations},
-            {"illustratedAssetPolicy", QJsonObject{{"idPrefix", "illustrated:"},
-                                                    {"rendering", "embedded-static-png"},
-                                                    {"recolorable", false},
-                                                    {"preservesProceduralNativeFallback", true}}},
             {"premiumAssets", premiumItems},
             {"premiumAssetCategories", QJsonArray{"basic-native", "premium", "real-media"}},
             {"motions", motions},
@@ -534,27 +525,17 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
                  QString::number(asset.height) + ".\n";
     guide += R"GUIDE(
 
-### Variantes ilustradas AI Library v1
+### Aparência padrão dos recursos nativos
 
-O catálogo inclui 48 ilustrações PNG estáticas com transparência e 12 cenários rasterizados marcados como prévias de baixa resolução. Cada variante tem ID próprio `illustrated:<id-nativo>`; por exemplo: `{"id":"carro-ilustrado","kind":"native","asset":"illustrated:car","x":410,"y":315,"width":460,"height":210,"motion":"rise","motionFrames":24}`. Ela é uma aparência alternativa do nativo `car`; usar o ID simples `car` continua produzindo o desenho procedural antigo.
+Os 48 objetos ilustrados e os 12 cenários usam os **IDs nativos originais** e agora têm PNG incorporado como aparência padrão. Por exemplo, `asset: "car"` já mostra a nova arte do carro; não existe uma variante separada para selecionar. As imagens aceitam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. Os pixels são estáticos: `color`, `secondaryColor` e `palette` não recolorem a imagem, e poses ou animações internas não se aplicam. Esses campos antigos continuam sendo aceitos para compatibilidade, mas não alteram os pixels desses 60 PNGs.
 
-As imagens herdam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. A arte é estática internamente: não aceita recoloração (`color`, `secondaryColor` ou `palette`), pose nem animação de subpartes. O parser rejeita esses campos nas variantes ilustradas. PNGs são embutidos nesta versão do app. Os 12 cenários têm somente cerca de 482–483×271–272 pixels; a biblioteca os identifica como prévias de baixa resolução. Use-os para storyboard/prévia, não como cenário final Full HD. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
-
-IDs ilustrados válidos:
-)GUIDE";
-    for (const auto &asset : illustratedLibrary())
-        guide += "- `" + QString::fromStdString(asset.id) + "` — " + QString::fromStdString(asset.name) +
-                 ", variante de `" + QString::fromStdString(asset.fallbackId) + "`; PNG " +
-                 QString::number(asset.sourceWidth) + "×" + QString::number(asset.sourceHeight) +
-                 (asset.previewOnly ? " (**prévia baixa resolução**).\n" : ".\n");
-    guide += R"GUIDE(
-Para animá-los, use `motion` ou keyframes comuns. Não envie campos de paleta/cor ou pose para um PNG; use o ID nativo simples se precisar do desenho procedural com cores ou poses.
+Os 12 cenários nativos — `street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room` — são temporariamente prévias rasterizadas de baixa resolução, aproximadamente 482–483×271–272 pixels. A biblioteca os marca como **PRÉVIA**. Uma atualização futura poderá substituir os arquivos mantendo os mesmos IDs. O personagem `person` e os 11 recursos de gráficos/dados (`bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, `data-table`) continuam procedurais para preservar poses ou evolução dinâmica. Para os outros PNGs, o desenho procedural anterior é apenas fallback técnico interno, não uma opção visual da biblioteca. IDs `illustrated:<id>` publicados temporariamente em versões anteriores ainda são aceitos ao abrir projetos/receitas antigas, mas novos conteúdos devem usar o ID original. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
 
 ### Direção para roteiro dinâmico
 
 Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
 
-**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os novos elementos são vetoriais; use `image`/`video` e fontes locais para fotografias e B-roll reais.
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 60 recursos com arte incorporada são PNGs estáticos transformáveis; os gráficos/dados e `person` continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
