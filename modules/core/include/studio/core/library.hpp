@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <memory>
+#include <utility>
 #include <vector>
 #include <studio/core/project.hpp>
 
@@ -8,8 +9,23 @@ namespace studio {
 struct LibraryItem {
     std::string id, name, category;
     double width, height;
+    // Optional immutable artwork embedded with the application. Illustrated variants
+    // retain a link to their original procedural native so old projects always work.
+    std::string resourcePath, fallbackId;
+    int sourceWidth{0}, sourceHeight{0};
+    bool previewOnly{false};
+
+    LibraryItem(std::string itemId, std::string itemName, std::string itemCategory,
+                double itemWidth, double itemHeight, std::string itemResourcePath = {},
+                std::string itemFallbackId = {}, int imageWidth = 0, int imageHeight = 0,
+                bool isPreviewOnly = false)
+        : id(std::move(itemId)), name(std::move(itemName)), category(std::move(itemCategory)),
+          width(itemWidth), height(itemHeight), resourcePath(std::move(itemResourcePath)),
+          fallbackId(std::move(itemFallbackId)), sourceWidth(imageWidth),
+          sourceHeight(imageHeight), previewOnly(isPreviewOnly) {}
 };
 const std::vector<LibraryItem> &nativeLibrary();
+const std::vector<LibraryItem> &illustratedLibrary();
 const LibraryItem *libraryItem(const std::string &id);
 struct PremiumDeclarativeLayer {
     std::string id, parentId, name, component, role, text, color, paletteToken, animation;

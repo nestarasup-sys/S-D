@@ -172,6 +172,13 @@ Rectangle {
                                         }
                                     }
                                     Label { anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 7; text: modelData.typeLabel; color: "#b0c7cb"; font.pixelSize: 9; font.letterSpacing: 1 }
+                                    Label {
+                                        anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 7
+                                        visible: modelData.previewOnly
+                                        text: "BAIXA RESOLUÇÃO · " + modelData.sourceWidth + "×" + modelData.sourceHeight
+                                        color: "#fff1de"; font.pixelSize: 9; font.weight: Font.DemiBold; padding: 4
+                                        background: Rectangle { color: "#9b4e23"; radius: 3 }
+                                    }
                                 }
                                 Label { text: modelData.name; textFormat: Text.PlainText; Layout.fillWidth: true; color: "#e2edf0"; elide: Text.ElideRight; font.pixelSize: 16; font.weight: Font.DemiBold }
                                 Label { text: modelData.categoryName; textFormat: Text.PlainText; color: "#809aaa"; font.pixelSize: 10 }

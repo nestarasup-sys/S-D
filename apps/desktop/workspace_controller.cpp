@@ -218,9 +218,18 @@ QVariantList WorkspaceController::assets() const {
         for (auto c : store_.data()["categories"].toArray())
             if (c.toObject()["id"] == o["categoryId"])
                 o["categoryName"] = c.toObject()["name"];
-        if (kind == "native")
+        if (kind == "native") {
             o["thumbnail"] = "image://studio/native/" + o["nativeId"].toString();
-        else if (kind == "preset" || kind == "premium") {
+            const auto *native = studio::libraryItem(o["nativeId"].toString().toStdString());
+            const bool illustrated = native && !native->resourcePath.empty();
+            o["illustrated"] = illustrated;
+            o["previewOnly"] = illustrated && native->previewOnly;
+            if (illustrated) {
+                o["sourceWidth"] = native->sourceWidth;
+                o["sourceHeight"] = native->sourceHeight;
+                o["fallbackNativeId"] = QString::fromStdString(native->fallbackId);
+            }
+        } else if (kind == "preset" || kind == "premium") {
             auto path = thumbnailPath(o["id"].toString());
             if (!QFileInfo::exists(path)) {
                 const auto loaded = studio::deserialize(QJsonDocument(o["preset"].toObject()).toJson());
@@ -242,7 +251,13 @@ QVariantList WorkspaceController::assets() const {
             o["thumbnail"] = QUrl::fromLocalFile(o["source"].toString()).toString();
             o["missing"] = !QFileInfo::exists(o["source"].toString());
         }
-        o["typeLabel"] = kind == "native"        ? "NATIVO"
+        const auto *native = kind == "native"
+                                 ? studio::libraryItem(o["nativeId"].toString().toStdString())
+                                 : nullptr;
+        const bool illustrated = native && !native->resourcePath.empty();
+        o["typeLabel"] = kind == "native" && illustrated && native->previewOnly ? "PRÉVIA"
+                         : kind == "native" && illustrated ? "ARTE IA"
+                         : kind == "native"        ? "NATIVO"
                          : kind == "premium"     ? "PREMIUM"
                          : kind == "preset"      ? "PERSONALIZADO"
                          : kind == "font"        ? "FONTE"

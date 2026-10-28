@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <unordered_set>
 #include <studio/core/library.hpp>
 
@@ -79,6 +80,94 @@ const std::vector<LibraryItem> &nativeLibrary() {
         {"cyber-grid", "Grade digital", "cenários", 1280, 720},
         {"archive-room", "Arquivo documental", "cenários", 1280, 720}
     };
+    return items;
+}
+const std::vector<LibraryItem> &illustratedLibrary() {
+    struct Spec {
+        const char *nativeId;
+        const char *path;
+        int sourceWidth, sourceHeight;
+        bool previewOnly;
+    };
+    static const Spec specs[]{
+        {"car", "objects/car.png", 289, 156, false},
+        {"house", "objects/house.png", 254, 197, false},
+        {"building", "objects/building.png", 255, 232, false},
+        {"document", "objects/document.png", 188, 231, false},
+        {"computer", "objects/computer.png", 241, 218, false},
+        {"phone", "objects/phone.png", 137, 240, false},
+        {"coins", "objects/coins.png", 251, 216, false},
+        {"price-tag", "objects/price-tag.png", 159, 262, false},
+        {"laptop", "technology/laptop.png", 288, 215, false},
+        {"tablet", "technology/tablet.png", 177, 241, false},
+        {"camera", "technology/camera.png", 264, 215, false},
+        {"microphone", "technology/microphone.png", 148, 255, false},
+        {"headphones", "technology/headphones.png", 244, 251, false},
+        {"chip", "technology/chip.png", 255, 254, false},
+        {"server", "technology/server.png", 215, 227, false},
+        {"cloud", "technology/cloud.png", 272, 232, false},
+        {"wifi", "technology/wifi.png", 255, 213, false},
+        {"lock", "technology/lock.png", 181, 243, false},
+        {"notification", "technology/notification.png", 196, 216, false},
+        {"robot", "technology/robot.png", 242, 250, false},
+        {"chat-bubble", "communication/chat-bubble.png", 267, 210, false},
+        {"email", "communication/email.png", 259, 170, false},
+        {"newspaper", "communication/newspaper.png", 258, 234, false},
+        {"book", "communication/book.png", 295, 213, false},
+        {"calendar", "communication/calendar.png", 268, 226, false},
+        {"clock", "communication/clock.png", 237, 237, false},
+        {"hourglass", "communication/hourglass.png", 180, 249, false},
+        {"eye", "communication/eye.png", 299, 187, false},
+        {"magnifier", "communication/magnifier.png", 252, 259, false},
+        {"target", "communication/target.png", 244, 246, false},
+        {"bank", "finance/bank.png", 279, 250, false},
+        {"wallet", "finance/wallet.png", 241, 215, false},
+        {"credit-card", "finance/credit-card.png", 262, 184, false},
+        {"cash", "finance/cash.png", 296, 223, false},
+        {"receipt", "finance/receipt.png", 182, 243, false},
+        {"shopping-cart", "finance/shopping-cart.png", 266, 228, false},
+        {"factory", "finance/factory.png", 309, 228, false},
+        {"briefcase", "finance/briefcase.png", 252, 228, false},
+        {"atom", "science/atom.png", 361, 363, false},
+        {"dna", "science/dna.png", 208, 359, false},
+        {"flask", "science/flask.png", 292, 339, false},
+        {"brain", "science/brain.png", 387, 329, false},
+        {"globe", "science/globe.png", 326, 363, false},
+        {"map-pin", "science/map-pin.png", 248, 341, false},
+        {"compass", "science/compass.png", 321, 361, false},
+        {"rocket", "science/rocket.png", 292, 381, false},
+        {"satellite", "science/satellite.png", 421, 320, false},
+        {"lightbulb", "science/lightbulb.png", 236, 364, false},
+        {"street", "scenes/street.png", 483, 272, true},
+        {"office", "scenes/office.png", 482, 272, true},
+        {"showroom", "scenes/showroom.png", 483, 272, true},
+        {"studio", "scenes/studio.png", 483, 271, true},
+        {"night-city", "scenes/night-city.png", 482, 271, true},
+        {"server-room", "scenes/server-room.png", 483, 271, true},
+        {"newsroom", "scenes/newsroom.png", 483, 271, true},
+        {"laboratory-scene", "scenes/laboratory-scene.png", 482, 271, true},
+        {"map-room", "scenes/map-room.png", 483, 271, true},
+        {"financial-district", "scenes/financial-district.png", 483, 272, true},
+        {"cyber-grid", "scenes/cyber-grid.png", 482, 272, true},
+        {"archive-room", "scenes/archive-room.png", 483, 272, true},
+    };
+    static const std::vector<LibraryItem> items = [] {
+        std::vector<LibraryItem> result;
+        result.reserve(std::size(specs));
+        for (const auto &spec : specs) {
+            const auto base = std::find_if(nativeLibrary().begin(), nativeLibrary().end(), [&](const auto &item) {
+                return item.id == spec.nativeId;
+            });
+            if (base == nativeLibrary().end())
+                continue;
+            const auto id = "illustrated:" + base->id;
+            const auto name = base->name + (spec.previewOnly ? " · prévia IA" : " · ilustração IA");
+            result.push_back({id, name, base->category, base->width, base->height,
+                              ":/studio/ai-library/v1/" + std::string(spec.path), base->id,
+                              spec.sourceWidth, spec.sourceHeight, spec.previewOnly});
+        }
+        return result;
+    }();
     return items;
 }
 std::vector<Node> makePremiumSmartphone() { return makePremiumSmartphone(1280, 720); }
@@ -452,7 +541,13 @@ bool premiumSlotRole(const std::string &role) {
 const LibraryItem *libraryItem(const std::string &id) {
     const auto &items = nativeLibrary();
     auto it = std::find_if(items.begin(), items.end(), [&](const auto &a) { return a.id == id; });
-    return it == items.end() ? nullptr : &*it;
+    if (it != items.end())
+        return &*it;
+    const auto &illustrations = illustratedLibrary();
+    const auto illustrated = std::find_if(illustrations.begin(), illustrations.end(), [&](const auto &item) {
+        return item.id == id;
+    });
+    return illustrated == illustrations.end() ? nullptr : &*illustrated;
 }
 const std::vector<std::string> &motionNames() {
     static const std::vector<std::string> v{"none", "fade", "rise", "slide-left", "slide-right", "pop"};

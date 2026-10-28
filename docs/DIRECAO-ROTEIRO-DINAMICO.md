@@ -28,6 +28,10 @@ Use dois lados somente quando houver duas condições reais a comparar. Mantenha
 
 Os recursos premium são composições editáveis com layouts próprios em 1280×720, 1920×1080 e 1080×1920. Escolha o template pelo papel narrativo, não apenas pela aparência. Separe uma abertura tipográfica de um plano de objeto e de um dado comparativo. Veja [catálogo e status](premium/PREMIUM-CATALOG.md).
 
+### Variantes ilustradas AI Library
+
+Quando a direção pede ilustração editorial pronta, use `illustrated:<id-nativo>`, como `illustrated:car` ou `illustrated:chip`. O ID simples (`car`, `chip`) preserva a alternativa procedural original. PNGs aceitam movimento, transformação, opacidade, grupos e câmera, mas não pose, recoloração ou animação de partes internas. Cenários `illustrated:*` mostram uma arte de storyboard de 482–483×271–272; a biblioteca os marca como baixa resolução. Para uma exportação Full HD use os cenários procedurais correspondentes ou B-roll/arte Full HD.
+
 ## Câmera e movimentos
 
 - **Travelling horizontal:** coloque os centros A, B e C em sequência no eixo X. Comece no centro de A; depois mova a câmera a cada mudança de ideia. `examples/camera-travelling-horizontal-v3.production.json` demonstra o percurso x=250 → 900 → 1550, mantendo os pontos futuros ocultos até seus beats.

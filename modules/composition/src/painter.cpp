@@ -9,16 +9,26 @@
 #include <QLinearGradient>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QResource>
 #include <QRegularExpression>
 #include <QSvgRenderer>
 #include <algorithm>
 #include <functional>
 #include <optional>
+#include <studio/core/library.hpp>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
 #include <studio/composition/text_layout.hpp>
 #include <studio/composition/render_snapshot.hpp>
 #include <vector>
+
+static void initializeAiLibraryResources() {
+    static const bool initialized = [] {
+        Q_INIT_RESOURCE(ai_library);
+        return true;
+    }();
+    (void)initialized;
+}
 
 namespace studio {
 namespace {
@@ -105,6 +115,39 @@ void paintBackground(QPainter &painter, const Project &project, const ArtDirecti
     painter.fillRect(QRect(0, 0, project.width, project.height), glow);
 }
 
+void paintNativeOrIllustration(QPainter &painter, const Node &node, std::int64_t frame,
+                               QCache<QString, QImage> &images) {
+    const auto *asset = libraryItem(node.nativeId);
+    if (!asset || asset->resourcePath.empty()) {
+        paintNative(painter, node, frame);
+        return;
+    }
+
+    initializeAiLibraryResources();
+    const auto path = QString::fromStdString(asset->resourcePath);
+    if (!images.contains(path)) {
+        QImageReader reader(path);
+        reader.setAutoTransform(true);
+        auto *decoded = new QImage(reader.read());
+        const auto cost = std::max<qsizetype>(1, decoded->sizeInBytes() / 1024);
+        images.insert(path, decoded, int(cost));
+    }
+    const auto *image = images.object(path);
+    if (image && !image->isNull()) {
+        QSizeF fitted = image->size();
+        fitted.scale(QSizeF(node.width, node.height), Qt::KeepAspectRatio);
+        painter.drawImage(QRectF((node.width - fitted.width()) / 2.0,
+                                 (node.height - fitted.height()) / 2.0,
+                                 fitted.width(), fitted.height()), *image);
+        return;
+    }
+
+    // An unavailable embedded image falls back to the original procedural native.
+    Node fallback = node;
+    fallback.nativeId = asset->fallbackId;
+    paintNative(painter, fallback, frame);
+}
+
 double animationEaseOut(double progress) {
     const auto t = std::clamp(progress, 0.0, 1.0);
     return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
@@ -157,7 +200,7 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             painter.setBrush(QColor(QString::fromStdString(node.color)));
             painter.drawRoundedRect(bounds, std::min(12., node.height / 2), std::min(12., node.height / 2));
         } else if (node.kind == NodeKind::Native) {
-            paintNative(painter, node, frame);
+            paintNativeOrIllustration(painter, node, frame, images);
         } else if (node.kind == NodeKind::Svg) {
             const auto source = QString::fromStdString(node.source);
             const auto key = svgRendererCacheKey(source);

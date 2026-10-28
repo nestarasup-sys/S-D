@@ -563,6 +563,15 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     } else
         return fail("Tipo de elemento desconhecido.");
 
+    if (n.kind == NodeKind::Native) {
+        const auto *asset = libraryItem(n.nativeId);
+        if (asset && !asset->resourcePath.empty() &&
+            (e.contains("color") || e.contains("secondaryColor") || e.contains("palette") ||
+             e.contains("pose")))
+            return fail("A ilustração PNG '" + QString::fromStdString(n.nativeId) +
+                        "' é estática e não aceita recoloração, palette ou pose; remova esses campos.");
+    }
+
     if (kind != "video" && e.contains("video"))
         return fail("Controles de fonte só podem ser usados por kind: video.");
 

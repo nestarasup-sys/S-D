@@ -261,6 +261,16 @@ QJsonObject defaults() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
+    for (const auto &a : illustratedLibrary())
+        assets.append(QJsonObject{{"id", QString::fromStdString(a.id)},
+                                  {"nativeId", QString::fromStdString(a.id)},
+                                  {"name", QString::fromStdString(a.name)},
+                                  {"kind", "native"},
+                                  {"categoryId", nativeCategory(a.category)},
+                                  {"previewOnly", a.previewOnly},
+                                  {"deleted", false},
+                                  {"builtin", true},
+                                  {"createdAt", now()}});
     for (const auto &asset : premiumRegistry().assets)
         assets.append(asset);
     return {{"format", "studio-dark-workspace"},
@@ -487,6 +497,22 @@ bool WorkspaceStore::reload() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
+        known.insert(id);
+    }
+    for (const auto &item : illustratedLibrary()) {
+        const auto id = QString::fromStdString(item.id);
+        if (known.contains(id))
+            continue;
+        assets.append(QJsonObject{{"id", id},
+                                  {"nativeId", id},
+                                  {"name", QString::fromStdString(item.name)},
+                                  {"kind", "native"},
+                                  {"categoryId", nativeCategory(item.category)},
+                                  {"previewOnly", item.previewOnly},
+                                  {"deleted", false},
+                                  {"builtin", true},
+                                  {"createdAt", now()}});
+        known.insert(id);
     }
     for (const auto &premium : premiumRegistry().assets)
         if (!known.contains(premium.toObject()["id"].toString()))

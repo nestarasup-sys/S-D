@@ -43,7 +43,9 @@ int main(int argc, char **argv) {
         WorkspaceController ui(&editor, temp.filePath("workspace"));
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
         check(ui.projectCount() == 0 &&
-                  ui.assetCount() == int(studio::nativeLibrary().size()) + int(studio::premiumLibrary().size()) &&
+                  ui.assetCount() == int(studio::nativeLibrary().size()) +
+                                         int(studio::illustratedLibrary().size()) +
+                                         int(studio::premiumLibrary().size()) &&
                   ui.categories().size() == 11 &&
                   !named(ui.categories(), "Tecnologia").isEmpty() &&
                   !named(ui.categories(), "Comunicação").isEmpty() &&
@@ -51,6 +53,17 @@ int main(int argc, char **argv) {
                   !named(ui.categories(), "Ciência").isEmpty(),
               ("initial complete native library and categories: " + ui.message().toStdString() +
                ", assets=" + std::to_string(ui.assetCount())).c_str());
+        check(studio::nativeLibrary().size() == 72 && studio::illustratedLibrary().size() == 60 &&
+                  studio::libraryItem("illustrated:car") &&
+                  studio::libraryItem("illustrated:car")->fallbackId == "car",
+              "60 illustrated alternatives are separately registered without replacing the 72 original natives");
+        const auto illustratedCar = named(ui.assets(), "Carro · ilustração IA");
+        const auto illustratedScene = named(ui.assets(), "Rua · prévia IA");
+        check(illustratedCar["id"] == "illustrated:car" && illustratedCar["typeLabel"] == "ARTE IA" &&
+                  illustratedScene["id"] == "illustrated:street" && illustratedScene["previewOnly"].toBool() &&
+                  illustratedScene["sourceWidth"].toInt() == 483 &&
+                  illustratedScene["sourceHeight"].toInt() == 272 && illustratedScene["typeLabel"] == "PRÉVIA",
+              "library names and explicit low-resolution scenario warning follow the asset manifest");
         const auto premium = named(ui.assets(), "Smartphone premium");
         check(premium["id"] == "premium:smartphone-premium-01" &&
                   premium["kind"] == "premium" && !premium["thumbnail"].toString().isEmpty(),
@@ -82,7 +95,8 @@ int main(int argc, char **argv) {
             }
         }
         ui.setAssetTypeFilter("basic");
-        check(ui.assets().size() == int(studio::nativeLibrary().size()), "basic native category filter retains all 72 items");
+        check(ui.assets().size() == int(studio::nativeLibrary().size()) + int(studio::illustratedLibrary().size()),
+              "basic native category filter retains all 72 procedural items and their 60 illustrated variants");
         ui.setAssetTypeFilter("media");
         check(ui.assets().isEmpty(), "real-media category is separate from native and premium assets");
         ui.setAssetTypeFilter("");
@@ -93,6 +107,31 @@ int main(int argc, char **argv) {
         const auto primaryProject = named(ui.projects(), "Minha história");
         const auto firstId = primaryProject["id"].toString();
         const auto path = primaryProject["path"].toString();
+        check(ui.useAsset("illustrated:car"), "illustrated variant inserts through the normal library command");
+        const auto insertedIllustration = std::find_if(
+            editor.project().nodes.begin(), editor.project().nodes.end(),
+            [](const auto &node) { return node.nativeId == "illustrated:car"; });
+        check(insertedIllustration != editor.project().nodes.end() && insertedIllustration->kind == studio::NodeKind::Native &&
+                  insertedIllustration->width == studio::libraryItem("illustrated:car")->width,
+              "inserted PNG remains an ordinary transformable native node with its official variant ID");
+        const auto persistedIllustration = studio::deserialize(studio::serialize(editor.project()));
+        check(persistedIllustration.error.isEmpty() &&
+                  std::any_of(persistedIllustration.project.nodes.begin(), persistedIllustration.project.nodes.end(),
+                              [](const auto &node) { return node.nativeId == "illustrated:car"; }),
+              "illustrated variant ID survives project serialization and reopening");
+        studio::CompositionPainter illustrationPainter;
+        auto legacyCar = studio::makeEmpty();
+        studio::Node legacyCarNode;
+        legacyCarNode.id = "car"; legacyCarNode.kind = studio::NodeKind::Native; legacyCarNode.nativeId = "car";
+        legacyCarNode.name = "Carro"; legacyCarNode.x = 410; legacyCarNode.y = 220;
+        legacyCarNode.width = 460; legacyCarNode.height = 210; legacyCarNode.animated = false;
+        legacyCar.nodes.push_back(legacyCarNode);
+        auto aiCar = legacyCar;
+        aiCar.nodes.front().nativeId = "illustrated:car";
+        const auto legacyCarFrame = illustrationPainter.frame(legacyCar, 30);
+        const auto illustratedCarFrame = illustrationPainter.frame(aiCar, 30);
+        check(!illustratedCarFrame.isNull() && legacyCarFrame != illustratedCarFrame,
+              "QPainter uses embedded PNG pixels while the legacy ID keeps its procedural drawing");
         check(ui.useAsset("premium:smartphone-premium-01") && editor.project().nodes.size() >= 15,
               "premium smartphone inserts its editable vector hierarchy");
         const auto slotText = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),

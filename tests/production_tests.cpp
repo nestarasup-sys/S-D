@@ -3,9 +3,11 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
+#include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPainter>
+#include <QSet>
 #include <QTemporaryDir>
 #include <algorithm>
 #include <cmath>
@@ -1039,10 +1041,73 @@ int main(int argc, char **argv) {
               "v1 migrates into v2 in memory");
         check(studio::nativeLibrary().size() == 72,
               "documentary native catalog has expected number of assets");
+        check(studio::illustratedLibrary().size() == 60,
+              "separate illustrated library contains 48 PNG objects and 12 scene previews");
         check(studio::libraryItem("rocket") && studio::libraryItem("night-city") &&
                   studio::libraryItem("chart-donut"),
               "new objects, data graphics and backgrounds exist in native catalog");
         studio::CompositionPainter painter;
+        auto illustratedFixture = studio::makeEmpty();
+        auto illustratedNode = [&](const std::string &id, double x, double y, double width, double height) {
+            studio::Node node;
+            node.id = id; node.kind = studio::NodeKind::Native; node.nativeId = "illustrated:" + id;
+            node.name = id; node.x = x; node.y = y; node.width = width; node.height = height;
+            node.animated = false; node.motion = "none";
+            illustratedFixture.nodes.push_back(node);
+        };
+        illustratedNode("car", 24, 400, 460, 210);
+        illustratedNode("chip", 360, 80, 220, 220);
+        illustratedNode("flask", 660, 68, 220, 255);
+        illustratedNode("server", 940, 70, 215, 227);
+        illustratedNode("satellite", 645, 365, 340, 255);
+        const auto illustratedFrame = painter.frame(illustratedFixture, 30);
+        check(!illustratedFrame.isNull() && illustratedFrame.size() == QSize(1280, 720),
+              "QPainter composes representative embedded illustrations at their intended positions");
+        QFile aiAssetManifest(QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/ai-library/asset-manifest.json");
+        check(aiAssetManifest.open(QIODevice::ReadOnly), "integrated AI asset manifest is present");
+        const auto aiManifest = QJsonDocument::fromJson(aiAssetManifest.readAll()).object();
+        check(aiManifest["importStatus"].toString().startsWith("INSTALLED") &&
+                  aiManifest["studioDarkIntegration"].toObject()["vectorFallbackPreserved"].toBool(),
+              "asset manifest records the installed state and the fallback policy");
+        int transparentAssets = 0, previewAssets = 0;
+        QSet<QString> illustratedIds;
+        for (const auto &entryValue : aiManifest["assets"].toArray()) {
+            const auto entry = entryValue.toObject();
+            const auto nativeId = entry["nativeId"].toString().toStdString();
+            const auto expectedId = "illustrated:" + nativeId;
+            const auto *asset = studio::libraryItem(expectedId);
+            const auto path = QString::fromStdString(asset ? asset->resourcePath : std::string{});
+            const auto idUnique = !illustratedIds.contains(QString::fromStdString(expectedId));
+            illustratedIds.insert(QString::fromStdString(expectedId));
+            QImageReader reader(path);
+            const auto decoded = reader.read();
+            check(asset && idUnique &&
+                      asset->fallbackId == nativeId && !decoded.isNull() &&
+                      decoded.size() == QSize(entry["size"].toArray()[0].toInt(),
+                                              entry["size"].toArray()[1].toInt()),
+                  "manifest ID, embedded Qt resource, fallback and decoded dimensions agree");
+            if (entry["kind"] == "transparent-illustration") {
+                ++transparentAssets;
+                check(decoded.hasAlphaChannel(), "each illustrated PNG retains a real alpha channel");
+            }
+            if (entry["kind"] == "scene-preview") {
+                ++previewAssets;
+                check(asset->previewOnly, "low-resolution scene remains marked preview-only in the registry");
+            }
+        }
+        check(transparentAssets == 48 && previewAssets == 12,
+              "all manifest entries are classified as 48 illustrations and 12 previews");
+        const auto originalCarProject = [&] {
+            auto project = studio::makeEmpty();
+            studio::Node node; node.id = "car"; node.kind = studio::NodeKind::Native; node.nativeId = "car";
+            node.x = 410; node.y = 220; node.width = 460; node.height = 210; node.animated = false;
+            project.nodes.push_back(node);
+            return project;
+        }();
+        auto illustratedCarProject = originalCarProject;
+        illustratedCarProject.nodes.front().nativeId = "illustrated:car";
+        check(painter.frame(originalCarProject, 30) != painter.frame(illustratedCarProject, 30),
+              "rendered illustrated artwork differs from the preserved procedural native fallback");
         for (const auto &asset : studio::nativeLibrary()) {
             auto p = studio::makeEmpty();
             studio::Node n;
@@ -1090,8 +1155,10 @@ int main(int argc, char **argv) {
         }
         studio::WorkspaceStore upgraded(migrationDir.path());
         check(upgraded.error().isEmpty() && !upgraded.asset("native:rocket").isEmpty() &&
-                  !upgraded.asset("native:newsroom").isEmpty(),
-              "upgrade automatically adds new builtin native illustrations");
+                  !upgraded.asset("native:newsroom").isEmpty() &&
+                  !upgraded.asset("illustrated:car").isEmpty() &&
+                  !upgraded.asset("illustrated:street").isEmpty(),
+              "upgrade registers procedural natives and illustrated variants in old workspaces");
         check(upgraded.asset("personal:retained")["name"] == "Elemento pessoal" &&
                   upgraded.asset("native:person")["name"] == "Personagem",
               "upgrade preserves personal files and previous native assets");
@@ -1100,6 +1167,7 @@ int main(int argc, char **argv) {
         studio::WorkspaceStore persistedUpgrade(migrationDir.path());
         check(persistedUpgrade.error().isEmpty() &&
                   !persistedUpgrade.asset("native:rocket").isEmpty() &&
+                  !persistedUpgrade.asset("illustrated:car").isEmpty() &&
                   persistedUpgrade.asset("personal:retained")["name"] == "Elemento pessoal",
               "upgraded catalogue persists with personal assets intact");
         studio::WorkspaceStore catalog(directory.filePath("catalog"));
@@ -1528,6 +1596,50 @@ int main(int argc, char **argv) {
                   nativePaletteParsed.recipe.scenes.front().elements.front().node.color == "#34AADC" &&
                   nativePaletteParsed.recipe.scenes.front().elements.front().node.secondaryColor == "#F2B64B",
               "native palette.primary and palette.secondary alter the registered native colors");
+        auto illustratedRecipe = nativePaletteRecipe;
+        auto illustratedScene = nativePaletteScene;
+        auto illustratedElement = illustratedScene["elements"].toArray().at(0).toObject();
+        illustratedElement.remove("palette");
+        illustratedElement["asset"] = "illustrated:car";
+        illustratedElement["motion"] = "rise";
+        illustratedScene["elements"] = QJsonArray{illustratedElement};
+        illustratedRecipe["scenes"] = QJsonArray{illustratedScene};
+        const auto parsedIllustratedRecipe = studio::parseRecipe(QJsonDocument(illustratedRecipe).toJson(),
+                                                                 directory.path());
+        check(parsedIllustratedRecipe.error.isEmpty() &&
+                  parsedIllustratedRecipe.recipe.scenes.front().elements.front().node.nativeId == "illustrated:car",
+              "AI recipe parser accepts the stable illustrated variant ID and normal motion controls");
+        auto invalidIllustratedRecipe = illustratedRecipe;
+        auto invalidIllustratedScene = invalidIllustratedRecipe["scenes"].toArray().at(0).toObject();
+        auto invalidIllustratedElement = invalidIllustratedScene["elements"].toArray().at(0).toObject();
+        invalidIllustratedElement["palette"] = QJsonObject{{"primary", "#42B8A8"}};
+        invalidIllustratedScene["elements"] = QJsonArray{invalidIllustratedElement};
+        invalidIllustratedRecipe["scenes"] = QJsonArray{invalidIllustratedScene};
+        check(studio::parseRecipe(QJsonDocument(invalidIllustratedRecipe).toJson(), directory.path())
+                      .error.contains("ilustração PNG"),
+              "AI recipe reports that static PNG artwork cannot be recolored instead of silently ignoring palette");
+        QMap<QString, studio::PcmAudio> illustratedAudio;
+        for (const auto &scene : parsedIllustratedRecipe.recipe.scenes)
+            for (const auto &utterance : scene.narration) {
+                studio::PcmAudio audio; audio.samples.resize(24000, .02f);
+                illustratedAudio.insert(utterance.id, std::move(audio));
+            }
+        const auto compiledIllustratedRecipe = studio::compileProduction(
+            parsedIllustratedRecipe.recipe, illustratedAudio, directory.filePath("illustrated-library.wav"));
+        check(compiledIllustratedRecipe.error.isEmpty() &&
+                  std::any_of(compiledIllustratedRecipe.project.nodes.begin(), compiledIllustratedRecipe.project.nodes.end(),
+                              [](const auto &node) { return node.nativeId == "illustrated:car"; }) &&
+                  studio::validate(compiledIllustratedRecipe.project).empty(),
+              "production compiler builds a valid editable project from the illustrated recipe ID");
+        auto illustratedProjectRoundtrip = studio::deserialize(studio::serialize(compiledIllustratedRecipe.project));
+        check(illustratedProjectRoundtrip.error.isEmpty() &&
+                  std::any_of(illustratedProjectRoundtrip.project.nodes.begin(),
+                              illustratedProjectRoundtrip.project.nodes.end(),
+                              [](const auto &node) { return node.nativeId == "illustrated:car"; }),
+              "compiled illustrated recipe survives project save and reopen");
+        studio::CompositionPainter illustratedPreviewPainter;
+        check(!illustratedPreviewPainter.frame(compiledIllustratedRecipe.project, 30).isNull(),
+              "QPainter preview renders the compiled AI illustration project");
         const QStringList premiumFactoryFixtures{
             "camera-travelling-horizontal-v3.production.json",
             "camera-travelling-vertical-v3.production.json",
@@ -1908,6 +2020,20 @@ int main(int argc, char **argv) {
                   "guide derives all real library IDs");
         check(studio::capabilities()["nativeAssets"].toArray().size() == int(studio::nativeLibrary().size()),
               "machine catalogue matches renderer registry");
+        const auto illustratedCatalogue = studio::capabilities()["illustratedAssets"].toArray();
+        int illustratedPreviewCount = 0;
+        for (const auto &assetValue : illustratedCatalogue) {
+            const auto asset = assetValue.toObject();
+            check(studio::libraryItem(asset["id"].toString().toStdString()) &&
+                      g.contains("`" + asset["id"].toString() + "`"),
+                  "AI guide and catalogue expose only registered illustrated variant IDs");
+            if (asset["previewOnly"].toBool())
+                ++illustratedPreviewCount;
+        }
+        check(illustratedCatalogue.size() == 60 && illustratedPreviewCount == 12 &&
+                  studio::capabilities()["nativeAssets"].toArray().size() == 72 &&
+                  g.contains("não aceita recoloração") && g.contains("prévias de baixa resolução"),
+              "catalogue keeps 72 original natives separate from 48 illustrations and 12 warned previews");
         std::cout << "PASS: " << checks
                   << " production checks (recipe, audio timing, mix, migration, catalogue, rendering)\n";
         return 0;

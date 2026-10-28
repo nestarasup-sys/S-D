@@ -12,13 +12,25 @@
 namespace studio {
 QJsonObject capabilities() {
     initializePremiumCatalog();
-    QJsonArray items, motions, poses;
+    QJsonArray items, illustrations, motions, poses;
     for (const auto &asset : nativeLibrary())
         items.append(QJsonObject{{"id", QString::fromStdString(asset.id)},
                                  {"name", QString::fromStdString(asset.name)},
                                  {"category", QString::fromStdString(asset.category)},
                                  {"width", asset.width},
                                  {"height", asset.height}});
+    for (const auto &asset : illustratedLibrary())
+        illustrations.append(QJsonObject{{"id", QString::fromStdString(asset.id)},
+                                         {"nativeId", QString::fromStdString(asset.fallbackId)},
+                                         {"name", QString::fromStdString(asset.name)},
+                                         {"category", QString::fromStdString(asset.category)},
+                                         {"width", asset.width}, {"height", asset.height},
+                                         {"sourceWidth", asset.sourceWidth},
+                                         {"sourceHeight", asset.sourceHeight},
+                                         {"kind", asset.previewOnly ? "scene-preview" : "static-png"},
+                                         {"previewOnly", asset.previewOnly},
+                                         {"recolorable", false}, {"poseControls", false},
+                                         {"internalAnimation", false}});
     for (const auto &motion : motionNames())
         motions.append(QString::fromStdString(motion));
     for (const auto &pose : poseNames())
@@ -83,7 +95,8 @@ QJsonObject capabilities() {
                         "voice-sidechain-ducking", "audio-track-fades", "audio-gain-automation-easing",
                         "premium-palette-overrides", "premium-factory-editorial-templates",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
-                        "personal-library-video-assets",
+                        "personal-library-video-assets", "ai-illustrated-static-png-assets",
+                        "illustrated-variant-of-native-fallback", "low-resolution-scene-preview-assets",
                         "landscape-and-portrait-canvas-presets",
                         "word-timed-karaoke-captions", "word-animated-karaoke-captions",
                         "independent-caption-highlight-color"}},
@@ -103,6 +116,11 @@ QJsonObject capabilities() {
                  QJsonObject{{"name", "Retrato"}, {"width", 1080}, {"height", 1920}}}},
             {"fps", 30},
             {"nativeAssets", items},
+            {"illustratedAssets", illustrations},
+            {"illustratedAssetPolicy", QJsonObject{{"idPrefix", "illustrated:"},
+                                                    {"rendering", "embedded-static-png"},
+                                                    {"recolorable", false},
+                                                    {"preservesProceduralNativeFallback", true}}},
             {"premiumAssets", premiumItems},
             {"premiumAssetCategories", QJsonArray{"basic-native", "premium", "real-media"}},
             {"motions", motions},
@@ -127,7 +145,7 @@ QString aiGuide(const QJsonObject &library) {
     initializePremiumCatalog();
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 14 · Native Lab 0.5
+Catálogo 1 · Receita 3 · Projeto 15 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -515,6 +533,22 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
                  " (" + QString::fromStdString(asset.category) + "), " + QString::number(asset.width) + "×" +
                  QString::number(asset.height) + ".\n";
     guide += R"GUIDE(
+
+### Variantes ilustradas AI Library v1
+
+O catálogo inclui 48 ilustrações PNG estáticas com transparência e 12 cenários rasterizados marcados como prévias de baixa resolução. Cada variante tem ID próprio `illustrated:<id-nativo>`; por exemplo: `{"id":"carro-ilustrado","kind":"native","asset":"illustrated:car","x":410,"y":315,"width":460,"height":210,"motion":"rise","motionFrames":24}`. Ela é uma aparência alternativa do nativo `car`; usar o ID simples `car` continua produzindo o desenho procedural antigo.
+
+As imagens herdam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. A arte é estática internamente: não aceita recoloração (`color`, `secondaryColor` ou `palette`), pose nem animação de subpartes. O parser rejeita esses campos nas variantes ilustradas. PNGs são embutidos nesta versão do app. Os 12 cenários têm somente cerca de 482–483×271–272 pixels; a biblioteca os identifica como prévias de baixa resolução. Use-os para storyboard/prévia, não como cenário final Full HD. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
+
+IDs ilustrados válidos:
+)GUIDE";
+    for (const auto &asset : illustratedLibrary())
+        guide += "- `" + QString::fromStdString(asset.id) + "` — " + QString::fromStdString(asset.name) +
+                 ", variante de `" + QString::fromStdString(asset.fallbackId) + "`; PNG " +
+                 QString::number(asset.sourceWidth) + "×" + QString::number(asset.sourceHeight) +
+                 (asset.previewOnly ? " (**prévia baixa resolução**).\n" : ".\n");
+    guide += R"GUIDE(
+Para animá-los, use `motion` ou keyframes comuns. Não envie campos de paleta/cor ou pose para um PNG; use o ID nativo simples se precisar do desenho procedural com cores ou poses.
 
 ### Direção para roteiro dinâmico
 

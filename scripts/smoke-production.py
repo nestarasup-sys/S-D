@@ -82,7 +82,7 @@ run([sys.executable, root / "scripts/embed-ai-production-example.py", "--guide",
      "--example", root / "examples/carros-caros-directors-cut-90s.production.json"])
 guide_text = guide.read_text(encoding="utf-8")
 assert all(f"`{item['id']}`" in guide_text for item in catalog["nativeAssets"])
-assert "Catálogo 1 · Receita 3 · Projeto 14" in guide_text
+assert "Catálogo 1 · Receita 3 · Projeto 15" in guide_text
 assert catalog["projectVersion"] == 15
 assert {"video-source-trim", "video-speed-control", "video-normalized-crop"}.issubset(
     set(catalog["productionCapabilities"]))

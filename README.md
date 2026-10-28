@@ -26,6 +26,8 @@ O botão **Biblioteca completa** está sempre no topo e também no painel do edi
 - Categorias podem ser criadas, renomeadas e excluídas. Ao excluir uma categoria, seus itens vão para **Sem categoria**.
 - **Excluir** remove o item da coleção; ele pode ser restaurado em **Excluídos / restaurar**. Nativos continuam disponíveis ao motor de renderização e as mídias importadas são retidas, preservando projetos já criados.
 
+O catálogo também inclui 48 ilustrações PNG estáticas com IDs separados `illustrated:<id-nativo>` (por exemplo, `illustrated:car`) e 12 cenários marcados na biblioteca como **baixa resolução**. Os IDs nativos simples, como `car` e `street`, continuam sendo os desenhos procedurais originais. Variantes PNG aceitam transformações e animações normais do nó, mas não poses, paletas ou recoloração interna. Cenários de 482–483×271–272 são apenas prévias; use os equivalentes procedurais ou mídia Full HD para a exportação final. Veja [AI Asset Library v1](docs/AI-ASSET-LIBRARY-V1.md).
+
 As lixeiras são reversíveis e não fazem limpeza física de arquivos. Não há purga permanente neste corte. A organização da biblioteca é local e não altera o catálogo de capacidades nativas do guia de produção.
 
 ## Seu roteiro com uma IA externa
@@ -87,7 +89,7 @@ O botão **Logs** no topo abre os arquivos locais de diagnóstico de importaçõ
 1. A demonstração começa com texto e forma animados em uma composição de 12 segundos.
 2. Reproduza, navegue pela régua e selecione um objeto na biblioteca ou na prévia.
 3. Arraste o objeto na prévia ou ajuste posição, dimensões, texto, cor e tempo no inspetor.
-4. Adicione texto, forma, PNG/SVG, vídeo local ou um dos 72 recursos nativos, incluindo tecnologia, gráficos e cenários documentais. Ajuste pose, roupa/pele, movimento, giro e deslocamento. Mova clipes pela timeline com Snap opcional, alinhando às referências visuais e de áudio; para liberar espaço, reduza a duração pelo inspetor.
+4. Adicione texto, forma, PNG/SVG, vídeo local, um dos 72 nativos procedurais ou uma das 60 variantes PNG ilustradas. Pose e recoloração pertencem aos nativos que as suportam; variantes ilustradas aceitam movimento e transformação do nó. Mova clipes pela timeline com Snap opcional, alinhando às referências visuais e de áudio; para liberar espaço, reduza a duração pelo inspetor.
 5. Use desfazer/refazer, salve com um nome novo e reabra o projeto.
 6. Em uma produção gerada, escolha a cena no seletor abaixo da prévia. A biblioteca e a timeline mostram os objetos daquela cena. O áudio permanece fixo enquanto você ajusta visuais.
 7. Exporte MP4 com nome novo. Produções geradas incluem narração, trilha e efeitos; projetos visuais sem master de áudio continuam exportando sem som.
