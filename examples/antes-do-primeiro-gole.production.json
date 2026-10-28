@@ -1,0 +1,2058 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "ANTES DO PRIMEIRO GOLE — A jornada invisível da água potável",
+  "voice": "auto",
+  "captions": true,
+  "musicGain": 0.018,
+  "effectsGain": 0.025,
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "wordAnimation": {
+    "preset": "highlight",
+    "durationFrames": 7
+  },
+  "artDirection": {
+    "backgroundColor": "#081820",
+    "glowColor": "#173A43",
+    "primaryColor": "#58CBBB",
+    "secondaryColor": "#E3BC71",
+    "textColor": "#F0F5EF",
+    "cardColor": "#142A32",
+    "captionBackgroundColor": "#07141C",
+    "fontFamily": "Georgia",
+    "titleSize": 58,
+    "bodySize": 32,
+    "captionSize": 25,
+    "captionPosition": "bottom",
+    "safeMargin": 54
+  },
+  "sources": [
+    {
+      "title": "CDC — How Water Treatment Works",
+      "url": "https://www.cdc.gov/drinking-water/about/how-water-treatment-works.html"
+    },
+    {
+      "title": "Ministério da Saúde — Vigiagua",
+      "url": "https://www.gov.br/saude/pt-br/composicao/svsa/saude-ambiental/vigiagua/vigiagua/"
+    },
+    {
+      "title": "Ministério da Saúde — Monitoramento da qualidade da água",
+      "url": "https://www.gov.br/saude/pt-br/composicao/svsa/saude-ambiental/vigiagua/monitoramento-da-qualidade-da-agua"
+    },
+    {
+      "title": "OMS — Guidelines for Drinking-water Quality",
+      "url": "https://www.who.int/publications/i/item/9789240121225"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "misterio",
+      "title": "O mistério da torneira",
+      "narration": [
+        "A água parece simples. Uma torneira, um copo, um gole.",
+        "Mas antes de chegar até nós, ela atravessa uma jornada quase invisível.",
+        "E a primeira pergunta é esta: de onde vem a água que você bebe?"
+      ],
+      "shots": [
+        {
+          "id": "misterio-gota",
+          "name": "A pergunta que abre a jornada",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.18,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fundo-escuro-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#07141C",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "gota-sinal",
+              "kind": "shape",
+              "x": 618,
+              "y": 270,
+              "width": 44,
+              "height": 64,
+              "color": "#55D4C5",
+              "opacity": 0,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "abertura-micro",
+              "kind": "text",
+              "x": 90,
+              "y": 595,
+              "width": 1100,
+              "height": 46,
+              "text": "ANTES DE CHEGAR AO COPO",
+              "fontSize": 19,
+              "color": "#8EAEB2",
+              "motion": "fade",
+              "exitFrames": 0
+            },
+            {
+              "id": "pergunta-agua",
+              "kind": "library",
+              "assetId": "premium:question-hook-01",
+              "cue": 0,
+              "slots": {
+                "question": "DE ONDE VEM\nA ÁGUA QUE VOCÊ BEBE?",
+                "context": "A jornada invisível da água potável"
+              },
+              "palette": {
+                "accent": "#55D4C5",
+                "highlight": "#E4BB71",
+                "muted": "#94B8BC",
+                "text": "#EDF5F0"
+              },
+              "motion": "none",
+              "opacity": 1,
+              "exitFrames": 0
+            }
+          ],
+          "beats": [
+            {
+              "id": "gota-revela",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.38
+              },
+              "action": "show",
+              "target": "gota-sinal"
+            },
+            {
+              "id": "gota-pulsa",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.58
+              },
+              "action": "transform",
+              "target": "gota-sinal",
+              "durationFrames": 18,
+              "scale": 1.25
+            },
+            {
+              "id": "som-gota",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.4
+              },
+              "action": "sound",
+              "source": "media/stage16/drop-original.wav",
+              "gain": 0.24
+            }
+          ]
+        },
+        {
+          "id": "misterio-revela",
+          "name": "O percurso começa fora de quadro",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fundo-escuro-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#07141C",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "gota-svg",
+              "kind": "svg",
+              "source": "media/stage16/watershed.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "motion": "none"
+            },
+            {
+              "id": "linha-historia",
+              "kind": "text",
+              "x": 95,
+              "y": 75,
+              "width": 800,
+              "height": 145,
+              "text": "UMA JORNADA ANTES\nDO PRIMEIRO GOLE",
+              "fontSize": 48,
+              "color": "#F1F5EF",
+              "motion": "rise"
+            },
+            {
+              "id": "ponto-captacao",
+              "kind": "native",
+              "asset": "map-pin",
+              "x": 924,
+              "y": 337,
+              "width": 106,
+              "height": 150,
+              "color": "#E4BB71",
+              "motion": "pop"
+            }
+          ]
+        },
+        {
+          "id": "misterio-respiro",
+          "name": "O título aparece como promessa",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fundo-escuro-c",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#07141C",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "titulo-original",
+              "kind": "library",
+              "assetId": "premium:title-reveal-01",
+              "cue": 2,
+              "slots": {
+                "main-title": "ANTES DO PRIMEIRO GOLE",
+                "subtitle": "A jornada invisível da água potável",
+                "editorial-id": "DOCUMENTÁRIO · ÁGUA"
+              },
+              "palette": {
+                "accent": "#55D4C5",
+                "secondary": "#87A8AD",
+                "highlight": "#E4BB71",
+                "text": "#F2F5EE",
+                "muted": "#9BB6BA"
+              },
+              "motion": "none",
+              "opacity": 1
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "misterio-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "origem",
+      "title": "A origem muda de lugar para lugar",
+      "narration": [
+        "A história começa longe da torneira, em rios, reservatórios e outras fontes.",
+        "Cada origem tem características próprias, e os sistemas precisam conhecer a água que recebem.",
+        "Um percurso de muitos lugares começa com um ponto de captação."
+      ],
+      "shots": [
+        {
+          "id": "origem-mapa",
+          "name": "Uma bacia ilustrada",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 220,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "origem-fundo",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0A1C24",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "mapa-bacia",
+              "kind": "svg",
+              "source": "media/stage16/watershed.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1700,
+              "height": 720,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "globo-origem",
+              "kind": "native",
+              "asset": "globe",
+              "x": 165,
+              "y": 190,
+              "width": 140,
+              "height": 140,
+              "color": "#58CBBE",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "pin-origem",
+              "kind": "native",
+              "asset": "map-pin",
+              "x": 1110,
+              "y": 330,
+              "width": 80,
+              "height": 120,
+              "color": "#E8BC72",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "origem-kicker",
+              "kind": "text",
+              "x": 82,
+              "y": 70,
+              "width": 360,
+              "height": 36,
+              "text": "01 / FONTE",
+              "fontSize": 18,
+              "color": "#93C5C1",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "origem-titulo",
+              "kind": "text",
+              "x": 82,
+              "y": 112,
+              "width": 600,
+              "height": 128,
+              "text": "A ÁGUA COMEÇA\nEM OUTRO LUGAR",
+              "fontSize": 45,
+              "color": "#F1F5EF",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "origem-travelling",
+          "name": "Travelling espacial da captação ao sistema",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 240,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0,
+            "path": {
+              "safeMargin": 0.07,
+              "captionSafeBottom": 0.15,
+              "targets": [
+                {
+                  "target": "origem-alvo-a",
+                  "at": {
+                    "cue": 1,
+                    "cueProgress": 0
+                  },
+                  "padding": 3.0,
+                  "reveal": "spatial"
+                },
+                {
+                  "target": "origem-alvo-b",
+                  "at": {
+                    "cue": 1,
+                    "cueProgress": 0.84
+                  },
+                  "padding": 3.2,
+                  "easing": "ease-in-out",
+                  "reveal": "spatial"
+                }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "origem-travel-fundo",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0A1C24",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "rio-longo",
+              "kind": "svg",
+              "source": "media/stage16/watershed-travel.svg",
+              "x": 0,
+              "y": 0,
+              "width": 2600,
+              "height": 720,
+              "motion": "none"
+            },
+            {
+              "id": "origem-alvo-a",
+              "kind": "native",
+              "asset": "map-pin",
+              "x": 180,
+              "y": 290,
+              "width": 80,
+              "height": 120,
+              "color": "#E8BC72",
+              "motion": "none"
+            },
+            {
+              "id": "origem-alvo-b",
+              "kind": "native",
+              "asset": "factory",
+              "x": 1320,
+              "y": 255,
+              "width": 180,
+              "height": 200,
+              "color": "#58CBBE",
+              "motion": "none"
+            },
+            {
+              "id": "origem-label-a",
+              "kind": "text",
+              "x": 95,
+              "y": 465,
+              "width": 300,
+              "height": 52,
+              "text": "CAPTAÇÃO",
+              "fontSize": 24,
+              "color": "#EAF4F0",
+              "motion": "none"
+            },
+            {
+              "id": "origem-label-b",
+              "kind": "text",
+              "x": 1260,
+              "y": 500,
+              "width": 560,
+              "height": 40,
+              "text": "SISTEMA DE ABASTECIMENTO",
+              "fontSize": 21,
+              "color": "#EAF4F0",
+              "motion": "none"
+            }
+          ]
+        },
+        {
+          "id": "origem-ressalva",
+          "name": "Sem atribuir uma cidade real",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "origem-fundo-final",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0A1C24",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "laboratorio-origem",
+              "kind": "native",
+              "asset": "laboratory-scene",
+              "x": 170,
+              "y": 210,
+              "width": 330,
+              "height": 240,
+              "color": "#4FC4B5",
+              "motion": "none"
+            },
+            {
+              "id": "origem-fonte",
+              "kind": "library",
+              "assetId": "premium:source-label-01",
+              "cue": 2,
+              "slots": {
+                "title": "ORIGEM DA ÁGUA",
+                "detail": "Ilustração editorial · sem local específico"
+              },
+              "palette": {
+                "surface": "#112832",
+                "highlight": "#E3BA70",
+                "text": "#EFF4EF",
+                "muted": "#9FB7B8"
+              },
+              "motion": "none",
+              "opacity": 1
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "origem-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "invisivel",
+      "title": "O que os olhos não mostram",
+      "narration": [
+        "Água transparente não é, por si só, garantia de segurança.",
+        "Microrganismos e substâncias podem estar presentes sem serem vistos a olho nu.",
+        "A aparência e a potabilidade respondem a perguntas diferentes."
+      ],
+      "shots": [
+        {
+          "id": "invisivel-copo",
+          "name": "A aparência não responde tudo",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "invisivel-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#09141D",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "lupa-agua",
+              "kind": "native",
+              "asset": "magnifier",
+              "x": 885,
+              "y": 205,
+              "width": 180,
+              "height": 180,
+              "color": "#59CDBD",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "frasco-agua",
+              "kind": "native",
+              "asset": "flask",
+              "x": 420,
+              "y": 250,
+              "width": 170,
+              "height": 205,
+              "color": "#E3BD74",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "transparente",
+              "kind": "text",
+              "x": 104,
+              "y": 206,
+              "width": 630,
+              "height": 220,
+              "text": "TRANSPARENTE\nNÃO É SINÔNIMO\nDE POTÁVEL",
+              "fontSize": 42,
+              "color": "#F0F5F1",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "visual-only",
+              "kind": "text",
+              "x": 107,
+              "y": 548,
+              "width": 520,
+              "height": 32,
+              "text": "REPRESENTAÇÃO CONCEITUAL",
+              "fontSize": 16,
+              "color": "#94B8BA",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "invisivel-micro",
+          "name": "Aproximação ilustrativa",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "micro-fundo",
+              "kind": "svg",
+              "source": "media/stage16/micro-world.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "micro-atom",
+              "kind": "native",
+              "asset": "atom",
+              "x": 520,
+              "y": 200,
+              "width": 240,
+              "height": 240,
+              "color": "#E9BF75",
+              "motion": "pop",
+              "exitFrames": 0
+            },
+            {
+              "id": "micro-tag",
+              "kind": "text",
+              "x": 90,
+              "y": 88,
+              "width": 1100,
+              "height": 40,
+              "text": "MUNDO INVISÍVEL · VISUALIZAÇÃO ILUSTRATIVA",
+              "fontSize": 20,
+              "color": "#EAF1EA",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "invisivel-comparacao",
+          "name": "Comparação editorial e mídia original gerada localmente",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "invisivel-fundo-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B1922",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "comparacao-aparencia",
+              "kind": "library",
+              "assetId": "premium:comparison-pack-01",
+              "cue": 2,
+              "slots": {
+                "left-title": "O QUE OS OLHOS VEEM",
+                "right-title": "O QUE PRECISA SER AVALIADO",
+                "left-value": "CLAREZA",
+                "right-value": "QUALIDADE",
+                "left-description": "A aparência é apenas uma observação visual.",
+                "right-description": "Parâmetros e monitoramento exigem análise."
+              },
+              "palette": {
+                "left": "#15333B",
+                "right": "#1A2D3B",
+                "primary": "#56CDBB",
+                "secondary": "#83AAB1",
+                "accent": "#4CC7B7",
+                "highlight": "#E4BE79",
+                "text": "#EDF4EF",
+                "muted": "#9CB6B9"
+              },
+              "motion": "none",
+              "opacity": 1
+            },
+            {
+              "id": "clip-agua",
+              "kind": "video",
+              "source": "media/stage16/water-current-original.mp4",
+              "x": 88,
+              "y": 552,
+              "width": 1104,
+              "height": 100,
+              "motion": "none",
+              "video": {
+                "sourceInSeconds": 0.5,
+                "durationFrames": 96,
+                "speed": 1.25,
+                "crop": {
+                  "x": 0.05,
+                  "y": 0.08,
+                  "width": 0.9,
+                  "height": 0.84
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "invisivel-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "tratamento",
+      "title": "As barreiras do tratamento",
+      "narration": [
+        "Em muitos sistemas, o tratamento reúne barreiras diferentes para melhorar a qualidade da água.",
+        "Partículas podem ser agrupadas e separadas; depois, a água pode passar por filtração e desinfecção.",
+        "A sequência exata depende das características da água de origem e do sistema."
+      ],
+      "shots": [
+        {
+          "id": "tratamento-diagrama",
+          "name": "Etapas sem cartões repetidos",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "tratamento-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B2028",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "tratamento-infografico",
+              "kind": "svg",
+              "source": "media/stage16/treatment.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "tratamento-head",
+              "kind": "text",
+              "x": 78,
+              "y": 66,
+              "width": 800,
+              "height": 54,
+              "text": "BARREIRAS EM SEQUÊNCIA",
+              "fontSize": 32,
+              "color": "#F1F5EF",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "flow-processo",
+              "kind": "native",
+              "asset": "flowchart",
+              "x": 1000,
+              "y": 95,
+              "width": 145,
+              "height": 110,
+              "color": "#E3BA70",
+              "motion": "none",
+              "opacity": 0,
+              "exitFrames": 0
+            }
+          ],
+          "beats": [
+            {
+              "id": "revelar-etapas",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.38
+              },
+              "action": "show",
+              "target": "flow-processo"
+            },
+            {
+              "id": "som-transicao-tratamento",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.44
+              },
+              "action": "sound",
+              "source": "media/stage16/transition-original.wav",
+              "gain": 0.12
+            }
+          ]
+        },
+        {
+          "id": "tratamento-transforma",
+          "name": "Movimento de câmera durante a explicação",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.12,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "tratamento-fundo-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B2028",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "flask-tratamento",
+              "kind": "native",
+              "asset": "flask",
+              "x": 220,
+              "y": 220,
+              "width": 200,
+              "height": 260,
+              "color": "#58CCBD",
+              "motion": "none"
+            },
+            {
+              "id": "network-tratamento",
+              "kind": "native",
+              "asset": "network",
+              "x": 720,
+              "y": 220,
+              "width": 250,
+              "height": 210,
+              "color": "#E3BA70",
+              "motion": "none"
+            },
+            {
+              "id": "tratamento-fluxo",
+              "kind": "text",
+              "x": 155,
+              "y": 510,
+              "width": 980,
+              "height": 48,
+              "text": "AGRUPAR  →  SEPARAR  →  FILTRAR",
+              "fontSize": 30,
+              "color": "#F0F4EE",
+              "motion": "none"
+            },
+            {
+              "id": "tratamento-no-universal",
+              "kind": "text",
+              "x": 130,
+              "y": 620,
+              "width": 1040,
+              "height": 30,
+              "text": "ESQUEMA DIDÁTICO · NEM TODO SISTEMA USA A MESMA SEQUÊNCIA",
+              "fontSize": 14,
+              "color": "#9AB7B7",
+              "motion": "none"
+            }
+          ],
+          "beats": [
+            {
+              "id": "aproxima-processo",
+              "at": {
+                "cue": 1,
+                "cueProgress": 0.28
+              },
+              "action": "camera",
+              "durationFrames": 24,
+              "x": 620,
+              "y": 360,
+              "zoom": 1.18
+            }
+          ]
+        },
+        {
+          "id": "tratamento-numero",
+          "name": "Número contextualizado pela fonte",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "tratamento-fundo-c",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B2028",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "numero-etapas",
+              "kind": "library",
+              "assetId": "premium:number-emphasis-01",
+              "cue": 2,
+              "slots": {
+                "value": "5",
+                "unit": "ETAPAS CITADAS",
+                "description": "Uma sequência comum descrita pelo CDC; sistemas variam conforme a fonte.",
+                "source": "CDC · How Water Treatment Works"
+              },
+              "palette": {
+                "surface": "#142A31",
+                "accent": "#59CDBD",
+                "text": "#EDF4EF",
+                "muted": "#A5BCB9",
+                "secondary": "#E2BA70"
+              },
+              "motion": "none",
+              "opacity": 1
+            },
+            {
+              "id": "numero-nao-universal",
+              "kind": "text",
+              "x": 155,
+              "y": 633,
+              "width": 970,
+              "height": 30,
+              "text": "EXEMPLO DE SEQUÊNCIA COMUM · NÃO UNIVERSAL",
+              "fontSize": 16,
+              "color": "#9FB8B8",
+              "motion": "none"
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "tratamento-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "medicao",
+      "title": "Medir para acompanhar",
+      "narration": [
+        "Mas o processo não termina quando a água parece limpa.",
+        "Monitoramento envolve planejamento, coleta de amostras, análise e acompanhamento dos resultados.",
+        "No padrão brasileiro, são considerados mais de cem parâmetros de potabilidade."
+      ],
+      "shots": [
+        {
+          "id": "medicao-lab",
+          "name": "Laboratório sem falsos resultados",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "medicao-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#101A20",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "lab-main",
+              "kind": "native",
+              "asset": "laboratory-scene",
+              "x": 125,
+              "y": 125,
+              "width": 520,
+              "height": 390,
+              "color": "#58CBBB",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "flask-main",
+              "kind": "native",
+              "asset": "flask",
+              "x": 770,
+              "y": 270,
+              "width": 170,
+              "height": 230,
+              "color": "#E4BC73",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "lab-note",
+              "kind": "text",
+              "x": 80,
+              "y": 615,
+              "width": 940,
+              "height": 28,
+              "text": "LABORATÓRIO ILUSTRADO · SEM RESULTADOS REAIS",
+              "fontSize": 15,
+              "color": "#A9BABB",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "medicao-dashboard",
+          "name": "Indicadores declarados como simulação",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "medicao-fundo-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B1922",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "dash-main",
+              "kind": "native",
+              "asset": "dashboard",
+              "x": 160,
+              "y": 175,
+              "width": 300,
+              "height": 240,
+              "color": "#55C9B8",
+              "motion": "none"
+            },
+            {
+              "id": "table-main",
+              "kind": "native",
+              "asset": "data-table",
+              "x": 510,
+              "y": 175,
+              "width": 260,
+              "height": 240,
+              "color": "#DDB56E",
+              "motion": "none"
+            },
+            {
+              "id": "ring-main",
+              "kind": "native",
+              "asset": "progress-ring",
+              "x": 850,
+              "y": 175,
+              "width": 220,
+              "height": 220,
+              "color": "#56CBB8",
+              "motion": "none"
+            },
+            {
+              "id": "dashboard-sim",
+              "kind": "text",
+              "x": 288,
+              "y": 510,
+              "width": 720,
+              "height": 38,
+              "text": "PAINEL CONCEITUAL · SEM MEDIÇÕES",
+              "fontSize": 20,
+              "color": "#F0F4EF",
+              "motion": "none"
+            }
+          ],
+          "beats": [
+            {
+              "id": "dashboard-move",
+              "at": {
+                "cue": 1,
+                "cueProgress": 0.34
+              },
+              "action": "transform",
+              "target": "ring-main",
+              "durationFrames": 18,
+              "rotation": 12,
+              "scale": 1.08
+            }
+          ]
+        },
+        {
+          "id": "medicao-100",
+          "name": "Um número oficial, com referência",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "medicao-fundo-c",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0B1922",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "callout-parametros",
+              "kind": "library",
+              "assetId": "premium:statistic-callout-pack-01",
+              "cue": 2,
+              "slots": {
+                "value": "100+",
+                "unit": "PARÂMETROS",
+                "description": "O padrão brasileiro reúne mais de cem parâmetros de potabilidade.",
+                "source": "Ministério da Saúde · Vigiagua"
+              },
+              "palette": {
+                "surface": "#14282F",
+                "accent": "#59CDBD",
+                "highlight": "#E4BC73",
+                "text": "#F0F4EE",
+                "secondary": "#92B8B8",
+                "muted": "#A5B8B8"
+              },
+              "motion": "none",
+              "opacity": 1
+            },
+            {
+              "id": "dados-fonte-nota",
+              "kind": "text",
+              "x": 170,
+              "y": 628,
+              "width": 940,
+              "height": 28,
+              "text": "O número descreve o padrão, não uma amostra medida neste filme.",
+              "fontSize": 15,
+              "color": "#A5B8B8",
+              "motion": "none"
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "medicao-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "distribuicao",
+      "title": "A cidade invisível",
+      "narration": [
+        "Depois do tratamento, a água segue por reservatórios e redes de distribuição.",
+        "Há uma infraestrutura inteira entre a estação, a rua, as casas e a torneira.",
+        "Manter esse caminho em boas condições também faz parte do desafio."
+      ],
+      "shots": [
+        {
+          "id": "distribuicao-cidade",
+          "name": "A cidade cresce no travelling",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 250,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "cidade-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0A1720",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "cidade-ilustrada",
+              "kind": "svg",
+              "source": "media/stage16/city-network.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1700,
+              "height": 720,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "predio-marca",
+              "kind": "native",
+              "asset": "building",
+              "x": 260,
+              "y": 270,
+              "width": 160,
+              "height": 240,
+              "color": "#58C9BA",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "casa-marca",
+              "kind": "native",
+              "asset": "house",
+              "x": 1220,
+              "y": 320,
+              "width": 190,
+              "height": 180,
+              "color": "#E1B96F",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "cidade-label",
+              "kind": "text",
+              "x": 72,
+              "y": 70,
+              "width": 990,
+              "height": 48,
+              "text": "UMA REDE ENTRE A ESTAÇÃO E A TORNEIRA",
+              "fontSize": 27,
+              "color": "#F0F4EF",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "distribuicao-travelling",
+          "name": "Travelling espacial estação-casa",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 230,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0,
+            "path": {
+              "safeMargin": 0.07,
+              "captionSafeBottom": 0.15,
+              "targets": [
+                {
+                  "target": "rede-alvo-1",
+                  "at": {
+                    "cue": 1,
+                    "cueProgress": 0
+                  },
+                  "padding": 3.4,
+                  "reveal": "spatial"
+                },
+                {
+                  "target": "rede-alvo-2",
+                  "at": {
+                    "cue": 1,
+                    "cueProgress": 0.82
+                  },
+                  "padding": 3.4,
+                  "easing": "ease-in-out",
+                  "reveal": "spatial"
+                }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "cidade-travel-svg",
+              "kind": "svg",
+              "source": "media/stage16/city-network-wide.svg",
+              "x": 0,
+              "y": 0,
+              "width": 2600,
+              "height": 720,
+              "motion": "none"
+            },
+            {
+              "id": "rede-alvo-1",
+              "kind": "native",
+              "asset": "factory",
+              "x": 120,
+              "y": 290,
+              "width": 165,
+              "height": 180,
+              "color": "#58C9BA",
+              "motion": "none"
+            },
+            {
+              "id": "rede-alvo-2",
+              "kind": "native",
+              "asset": "house",
+              "x": 1450,
+              "y": 340,
+              "width": 170,
+              "height": 165,
+              "color": "#E1B96F",
+              "motion": "none"
+            },
+            {
+              "id": "rede-a",
+              "kind": "text",
+              "x": 80,
+              "y": 520,
+              "width": 260,
+              "height": 42,
+              "text": "ESTAÇÃO",
+              "fontSize": 20,
+              "color": "#EFF4EF",
+              "motion": "none"
+            },
+            {
+              "id": "rede-b",
+              "kind": "text",
+              "x": 1430,
+              "y": 520,
+              "width": 220,
+              "height": 42,
+              "text": "CASA",
+              "fontSize": 20,
+              "color": "#EFF4EF",
+              "motion": "none"
+            }
+          ]
+        },
+        {
+          "id": "distribuicao-phone",
+          "name": "Representação não oficial",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "phone-fundo",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#0A1720",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "phone-explica",
+              "kind": "text",
+              "x": 85,
+              "y": 235,
+              "width": 600,
+              "height": 155,
+              "text": "A INFORMAÇÃO TAMBÉM PRECISA CHEGAR ÀS PESSOAS",
+              "fontSize": 34,
+              "color": "#F1F5EF",
+              "motion": "none"
+            },
+            {
+              "id": "phone-vigiagua",
+              "kind": "library",
+              "assetId": "premium:smartphone-premium-01",
+              "cue": 2,
+              "slots": {
+                "screen-title": "ÁGUA",
+                "notification": "SIMULAÇÃO · SEM AMOSTRA",
+                "screen": "media/stage16/monitor-simulacao.png"
+              },
+              "palette": {
+                "surface": "#142831",
+                "frame": "#9BB8BA",
+                "highlight": "#E4BC73",
+                "accent": "#54CBBB",
+                "screen": "#102634",
+                "notification": "#12343C",
+                "muted": "#A4BCBB",
+                "text": "#F2F5EF"
+              },
+              "motion": "none",
+              "opacity": 1
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "distribuicao-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "responsabilidades",
+      "title": "Quem acompanha a água",
+      "narration": [
+        "No Brasil, controle e vigilância da qualidade da água são responsabilidades complementares.",
+        "O controle cabe ao serviço responsável pelo abastecimento; a vigilância é feita pelo setor de saúde.",
+        "Coleta e análise de amostras ajudam a acompanhar se os padrões de potabilidade são atendidos."
+      ],
+      "shots": [
+        {
+          "id": "responsa-contraste",
+          "name": "Duas responsabilidades complementares",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "resp-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#101A21",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "doc-controle",
+              "kind": "native",
+              "asset": "document",
+              "x": 250,
+              "y": 195,
+              "width": 175,
+              "height": 225,
+              "color": "#58C9BA",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "lab-vigilancia",
+              "kind": "native",
+              "asset": "laboratory-scene",
+              "x": 800,
+              "y": 178,
+              "width": 350,
+              "height": 265,
+              "color": "#E1B96F",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "controle-label",
+              "kind": "text",
+              "x": 190,
+              "y": 470,
+              "width": 330,
+              "height": 48,
+              "text": "CONTROLE",
+              "fontSize": 30,
+              "color": "#F1F5EF",
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "vigilancia-label",
+              "kind": "text",
+              "x": 830,
+              "y": 470,
+              "width": 330,
+              "height": 48,
+              "text": "VIGILÂNCIA",
+              "fontSize": 30,
+              "color": "#F1F5EF",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "responsa-lowerthird",
+          "name": "Identificação editorial institucional",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "resp-fundo-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#101A21",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "mapa-brasil",
+              "kind": "native",
+              "asset": "globe",
+              "x": 220,
+              "y": 170,
+              "width": 200,
+              "height": 200,
+              "color": "#57C7B9",
+              "motion": "none"
+            },
+            {
+              "id": "identificacao-vigiagua",
+              "kind": "library",
+              "assetId": "premium:lower-third-editorial-01",
+              "cue": 1,
+              "slots": {
+                "title": "Vigiagua",
+                "subtitle": "Vigilância da qualidade da água",
+                "source": ""
+              },
+              "palette": {
+                "surface": "#172A31",
+                "accent": "#58C9BA",
+                "text": "#F1F5EF",
+                "muted": "#A4B9B8"
+              },
+              "motion": "none",
+              "opacity": 1
+            }
+          ]
+        },
+        {
+          "id": "responsa-fonte",
+          "name": "Referências sem atribuir dados inventados",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "resp-fundo-c",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#101A21",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "source-institucional",
+              "kind": "library",
+              "assetId": "premium:source-label-01",
+              "cue": 2,
+              "slots": {
+                "title": "REFERÊNCIAS INSTITUCIONAIS",
+                "detail": "CDC · Ministério da Saúde / Vigiagua"
+              },
+              "palette": {
+                "surface": "#182B32",
+                "highlight": "#E4BC71",
+                "text": "#EFF4EF",
+                "muted": "#A2B9BA"
+              },
+              "motion": "none",
+              "opacity": 1
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "responsabilidades-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    },
+    {
+      "id": "primeiro-gole",
+      "title": "Antes do primeiro gole",
+      "narration": [
+        "É fácil esquecer tudo isso diante de um copo.",
+        "Água potável não é apenas água transparente: depende de ciência, infraestrutura e cuidado contínuo.",
+        "Uma jornada inteira acontece antes do primeiro gole. E o invisível também nos protege."
+      ],
+      "shots": [
+        {
+          "id": "fecho-citacao",
+          "name": "Citação autoral identificada",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "transitionIn": "cut",
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fecho-fundo-a",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#081820",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "citacao-original",
+              "kind": "library",
+              "assetId": "premium:dramatic-quote-01",
+              "cue": 0,
+              "slots": {
+                "quote": "A transparência é só o começo da história.",
+                "attribution": "Uma ideia original para este documentário",
+                "source": "Não é uma citação institucional"
+              },
+              "palette": {
+                "accent": "#58CCBE",
+                "text": "#F1F5EF",
+                "muted": "#9CB7B8"
+              },
+              "motion": "none",
+              "opacity": 1,
+              "exitFrames": 0
+            },
+            {
+              "id": "copo-ilustrativo",
+              "kind": "svg",
+              "source": "media/stage16/watershed.svg",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "motion": "none",
+              "opacity": 0.23,
+              "exitFrames": 0
+            }
+          ]
+        },
+        {
+          "id": "fecho-agua",
+          "name": "Retorno ao gesto cotidiano",
+          "start": {
+            "cue": 1,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "dissolve",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1.1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fecho-fundo-b",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#081820",
+              "opacity": 1,
+              "motion": "none",
+              "exitFrames": 0
+            },
+            {
+              "id": "copo-cena",
+              "kind": "native",
+              "asset": "flask",
+              "x": 520,
+              "y": 185,
+              "width": 220,
+              "height": 310,
+              "color": "#65CFC0",
+              "motion": "none",
+              "opacity": 0,
+              "exitFrames": 0
+            },
+            {
+              "id": "agua-circulo",
+              "kind": "svg",
+              "source": "media/stage16/micro-world.svg",
+              "x": 800,
+              "y": 210,
+              "width": 300,
+              "height": 300,
+              "motion": "none",
+              "opacity": 0.55,
+              "exitFrames": 0
+            },
+            {
+              "id": "ultimo-respiro",
+              "kind": "text",
+              "x": 145,
+              "y": 560,
+              "width": 990,
+              "height": 38,
+              "text": "CIÊNCIA  ·  INFRAESTRUTURA  ·  CUIDADO",
+              "fontSize": 22,
+              "color": "#DDEBE5",
+              "motion": "none",
+              "exitFrames": 0
+            }
+          ],
+          "beats": [
+            {
+              "id": "copo-aparece",
+              "at": {
+                "cue": 1,
+                "cueProgress": 0.35
+              },
+              "action": "show",
+              "target": "copo-cena"
+            }
+          ]
+        },
+        {
+          "id": "fecho-titulo",
+          "name": "A imagem final fecha o percurso",
+          "start": {
+            "cue": 2,
+            "cueProgress": 0
+          },
+          "transitionIn": {
+            "type": "fade",
+            "durationFrames": 12
+          },
+          "camera": {
+            "x": 640,
+            "y": 360,
+            "zoom": 1,
+            "rotation": 0
+          },
+          "elements": [
+            {
+              "id": "fecho-fundo-c",
+              "kind": "shape",
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "color": "#081820",
+              "opacity": 1,
+              "motion": "none"
+            },
+            {
+              "id": "titulo-final",
+              "kind": "library",
+              "assetId": "premium:title-reveal-01",
+              "cue": 2,
+              "slots": {
+                "main-title": "ANTES DO PRIMEIRO GOLE",
+                "subtitle": "O invisível também nos protege.",
+                "editorial-id": "FIM · UMA JORNADA ATÉ A TORNEIRA"
+              },
+              "palette": {
+                "accent": "#59CDBD",
+                "secondary": "#82A8AB",
+                "highlight": "#E3BC71",
+                "text": "#F0F5EF",
+                "muted": "#9FB9BA"
+              },
+              "motion": "none",
+              "opacity": 1
+            },
+            {
+              "id": "creditos",
+              "kind": "text",
+              "x": 150,
+              "y": 636,
+              "width": 980,
+              "height": 26,
+              "text": "PROCESSOS GERAIS: CDC · MONITORAMENTO NO BRASIL: MINISTÉRIO DA SAÚDE",
+              "fontSize": 13,
+              "color": "#99B3B4",
+              "motion": "none"
+            }
+          ],
+          "beats": [
+            {
+              "id": "som-fim",
+              "at": {
+                "cue": 2,
+                "cueProgress": 0.28
+              },
+              "action": "sound",
+              "source": "media/stage16/drop-original.wav",
+              "gain": 0.12
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "primeiro-gole-ambience",
+          "name": "Ambiência sintética original",
+          "source": "media/stage16/ambience-original.wav",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "gain": 0.13,
+          "duckUnderVoice": true,
+          "duckAmount": 0.78,
+          "fadeInFrames": 36,
+          "fadeOutFrames": 90
+        }
+      ]
+    }
+  ]
+}

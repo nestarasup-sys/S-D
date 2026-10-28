@@ -198,7 +198,8 @@ VisualQualityReport VisualQualityAnalyzer::analyze(const Project &project) {
             if (node.role == "caption")
                 ink.translate(0, std::max(0.0, (content.height() - ink.height()) / 2.0));
             ink = resolved.sceneTransform.mapRect(ink);
-            ink = snapshot.cameraTransform.mapRect(ink);
+            if (node.role != "caption")
+                ink = snapshot.cameraTransform.mapRect(ink);
             if (ink.isEmpty())
                 continue;
             const bool important = essentialText(node) && !decorativeRole(node);

@@ -243,6 +243,16 @@ int main(int argc, char **argv) {
         check(findResolved("svg") && findResolved("image") && findResolved("video") &&
                   findResolved("native-car") && findResolved("caption"),
               "snapshot retains image, SVG, video, native asset and caption references");
+        const auto captionAtStart = studio::RenderSnapshot::build(mixed, 0).primary();
+        const auto captionAtEnd = studio::RenderSnapshot::build(mixed, 60).primary();
+        const auto findCaptionBounds = [](const studio::RenderFrameSnapshot &frame) {
+            const auto found = std::find_if(frame.nodes.begin(), frame.nodes.end(), [](const auto &item) {
+                return item.node.role == "caption";
+            });
+            return found == frame.nodes.end() ? QRectF{} : found->sceneBounds;
+        };
+        check(findCaptionBounds(captionAtStart) == findCaptionBounds(captionAtEnd),
+              "synchronized captions remain anchored to the viewport during camera movement");
         studio::CompositionPainter painter;
         const auto legacy = studio::makeDemo();
         writeOrCompare("legacy-demo.png", painter.frame(legacy, 60), updatePath);

@@ -104,7 +104,9 @@ RenderFrameSnapshot buildFrame(const Project &project, std::int64_t frame,
             local.translate(-part.width / 2.0, -part.height / 2.0);
         }
         item.sceneTransform = local;
-        item.sceneBounds = result.cameraTransform.mapRect(local.mapRect(item.localBounds));
+        const auto localBounds = local.mapRect(item.localBounds);
+        item.sceneBounds = node.role == "caption" ? localBounds
+                                                    : result.cameraTransform.mapRect(localBounds);
 
         auto styleSceneId = node.sceneId;
         auto styleShotId = node.shotId;

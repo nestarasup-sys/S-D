@@ -959,9 +959,25 @@ int main(int argc, char **argv) {
                           [](const auto &key) { return key.frame == 2; }),
               "continuous shot focus records the final frame of its span");
         studio::CompositionPainter transitionPainter;
-        const auto beforeDissolve = transitionPainter.frame(compiledShots.project, 2);
-        const auto dissolveStart = transitionPainter.frame(compiledShots.project, 3);
-        const auto dissolveMiddle = transitionPainter.frame(compiledShots.project, 4);
+        // Use a high-contrast layer to make this transition assertion stable across
+        // Windows and Qt's offscreen font rasterizers; sparse full-frame sampling
+        // should not depend on a particular system font's antialiasing.
+        auto transitionProject = compiledShots.project;
+        studio::Node transitionMarker;
+        transitionMarker.id = "transition-regression-marker";
+        transitionMarker.kind = studio::NodeKind::Shape;
+        transitionMarker.name = "Transition regression marker";
+        transitionMarker.x = 360;
+        transitionMarker.y = 190;
+        transitionMarker.width = 560;
+        transitionMarker.height = 340;
+        transitionMarker.color = "#ff20a0";
+        transitionMarker.shotId = "price-cut";
+        transitionMarker.animated = false;
+        transitionProject.nodes.push_back(transitionMarker);
+        const auto beforeDissolve = transitionPainter.frame(transitionProject, 2);
+        const auto dissolveStart = transitionPainter.frame(transitionProject, 3);
+        const auto dissolveMiddle = transitionPainter.frame(transitionProject, 4);
         check(sampledImageDifference(beforeDissolve, dissolveStart) < 0.5,
               "dissolve starts on the outgoing shot without a visual jump");
         check(sampledImageDifference(dissolveStart, dissolveMiddle) > 0.5,

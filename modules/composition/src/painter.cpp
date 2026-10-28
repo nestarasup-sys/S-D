@@ -117,12 +117,6 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                 const std::string *nodeId = nullptr, bool localLayer = false) {
     const auto frame = snapshot.frame;
     painter.save();
-    if (!localLayer) {
-        painter.translate(project.width / 2.0, project.height / 2.0);
-        painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
-        painter.rotate(snapshot.camera.rotation);
-        painter.translate(-snapshot.camera.x, -snapshot.camera.y);
-    }
     for (const auto &resolved : snapshot.nodes) {
         const auto &node = resolved.node;
         if (nodeId && node.id != *nodeId)
@@ -140,6 +134,14 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
         const auto &art = resolved.artDirection;
         painter.save();
         painter.setOpacity(localLayer ? 1.0 : resolved.inheritedOpacity);
+        // Captions are viewport overlays. Camera movement belongs to scene
+        // content, while synchronized subtitles remain in a fixed safe area.
+        if (!localLayer && node.role != "caption") {
+            painter.translate(project.width / 2.0, project.height / 2.0);
+            painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
+            painter.rotate(snapshot.camera.rotation);
+            painter.translate(-snapshot.camera.x, -snapshot.camera.y);
+        }
         if (!localLayer) {
             for (const auto &part : resolved.transformChain) {
                 painter.translate(part.state.x, part.state.y);

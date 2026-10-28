@@ -8,7 +8,7 @@ Na receita original do Laboratório de Movimento, os pontos do travelling vertic
 
 Para cada movimento, pergunte: qual informação está visível no começo, o que muda durante o trajeto e onde a câmera deve parar? Distribua os assuntos em enquadramentos distintos. Escolha explicitamente a **revelação espacial** (objeto já visível no espaço e fora do quadro até a câmera chegar), a **revelação temporal** (objeto oculto com `opacity: 0` até `show`) ou a combinação. Não use `show` para simular movimento espacial. Reserve margem para títulos, legendas e bordas seguras; não compacte todos os objetos no centro do canvas.
 
-`camera.x` e `camera.y` indicam o centro do quadro em coordenadas da cena. Pan, zoom e rotação afetam todos os conteúdos do shot, inclusive textos comuns e legendas. Não existe texto ancorado ao viewport. Se um título deve permanecer estático durante um travelling, coloque-o em outro shot ou mantenha a câmera parada enquanto ele está na tela.
+`camera.x` e `camera.y` indicam o centro do quadro em coordenadas da cena. Pan, zoom e rotação afetam todos os conteúdos do shot, inclusive textos comuns. As legendas automáticas são uma sobreposição ancorada ao viewport: mantêm a posição segura durante pan, zoom, rotação e transições. Não há uma camada genérica para fixar qualquer texto na tela. Se um título deve permanecer estático durante um travelling, coloque-o em outro shot ou mantenha a câmera parada enquanto ele está na tela.
 
 ## Gramática visual
 

@@ -343,7 +343,7 @@ A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots
 
 ## Composição, grupos e câmera
 
-Não há cabeçalho ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Em v3, `title` opcional nomeia a cena na timeline/projeto e não é desenhado por cima dos shots; crie cabeçalhos visuais como elementos nos próprios shots. `kicker` e `background` não são campos de cena v3. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior. Texto comum, títulos e legendas são desenhados no espaço da composição e acompanham pan, zoom e rotação da câmera; esta versão não possui uma camada de texto presa ao viewport. Ao anunciar uma técnica enquanto a câmera percorre conteúdo abaixo, mantenha ambos no enquadramento e reserve margem segura para a legenda.
+Não há cabeçalho ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Em v3, `title` opcional nomeia a cena na timeline/projeto e não é desenhado por cima dos shots; crie cabeçalhos visuais como elementos nos próprios shots. `kicker` e `background` não são campos de cena v3. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior. Texto comum, títulos, formas e nativos pertencem ao espaço da cena e acompanham pan, zoom e rotação. Legendas automáticas são sobreposição do viewport: permanecem ancoradas à tela durante movimento e transições de shot. Não existe uma camada geral para prender qualquer texto ao viewport. Reserve a faixa segura das legendas e mantenha textos comuns no enquadramento quando a câmera se mover.
 
 `group` exige `children` e pode aninhar até 8 níveis. Coordenadas dos filhos são locais ao canto superior esquerdo do grupo pai. A ordem da lista determina a ordem de desenho. Um grupo pode ter `x`, `y`, `width`, `height`, `rotation`, `scale`, `opacity`, `cue`, `offsetSeconds` e `span` como outro elemento.
 
@@ -483,7 +483,7 @@ Valores de Comparison Pack/Statistic Callout são demonstrativos quando assim in
 
 ### Câmera, staging e revelação
 
-`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos, formas e nativos do shot movem-se juntos. Não existe texto fixo ao viewport. Há duas formas de revelar o próximo ponto:
+`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos comuns, formas e nativos do shot movem-se juntos; as legendas automáticas continuam ancoradas à tela na posição segura escolhida. Não há overlay de viewport arbitrário para outros textos. Há duas formas de revelar o próximo ponto:
 
 - **Espacial:** o alvo já está visível no espaço da cena, mas fora do primeiro enquadramento; a câmera percorre a cena e ele entra na tela. Não use `show` para esse alvo. Se o fade padrão da propriedade `motion` o deixar transparente no instante em que a trajetória começa, use `"motion":"none"` ou posicione o evento de enquadramento depois de o alvo estar visível.
 - **Temporal:** mantenha `opacity: 0` e use Visual Beat `show`; a visibilidade muda no frame do beat e persiste. A câmera pode estar parada, chegando ao alvo ou já além dele.
