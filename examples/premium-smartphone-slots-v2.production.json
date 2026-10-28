@@ -1,0 +1,39 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Smartphone premium personalizado",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "smartphone",
+      "narration": ["A tela do smartphone recebe uma imagem e uma notificação definidas pela receita."],
+      "elements": [
+        {
+          "id": "smartphone-personalizado",
+          "kind": "library",
+          "assetId": "premium:smartphone-premium-01",
+          "cue": 0,
+          "slots": {
+            "screen-title": "14:28",
+            "notification": "Sua análise semanal está disponível.",
+            "screen": "media/premium-screen-demo.png"
+          },
+          "palette": {
+            "surface": "#18232D",
+            "frame": "#9EB0B9",
+            "highlight": "#E0BF73",
+            "accent": "#61D1B2",
+            "screen": "#13233C",
+            "notification": "#E5F0F2",
+            "muted": "#C6D5D9",
+            "text": "#F7FAFC"
+          }
+        }
+      ]
+    }
+  ]
+}

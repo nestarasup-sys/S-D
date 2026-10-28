@@ -7,7 +7,9 @@
 #include <QLockFile>
 #include <QSaveFile>
 #include <cmath>
+#include <new>
 #include <studio/storage/project_store.hpp>
+#include <studio/storage/workspace_store.hpp>
 
 namespace studio {
 namespace {
@@ -164,6 +166,10 @@ QByteArray serialize(const Project &p) {
                                                                         {"y", n.videoCropY},
                                                                         {"width", n.videoCropWidth},
                                                                         {"height", n.videoCropHeight}}}};
+        if (p.schemaVersion >= 15 && n.textAutoFit)
+            serializedNode["textLayout"] = QJsonObject{{"mode", "shrink"},
+                                                        {"minimumFontSize", n.textMinFontSize},
+                                                        {"padding", n.textPadding}};
         nodes.append(serializedNode);
     }
     QJsonArray scenes;
@@ -178,14 +184,22 @@ QByteArray serialize(const Project &p) {
         scenes.append(scene);
     }
     QJsonArray camera;
-    for (const auto &key : p.camera)
-        camera.append(QJsonObject{{"frame", double(key.frame)},
+    for (const auto &key : p.camera) {
+        QJsonObject value{{"frame", double(key.frame)},
                                   {"x", key.x},
                                   {"y", key.y},
                                   {"zoom", key.zoom},
                                   {"rotation", key.rotation},
                                   {"easing", text(key.easing)},
-                                  {"shotId", text(key.shotId)}});
+                                  {"shotId", text(key.shotId)}};
+        if (p.schemaVersion >= 15 && !key.targetId.empty()) {
+            value["targetId"] = text(key.targetId);
+            value["reveal"] = text(key.revealMode);
+            value["safeMargin"] = key.safeMargin;
+            value["captionSafeBottom"] = key.captionSafeBottom;
+        }
+        camera.append(value);
+    }
     QJsonObject shots;
     QJsonArray shotArray;
     for (const auto &shot : p.shots) {
@@ -271,7 +285,7 @@ QByteArray serialize(const Project &p) {
     }
     return QJsonDocument(document).toJson();
 }
-LoadResult deserialize(const QByteArray &bytes) {
+LoadResult deserialize(const QByteArray &bytes) try {
     LoadResult result;
     QJsonParseError parse;
     auto document = QJsonDocument::fromJson(bytes, &parse);
@@ -288,7 +302,8 @@ LoadResult deserialize(const QByteArray &bytes) {
                                          o["schemaVersion"] != 7 && o["schemaVersion"] != 8 &&
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
                                          o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
-                                         o["schemaVersion"] != 13 && o["schemaVersion"] != 14))
+                                         o["schemaVersion"] != 13 && o["schemaVersion"] != 14 &&
+                                         o["schemaVersion"] != 15))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -385,8 +400,6 @@ LoadResult deserialize(const QByteArray &bytes) {
         }
         p.scenes.push_back(std::move(marker));
     }
-    if (o["nodes"].toArray().size() > 200)
-        return fail("Máximo de 200 objetos neste protótipo.");
     for (auto value : o["nodes"].toArray()) {
         if (!value.isObject())
             return fail("Objeto inválido.");
@@ -422,6 +435,17 @@ LoadResult deserialize(const QByteArray &bytes) {
         n.text = str(v, "text");
         n.color = str(v, "color");
         n.source = str(v, "source");
+        if (v.contains("textLayout")) {
+            if (p.schemaVersion < 15 || n.kind != NodeKind::Text || !v["textLayout"].isObject())
+                return fail("Política adaptativa de texto exige um texto e schema 15.");
+            const auto layout = v["textLayout"].toObject();
+            if (layout.size() != 3 || layout["mode"] != "shrink" ||
+                !layout["minimumFontSize"].isDouble() || !layout["padding"].isDouble())
+                return fail("Política de ajuste de texto inválida ou com campos desconhecidos.");
+            n.textAutoFit = true;
+            n.textMinFontSize = layout["minimumFontSize"].toDouble();
+            n.textPadding = layout["padding"].toDouble();
+        }
         if (v.contains("video")) {
             if (p.schemaVersion < 10 || n.kind != NodeKind::Video || !v["video"].isObject())
                 return fail("Controles de vídeo exigem vídeo e schema 10.");
@@ -533,9 +557,20 @@ LoadResult deserialize(const QByteArray &bytes) {
             return fail("Curva de câmera inválida.");
         if (key.contains("shotId") && !key["shotId"].isString())
             return fail("Vínculo de câmera com shot inválido.");
+        const bool hasPathMetadata = key.contains("targetId") || key.contains("reveal") ||
+                                     key.contains("safeMargin") || key.contains("captionSafeBottom");
+        if (hasPathMetadata && (p.schemaVersion < 15 || !key["targetId"].isString() ||
+                                !key["reveal"].isString() || !key["safeMargin"].isDouble() ||
+                                !key["captionSafeBottom"].isDouble()))
+            return fail("Metadados de camera.path exigem schema 15 e valores completos.");
         p.camera.push_back({key["frame"].toInteger(), key["x"].toDouble(), key["y"].toDouble(),
                             key["zoom"].toDouble(), key["rotation"].toDouble(),
                             key["easing"].toString("linear").toStdString(), str(key, "shotId")});
+        auto &loadedKey = p.camera.back();
+        loadedKey.targetId = str(key, "targetId");
+        loadedKey.revealMode = str(key, "reveal");
+        loadedKey.safeMargin = key["safeMargin"].toDouble(0);
+        loadedKey.captionSafeBottom = key["captionSafeBottom"].toDouble(0);
     }
     if (o.contains("shots") && !o["shots"].isArray())
         return fail("Lista de shots inválida.");
@@ -606,21 +641,35 @@ LoadResult deserialize(const QByteArray &bytes) {
     result.project = std::move(p);
     result.revision = hash(bytes);
     return result;
+} catch (const std::bad_alloc &) {
+    LoadResult result;
+    result.error = "Memória insuficiente para analisar o projeto.";
+    return result;
 }
-LoadResult loadProject(const QString &path) {
-    QFile file(path);
+LoadResult loadProject(const QString &path) try {
     LoadResult r;
+    QString catalogError;
+    if (!initializePremiumCatalog(&catalogError)) {
+        r.error = "Catálogo premium indisponível: " + catalogError;
+        return r;
+    }
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         r.error = "Não foi possível abrir: " + file.errorString();
         return r;
     }
-    if (file.size() > 4 * 1024 * 1024) {
-        r.error = "Arquivo excede 4 MiB.";
+    const auto bytes = file.readAll();
+    if (file.error() != QFileDevice::NoError) {
+        r.error = "Falha ao ler o projeto: " + file.errorString();
         return r;
     }
-    return deserialize(file.readAll());
+    return deserialize(bytes);
+} catch (const std::bad_alloc &) {
+    LoadResult result;
+    result.error = "Memória insuficiente para ler ou analisar o projeto.";
+    return result;
 }
-SaveResult saveProject(const QString &path, const Project &p, const QByteArray &expected) {
+SaveResult saveProject(const QString &path, const Project &p, const QByteArray &expected) try {
     SaveResult r;
     if (auto error = validate(p); !error.empty()) {
         r.error = text(error);
@@ -637,11 +686,11 @@ SaveResult saveProject(const QString &path, const Project &p, const QByteArray &
             r.error = existing.errorString();
             return r;
         }
-        if (existing.size() > 4 * 1024 * 1024) {
-            r.error = "Arquivo existente excede o limite; preservado.";
+        auto old = existing.readAll();
+        if (existing.error() != QFileDevice::NoError) {
+            r.error = "Falha ao ler a versão existente; arquivo preservado: " + existing.errorString();
             return r;
         }
-        auto old = existing.readAll();
         existing.close();
         if (expected.isEmpty() || hash(old) != expected) {
             r.error = "O arquivo mudou no disco. Abra a versão atual ou salve uma nova cópia.";
@@ -653,9 +702,19 @@ SaveResult saveProject(const QString &path, const Project &p, const QByteArray &
         r.error = "O arquivo original foi removido. Salve uma nova cópia.";
         return r;
     }
-    auto bytes = serialize(p);
+    QByteArray bytes;
+    try {
+        bytes = serialize(p);
+    } catch (const std::bad_alloc &) {
+        r.error = "Memória insuficiente para serializar o projeto; o arquivo atual foi preservado.";
+        return r;
+    }
     if (writeAtomic(path, bytes, r.error))
         r.revision = hash(bytes);
     return r;
+} catch (const std::bad_alloc &) {
+    SaveResult result;
+    result.error = "Memória insuficiente ao salvar o projeto; a versão anterior foi preservada.";
+    return result;
 }
 } // namespace studio

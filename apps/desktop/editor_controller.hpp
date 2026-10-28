@@ -25,8 +25,8 @@ class EditorController : public QObject {
     Q_PROPERTY(QVariantMap artDirection READ artDirection NOTIFY artDirectionChanged)
     Q_PROPERTY(QString artDirectionScope READ artDirectionScope NOTIFY artDirectionScopeChanged)
     Q_PROPERTY(QString title READ title NOTIFY documentChanged)
-    Q_PROPERTY(QString selectedId READ selectedId NOTIFY documentChanged)
-    Q_PROPERTY(QVariantList selectedIds READ selectedIds NOTIFY documentChanged)
+    Q_PROPERTY(QString selectedId READ selectedId NOTIFY selectedChanged)
+    Q_PROPERTY(QVariantList selectedIds READ selectedIds NOTIFY selectedChanged)
     Q_PROPERTY(int frame READ frame WRITE setFrame NOTIFY frameChanged)
     Q_PROPERTY(int duration READ duration NOTIFY documentChanged)
     Q_PROPERTY(double fps READ fps NOTIFY documentChanged)
@@ -57,6 +57,7 @@ class EditorController : public QObject {
         return editor_.project();
     }
     QVariantList nodes() const;
+    Q_INVOKABLE int nodeRow(const QString &id) const { return nodeModel_.rowForId(id); }
     QVariantList library() const;
     QVariantList scenes() const;
     QVariantList shots() const;
@@ -143,6 +144,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void selectNode(QString id);
     Q_INVOKABLE void toggleNodeSelection(QString id);
     Q_INVOKABLE void updateSelected(QString key, QVariant value);
+    void setManagedMediaRoot(QString path);
     Q_INVOKABLE bool setCaptionWordBoundary(int wordIndex, QString edge, int frame);
     Q_INVOKABLE void beginGesture();
     Q_INVOKABLE void endGesture();
@@ -196,6 +198,7 @@ class EditorController : public QObject {
     Q_INVOKABLE void newProject(bool demo = false);
     Q_INVOKABLE void recover();
     Q_INVOKABLE void exportVideo(QUrl output);
+    Q_INVOKABLE QVariantList analyzeVisualQuality();
     Q_INVOKABLE void cancelExport();
     Q_INVOKABLE QString timecode(int frame) const;
     bool hasPath() const {
@@ -236,6 +239,7 @@ class EditorController : public QObject {
     QString currentShotId() const;
     studio::Editor editor_{studio::makeDemo()};
     QString selectedId_{"title"}, path_, message_{"Pronto para criar. Selecione um objeto para começar."};
+    QString managedMediaRoot_;
     QStringList selectedIds_{"title"}, gestureClipIds_;
     QHash<QString, int> gestureClipOrigins_;
     int gestureClipAppliedDelta_{0};

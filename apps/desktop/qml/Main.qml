@@ -21,6 +21,7 @@ ApplicationWindow {
     property string pendingAction: ""
     property string pendingProjectId: ""
     property bool allowClose: false
+    property var qualityResults: []
     function dispatch(action) {
         if (action === "new") createDialog.open()
         if (action === "demo") { editor.newProject(true); workspace.navigate("editor") }
@@ -38,6 +39,7 @@ ApplicationWindow {
         else dispatch(action)
     }
     function saveProject() { if (editor.savedBefore()) editor.save(); else saveDialog.open() }
+    function reviewQuality() { qualityResults = editor.analyzeVisualQuality(); qualityDialog.open() }
     onClosing: function(event) {
         if (editor.exporting || editor.producing) { event.accepted = false; taskDialog.open(); return }
         if (!allowClose && editor.dirty) { event.accepted = false; guard("close") }
@@ -85,6 +87,33 @@ ApplicationWindow {
         id: exportDialog; title: "Exportar MP4 — escolha um nome novo"; fileMode: FileDialog.SaveFile
         defaultSuffix: "mp4"; nameFilters: ["Vídeo MP4 (*.mp4)"]
         onAccepted: editor.exportVideo(selectedFile)
+    }
+    Dialog {
+        id: qualityDialog; anchors.centerIn: parent; width: Math.min(window.width - 48, 760)
+        height: Math.min(window.height - 48, 620); modal: true; title: "Revisão de qualidade visual"
+        ColumnLayout {
+            anchors.fill: parent; spacing: 14
+            Label {
+                Layout.fillWidth: true; wrapMode: Text.WordWrap; color: "#aebfc4"
+                text: qualityResults.length === 0
+                      ? "Nenhum problema automático foi detectado nos quadros analisados. Revise a composição visualmente antes de publicar."
+                      : "Foram encontrados " + qualityResults.length + " apontamento(s). Eles são recomendações de revisão e não bloqueiam a exportação."
+            }
+            ScrollView {
+                Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                TextArea {
+                    readOnly: true; wrapMode: TextEdit.Wrap; selectByMouse: true
+                    color: "#dce3e8"; background: Rectangle { color: "#10171e"; radius: 6 }
+                    text: qualityResults.map(function(issue) { return issue.message }).join("\n\n")
+                          || "O relatório pode apontar problemas objetivos de legibilidade, margens, sobreposição de textos, legendas e alvos de câmera. Ele não avalia intenção artística."
+                }
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                StudioButton { text: "Voltar ao editor"; quiet: true; onClicked: qualityDialog.close() }
+                StudioButton { text: "Continuar para exportação"; accent: true; onClicked: { qualityDialog.close(); exportDialog.open() } }
+            }
+        }
     }
     Dialog {
         id: createDialog; anchors.centerIn: parent; width: 500; modal: true; title: "Uma nova história"
@@ -183,7 +212,8 @@ ApplicationWindow {
                         StudioButton { text: "Salvar objeto na biblioteca"; enabled: workspace.canSaveSelection; quiet: true; onClicked: workspace.navigate("library") }
                         Item { Layout.fillWidth: true }
                         StudioButton { text: "Importar produção IA"; enabled: !editor.producing && !editor.exporting; onClicked: window.guard("production") }
-                        StudioButton { text: "Exportar MP4  ↗"; accent: true; enabled: !editor.exporting && !editor.producing; onClicked: exportDialog.open() }
+                        StudioButton { text: "Qualidade visual"; quiet: true; enabled: !editor.exporting && !editor.producing; onClicked: window.reviewQuality() }
+                        StudioButton { text: "Exportar MP4  ↗"; accent: true; enabled: !editor.exporting && !editor.producing; onClicked: window.reviewQuality() }
                     }
                 }
                 RowLayout {

@@ -1,6 +1,6 @@
 # Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 13 · Native Lab 0.4
+Catálogo 1 · Receita 3 · Projeto 15 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -16,7 +16,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 - Preserve o roteiro recebido, salvo instrução de reescrever. Divida cada cena em trechos faláveis, de no máximo 150 caracteres, e use `cue` como índice (a partir de zero) na narração da **mesma cena**.
 - `offsetSeconds` varia de 0 a 10; `cueProgress` usa de 0 a 1 para acompanhar a fala final. Sem duração fixa, a duração natural depende da voz pt-BR e só é conhecida depois de sintetizar o WAV.
 - Monte a narrativa com composição livre, `group`, `shape`, `text`, `native`, `image`, `svg`, `video`, biblioteca pessoal, câmera e keyframes documentados. Reserve espaço para as legendas se `captions` for `true`.
-- Conte no máximo 200 nós, incluindo filhos, legendas automáticas, título/kicker e cenário. Sem `canvas`, use 1280×720; nos outros formatos aceitos, componha elementos dentro das dimensões escolhidas e mantenha margens para legendas. Respeite o limite de oito níveis de grupo.
+- Não há teto fixo de objetos. Grupos, presets premium e legendas geradas contam como camadas e consomem CPU, RAM e tempo de renderização conforme a complexidade; IDs devem permanecer únicos. Sem `canvas`, use 1280×720; nos outros formatos aceitos, componha elementos dentro das dimensões escolhidas e mantenha margens para legendas. Grupos de receita continuam limitados a oito níveis.
 - Nunca invente `assetId`, caminho de mídia, arquivo de vídeo, fonte jornalística ou valor numérico como se fosse real. Se faltar mídia, componha com formas e textos ou indique ao usuário o arquivo necessário.
 - Revise antes de responder: JSON parseável, IDs únicos, no máximo 20 cenas, de 1 a 10 falas por cena, propriedades dentro dos limites e narração coerente com os visuais.
 
@@ -63,7 +63,7 @@ Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções c
 }
 ```
 
-Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. A produção aceita no máximo 200 elementos contando grupos e seus filhos. IDs de cena, grupo e objeto precisam ser únicos. Áudio por voz usa uma voz pt-BR instalada no Windows; com `voice: "auto"`, prefere uma voz masculina e usa outra voz pt-BR se nenhuma masculina estiver instalada. Também é possível informar o nome exato da voz instalada. `speechRate` vai de -3 a 3.
+Use de 1 a 20 cenas. Cada cena tem de 1 a 10 trechos de narração, até 150 caracteres cada. Não existe limite fixo agregado de elementos: expansões de grupos, recursos premium e legendas podem aumentar o projeto e o custo de CPU, RAM, importação e renderização. A aplicação valida IDs, referências, profundidade e limites próprios de duração/texto. Áudio por voz usa uma voz pt-BR instalada no Windows; com `voice: "auto"`, prefere uma voz masculina e usa outra voz pt-BR se nenhuma masculina estiver instalada. Também é possível informar o nome exato da voz instalada. `speechRate` vai de -3 a 3.
 
 `captions` controla as legendas visuais automáticas (padrão `true`). O arquivo SRT ainda é criado mesmo quando `captions` é `false`. Quando a voz Windows pt-BR emite alinhamento real, a legenda visual destaca a palavra falada com `artDirection.captionHighlightColor`; quando omitida, herda `primaryColor`. A cor pode ser configurada globalmente, por cena ou por shot. O projeto guarda os intervalos em quadros no schema 7 e a cor independente no schema 14. Depois da importação, o inspetor permite ajustar início e fim de cada palavra alinhada numericamente; na faixa da legenda da timeline, arraste um limite para aproximar ao quadro mais próximo. Limites compartilhados mantêm palavras vizinhas contíguas e um gesto inteiro pode ser desfeito. Esses ajustes ficam no projeto compilado e não são campos de entrada da receita. Sem alinhamento real, a legenda continua estática. O SRT não contém cores.
 
@@ -153,7 +153,9 @@ O shot usa o fundo da cena e o texto global; só a cor primária substitui o val
 
 Na timeline do projeto gerado, a faixa superior mostra os shots e os marcadores dos beats. O controle Zoom ajusta a ampliação temporal de 1× a 8×; use Ctrl+roda sobre a régua para aproximar no ponto do ponteiro e Shift+roda ou a barra horizontal para navegar. Régua, shots, marcadores, camadas e envelopes compartilham o mesmo intervalo visível; clique na régua para posicionar o playhead nesse trecho. Arraste a alça verde à esquerda de um shot para mover o corte e ajustar a duração dos shots vizinhos; os elementos, beats e keyframes de câmera acompanham o corte. A faixa âmbar mostra a sobreposição de entrada de cada transição; arraste sua alça âmbar final para ajustar o overlap de 2 a 300 quadros, limitado pela duração do shot. Os arrastes de corte ou overlap são desfeitos em um único passo. Nas camadas visuais, use Ctrl+clique para adicionar/remover clipes da seleção; arraste qualquer clipe selecionado para mover o conjunto pelo mesmo delta, preservando os espaçamentos e respeitando os limites de cena. Com **Snap ligado**, os clipes alinham ao playhead, limites de cena/shot, beats, outras camadas e início/fim das pistas de áudio; a guia âmbar aparece durante o encaixe e a tolerância acompanha o zoom. Desligue Snap para posicionamento livre. Na pista de áudio, arraste a alça ↔ no início do envelope para mover o clipe e a alça direita para ajustar o fim; o início e beats de som vinculados acompanham a faixa. O movimento e o trim formam uma única ação de desfazer/refazer. O inspetor permanece focado no item principal selecionado; a seleção múltipla não cria um comando JSON. O inspetor grava keyframes de câmera e edita transição/duração no shot ativo. O snapping é uma ferramenta da timeline, não um campo da receita JSON.
 
-Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e mudam a opacidade do elemento no instante indicado. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
+Um `beat` exige `id`, `at` e `action`. `at` usa a mesma referência de fala do início do shot e também aceita `wordIndex` para sincronizar com o início de uma palavra reconhecida pelo sintetizador local. O índice é zero-based dentro do trecho `cue`; índices fora do alinhamento real são rejeitados. `show` e `hide` exigem `target` e atuam instantaneamente no quadro resolvido: `show` torna visível um elemento mesmo que seu `opacity` inicial seja 0; `hide` o oculta. O `show` restaura a última opacidade positiva conhecida do elemento; se nenhuma existir, usa 1. Uma opacidade inicial semitransparente é preservada. `hide` seguido de `show` restaura esse mesmo valor. Eventos instantâneos mantêm o estado até o próximo beat ou o fim do shot e não interpolam antes do quadro marcado. Beats no mesmo quadro seguem a ordem declarada na receita. `transform` exige `target` e ao menos um de `x`, `y`, `rotation`, `scale` ou `opacity`; `durationFrames` opcional (0–300) controla a duração da mudança: zero é instantâneo, valor positivo interpola do estado atual ao destino. `camera` altera `x`, `y`, `rotation` e/ou `zoom`, pode animar por `durationFrames` e não usa `target`. Todos os alvos devem ser elementos daquele shot; beats fora do intervalo são rejeitados. Beats de câmera e transformações são compilados como keyframes para manter o projeto editável.
+
+Exemplos executáveis no parser e no compilador: [revelação sequencial de três objetos](../examples/visual-beats-sequential-reveal-v3.production.json) (`opacity: 0`, `show` em 20%, 46% e 73% da mesma fala) e [transformação, câmera, som e hide/show](../examples/visual-beats-transform-camera-v3.production.json). No primeiro, cada objeto permanece visível depois do seu instante de revelação. O alinhamento `cueProgress` usa a duração real da fala sintetizada; `wordIndex` só funciona quando o sintetizador forneceu timestamps reais.
 
 `sound` dispara um efeito de uma vez no quadro do beat. Informe `source` com caminho para arquivo local de áudio (relativo ao `.production.json` ou absoluto) e `gain` opcional de 0 a 4 (padrão 1); não use `target`, `durationFrames` nem propriedades visuais. Extensões aceitas: WAV, MP3, M4A, AAC, OGG, FLAC e WMA. O arquivo precisa existir na máquina. O efeito vira uma pista de áudio editável ligada ao marcador; mover ou excluir a pista mantém o marcador sincronizado. O limite compartilhado é de 32 pistas por produção, incluindo estes efeitos. Projetos com efeitos de Visual Beat usam schema 9; preview e exportação reutilizam o sistema normal de áudio.
 
@@ -1295,19 +1297,19 @@ A receita a seguir é o Director's Cut de 90 segundos: seis cenas, dezoito shots
 
 ## Composição, grupos e câmera
 
-Não há cabeçalho, título de cena ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior.
+Não há cabeçalho ou cenário forçado em v2. `title`, `kicker` e `background` são opcionais por cena. Em v3, `title` opcional nomeia a cena na timeline/projeto e não é desenhado por cima dos shots; crie cabeçalhos visuais como elementos nos próprios shots. `kicker` e `background` não são campos de cena v3. Sem fundo nativo, o compositor mantém seu gradiente escuro base. Posicione texto e objetos onde fizer sentido; legendas automáticas ocupam a faixa inferior. Texto comum, títulos, formas e nativos pertencem ao espaço da cena e acompanham pan, zoom e rotação. Legendas automáticas são sobreposição do viewport: permanecem ancoradas à tela durante movimento e transições de shot. Não existe uma camada geral para prender qualquer texto ao viewport. Reserve a faixa segura das legendas e mantenha textos comuns no enquadramento quando a câmera se mover.
 
 `group` exige `children` e pode aninhar até 8 níveis. Coordenadas dos filhos são locais ao canto superior esquerdo do grupo pai. A ordem da lista determina a ordem de desenho. Um grupo pode ter `x`, `y`, `width`, `height`, `rotation`, `scale`, `opacity`, `cue`, `offsetSeconds` e `span` como outro elemento.
 
 `keyframes` em elementos são estados de `x`, `y`, `rotation`, `scale` e `opacity`. Cada chave usa `cue` e `offsetSeconds`; propriedades omitidas mantêm o valor inicial daquele elemento. Opcionalmente, `easing` na **chave de destino** escolhe a interpolação até ela: `linear` (padrão), `ease-in`, `ease-out` ou `ease-in-out`. A primeira chave não tem trecho anterior. As chaves devem cair dentro do trecho de vida do elemento. Evite combinar `keyframes` com `motion`, `travelX`, `travelY` ou `spinDegrees` no mesmo item.
 
-`camera` é uma lista de keyframes na cena com `cue`, `x`, `y`, `zoom` e `rotation`; `offsetSeconds` e `easing` são opcionais. A curva tem a mesma semântica da chave de destino usada nos elementos. O centro inicial é 640×360, zoom 1 e rotação 0. A câmera atravessa os limites entre cenas e mantém o último estado até a próxima chave. Zoom válido: 0.1 a 10. `cue` começa em zero em cada cena.
+`camera` é uma lista de keyframes na cena com `cue`, `x`, `y`, `zoom` e `rotation`; `offsetSeconds` e `easing` são opcionais. A curva tem a mesma semântica da chave de destino usada nos elementos. O centro inicial é o centro do canvas, zoom 1 e rotação 0. A câmera atravessa os limites entre cenas e mantém o último estado até a próxima chave. Zoom válido: 0.1 a 10. `cue` começa em zero em cada cena. Não confunda as cinco operações: `transitionIn` muda entre shots; `motion` anima a entrada/saída padrão de um elemento; `keyframes` definem estados temporais editáveis; Visual Beats disparam ações pontuais sincronizadas à fala; câmera enquadra todo o conteúdo no espaço da composição.
 
 Para sincronizar, informe `cue` e opcionalmente `offsetSeconds` de 0 a 10. O compilador mede o áudio real. `span` aceita `scene` (padrão) ou `utterance`. Não use timestamps inventados.
 
 ## Elementos
 
-`kind`: `group`, `library`, `native`, `text`, `shape`, `image`, `svg` ou `video` (vídeo requer receita v3). `native` usa o campo `asset`; texto usa `text`; mídia direta usa `source`, caminho local absoluto ou relativo ao JSON. Arquivos remotos e URLs não são baixados. PNG com transparência e SVG compatível com Qt são aceitos. Vídeos locais MP4, MOV, MKV, WebM, AVI e M4V são decodificados em quadros pela mesma composição usada na prévia e exportação. Eles mantêm proporção e preenchem a caixa com corte central; o decodificador reutiliza um cache limitado a 64 MiB e faz busca direta em saltos longos. O ajuste do seek respeita o primeiro quadro real depois do trim, mantendo a mesma cadência da decodificação sequencial. Nenhum campo extra de receita é necessário.
+`kind`: `group`, `library`, `native`, `text`, `shape`, `image`, `svg` ou `video` (vídeo requer receita v3). `native` usa o campo `asset`; texto usa `text`; mídia direta usa `source`, caminho local absoluto ou relativo ao JSON. Arquivos remotos e URLs não são baixados. PNG com transparência, JPEG, WebP e SVG compatível com Qt são aceitos; a instalação oficial do projeto inclui o plugin Qt Image Formats para decodificar WebP. Vídeos locais MP4, MOV, MKV, WebM, AVI e M4V são decodificados em quadros pela mesma composição usada na prévia e exportação. Eles mantêm proporção e preenchem a caixa com corte central; o decodificador reutiliza um cache limitado a 64 MiB e faz busca direta em saltos longos. O ajuste do seek respeita o primeiro quadro real depois do trim, mantendo a mesma cadência da decodificação sequencial. Nenhum campo extra de receita é necessário.
 
 Um vídeo pode incluir `video: {"sourceInSeconds":1.25,"durationFrames":120,"speed":1.5,"crop":{"x":0.1,"y":0.1,"width":0.8,"height":0.8}}`. `sourceInSeconds` começa a leitura nessa posição da fonte (0–3600 s); `durationFrames` define a duração de saída em quadros da timeline (1–18000), incluindo o efeito da velocidade; `speed` controla a velocidade (0.25–4, padrão 1); o recorte normalizado usa origem `x`,`y` e tamanho `width`,`height` entre 0 e 1, dentro da imagem. Se `durationFrames` for omitido, o vídeo ocupa o restante do intervalo do shot/cena. O inspector também permite editar a duração do clipe diretamente na timeline. Sem `video`, o comportamento antigo de início zero, velocidade 1 e enquadramento central permanece. Projetos com trim/fonte, velocidade ou crop personalizado usam schema 10; versões anteriores continuam abrindo.
 
@@ -1315,7 +1317,7 @@ Propriedades: `x`, `y`, `width`, `height`, `cueProgress` (alternativo a `offsetS
 
 Movimentos: `none`, `fade`, `rise`, `slide-left`, `slide-right`, `pop`. Poses: `neutral`, `point`, `wave`, `worried`. Roupas/personagem usam `color`; `secondaryColor` controla a pele. Partes de personagem ainda não são objetos articulados.
 
-Biblioteca nativa disponível: car, person, house, building, document, computer, phone, coins, price-tag, bars, street, office, showroom e studio. Barras são ilustrativas e não representam números de pesquisa.
+Biblioteca nativa vetorial: 72 recursos, incluindo objetos, tecnologia, comunicação, finanças, ciência, gráficos e cenários. Os símbolos e fundos são ilustrações procedurais editáveis, não fotografias. Consulte os IDs e as dimensões em **Catálogo nativo do aplicativo**. Gráficos, percentuais, mapas e painéis são apenas ilustrativos; não implicam dados externos verificados.
 
 ## Biblioteca pessoal desta cópia do guia
 
@@ -1330,6 +1332,48 @@ Nenhuma fonte externa ativa. A direção de arte pode usar fontes disponíveis n
 Nenhum preset visual ativo.
 
 Use um item deste manifesto com `{"kind":"library","assetId":"ID-DO-ITEM","cue":0}`. Itens apagados não aparecem. O aplicativo resolve IDs na biblioteca local e informa se o item foi removido ou não existe. Não invente IDs nem suponha que outra máquina tenha os mesmos arquivos. O manifesto descreve nomes, categorias e dimensões; ele não inspeciona visualmente a imagem. Se a descrição não bastar para decidir, pergunte ao usuário. Itens image/SVG também podem ser referenciados por `source` se o usuário fornecer um caminho.
+
+## Categorias visuais e recursos premium
+
+Escolha entre **Nativos básicos**, **Recursos premium** e **Imagens e vídeos reais**. As 11 categorias temáticas continuam como filtros da biblioteca. Os nove IDs premium reais são: `premium:smartphone-premium-01`, `premium:title-reveal-01`, `premium:comparison-pack-01`, `premium:dramatic-quote-01`, `premium:lower-third-editorial-01`, `premium:source-label-01`, `premium:number-emphasis-01`, `premium:question-hook-01` e `premium:statistic-callout-pack-01`. Consulte `premiumAssets` neste catálogo para nomes, tokens e `slotDefinitions` exatos.
+
+Instancie com `{"kind":"library","assetId":"ID-REAL","cue":0}`. Todos os nove aparecem na biblioteca, têm preview renderizado, camadas editáveis, layouts para 1280×720/1920×1080/1080×1920 e usam o compositor de produção QPainter. Sete mantêm construtores C++ registrados; Question Hook e Statistic Callout são montados diretamente de manifestos declarativos v2, sem um construtor por ID.
+
+Slots podem ser preenchidos durante a importação. Use `slots` no mesmo elemento `kind: "library"`; as chaves são os IDs curtos definidos no manifesto, e os valores são texto ou caminho local para um slot `image`. Campos desconhecidos, tipos errados, textos acima do limite ou mídia inválida causam erro com o ID do recurso/slot. Exemplo válido: `{"id":"citacao","kind":"library","assetId":"premium:dramatic-quote-01","cue":0,"slots":{"quote":"A mudança começa com uma pergunta.","attribution":"Contexto editorial","source":"Referência demonstrativa"},"palette":{"accent":"#5CD6C2","text":"#F4E1A1","muted":"#AEC3D4"}}`. `palette` e `slots` são aplicados juntos; os valores viram conteúdo dos nós daquela instância e mantêm a hierarquia e animação do template.
+
+O Smartphone aceita slots textuais `screen-title` e `notification`, e imagem `screen`. O caminho de imagem de slot premium precisa ser relativo ao arquivo `.production.json`, sem `..`, URL, caminho absoluto, UNC ou symlink que escape da pasta da receita; usa PNG/JPEG/WebP/BMP, precisa existir e decodificar. Ao importar, o worker copia a imagem para mídia gerenciada do workspace por conteúdo. Isso mantém o projeto ligado à cópia daquele workspace, mas não cria um pacote portátil entre computadores. Os demais slots devem ser consultados em `premiumAssets[].slotDefinitions`; atualmente são textuais. Premiums não têm slot de vídeo ou ícone.
+
+Slots de texto premium anunciam `textLayout` quando o manifesto permite ajuste. A política atual é `{"mode":"shrink","minimumFontSize":N,"padding":N}`: o compositor usa métricas Qt e quebra de linha da fonte efetiva, depois reduz a fonte apenas até o mínimo declarado. Nenhuma palavra é removida. Se a fonte diminuir, o relatório inclui uma informação `text-adapted` no primeiro quadro visível; se o texto ainda não couber, aponta o overflow. Slots sem política mantêm o comportamento anterior. `premiumAssets[].slotDefinitions[].textLayout` mostra apenas políticas reais dos manifestos.
+
+Antes de exportar, use **Qualidade visual** ou o botão **Exportar MP4** para abrir a revisão local. Ela verifica overflow/margens de texto premium, colisões entre textos e legendas, contraste somente sobre superfícies sólidas identificáveis, beats `show` que não aparecem no momento ou surgem totalmente fora do viewport e enquadramento de alvos `camera.path`. Os apontamentos não bloqueiam a exportação e não substituem revisão artística. O botão salva `visual-quality-last.json` na pasta Logs. O worker também aceita `--quality-report <arquivo.json>` para analisar um projeto salvo sem renderizar o vídeo. `sampledFrames` lista os quadros examinados: são pontos representativos de shots, textos, câmera e beats, não uma inspeção de todos os quadros nem uma garantia de que nenhum erro visual exista.
+
+Para testar uma receita criada por outra IA, consulte o pacote `docs/ai-evaluation/`: ele contém o desafio, a rubrica e o fluxo local de importação/análise. Nenhuma IA externa é chamada pelo aplicativo.
+
+Personalize cores em `palette`, usando apenas `premiumAssets[].paletteTokens` e valores `#RRGGBB`. Elementos `native` aceitam `palette.primary` e `palette.secondary`. A paleta muda as camadas sem substituir o conteúdo dos slots. Veja os exemplos executáveis `examples/premium-dramatic-quote-slots-v2.production.json`, `examples/premium-comparison-slots-v2.production.json`, `examples/premium-smartphone-slots-v2.production.json`, `examples/premium-question-hook-slots-v2.production.json` e `examples/premium-statistic-callout-slots-v2.production.json`.
+
+### Premium Factory declarativa
+
+Definições oficiais manifest v2 em `assets/premium/*.manifest.json` podem conter `definition.definitionVersion: 1`, variantes `landscape` e `portrait`, canvas de referência e uma lista ordenada de camadas. Os componentes validados são `group`, `panel`, `rule`, `badge` e `text`; cada camada descreve layout, cor/token, papel, texto e, opcionalmente, um preset de animação suportado (`fade-rise`, `slide-left/right/up/down`, `pop-scale`, `soft-float`, `line-draw`, `stagger-reveal`). As keyframes resultantes são keyframes normais dos nós. A definição é dado validado, não código: não há scripts, caminhos de assets, plugins nem execução arbitrária. Manifesto, variantes, hierarquia, papéis, slots e tokens são comparados ao registro antes de aceitar o item.
+
+Para novos templates compatíveis, adicione um manifesto v2 seguindo `question-hook-01.manifest.json` ou `statistic-callout-pack-01.manifest.json`; o build embute `assets/premium/*.manifest.json` automaticamente. As variantes precisam ter os mesmos IDs, pais, componentes e papéis; apenas geometria, texto, estilo e animação podem mudar entre variantes. A definição precisa passar pelo teste da biblioteca e do manifesto. Templates declarativos são instanciados por um builder genérico, sem `if assetId` ou função C++ de composição exclusiva.
+
+Valores de Comparison Pack/Statistic Callout são demonstrativos quando assim indicados pelo template. Não apresente uma estatística demonstrativa como fato. Instalação de pacotes externos permanece fora do escopo.
+
+### Câmera, staging e revelação
+
+`camera.x/y` representa o centro da câmera em coordenadas da cena. Com a câmera ativa, textos comuns, formas e nativos do shot movem-se juntos; as legendas automáticas continuam ancoradas à tela na posição segura escolhida. Não há overlay de viewport arbitrário para outros textos. Há duas formas de revelar o próximo ponto:
+
+- **Espacial:** o alvo já está visível no espaço da cena, mas fora do primeiro enquadramento; a câmera percorre a cena e ele entra na tela. Não use `show` para esse alvo. Se o fade padrão da propriedade `motion` o deixar transparente no instante em que a trajetória começa, use `"motion":"none"` ou posicione o evento de enquadramento depois de o alvo estar visível.
+- **Temporal:** mantenha `opacity: 0` e use Visual Beat `show`; a visibilidade muda no frame do beat e persiste. A câmera pode estar parada, chegando ao alvo ou já além dele.
+- **Combinada:** a câmera percorre a trajetória e um Visual Beat faz o alvo oculto aparecer durante o deslocamento. Marque o ponto com `reveal:"combined"`.
+
+`camera.path` opcional no objeto `camera` do shot cria keyframes de câmera editáveis a partir de uma lista de alvos ordenada. Cada target exige `target` (ID de elemento ou grupo daquele shot) e `at` (referência real de `cue` com `cueProgress`, `progress`, `offsetSeconds` ou `wordIndex` alinhado); `padding` (1–4) e `easing` (`linear`, `ease-in`, `ease-out`, `ease-in-out`) são opcionais. `safeMargin` vai de 0 a 0,2 e `captionSafeBottom` de 0 a 0,35; juntos precisam deixar área visível. Use dois a 24 alvos, o primeiro deve estar no início do shot e os tempos devem crescer. O app percorre a hierarquia dos grupos, calcula bounds transformados e enquadra cada alvo respeitando margem e a faixa inferior de legendas. A ordem da IA é mantida. Cada ponto depois do primeiro vira um keyframe real; o projeto schema 15 conserva alvo, modo de revelação e margens para a análise local. Não use junto com `focus`, `focus.follow`, `cameraPreset` ou beats de câmera no mesmo shot.
+
+O padrão é `reveal:"spatial"`: o alvo precisa estar visível no frame em que será enquadrado e não pode ter um `show` destinado a revelá-lo. Para `temporal` ou `combined`, o mesmo alvo precisa começar com opacidade efetiva zero e ter Visual Beat `show`. Um alvo temporal ainda pode ser revelado antes, durante ou depois do travelling, controlando o `cueProgress` do beat e do ponto de câmera. `camera.path` não altera o enquadramento por conta própria fora dos pontos pedidos e não faz tracking por visão computacional.
+
+Exemplos validados pelo parser, compilador e QPainter: `examples/camera-path-spatial-v3.production.json` (entrada espacial sem beats), `examples/camera-path-combined-v3.production.json` (show durante o movimento), `examples/camera-travelling-vertical-v3.production.json`, `examples/camera-travelling-horizontal-v3.production.json`, `examples/visual-beats-sequential-reveal-v3.production.json` e `examples/premium-palette-v2.production.json`. A demonstração integrada de aproximadamente 25 segundos está em `examples/premium-factory-stage14-demo-v3.production.json`. `transitionIn` muda entre shots; `motion` anima a entrada/saída padrão; keyframes definem propriedades ao longo do tempo; Visual Beats executam ações pontuais; câmera move o enquadramento compartilhado do shot.
+
+Para verificar o ajuste de texto e os diagnósticos de composição, `examples/visual-quality-review-demo-v3.production.json` é uma receita integrada com slots longos, paletas, comparison pack, travelling espacial e reveal combinado. `examples/visual-quality-problematic-v3.production.json` é uma fixture intencionalmente problemática: o slot da pergunta contém uma palavra sem pontos de quebra e deve gerar avisos de overflow/corte. Compare o relatório local, não use essa fixture como modelo visual.
 
 ## Presets compostos na biblioteca pessoal
 
@@ -1357,11 +1401,81 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 - `office` — Escritório (cenários), 1280×720.
 - `showroom` — Concessionária (cenários), 1280×720.
 - `studio` — Estúdio (cenários), 1280×720.
+- `laptop` — Notebook (tecnologia), 320×240.
+- `tablet` — Tablet (tecnologia), 320×240.
+- `camera` — Câmera (tecnologia), 320×240.
+- `microphone` — Microfone (tecnologia), 320×240.
+- `headphones` — Fones de ouvido (tecnologia), 320×240.
+- `chip` — Chip de IA (tecnologia), 320×240.
+- `server` — Servidor (tecnologia), 320×240.
+- `cloud` — Nuvem digital (tecnologia), 320×240.
+- `wifi` — Sinal Wi-Fi (tecnologia), 320×240.
+- `lock` — Cadeado digital (tecnologia), 320×240.
+- `notification` — Notificação (tecnologia), 320×240.
+- `robot` — Robô (tecnologia), 320×240.
+- `chat-bubble` — Balão de conversa (comunicação), 320×240.
+- `email` — E-mail (comunicação), 320×240.
+- `newspaper` — Jornal (comunicação), 320×240.
+- `book` — Livro (comunicação), 320×240.
+- `calendar` — Calendário (comunicação), 320×240.
+- `clock` — Relógio (comunicação), 320×240.
+- `hourglass` — Ampulheta (comunicação), 320×240.
+- `eye` — Olho (comunicação), 320×240.
+- `magnifier` — Lupa (comunicação), 320×240.
+- `target` — Alvo (comunicação), 320×240.
+- `chart-line` — Gráfico de linhas (gráficos), 320×240.
+- `chart-pie` — Gráfico de pizza (gráficos), 320×240.
+- `chart-donut` — Gráfico de rosca (gráficos), 320×240.
+- `chart-area` — Gráfico de área (gráficos), 320×240.
+- `timeline` — Linha do tempo (gráficos), 320×240.
+- `flowchart` — Fluxograma (gráficos), 320×240.
+- `network` — Rede de conexões (gráficos), 320×240.
+- `dashboard` — Painel de indicadores (gráficos), 320×240.
+- `progress-ring` — Anel de progresso ilustrativo (gráficos), 320×240.
+- `data-table` — Tabela de dados ilustrativa (gráficos), 320×240.
+- `bank` — Banco (finanças), 320×240.
+- `wallet` — Carteira (finanças), 320×240.
+- `credit-card` — Cartão de crédito (finanças), 320×240.
+- `cash` — Dinheiro (finanças), 320×240.
+- `receipt` — Recibo (finanças), 320×240.
+- `shopping-cart` — Carrinho de compras (finanças), 320×240.
+- `factory` — Fábrica (finanças), 320×240.
+- `briefcase` — Maleta (finanças), 320×240.
+- `atom` — Átomo (ciência), 320×240.
+- `dna` — DNA (ciência), 320×240.
+- `flask` — Frasco de laboratório (ciência), 320×240.
+- `brain` — Cérebro (ciência), 320×240.
+- `globe` — Globo terrestre (ciência), 320×240.
+- `map-pin` — Marcador de mapa (ciência), 320×240.
+- `compass` — Bússola (ciência), 320×240.
+- `rocket` — Foguete (ciência), 320×240.
+- `satellite` — Satélite (ciência), 320×240.
+- `lightbulb` — Lâmpada (ciência), 320×240.
+- `night-city` — Cidade à noite (cenários), 1280×720.
+- `server-room` — Sala de servidores (cenários), 1280×720.
+- `newsroom` — Redação de notícias (cenários), 1280×720.
+- `laboratory-scene` — Laboratório (cenários), 1280×720.
+- `map-room` — Mapa mundial estilizado (cenários), 1280×720.
+- `financial-district` — Distrito financeiro (cenários), 1280×720.
+- `cyber-grid` — Grade digital (cenários), 1280×720.
+- `archive-room` — Arquivo documental (cenários), 1280×720.
 
+
+### Aparência padrão dos recursos nativos
+
+Os 48 objetos ilustrados e os 12 cenários usam os **IDs nativos originais** e agora têm PNG incorporado como aparência padrão. Por exemplo, `asset: "car"` já mostra a nova arte do carro; não existe uma variante separada para selecionar. As imagens aceitam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. Os pixels são estáticos: `color`, `secondaryColor` e `palette` não recolorem a imagem, e poses ou animações internas não se aplicam. Esses campos antigos continuam sendo aceitos para compatibilidade, mas não alteram os pixels desses 60 PNGs.
+
+Os 12 cenários nativos — `street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room` — são temporariamente prévias rasterizadas de baixa resolução, aproximadamente 482–483×271–272 pixels. A biblioteca os marca como **PRÉVIA**. Uma atualização futura poderá substituir os arquivos mantendo os mesmos IDs. O personagem `person` e os 11 recursos de gráficos/dados (`bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, `data-table`) continuam procedurais para preservar poses ou evolução dinâmica. Para os outros PNGs, o desenho procedural anterior é apenas fallback técnico interno, não uma opção visual da biblioteca. IDs `illustrated:<id>` publicados temporariamente em versões anteriores ainda são aceitos ao abrir projetos/receitas antigas, mas novos conteúdos devem usar o ID original. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
+
+### Direção para roteiro dinâmico
+
+Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
+
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 60 recursos com arte incorporada são PNGs estáticos transformáveis; os gráficos/dados e `person` continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e limites fora da faixa são rejeitados com mensagem. Projetos v1–v14 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12 e trim/velocidade da fonte de áudio usam schema 13 e cor independente do destaque de palavra usa schema 14.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14 e políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15.
 
 ## Checklist de limites e publicação
 
@@ -1387,7 +1501,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
     "height": 720,
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
-    "maxNodes": 200,
+    "maxNodes": null,
     "maxScenes": 20,
     "maxShots": 256,
     "maxShotsPerScene": 64,
@@ -1420,6 +1534,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "car",
             "name": "Carro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 156,
+            "sourceWidth": 289,
             "width": 460
         },
         {
@@ -1427,6 +1546,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 350,
             "id": "person",
             "name": "Personagem",
+            "rendering": "procedural",
             "width": 180
         },
         {
@@ -1434,6 +1554,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "house",
             "name": "Casa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 197,
+            "sourceWidth": 254,
             "width": 240
         },
         {
@@ -1441,6 +1566,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 300,
             "id": "building",
             "name": "Prédio",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 232,
+            "sourceWidth": 255,
             "width": 160
         },
         {
@@ -1448,6 +1578,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 250,
             "id": "document",
             "name": "Documento",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 231,
+            "sourceWidth": 188,
             "width": 200
         },
         {
@@ -1455,6 +1590,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 210,
             "id": "computer",
             "name": "Computador",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 218,
+            "sourceWidth": 241,
             "width": 280
         },
         {
@@ -1462,6 +1602,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 220,
             "id": "phone",
             "name": "Celular",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 240,
+            "sourceWidth": 137,
             "width": 120
         },
         {
@@ -1469,6 +1614,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 200,
             "id": "coins",
             "name": "Moedas",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 216,
+            "sourceWidth": 251,
             "width": 250
         },
         {
@@ -1476,6 +1626,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 150,
             "id": "price-tag",
             "name": "Etiqueta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 262,
+            "sourceWidth": 159,
             "width": 250
         },
         {
@@ -1483,6 +1638,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 240,
             "id": "bars",
             "name": "Barras ilustrativas",
+            "rendering": "procedural",
             "width": 320
         },
         {
@@ -1490,6 +1646,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "street",
             "name": "Rua",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -1497,6 +1658,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "office",
             "name": "Escritório",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 482,
             "width": 1280
         },
         {
@@ -1504,6 +1670,11 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "showroom",
             "name": "Concessionária",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         },
         {
@@ -1511,18 +1682,1288 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "height": 720,
             "id": "studio",
             "name": "Estúdio",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
+            "width": 1280
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "laptop",
+            "name": "Notebook",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 288,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "tablet",
+            "name": "Tablet",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 241,
+            "sourceWidth": 177,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "camera",
+            "name": "Câmera",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 264,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "microphone",
+            "name": "Microfone",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 255,
+            "sourceWidth": 148,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "headphones",
+            "name": "Fones de ouvido",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 251,
+            "sourceWidth": 244,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "chip",
+            "name": "Chip de IA",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 254,
+            "sourceWidth": 255,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "server",
+            "name": "Servidor",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 227,
+            "sourceWidth": 215,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "cloud",
+            "name": "Nuvem digital",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 232,
+            "sourceWidth": 272,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "wifi",
+            "name": "Sinal Wi-Fi",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 213,
+            "sourceWidth": 255,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "lock",
+            "name": "Cadeado digital",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 243,
+            "sourceWidth": 181,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "notification",
+            "name": "Notificação",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 216,
+            "sourceWidth": 196,
+            "width": 320
+        },
+        {
+            "category": "tecnologia",
+            "height": 240,
+            "id": "robot",
+            "name": "Robô",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 250,
+            "sourceWidth": 242,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "chat-bubble",
+            "name": "Balão de conversa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 210,
+            "sourceWidth": 267,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "email",
+            "name": "E-mail",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 170,
+            "sourceWidth": 259,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "newspaper",
+            "name": "Jornal",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 234,
+            "sourceWidth": 258,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "book",
+            "name": "Livro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 213,
+            "sourceWidth": 295,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "calendar",
+            "name": "Calendário",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 226,
+            "sourceWidth": 268,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "clock",
+            "name": "Relógio",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 237,
+            "sourceWidth": 237,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "hourglass",
+            "name": "Ampulheta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 249,
+            "sourceWidth": 180,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "eye",
+            "name": "Olho",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 187,
+            "sourceWidth": 299,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "magnifier",
+            "name": "Lupa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 259,
+            "sourceWidth": 252,
+            "width": 320
+        },
+        {
+            "category": "comunicação",
+            "height": 240,
+            "id": "target",
+            "name": "Alvo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 246,
+            "sourceWidth": 244,
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-line",
+            "name": "Gráfico de linhas",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-pie",
+            "name": "Gráfico de pizza",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-donut",
+            "name": "Gráfico de rosca",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "chart-area",
+            "name": "Gráfico de área",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "timeline",
+            "name": "Linha do tempo",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "flowchart",
+            "name": "Fluxograma",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "network",
+            "name": "Rede de conexões",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "dashboard",
+            "name": "Painel de indicadores",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "progress-ring",
+            "name": "Anel de progresso ilustrativo",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "gráficos",
+            "height": 240,
+            "id": "data-table",
+            "name": "Tabela de dados ilustrativa",
+            "rendering": "procedural",
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "bank",
+            "name": "Banco",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 250,
+            "sourceWidth": 279,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "wallet",
+            "name": "Carteira",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 215,
+            "sourceWidth": 241,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "credit-card",
+            "name": "Cartão de crédito",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 184,
+            "sourceWidth": 262,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "cash",
+            "name": "Dinheiro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 223,
+            "sourceWidth": 296,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "receipt",
+            "name": "Recibo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 243,
+            "sourceWidth": 182,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "shopping-cart",
+            "name": "Carrinho de compras",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 266,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "factory",
+            "name": "Fábrica",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 309,
+            "width": 320
+        },
+        {
+            "category": "finanças",
+            "height": 240,
+            "id": "briefcase",
+            "name": "Maleta",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 228,
+            "sourceWidth": 252,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "atom",
+            "name": "Átomo",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 363,
+            "sourceWidth": 361,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "dna",
+            "name": "DNA",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 359,
+            "sourceWidth": 208,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "flask",
+            "name": "Frasco de laboratório",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 339,
+            "sourceWidth": 292,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "brain",
+            "name": "Cérebro",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 329,
+            "sourceWidth": 387,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "globe",
+            "name": "Globo terrestre",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 363,
+            "sourceWidth": 326,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "map-pin",
+            "name": "Marcador de mapa",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 341,
+            "sourceWidth": 248,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "compass",
+            "name": "Bússola",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 361,
+            "sourceWidth": 321,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "rocket",
+            "name": "Foguete",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 381,
+            "sourceWidth": 292,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "satellite",
+            "name": "Satélite",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 320,
+            "sourceWidth": 421,
+            "width": 320
+        },
+        {
+            "category": "ciência",
+            "height": 240,
+            "id": "lightbulb",
+            "name": "Lâmpada",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 364,
+            "sourceWidth": 236,
+            "width": 320
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "night-city",
+            "name": "Cidade à noite",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 482,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "server-room",
+            "name": "Sala de servidores",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "newsroom",
+            "name": "Redação de notícias",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "laboratory-scene",
+            "name": "Laboratório",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 482,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "map-room",
+            "name": "Mapa mundial estilizado",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 271,
+            "sourceWidth": 483,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "financial-district",
+            "name": "Distrito financeiro",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "cyber-grid",
+            "name": "Grade digital",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 482,
+            "width": 1280
+        },
+        {
+            "category": "cenários",
+            "height": 720,
+            "id": "archive-room",
+            "name": "Arquivo documental",
+            "pixelRecoloring": false,
+            "previewOnly": true,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 272,
+            "sourceWidth": 483,
             "width": 1280
         }
     ],
+    "nodeLimitPolicy": "resource-bound",
     "poses": [
         "neutral",
         "point",
         "wave",
         "worried"
     ],
+    "premiumAssetCategories": [
+        "basic-native",
+        "premium",
+        "real-media"
+    ],
+    "premiumAssets": [
+        {
+            "id": "premium:smartphone-premium-01",
+            "kind": "premium-object",
+            "manifestVersion": 1,
+            "name": "Smartphone premium",
+            "paletteTokens": [
+                "surface",
+                "frame",
+                "highlight",
+                "accent",
+                "screen",
+                "notification",
+                "muted",
+                "text"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "screen-title",
+                    "kind": "text",
+                    "nodeId": "clock",
+                    "optional": false,
+                    "role": "premium:text:screen-title",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "notification",
+                    "kind": "text",
+                    "nodeId": "message",
+                    "optional": false,
+                    "role": "premium:text:notification",
+                    "textLayout": {
+                        "minimumFontSize": 13,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "screen",
+                    "kind": "image",
+                    "nodeId": "screen",
+                    "optional": false,
+                    "role": "premium:image:screen"
+                }
+            ],
+            "slots": [
+                "premium:text:screen-title",
+                "premium:text:notification",
+                "premium:image:screen"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:title-reveal-01",
+            "kind": "premium-typography-template",
+            "manifestVersion": 1,
+            "name": "Title Reveal · título cinematográfico",
+            "paletteTokens": [
+                "accent",
+                "secondary",
+                "highlight",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "main-title",
+                    "kind": "text",
+                    "nodeId": "title-main",
+                    "optional": false,
+                    "role": "premium:title:main",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "subtitle",
+                    "kind": "text",
+                    "nodeId": "title-subtitle",
+                    "optional": false,
+                    "role": "premium:title:subtitle",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "editorial-id",
+                    "kind": "text",
+                    "nodeId": "title-editorial-id",
+                    "optional": true,
+                    "role": "premium:title:editorial",
+                    "textLayout": {
+                        "minimumFontSize": 14,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:title:main",
+                "premium:title:subtitle",
+                "premium:title:editorial"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:comparison-pack-01",
+            "kind": "premium-motion-template",
+            "manifestVersion": 1,
+            "name": "Comparison Pack · comparação editorial",
+            "paletteTokens": [
+                "left",
+                "right",
+                "primary",
+                "secondary",
+                "accent",
+                "highlight",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "left-title",
+                    "kind": "text",
+                    "nodeId": "comparison-left-title",
+                    "optional": false,
+                    "role": "premium:comparison:left-title",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "right-title",
+                    "kind": "text",
+                    "nodeId": "comparison-right-title",
+                    "optional": false,
+                    "role": "premium:comparison:right-title",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "left-value",
+                    "kind": "text",
+                    "nodeId": "comparison-left-value",
+                    "optional": false,
+                    "role": "premium:comparison:left-value",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "right-value",
+                    "kind": "text",
+                    "nodeId": "comparison-right-value",
+                    "optional": false,
+                    "role": "premium:comparison:right-value",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "left-description",
+                    "kind": "text",
+                    "nodeId": "comparison-left-description",
+                    "optional": false,
+                    "role": "premium:comparison:left-description",
+                    "textLayout": {
+                        "minimumFontSize": 15,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "right-description",
+                    "kind": "text",
+                    "nodeId": "comparison-right-description",
+                    "optional": false,
+                    "role": "premium:comparison:right-description",
+                    "textLayout": {
+                        "minimumFontSize": 15,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:comparison:left-title",
+                "premium:comparison:right-title",
+                "premium:comparison:left-value",
+                "premium:comparison:right-value",
+                "premium:comparison:left-description",
+                "premium:comparison:right-description"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:dramatic-quote-01",
+            "kind": "premium-typography-template",
+            "manifestVersion": 1,
+            "name": "Dramatic Quote · citação editorial",
+            "paletteTokens": [
+                "accent",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "quote",
+                    "kind": "text",
+                    "nodeId": "quote-copy",
+                    "optional": false,
+                    "role": "premium:quote:text",
+                    "textLayout": {
+                        "minimumFontSize": 24,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "attribution",
+                    "kind": "text",
+                    "nodeId": "quote-attribution",
+                    "optional": false,
+                    "role": "premium:quote:attribution",
+                    "textLayout": {
+                        "minimumFontSize": 16,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "source",
+                    "kind": "text",
+                    "nodeId": "quote-source",
+                    "optional": true,
+                    "role": "premium:quote:source",
+                    "textLayout": {
+                        "minimumFontSize": 13,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:quote:text",
+                "premium:quote:attribution",
+                "premium:quote:source"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:lower-third-editorial-01",
+            "kind": "premium-overlay",
+            "manifestVersion": 1,
+            "name": "Lower Third Editorial · identificação",
+            "paletteTokens": [
+                "surface",
+                "accent",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "title",
+                    "kind": "text",
+                    "nodeId": "lower-third-name",
+                    "optional": false,
+                    "role": "premium:lower-third:title",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "subtitle",
+                    "kind": "text",
+                    "nodeId": "lower-third-subtitle",
+                    "optional": false,
+                    "role": "premium:lower-third:subtitle",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "source",
+                    "kind": "text",
+                    "nodeId": "lower-third-source",
+                    "optional": true,
+                    "role": "premium:lower-third:source",
+                    "textLayout": {
+                        "minimumFontSize": 13,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:lower-third:title",
+                "premium:lower-third:subtitle",
+                "premium:lower-third:source"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:source-label-01",
+            "kind": "premium-overlay",
+            "manifestVersion": 1,
+            "name": "Source Label · referência editorial",
+            "paletteTokens": [
+                "surface",
+                "highlight",
+                "text",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "title",
+                    "kind": "text",
+                    "nodeId": "source-label-title",
+                    "optional": false,
+                    "role": "premium:source-label:title",
+                    "textLayout": {
+                        "minimumFontSize": 18,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "detail",
+                    "kind": "text",
+                    "nodeId": "source-label-detail",
+                    "optional": false,
+                    "role": "premium:source-label:detail",
+                    "textLayout": {
+                        "minimumFontSize": 14,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:source-label:title",
+                "premium:source-label:detail"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:number-emphasis-01",
+            "kind": "premium-motion-template",
+            "manifestVersion": 1,
+            "name": "Number Emphasis · dado em destaque",
+            "paletteTokens": [
+                "surface",
+                "accent",
+                "text",
+                "muted",
+                "secondary"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "value",
+                    "kind": "text",
+                    "nodeId": "number-value",
+                    "optional": false,
+                    "role": "premium:number:value",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "unit",
+                    "kind": "text",
+                    "nodeId": "number-unit",
+                    "optional": false,
+                    "role": "premium:number:unit",
+                    "textLayout": {
+                        "minimumFontSize": 16,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "description",
+                    "kind": "text",
+                    "nodeId": "number-description",
+                    "optional": false,
+                    "role": "premium:number:description",
+                    "textLayout": {
+                        "minimumFontSize": 15,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "source",
+                    "kind": "text",
+                    "nodeId": "number-source",
+                    "optional": false,
+                    "role": "premium:number:source",
+                    "textLayout": {
+                        "minimumFontSize": 13,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:number:value",
+                "premium:number:unit",
+                "premium:number:description",
+                "premium:number:source"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:question-hook-01",
+            "kind": "premium-typography-template",
+            "manifestVersion": 2,
+            "name": "Question Hook · abertura interrogativa",
+            "paletteTokens": [
+                "accent",
+                "highlight",
+                "muted",
+                "text"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "question",
+                    "kind": "text",
+                    "maxLength": 280,
+                    "nodeId": "question-main",
+                    "optional": false,
+                    "role": "premium:question-hook:question",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "context",
+                    "kind": "text",
+                    "maxLength": 300,
+                    "nodeId": "question-context",
+                    "optional": true,
+                    "role": "premium:question-hook:context",
+                    "textLayout": {
+                        "minimumFontSize": 24,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:question-hook:question",
+                "premium:question-hook:context"
+            ],
+            "status": "implemented"
+        },
+        {
+            "id": "premium:statistic-callout-pack-01",
+            "kind": "premium-motion-template",
+            "manifestVersion": 2,
+            "name": "Statistic Callout Pack · dado contextualizado",
+            "paletteTokens": [
+                "surface",
+                "accent",
+                "highlight",
+                "text",
+                "secondary",
+                "muted"
+            ],
+            "responsiveCanvases": [
+                "1280x720",
+                "1920x1080",
+                "1080x1920"
+            ],
+            "slotDefinitions": [
+                {
+                    "id": "value",
+                    "kind": "text",
+                    "maxLength": 48,
+                    "nodeId": "stat-value",
+                    "optional": false,
+                    "role": "premium:statistic-callout:value",
+                    "textLayout": {
+                        "minimumFontSize": 28,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "unit",
+                    "kind": "text",
+                    "maxLength": 40,
+                    "nodeId": "stat-unit",
+                    "optional": true,
+                    "role": "premium:statistic-callout:unit",
+                    "textLayout": {
+                        "minimumFontSize": 16,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "description",
+                    "kind": "text",
+                    "maxLength": 260,
+                    "nodeId": "stat-description",
+                    "optional": false,
+                    "role": "premium:statistic-callout:description",
+                    "textLayout": {
+                        "minimumFontSize": 15,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                },
+                {
+                    "id": "source",
+                    "kind": "text",
+                    "maxLength": 180,
+                    "nodeId": "stat-source",
+                    "optional": false,
+                    "role": "premium:statistic-callout:source",
+                    "textLayout": {
+                        "minimumFontSize": 13,
+                        "mode": "shrink",
+                        "padding": 4
+                    }
+                }
+            ],
+            "slots": [
+                "premium:statistic-callout:value",
+                "premium:statistic-callout:unit",
+                "premium:statistic-callout:description",
+                "premium:statistic-callout:source"
+            ],
+            "status": "implemented"
+        }
+    ],
     "productionCapabilities": [
         "free-scene-layout",
         "nested-groups",
+        "v3-scene-title-metadata",
         "transform-keyframes-linear",
         "camera-2d-keyframes",
         "keyframe-easing-curves",
@@ -1535,6 +2976,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "pitch-preserving-atempo",
         "independent-shots",
         "visual-beats-show-hide-transform-camera-sound",
+        "instant-visual-beat-show-hide",
         "shot-cut-camera",
         "narration-content-shot-rhythm",
         "shot-transitions-fade-dissolve-slide-zoom",
@@ -1547,6 +2989,16 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "word-aligned-visual-beats",
         "external-library-fonts",
         "named-visual-style-presets",
+        "declarative-premium-templates",
+        "premium-content-slot-overrides",
+        "premium-image-slot-overrides",
+        "camera-path-assisted-framing",
+        "camera-spatial-reveal",
+        "camera-spatial-and-temporal-reveal",
+        "premium-slot-adaptive-text-layout",
+        "visual-quality-analysis-before-export",
+        "camera-path-target-framing-diagnostics",
+        "premium-slot-image-relative-paths",
         "embedded-video-audio-with-source-trim-and-speed",
         "word-aligned-elements-keyframes",
         "multi-track-audio",
@@ -1554,10 +3006,15 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "voice-sidechain-ducking",
         "audio-track-fades",
         "audio-gain-automation-easing",
+        "premium-palette-overrides",
+        "premium-factory-editorial-templates",
         "video-layer-broll",
         "video-source-trim",
         "video-speed-control",
         "video-normalized-crop",
+        "personal-library-video-assets",
+        "native-id-ai-png-default-artwork",
+        "low-resolution-native-scene-previews",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",
@@ -1583,7 +3040,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "word-animated-caption-presets",
         "independent-caption-highlight-color"
     ],
-    "projectVersion": 14,
+    "projectVersion": 15,
     "shotTransitionTypes": [
         "cut",
         "fade",

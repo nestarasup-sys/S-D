@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace studio {
@@ -30,6 +31,18 @@ struct CameraKeyframe {
     double x{0}, y{0}, zoom{1}, rotation{0};
     std::string easing{"linear"};
     std::string shotId; // Allows a cut and its camera events to move as one edit.
+    // Optional camera.path provenance, retained so quality analysis can verify
+    // the intended target after the recipe has become an editable project.
+    std::string targetId, revealMode;
+    double safeMargin{0}, captionSafeBottom{0};
+    CameraKeyframe() = default;
+    CameraKeyframe(std::int64_t frameValue, double xValue, double yValue, double zoomValue,
+                   double rotationValue, std::string easingValue = "linear", std::string shotValue = {},
+                   std::string targetValue = {}, std::string revealValue = {}, double marginValue = 0,
+                   double captionBottomValue = 0)
+        : frame(frameValue), x(xValue), y(yValue), zoom(zoomValue), rotation(rotationValue),
+          easing(std::move(easingValue)), shotId(std::move(shotValue)), targetId(std::move(targetValue)),
+          revealMode(std::move(revealValue)), safeMargin(marginValue), captionSafeBottom(captionBottomValue) {}
     bool operator==(const CameraKeyframe &) const = default;
 };
 struct CaptionWordCue {
@@ -51,6 +64,8 @@ struct Node {
     double x{100}, y{100}, width{600}, height{100};
     double opacity{1};
     double fontSize{64};
+    bool textAutoFit{false};
+    double textMinFontSize{12}, textPadding{0};
     bool animated{true};
     std::string nativeId, sceneId, role;
     std::string pose{"neutral"}, motion{"rise"}, secondaryColor{"#f3c49a"};

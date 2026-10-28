@@ -20,6 +20,7 @@ class WorkspaceController : public QObject {
     Q_PROPERTY(QString projectSearch READ projectSearch WRITE setProjectSearch NOTIFY projectsChanged)
     Q_PROPERTY(QString assetSearch READ assetSearch WRITE setAssetSearch NOTIFY assetsChanged)
     Q_PROPERTY(QString categoryFilter READ categoryFilter WRITE setCategoryFilter NOTIFY assetsChanged)
+    Q_PROPERTY(QString assetTypeFilter READ assetTypeFilter WRITE setAssetTypeFilter NOTIFY assetsChanged)
     Q_PROPERTY(bool projectTrash READ projectTrash WRITE setProjectTrash NOTIFY projectsChanged)
     Q_PROPERTY(bool assetTrash READ assetTrash WRITE setAssetTrash NOTIFY assetsChanged)
     Q_PROPERTY(bool canSaveSelection READ canSaveSelection NOTIFY selectionChanged)
@@ -51,6 +52,7 @@ class WorkspaceController : public QObject {
     QString categoryFilter() const {
         return categoryFilter_;
     }
+    QString assetTypeFilter() const { return assetTypeFilter_; }
     bool projectTrash() const {
         return projectTrash_;
     }
@@ -60,6 +62,7 @@ class WorkspaceController : public QObject {
     bool canSaveSelection() const;
     void setProjectSearch(QString value);
     void setAssetSearch(QString value);
+    void setAssetTypeFilter(QString value);
     void setCategoryFilter(QString value);
     void setProjectTrash(bool value);
     void setAssetTrash(bool value);
@@ -76,6 +79,7 @@ class WorkspaceController : public QObject {
     Q_INVOKABLE bool renameCategory(QString id, QString name);
     Q_INVOKABLE bool deleteCategory(QString id);
     Q_INVOKABLE bool addAsset(QUrl source, QString name, QString category);
+    Q_INVOKABLE QString importSlotMedia(QUrl source);
     Q_INVOKABLE bool addFont(QUrl source);
     Q_INVOKABLE bool saveVisualStylePreset(QString name);
     Q_INVOKABLE bool saveSelection(QString name, QString category);
@@ -103,6 +107,6 @@ class WorkspaceController : public QObject {
     studio::WorkspaceStore store_;
     QString page_{"projects"},
         message_{"Seu espaço de criação. Escolha um projeto ou comece uma nova ideia."};
-    QString projectSearch_, assetSearch_, categoryFilter_;
+    QString projectSearch_, assetSearch_, categoryFilter_, assetTypeFilter_;
     bool projectTrash_{false}, assetTrash_{false}, hasDocument_{false};
 };

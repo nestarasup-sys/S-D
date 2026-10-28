@@ -1,0 +1,58 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Transformação e câmera sincronizadas",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "enquadramento",
+      "narration": ["A forma se move enquanto a câmera aproxima o detalhe.", "Depois, o título desaparece e volta no mesmo plano."],
+      "shots": [
+        {
+          "id": "forma-em-movimento",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "transitionIn": "cut",
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "grupo-alvo", "kind": "group", "x": 100, "y": 80, "children": [
+              { "id": "alvo", "kind": "shape", "x": 120, "y": 180, "width": 180, "height": 100, "color": "#58F4DA", "opacity": 0.7,
+                "keyframes": [
+                  { "cue": 0, "cueProgress": 0.05, "x": 120, "y": 180, "easing": "ease-in-out" },
+                  { "cue": 0, "cueProgress": 0.15, "x": 150, "y": 190, "easing": "ease-in-out" }
+                ] }
+            ] }
+          ],
+          "beats": [
+            { "id": "mover-alvo", "at": { "cue": 0, "cueProgress": 0.20 }, "action": "transform", "target": "alvo", "durationFrames": 18, "x": 840, "y": 380, "scale": 1.25 },
+            { "id": "aproximar-camera", "at": { "cue": 0, "cueProgress": 0.55 }, "action": "camera", "durationFrames": 24, "x": 700, "y": 360, "zoom": 1.15 },
+            { "id": "chime-no-detalhe", "at": { "cue": 0, "cueProgress": 0.90 }, "action": "sound", "source": "media/soft-chime.wav", "gain": 0.4 }
+          ]
+        },
+        {
+          "id": "mostrar-novamente",
+          "start": { "cue": 1, "cueProgress": 0 },
+          "transitionIn": "cut",
+          "camera": { "x": 700, "y": 360, "zoom": 1.15, "rotation": 0 },
+          "elements": [
+            { "id": "titulo-final", "kind": "text", "text": "A HISTÓRIA CONTINUA", "x": 260, "y": 290, "width": 800, "height": 100, "fontSize": 48, "opacity": 0 },
+            { "id": "brilho-semitransparente", "kind": "shape", "x": 180, "y": 450, "width": 920, "height": 8, "color": "#58F4DA", "opacity": 0.42 },
+            { "id": "revelacao-ordem-estavel", "kind": "shape", "x": 180, "y": 480, "width": 920, "height": 5, "color": "#F3B94F", "opacity": 0 }
+          ],
+          "beats": [
+            { "id": "opacidade-final-do-titulo", "at": { "cue": 1, "cueProgress": 0.10 }, "action": "transform", "target": "titulo-final", "durationFrames": 8, "opacity": 0.64 },
+            { "id": "mesmo-quadro-ocultar", "at": { "cue": 1, "cueProgress": 0.25 }, "action": "hide", "target": "revelacao-ordem-estavel" },
+            { "id": "mesmo-quadro-revelar", "at": { "cue": 1, "cueProgress": 0.25 }, "action": "show", "target": "revelacao-ordem-estavel" },
+            { "id": "ocultar-brilho", "at": { "cue": 1, "cueProgress": 0.10 }, "action": "hide", "target": "brilho-semitransparente" },
+            { "id": "restaurar-brilho", "at": { "cue": 1, "cueProgress": 0.20 }, "action": "show", "target": "brilho-semitransparente" },
+            { "id": "ocultar-titulo", "at": { "cue": 1, "cueProgress": 0.30 }, "action": "hide", "target": "titulo-final" },
+            { "id": "revelar-titulo", "at": { "cue": 1, "cueProgress": 0.60 }, "action": "show", "target": "titulo-final" }
+          ]
+        }
+      ]
+    }
+  ]
+}

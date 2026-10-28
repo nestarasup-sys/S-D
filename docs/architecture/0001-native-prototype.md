@@ -27,7 +27,7 @@ apps/render-worker     frames → FFmpeg em subprocesso → MP4
 
 ## Documento e comandos
 
-Schema v1 com projeto, resolução, FPS racional, duração e objetos com IDs. Limites explícitos para este corte: até 200 objetos, 18.000 frames e 3840×2160. Interface cria sequências de 12 segundos em 1280×720 a 30 FPS. O núcleo aceita outras configurações válidas, ainda sem seletor de formato na UI.
+Schema v1 com projeto, resolução, FPS racional, duração e objetos com IDs. Limites deste corte histórico: até 200 objetos, 18.000 frames e 3840×2160. O teto de 200 objetos foi removido na Etapa 10.5; projetos atuais podem conter mais camadas e são limitados por validação estrutural, memória e tempo de processamento. A duração e a resolução continuam com os limites vigentes descritos no código/guia.
 
 Uma alteração é executada em uma cópia candidata, validada e então aplicada. Gestos acumulam uma única entrada no histórico de até 100 snapshots. A API C++ usa callbacks locais; comandos serializáveis para automação externa ainda serão implementados. Não declarar integração com IA pronta.
 

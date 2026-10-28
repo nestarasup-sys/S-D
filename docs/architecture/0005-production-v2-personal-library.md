@@ -11,7 +11,7 @@ O contrato de produção v1 exigia cabeçalho, kicker e fundo por cena e só ace
 - Aceitar `studio-dark-production` v2 mantendo o leitor v1 compatível.
 - Manter narração em trechos locais à cena; cues e offsets em segundos são resolvidos a partir do WAV sintetizado real.
 - Permitir composição sem título, kicker ou cenário automático; esses elementos viram escolhas explícitas.
-- Representar grupos com `kind: "group"` e filhos recursivos até oito níveis. Limitar produção inteira a 200 elementos.
+- Representar grupos com `kind: "group"` e filhos recursivos até oito níveis. A quantidade agregada de elementos não tem teto fixo; o parser mantém validação de IDs, profundidade e limites de texto/tempo.
 - Resolver `keyframes` de transformação e `camera` a partir de cues; usar interpolação linear e os mesmos frames em prévia/exportação.
 - `captions: false` desliga apenas legendas visuais; SRT permanece disponível.
 - Resolver `kind: "library", assetId` apenas contra itens ativos do catálogo local. Mídias mantêm paths locais; não se faz fetch nem download remoto. Itens removidos e caminhos ausentes causam erro.

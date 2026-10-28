@@ -1,0 +1,117 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Studio Dark — direção visual e Premium Factory",
+  "voice": "auto",
+  "captions": true,
+  "editing": { "intensity": 0, "rhythm": "manual" },
+  "musicGain": 0.01,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [
+    {
+      "id": "abertura-tipografica",
+      "narration": ["Movimento com intenção."],
+      "shots": [{
+        "id": "quote-abertura-shot", "start": { "cue": 0, "cueProgress": 0 },
+        "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+        "elements": [{
+          "id": "quote-abertura", "kind": "library", "assetId": "premium:dramatic-quote-01", "cue": 0,
+          "palette": { "accent": "#58D5C2", "text": "#F5E7C6", "muted": "#A7BCC8" }
+        }]
+      }]
+    },
+    {
+      "id": "travelling-horizontal",
+      "narration": [
+        "Um ponto por vez.",
+        "A câmera avança até o processo.",
+        "E termina no resultado."
+      ],
+      "shots": [{
+        "id": "horizontal-progressivo", "start": { "cue": 0, "cueProgress": 0 },
+        "camera": { "x": 250, "y": 250, "zoom": 1.25, "rotation": 0 },
+        "elements": [
+          { "id": "horizontal-heading", "kind": "text", "text": "PONTO DE PARTIDA", "x": 60, "y": 50, "width": 470, "height": 46, "fontSize": 30, "color": "#EAF2F5", "cue": 0 },
+          { "id": "horizontal-a", "kind": "native", "asset": "chip", "x": 140, "y": 250, "width": 220, "height": 170, "color": "#58D5C2", "cue": 0 },
+          { "id": "horizontal-label-a", "kind": "text", "text": "01  /  ORIGEM", "x": 145, "y": 444, "width": 280, "height": 42, "fontSize": 22, "color": "#EAF2F5", "cue": 0 },
+          { "id": "horizontal-b", "kind": "native", "asset": "server", "x": 790, "y": 250, "width": 220, "height": 170, "color": "#70AEFF", "opacity": 0, "cue": 0 },
+          { "id": "horizontal-label-b", "kind": "text", "text": "02  /  PROCESSO", "x": 790, "y": 444, "width": 330, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+          { "id": "horizontal-c", "kind": "native", "asset": "cloud", "x": 1440, "y": 250, "width": 220, "height": 170, "color": "#E9B86A", "opacity": 0, "cue": 0 },
+          { "id": "horizontal-label-c", "kind": "text", "text": "03  /  RESULTADO", "x": 1440, "y": 444, "width": 330, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 }
+        ],
+        "beats": [
+          { "id": "hide-horizontal-heading", "at": { "cue": 1, "cueProgress": 0 }, "action": "hide", "target": "horizontal-heading" },
+          { "id": "pan-para-b", "at": { "cue": 1, "cueProgress": 0.05 }, "action": "camera", "x": 900, "y": 250, "durationFrames": 24 },
+          { "id": "show-b", "at": { "cue": 1, "cueProgress": 0.58 }, "action": "show", "target": "horizontal-b" },
+          { "id": "show-label-b", "at": { "cue": 1, "cueProgress": 0.6 }, "action": "show", "target": "horizontal-label-b" },
+          { "id": "pan-para-c", "at": { "cue": 2, "cueProgress": 0.05 }, "action": "camera", "x": 1550, "y": 250, "durationFrames": 24 },
+          { "id": "show-c", "at": { "cue": 2, "cueProgress": 0.58 }, "action": "show", "target": "horizontal-c" },
+          { "id": "show-label-c", "at": { "cue": 2, "cueProgress": 0.6 }, "action": "show", "target": "horizontal-label-c" }
+        ]
+      }]
+    },
+    {
+      "id": "travelling-vertical",
+      "narration": [
+        "Primeiro, o sinal.",
+        "A câmera desce até a conexão.",
+        "E abre a visão geral."
+      ],
+      "shots": [{
+        "id": "vertical-progressivo", "start": { "cue": 0, "cueProgress": 0 },
+        "camera": { "x": 640, "y": 310, "zoom": 1.25, "rotation": 0 },
+        "elements": [
+          { "id": "vertical-heading", "kind": "text", "text": "UMA IDEIA EM TRÊS ETAPAS", "x": 330, "y": 90, "width": 620, "height": 44, "fontSize": 29, "color": "#EAF2F5", "cue": 0 },
+          { "id": "vertical-a", "kind": "native", "asset": "notification", "x": 510, "y": 220, "width": 260, "height": 190, "color": "#63D6C4", "cue": 0 },
+          { "id": "vertical-label-a", "kind": "text", "text": "01  /  SINAL", "x": 512, "y": 430, "width": 350, "height": 42, "fontSize": 22, "color": "#EAF2F5", "cue": 0 },
+          { "id": "vertical-b", "kind": "native", "asset": "network", "x": 510, "y": 850, "width": 260, "height": 190, "color": "#9186EC", "opacity": 0, "cue": 0 },
+          { "id": "vertical-label-b", "kind": "text", "text": "02  /  CONEXÃO", "x": 512, "y": 1060, "width": 350, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+          { "id": "vertical-c", "kind": "native", "asset": "dashboard", "x": 510, "y": 1480, "width": 260, "height": 190, "color": "#EAB56A", "opacity": 0, "cue": 0 },
+          { "id": "vertical-label-c", "kind": "text", "text": "03  /  VISÃO GERAL", "x": 512, "y": 1690, "width": 410, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 }
+        ],
+        "beats": [
+          { "id": "hide-vertical-heading", "at": { "cue": 1, "cueProgress": 0 }, "action": "hide", "target": "vertical-heading" },
+          { "id": "desce-para-b", "at": { "cue": 1, "cueProgress": 0.05 }, "action": "camera", "x": 640, "y": 940, "durationFrames": 24 },
+          { "id": "show-vertical-b", "at": { "cue": 1, "cueProgress": 0.58 }, "action": "show", "target": "vertical-b" },
+          { "id": "show-vertical-label-b", "at": { "cue": 1, "cueProgress": 0.6 }, "action": "show", "target": "vertical-label-b" },
+          { "id": "desce-para-c", "at": { "cue": 2, "cueProgress": 0.05 }, "action": "camera", "x": 640, "y": 1570, "durationFrames": 24 },
+          { "id": "show-vertical-c", "at": { "cue": 2, "cueProgress": 0.58 }, "action": "show", "target": "vertical-c" },
+          { "id": "show-vertical-label-c", "at": { "cue": 2, "cueProgress": 0.6 }, "action": "show", "target": "vertical-label-c" }
+        ]
+      }]
+    },
+    {
+      "id": "fechamento-premium",
+      "narration": [
+        "Um título organiza o contexto.",
+        "Um número precisa de contexto.",
+        "Uma fonte sustenta a informação."
+      ],
+      "shots": [
+        {
+          "id": "lower-third", "start": { "cue": 0, "cueProgress": 0 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [{ "id": "credit", "kind": "library", "assetId": "premium:lower-third-editorial-01", "cue": 0,
+                         "palette": { "surface": "#172631", "accent": "#63D6C4", "text": "#EDF5F3", "muted": "#A7BCC8" } }]
+        },
+        {
+          "id": "number-emphasis", "start": { "cue": 1, "cueProgress": 0 },
+          "transitionIn": { "type": "dissolve", "durationFrames": 12 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [{ "id": "number", "kind": "library", "assetId": "premium:number-emphasis-01", "cue": 1,
+                         "palette": { "surface": "#1B2633", "accent": "#F1B95F", "text": "#FAEBC7", "muted": "#A9B7C5", "secondary": "#79B9F1" } }]
+        },
+        {
+          "id": "source-label",
+          "start": { "cue": 2, "cueProgress": 0 },
+          "transitionIn": { "type": "dissolve", "durationFrames": 12 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [{ "id": "source", "kind": "library", "assetId": "premium:source-label-01", "cue": 2,
+                         "palette": { "surface": "#172631", "highlight": "#63D6C4", "text": "#EDF5F3", "muted": "#A7BCC8" } }]
+        }
+      ]
+    }
+  ]
+}

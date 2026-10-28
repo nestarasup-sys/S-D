@@ -13,6 +13,7 @@
 #include <QTextStream>
 #include <QMap>
 #include <memory>
+#include <new>
 #include <cmath>
 #include <algorithm>
 #include <vector>
@@ -41,6 +42,26 @@ static QString missingMedia(const studio::DirectedElement &element) {
         if (auto missing = missingMedia(child); !missing.isEmpty())
             return missing;
     return {};
+}
+static bool managePremiumSlotMedia(studio::DirectedElement &element, studio::WorkspaceStore *workspace,
+                                  QString &error) {
+    if (element.node.role.rfind("premium:image:", 0) == 0 &&
+        element.node.kind == studio::NodeKind::Image) {
+        if (!workspace) {
+            error = "Slots de imagem premium precisam de um workspace para armazenar a cópia gerenciada.";
+            return false;
+        }
+        const auto imported = workspace->importSlotMedia(QString::fromStdString(element.node.source));
+        if (!imported.error.isEmpty()) {
+            error = "Falha no slot '" + QString::fromStdString(element.node.role) + "': " + imported.error;
+            return false;
+        }
+        element.node.source = imported.id.toStdString();
+    }
+    for (auto &child : element.children)
+        if (!managePremiumSlotMedia(child, workspace, error))
+            return false;
+    return true;
 }
 static bool alignWordEvents(const QJsonArray &events, const QString &text, std::int64_t audioSamples,
                             std::vector<std::int64_t> &starts, QString &error) {
@@ -121,7 +142,7 @@ static bool alignWordEvents(const QJsonArray &events, const QString &text, std::
         sample = std::clamp<std::int64_t>(sample, 0, audioSamples - 1);
     return true;
 }
-int main(int argc, char **argv) {
+int main(int argc, char **argv) try {
     QCoreApplication app(argc, argv);
     QCommandLineParser parser;
     parser.addHelpOption();
@@ -131,6 +152,10 @@ int main(int argc, char **argv) {
     std::unique_ptr<studio::WorkspaceStore> workspace;
     if (parser.isSet("workspace-root"))
         workspace = std::make_unique<studio::WorkspaceStore>(parser.value("workspace-root"));
+    if (workspace && !workspace->error().isEmpty()) {
+        report("failed", 0, workspace->error());
+        return 1;
+    }
     if (parser.isSet("guide"))
         return write(parser.value("guide"),
                      studio::aiGuide(workspace ? workspace->data() : QJsonObject{}).toUtf8())
@@ -143,17 +168,31 @@ int main(int argc, char **argv) {
         return 1;
     };
     QFile input(parser.value("recipe"));
-    if (!input.open(QIODevice::ReadOnly) || input.size() > 1024 * 1024)
-        return fail("Não foi possível ler a receita (máximo 1 MiB).");
+    if (!input.open(QIODevice::ReadOnly))
+        return fail("Não foi possível abrir a receita: " + input.errorString());
     auto bytes = input.readAll();
+    if (input.error() != QFileDevice::NoError)
+        return fail("Falha ao ler a receita: " + input.errorString());
     auto parsed = studio::parseRecipe(bytes, QFileInfo(input).absolutePath(),
                                       workspace ? workspace->data() : QJsonObject{});
     if (!parsed.error.isEmpty())
         return fail(parsed.error);
-    for (const auto &scene : parsed.recipe.scenes)
-        for (const auto &element : scene.elements)
+    QString slotMediaError;
+    for (auto &scene : parsed.recipe.scenes) {
+        for (auto &element : scene.elements) {
+            if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+                return fail(slotMediaError);
             if (auto missing = missingMedia(element); !missing.isEmpty())
                 return fail("Mídia local ausente: " + missing);
+        }
+        for (auto &shot : scene.shots)
+            for (auto &element : shot.elements) {
+                if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+                    return fail(slotMediaError);
+                if (auto missing = missingMedia(element); !missing.isEmpty())
+                    return fail("Mídia local ausente: " + missing);
+            }
+    }
     auto output = QDir(parser.value("output-dir")).absolutePath();
     if (parser.value("output-dir").isEmpty() || QDir(output).exists())
         return fail("Escolha uma pasta de produção nova.");
@@ -361,4 +400,7 @@ int main(int argc, char **argv) {
               .toJson());
     report("Pronto", 100);
     return 0;
+} catch (const std::bad_alloc &) {
+    report("failed", 0, "Memória insuficiente durante a importação ou compilação da produção.");
+    return 1;
 }

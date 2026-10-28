@@ -1,0 +1,33 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Comparação premium personalizada",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "comparacao",
+      "narration": ["Compare os dois cenários com dados conferidos antes de publicar."],
+      "elements": [
+        {
+          "id": "comparacao-personalizada",
+          "kind": "library",
+          "assetId": "premium:comparison-pack-01",
+          "cue": 0,
+          "slots": {
+            "left-title": "CENÁRIO A",
+            "right-title": "CENÁRIO B",
+            "left-value": "12,4",
+            "right-value": "18,1",
+            "left-description": "Valor demonstrativo, não é dado publicado.",
+            "right-description": "Substitua por fonte, período e método verificados."
+          },
+          "palette": { "left": "#56CBB0", "right": "#DCA25F", "text": "#F3F5EA", "muted": "#B9C7CB" }
+        }
+      ]
+    }
+  ]
+}

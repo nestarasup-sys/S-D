@@ -1,0 +1,45 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Travelling vertical dirigido",
+  "voice": "auto",
+  "captions": false,
+  "editing": { "intensity": 0, "rhythm": "manual" },
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [{
+    "id": "travelling-vertical",
+    "narration": [
+      "O primeiro marco abre a leitura da cena.",
+      "A câmera desce e revela o segundo ponto.",
+      "O movimento termina no terceiro marco."
+    ],
+    "shots": [{
+      "id": "plano-vertical",
+      "name": "Descida em três etapas",
+      "start": { "cue": 0, "cueProgress": 0 },
+      "camera": { "x": 640, "y": 310, "zoom": 1.25, "rotation": 0 },
+      "elements": [
+        { "id": "titulo-cena", "kind": "text", "text": "TRAVELLING  /  VERTICAL", "x": 330, "y": 90, "width": 620, "height": 44, "fontSize": 30, "color": "#EAF2F5", "cue": 0 },
+        { "id": "marco-a", "kind": "native", "asset": "notification", "x": 510, "y": 220, "width": 260, "height": 190, "color": "#63D6C4", "cue": 0 },
+        { "id": "rotulo-a", "kind": "text", "text": "01  /  SINAL", "x": 512, "y": 430, "width": 350, "height": 42, "fontSize": 22, "color": "#EAF2F5", "cue": 0 },
+        { "id": "marco-b", "kind": "native", "asset": "network", "x": 510, "y": 850, "width": 260, "height": 190, "color": "#8F8BEB", "opacity": 0, "cue": 0 },
+        { "id": "rotulo-b", "kind": "text", "text": "02  /  CONEXÃO", "x": 512, "y": 1060, "width": 350, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+        { "id": "marco-c", "kind": "native", "asset": "dashboard", "x": 510, "y": 1480, "width": 260, "height": 190, "color": "#EAB56A", "opacity": 0, "cue": 0 },
+        { "id": "rotulo-c", "kind": "text", "text": "03  /  VISÃO GERAL", "x": 512, "y": 1690, "width": 410, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+        { "id": "eixo", "kind": "shape", "x": 455, "y": 300, "width": 3, "height": 1450, "color": "#4C5B68", "cue": 0 }
+      ],
+      "beats": [
+        { "id": "oculta-titulo", "at": { "cue": 1, "cueProgress": 0 }, "action": "hide", "target": "titulo-cena" },
+        { "id": "camera-para-b", "at": { "cue": 1, "cueProgress": 0.05 }, "action": "camera", "x": 640, "y": 940, "durationFrames": 24 },
+        { "id": "revela-b", "at": { "cue": 1, "cueProgress": 0.58 }, "action": "show", "target": "marco-b" },
+        { "id": "revela-rotulo-b", "at": { "cue": 1, "cueProgress": 0.6 }, "action": "show", "target": "rotulo-b" },
+        { "id": "camera-para-c", "at": { "cue": 2, "cueProgress": 0.05 }, "action": "camera", "x": 640, "y": 1570, "durationFrames": 24 },
+        { "id": "revela-c", "at": { "cue": 2, "cueProgress": 0.58 }, "action": "show", "target": "marco-c" },
+        { "id": "revela-rotulo-c", "at": { "cue": 2, "cueProgress": 0.6 }, "action": "show", "target": "rotulo-c" }
+      ]
+    }]
+  }]
+}

@@ -1,0 +1,1687 @@
+{
+  "format": "studio-dark-ai-asset-bundle",
+  "version": 1,
+  "origin": "Generated externally by user using ChatGPT Plus, sliced by ChatGPT",
+  "licenseNote": "Original user-provided AI generated artwork; verify rights and usage policy for distribution.",
+  "style": {
+    "name": "Mid-century modern editorial / restrained Op Art",
+    "palette": [
+      "#F3EFE6",
+      "#222326",
+      "#EC6838",
+      "#47BAB2",
+      "#8E9189"
+    ]
+  },
+  "importStatus": "INSTALLED: embedded AI artwork is the default appearance for 60 original native IDs; 12 scenes are preview-only.",
+  "assets": [
+    {
+      "nativeId": "car",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/car.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 1,
+      "column": 1,
+      "sourceCell": [
+        0,
+        0,
+        300,
+        280
+      ],
+      "size": [
+        289,
+        156
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "3d1a72a2d4e622f3057ca0c31978d656e8083c031b12fca63ce93a98cf4c710f",
+      "studioDarkAssetId": "car",
+      "fallbackNativeId": "car",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "house",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/house.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 1,
+      "column": 2,
+      "sourceCell": [
+        300,
+        0,
+        564,
+        280
+      ],
+      "size": [
+        254,
+        197
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "2e53e610c43b54959a037c7c50dd35cf3fbdfdc2f6b6af80b1e8da417c0faed8",
+      "studioDarkAssetId": "house",
+      "fallbackNativeId": "house",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "building",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/building.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 1,
+      "column": 3,
+      "sourceCell": [
+        564,
+        0,
+        842,
+        280
+      ],
+      "size": [
+        255,
+        232
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "ec7893114b23c25781ad83017a94d3b3b017e0c50b28869927a1c0c00efe40cb",
+      "studioDarkAssetId": "building",
+      "fallbackNativeId": "building",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "document",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/document.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 1,
+      "column": 4,
+      "sourceCell": [
+        842,
+        0,
+        1122,
+        280
+      ],
+      "size": [
+        188,
+        231
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "0734782cca8cac156483560472a8176d75c31cc83afec8bbf1c06911f8d9bdf1",
+      "studioDarkAssetId": "document",
+      "fallbackNativeId": "document",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "computer",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/computer.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 1,
+      "column": 5,
+      "sourceCell": [
+        1122,
+        0,
+        1402,
+        280
+      ],
+      "size": [
+        241,
+        218
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "5d4d8d2427bc9bd7a50c16372bb3868e7234a28bcebeef4f69ef446b06ff2c94",
+      "studioDarkAssetId": "computer",
+      "fallbackNativeId": "computer",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "phone",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/phone.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 2,
+      "column": 1,
+      "sourceCell": [
+        0,
+        280,
+        280,
+        561
+      ],
+      "size": [
+        137,
+        240
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "462151c491d45378557e2e87fc3f1269e2805eb9489278b8d8432b493eccce06",
+      "studioDarkAssetId": "phone",
+      "fallbackNativeId": "phone",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "coins",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/coins.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 2,
+      "column": 2,
+      "sourceCell": [
+        280,
+        280,
+        565,
+        561
+      ],
+      "size": [
+        251,
+        216
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "ca8a4f5e0fc5139ebf1a648e61e7dcf7eb4bc0110af9c3cb85b51c7cd52824ee",
+      "studioDarkAssetId": "coins",
+      "fallbackNativeId": "coins",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "price-tag",
+      "category": "objects",
+      "path": "assets/ai-library/v1/objects/price-tag.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 2,
+      "column": 3,
+      "sourceCell": [
+        565,
+        280,
+        841,
+        561
+      ],
+      "size": [
+        159,
+        262
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "8af9d080b092d2eda3c21efb1e176df838ba754137fa1f1b93da5a372a49029a",
+      "studioDarkAssetId": "price-tag",
+      "fallbackNativeId": "price-tag",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "laptop",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/laptop.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 2,
+      "column": 4,
+      "sourceCell": [
+        841,
+        280,
+        1146,
+        561
+      ],
+      "size": [
+        288,
+        215
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "22c5cedfbb1c0a4378c5f13efbb60a390f80991a61f3363401609a984b1a300e",
+      "studioDarkAssetId": "laptop",
+      "fallbackNativeId": "laptop",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "tablet",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/tablet.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 2,
+      "column": 5,
+      "sourceCell": [
+        1146,
+        280,
+        1402,
+        561
+      ],
+      "size": [
+        177,
+        241
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "3da739772727ea211d92a59b4da34f1a49ae3eecbff31e06348c52083db05e70",
+      "studioDarkAssetId": "tablet",
+      "fallbackNativeId": "tablet",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "camera",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/camera.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 3,
+      "column": 1,
+      "sourceCell": [
+        0,
+        561,
+        291,
+        831
+      ],
+      "size": [
+        264,
+        215
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "b755e3b7d0a23e38b827e1b75f7e34ccd1e81d84b7c826c960e32e25047448cf",
+      "studioDarkAssetId": "camera",
+      "fallbackNativeId": "camera",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "microphone",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/microphone.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 3,
+      "column": 2,
+      "sourceCell": [
+        291,
+        561,
+        561,
+        831
+      ],
+      "size": [
+        148,
+        255
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "a7ffd4e9a17263bf7d0751a89925bc31f9aa7a2a713b24c07d88ecb11ae21817",
+      "studioDarkAssetId": "microphone",
+      "fallbackNativeId": "microphone",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "headphones",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/headphones.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 3,
+      "column": 3,
+      "sourceCell": [
+        561,
+        561,
+        841,
+        831
+      ],
+      "size": [
+        244,
+        251
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "73351cc1297a2af1cada38007513e731a4d5413f54649c34b82316df11f792d0",
+      "studioDarkAssetId": "headphones",
+      "fallbackNativeId": "headphones",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "chip",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/chip.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 3,
+      "column": 4,
+      "sourceCell": [
+        841,
+        561,
+        1122,
+        831
+      ],
+      "size": [
+        255,
+        254
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "8d6ab0e09733985be63f45f911b936e8f8d5163a2cc63ad7c5f0e7abb8ac0be4",
+      "studioDarkAssetId": "chip",
+      "fallbackNativeId": "chip",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "server",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/server.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 3,
+      "column": 5,
+      "sourceCell": [
+        1122,
+        561,
+        1402,
+        831
+      ],
+      "size": [
+        215,
+        227
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "a9473d499beb02d43ee8fc197fe11858ff02fc3b479c4db81a120e89b147f6c8",
+      "studioDarkAssetId": "server",
+      "fallbackNativeId": "server",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "cloud",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/cloud.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 4,
+      "column": 1,
+      "sourceCell": [
+        0,
+        831,
+        295,
+        1122
+      ],
+      "size": [
+        272,
+        232
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "afa40ea718c1b4132d5284ab62840d11550abb36149e8f89f68ddbcc844e3720",
+      "studioDarkAssetId": "cloud",
+      "fallbackNativeId": "cloud",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "wifi",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/wifi.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 4,
+      "column": 2,
+      "sourceCell": [
+        295,
+        831,
+        566,
+        1122
+      ],
+      "size": [
+        255,
+        213
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "7864db358a33072c1d7244148e8d8444a3b2c8260f3c06d3c3a81f83375f4c75",
+      "studioDarkAssetId": "wifi",
+      "fallbackNativeId": "wifi",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "lock",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/lock.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 4,
+      "column": 3,
+      "sourceCell": [
+        566,
+        831,
+        841,
+        1122
+      ],
+      "size": [
+        181,
+        243
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "58bd40e749f8ddd182e56e20193d9df5e70e29df9df36762ca646ffcd812460d",
+      "studioDarkAssetId": "lock",
+      "fallbackNativeId": "lock",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "notification",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/notification.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 4,
+      "column": 4,
+      "sourceCell": [
+        841,
+        831,
+        1122,
+        1122
+      ],
+      "size": [
+        196,
+        216
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "5c1eb47c552f1e687d2666eb924a4b6704b3201b27faa79f7a54e081338868af",
+      "studioDarkAssetId": "notification",
+      "fallbackNativeId": "notification",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "robot",
+      "category": "technology",
+      "path": "assets/ai-library/v1/technology/robot.png",
+      "sourceSheet": "SD-AI-01-objetos-tecnologia.png",
+      "row": 4,
+      "column": 5,
+      "sourceCell": [
+        1122,
+        831,
+        1402,
+        1122
+      ],
+      "size": [
+        242,
+        250
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "fd0d8fade76be8fd56b4984792ecb382b4d8f1241e457b37ddaa1d3d2cb7ce7a",
+      "studioDarkAssetId": "robot",
+      "fallbackNativeId": "robot",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "chat-bubble",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/chat-bubble.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 1,
+      "sourceCell": [
+        0,
+        0,
+        302,
+        313
+      ],
+      "size": [
+        267,
+        210
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "9cf555f9b2455a353f22f9a58c9c5ac5e0e27310db6aa9cb73482a566d7c8399",
+      "studioDarkAssetId": "chat-bubble",
+      "fallbackNativeId": "chat-bubble",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "email",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/email.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 2,
+      "sourceCell": [
+        302,
+        0,
+        593,
+        313
+      ],
+      "size": [
+        259,
+        170
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "3a0c149cc63d9d8ca7e4e6e220576670f698d1e55dbdb69e9e54f37849a4193c",
+      "studioDarkAssetId": "email",
+      "fallbackNativeId": "email",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "newspaper",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/newspaper.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 3,
+      "sourceCell": [
+        593,
+        0,
+        887,
+        313
+      ],
+      "size": [
+        258,
+        234
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "d5b9d4c6b59582a8210d2d2c63c2dc5da10860600ef4e5a5366f1e53e99da512",
+      "studioDarkAssetId": "newspaper",
+      "fallbackNativeId": "newspaper",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "book",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/book.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 4,
+      "sourceCell": [
+        887,
+        0,
+        1192,
+        313
+      ],
+      "size": [
+        295,
+        213
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "b1456d3b5cca196b92e73d0b260b52b7b63d005fc8c8557d99ebc7b7e525adf9",
+      "studioDarkAssetId": "book",
+      "fallbackNativeId": "book",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "calendar",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/calendar.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 5,
+      "sourceCell": [
+        1192,
+        0,
+        1479,
+        313
+      ],
+      "size": [
+        268,
+        226
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "821579fc35dd8d84b3cc4d841ea03422b20a65ff6015448955658ecffc1423ae",
+      "studioDarkAssetId": "calendar",
+      "fallbackNativeId": "calendar",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "clock",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/clock.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 1,
+      "column": 6,
+      "sourceCell": [
+        1479,
+        0,
+        1774,
+        313
+      ],
+      "size": [
+        237,
+        237
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "0a5b14d9db6ee13bf35c46e020c0e25eea08dc13f8d98136d2119a0c18fcc424",
+      "studioDarkAssetId": "clock",
+      "fallbackNativeId": "clock",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "hourglass",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/hourglass.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 1,
+      "sourceCell": [
+        0,
+        313,
+        296,
+        595
+      ],
+      "size": [
+        180,
+        249
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "15a64f7303e3ba27c1635fda02996b53176aa86b3715a0b7ed777b013a7e5f21",
+      "studioDarkAssetId": "hourglass",
+      "fallbackNativeId": "hourglass",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "eye",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/eye.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 2,
+      "sourceCell": [
+        296,
+        313,
+        609,
+        595
+      ],
+      "size": [
+        299,
+        187
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "ce962aa81402c662a2e9ef1e8226a507f3d4915950f5b81b47f67fa921dca884",
+      "studioDarkAssetId": "eye",
+      "fallbackNativeId": "eye",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "magnifier",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/magnifier.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 3,
+      "sourceCell": [
+        609,
+        313,
+        887,
+        595
+      ],
+      "size": [
+        252,
+        259
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "e20f0c617d4f586c5455141aa4411589dce33f0987af62e4b986f3946da95091",
+      "studioDarkAssetId": "magnifier",
+      "fallbackNativeId": "magnifier",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "target",
+      "category": "communication",
+      "path": "assets/ai-library/v1/communication/target.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 4,
+      "sourceCell": [
+        887,
+        313,
+        1183,
+        595
+      ],
+      "size": [
+        244,
+        246
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "c1b5a9633c8e557c77f3e45af34053264049a583bf6b506f42fd802e7cc4c1b6",
+      "studioDarkAssetId": "target",
+      "fallbackNativeId": "target",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "bank",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/bank.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 5,
+      "sourceCell": [
+        1183,
+        313,
+        1478,
+        595
+      ],
+      "size": [
+        279,
+        250
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "47a9622d83e4cf4913cc62be37d6a538b63f2576a4471e9814ab6e525ddddc32",
+      "studioDarkAssetId": "bank",
+      "fallbackNativeId": "bank",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "wallet",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/wallet.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 2,
+      "column": 6,
+      "sourceCell": [
+        1478,
+        313,
+        1774,
+        595
+      ],
+      "size": [
+        241,
+        215
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "687a171fecc2cec9c1ac32c576f6db6b5b7f8b891dbdc7f4288d4dd65afed868",
+      "studioDarkAssetId": "wallet",
+      "fallbackNativeId": "wallet",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "credit-card",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/credit-card.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 1,
+      "sourceCell": [
+        0,
+        595,
+        300,
+        887
+      ],
+      "size": [
+        262,
+        184
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "43ca2b45fedef2a508a68a5ee0e37d668f5b6149a5d0ea1bfea1d7c494fc6409",
+      "studioDarkAssetId": "credit-card",
+      "fallbackNativeId": "credit-card",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "cash",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/cash.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 2,
+      "sourceCell": [
+        300,
+        595,
+        616,
+        887
+      ],
+      "size": [
+        296,
+        223
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "2124ec8136c1aff0eca4d0b6243ef438e4bb2ca06fca6d438ae084d2a4c24cad",
+      "studioDarkAssetId": "cash",
+      "fallbackNativeId": "cash",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "receipt",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/receipt.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 3,
+      "sourceCell": [
+        616,
+        595,
+        884,
+        887
+      ],
+      "size": [
+        182,
+        243
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "cf587215da9f12f82a111954ec2d4d7b08e3775e74ffe19ae785043c7df0b812",
+      "studioDarkAssetId": "receipt",
+      "fallbackNativeId": "receipt",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "shopping-cart",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/shopping-cart.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 4,
+      "sourceCell": [
+        884,
+        595,
+        1151,
+        887
+      ],
+      "size": [
+        266,
+        228
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [
+        "ink-touches-cell-R"
+      ],
+      "sha256": "058610afd14a547c0d98ff1783bd35cdfc1d41a42a766730d66c5397b950c196",
+      "studioDarkAssetId": "shopping-cart",
+      "fallbackNativeId": "shopping-cart",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "factory",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/factory.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 5,
+      "sourceCell": [
+        1151,
+        595,
+        1478,
+        887
+      ],
+      "size": [
+        309,
+        228
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "10db5661998271399a49e6a9ca680253c3234bd00f73035ea9538943d9f163d0",
+      "studioDarkAssetId": "factory",
+      "fallbackNativeId": "factory",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "briefcase",
+      "category": "finance",
+      "path": "assets/ai-library/v1/finance/briefcase.png",
+      "sourceSheet": "SD-AI-02-comunicacao-financas.png",
+      "row": 3,
+      "column": 6,
+      "sourceCell": [
+        1478,
+        595,
+        1774,
+        887
+      ],
+      "size": [
+        252,
+        228
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "27fc7ee1bbf58154dc2415b91f584148a41e721841ff70510a4621cef1692c62",
+      "studioDarkAssetId": "briefcase",
+      "fallbackNativeId": "briefcase",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "atom",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/atom.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 1,
+      "column": 1,
+      "sourceCell": [
+        0,
+        0,
+        402,
+        395
+      ],
+      "size": [
+        361,
+        363
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "a6c9cc0eb7023c14e1805a349cb3efd7370ff5d7f0022a3d2926566c1b04f185",
+      "studioDarkAssetId": "atom",
+      "fallbackNativeId": "atom",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "dna",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/dna.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 1,
+      "column": 2,
+      "sourceCell": [
+        402,
+        0,
+        793,
+        395
+      ],
+      "size": [
+        208,
+        359
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "b06445818a750e5709b0aed858bf53a16dd42fd944dd1631d44cb444ee3f4418",
+      "studioDarkAssetId": "dna",
+      "fallbackNativeId": "dna",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "flask",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/flask.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 1,
+      "column": 3,
+      "sourceCell": [
+        793,
+        0,
+        1190,
+        395
+      ],
+      "size": [
+        292,
+        339
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "0eeb3742b88b58ea5e9a534ac7226fbbc1d41a61d6104cb489d2169d08b01e86",
+      "studioDarkAssetId": "flask",
+      "fallbackNativeId": "flask",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "brain",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/brain.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 1,
+      "column": 4,
+      "sourceCell": [
+        1190,
+        0,
+        1589,
+        395
+      ],
+      "size": [
+        387,
+        329
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "63dd3f1c36f2f4aa232f0ab1bc0e3437de9ae86dbda409a5c8b2f6f2aab44cc3",
+      "studioDarkAssetId": "brain",
+      "fallbackNativeId": "brain",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "globe",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/globe.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 1,
+      "column": 5,
+      "sourceCell": [
+        1589,
+        0,
+        1983,
+        395
+      ],
+      "size": [
+        326,
+        363
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "f5d83d13f9d1601e1abe4c101b3170d0844c0d061902f772047d1d730cac7b1c",
+      "studioDarkAssetId": "globe",
+      "fallbackNativeId": "globe",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "map-pin",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/map-pin.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 2,
+      "column": 1,
+      "sourceCell": [
+        0,
+        395,
+        397,
+        793
+      ],
+      "size": [
+        248,
+        341
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "a4355e8052e76691b27ffc51308b6a61889afb854564fcdc444d904efbb16aa6",
+      "studioDarkAssetId": "map-pin",
+      "fallbackNativeId": "map-pin",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "compass",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/compass.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 2,
+      "column": 2,
+      "sourceCell": [
+        397,
+        395,
+        793,
+        793
+      ],
+      "size": [
+        321,
+        361
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "f6bf2f2ea0f05422949cb90bdeba72a44493b0a7a1b62384e1cc0e12d6d8e230",
+      "studioDarkAssetId": "compass",
+      "fallbackNativeId": "compass",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "rocket",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/rocket.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 2,
+      "column": 3,
+      "sourceCell": [
+        793,
+        395,
+        1172,
+        793
+      ],
+      "size": [
+        292,
+        381
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "9a9f5435cc5557b69454b735e0c940892ed8eeeedd7e91f422fdd322c7a6d216",
+      "studioDarkAssetId": "rocket",
+      "fallbackNativeId": "rocket",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "satellite",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/satellite.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 2,
+      "column": 4,
+      "sourceCell": [
+        1172,
+        395,
+        1593,
+        793
+      ],
+      "size": [
+        421,
+        320
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "77d8b5c00dea0c6b53733239e9aebcf5b5237fa1b147eb7232de64196ae40488",
+      "studioDarkAssetId": "satellite",
+      "fallbackNativeId": "satellite",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "lightbulb",
+      "category": "science",
+      "path": "assets/ai-library/v1/science/lightbulb.png",
+      "sourceSheet": "SD-AI-03-ciencia.png",
+      "row": 2,
+      "column": 5,
+      "sourceCell": [
+        1593,
+        395,
+        1983,
+        793
+      ],
+      "size": [
+        236,
+        364
+      ],
+      "kind": "transparent-illustration",
+      "qualityFlags": [],
+      "sha256": "6b396e9dbaefd75552866cc90d2396a8719fd2a1f45ce574ee4342c4c4a11528",
+      "studioDarkAssetId": "lightbulb",
+      "fallbackNativeId": "lightbulb",
+      "previewOnly": false,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "street",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/street.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 1,
+      "column": 1,
+      "sourceCell": [
+        0,
+        0,
+        483,
+        272
+      ],
+      "size": [
+        483,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "e7aa68d99e7b3488dcd978a161949944515f78d7ecdf0252831c6dde8b6af434",
+      "studioDarkAssetId": "street",
+      "fallbackNativeId": "street",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "office",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/office.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 1,
+      "column": 2,
+      "sourceCell": [
+        483,
+        0,
+        965,
+        272
+      ],
+      "size": [
+        482,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "99d2af516ef1552b631fcc413b5b96bb3cbcd779715b33e0a1030b8cfe59dae4",
+      "studioDarkAssetId": "office",
+      "fallbackNativeId": "office",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "showroom",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/showroom.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 1,
+      "column": 3,
+      "sourceCell": [
+        965,
+        0,
+        1448,
+        272
+      ],
+      "size": [
+        483,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "9396ffce43de52e4505a2bbcf07a7d3c0854dcdddb64f3256cae95b2b4040748",
+      "studioDarkAssetId": "showroom",
+      "fallbackNativeId": "showroom",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "studio",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/studio.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 2,
+      "column": 1,
+      "sourceCell": [
+        0,
+        272,
+        483,
+        543
+      ],
+      "size": [
+        483,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "7298bd791e64bf789c90fa33447ebcca9cb60b79484e8a45e8de0eac069f28a1",
+      "studioDarkAssetId": "studio",
+      "fallbackNativeId": "studio",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "night-city",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/night-city.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 2,
+      "column": 2,
+      "sourceCell": [
+        483,
+        272,
+        965,
+        543
+      ],
+      "size": [
+        482,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "665b7113938d8154291eaf6434bb6f6427dbe728c7b2e75676c94b52a497ddb6",
+      "studioDarkAssetId": "night-city",
+      "fallbackNativeId": "night-city",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "server-room",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/server-room.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 2,
+      "column": 3,
+      "sourceCell": [
+        965,
+        272,
+        1448,
+        543
+      ],
+      "size": [
+        483,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "a8f2d8913ea6092a3a3c6db02e56bfaa4ab9bd5930586944cb6d1418d6c44f79",
+      "studioDarkAssetId": "server-room",
+      "fallbackNativeId": "server-room",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "newsroom",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/newsroom.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 3,
+      "column": 1,
+      "sourceCell": [
+        0,
+        543,
+        483,
+        814
+      ],
+      "size": [
+        483,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "f96a20ac9a2bfce5bf66582d223eb07a3ab1ac9e376b0ad12a622479f5cab225",
+      "studioDarkAssetId": "newsroom",
+      "fallbackNativeId": "newsroom",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "laboratory-scene",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/laboratory-scene.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 3,
+      "column": 2,
+      "sourceCell": [
+        483,
+        543,
+        965,
+        814
+      ],
+      "size": [
+        482,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "a11ffb88c7f153659a6debfa1d6364887a51e0d55274c06a971437c14415226e",
+      "studioDarkAssetId": "laboratory-scene",
+      "fallbackNativeId": "laboratory-scene",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "map-room",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/map-room.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 3,
+      "column": 3,
+      "sourceCell": [
+        965,
+        543,
+        1448,
+        814
+      ],
+      "size": [
+        483,
+        271
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "9f5b59116f80440f61dfee388d0879b4f381a7d88e0d2758beaacd04ee0dab3e",
+      "studioDarkAssetId": "map-room",
+      "fallbackNativeId": "map-room",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "financial-district",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/financial-district.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 4,
+      "column": 1,
+      "sourceCell": [
+        0,
+        814,
+        483,
+        1086
+      ],
+      "size": [
+        483,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "50e1b11c2160c16d69b079a510bde62f2715bca9c45bae677749d64ec490f4a7",
+      "studioDarkAssetId": "financial-district",
+      "fallbackNativeId": "financial-district",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "cyber-grid",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/cyber-grid.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 4,
+      "column": 2,
+      "sourceCell": [
+        483,
+        814,
+        965,
+        1086
+      ],
+      "size": [
+        482,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "37dff56040f18970c2224e4a7b47677564cfe7ab446f29431001ecfb0e3e1f2c",
+      "studioDarkAssetId": "cyber-grid",
+      "fallbackNativeId": "cyber-grid",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    },
+    {
+      "nativeId": "archive-room",
+      "category": "scenes",
+      "path": "assets/ai-library/v1/scenes/archive-room.png",
+      "sourceSheet": "SD-AI-04-cenarios.png",
+      "row": 4,
+      "column": 3,
+      "sourceCell": [
+        965,
+        814,
+        1448,
+        1086
+      ],
+      "size": [
+        483,
+        272
+      ],
+      "kind": "scene-preview",
+      "qualityFlags": [
+        "preview-low-resolution"
+      ],
+      "sha256": "fbcc900c6bc7a2a1d38722ff1fcd5a81a16c9e250ddd4074cf8b19e934bfe6b8",
+      "studioDarkAssetId": "archive-room",
+      "fallbackNativeId": "archive-room",
+      "previewOnly": true,
+      "recolorable": false,
+      "internalAnimation": false
+    }
+  ],
+  "sheets": [
+    {
+      "standardFile": "sources/SD-AI-01-objetos-tecnologia.png",
+      "uploadedFile": "Grelha de ícones tecnológicos modernos (1).png",
+      "columns": 5,
+      "rows": 4,
+      "width": 1402,
+      "height": 1122,
+      "rowCuts": [
+        0,
+        280,
+        561,
+        831,
+        1122
+      ]
+    },
+    {
+      "standardFile": "sources/SD-AI-02-comunicacao-financas.png",
+      "uploadedFile": "Ícones editoriais de comunicação e finanças.png",
+      "columns": 6,
+      "rows": 3,
+      "width": 1774,
+      "height": 887,
+      "rowCuts": [
+        0,
+        313,
+        595,
+        887
+      ]
+    },
+    {
+      "standardFile": "sources/SD-AI-03-ciencia.png",
+      "uploadedFile": "Folha de ícones científicos retrofuturistas.png",
+      "columns": 5,
+      "rows": 2,
+      "width": 1983,
+      "height": 793,
+      "rowCuts": [
+        0,
+        395,
+        793
+      ]
+    },
+    {
+      "standardFile": "sources/SD-AI-04-cenarios.png",
+      "uploadedFile": "Doze ambientes cinematográficos em grelha.png",
+      "columns": 3,
+      "rows": 4,
+      "width": 1448,
+      "height": 1086,
+      "rowCuts": [
+        0,
+        272,
+        543,
+        814,
+        1086
+      ]
+    }
+  ],
+  "nativeIdsExcluded": [
+    "person",
+    "bars",
+    "chart-line",
+    "chart-pie",
+    "chart-donut",
+    "chart-area",
+    "timeline",
+    "flowchart",
+    "network",
+    "dashboard",
+    "progress-ring",
+    "data-table"
+  ],
+  "studioDarkIntegration": {
+    "status": "installed",
+    "defaultArtworkReplaced": true,
+    "duplicateLibraryItems": false,
+    "originalNativeIdsPreserved": true,
+    "fallback": "procedural-renderer-internal-only",
+    "renderer": "QPainter with cached Qt embedded PNG resources",
+    "scenePreviewPolicy": "12 original native scene IDs use 482-483x271-272 low-resolution preview PNGs; replace files without changing IDs"
+  }
+}

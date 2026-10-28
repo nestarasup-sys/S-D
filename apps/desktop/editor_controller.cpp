@@ -14,7 +14,9 @@
 #include <functional>
 #include <limits>
 #include <studio/core/library.hpp>
+#include <studio/composition/visual_quality.hpp>
 #include <studio/media/wave.hpp>
+#include <QSaveFile>
 #include <unordered_map>
 
 namespace {
@@ -57,8 +59,14 @@ QVariantMap map(const studio::Node &n) {
                                                           : "image"},
             {"text", q(n.text)},
             {"color", q(n.color)},
+            {"source", q(n.source)},
+            {"mediaMissing", (n.kind == studio::NodeKind::Image || n.kind == studio::NodeKind::Svg ||
+                              n.kind == studio::NodeKind::Video) && !n.source.empty() &&
+                                 !QFileInfo(QString::fromStdString(n.source)).isFile()},
             {"start", int(n.start)},
             {"duration", int(n.duration)},
+            {"motionFrames", n.motionFrames},
+            {"exitFrames", n.exitFrames},
             {"x", n.x},
             {"y", n.y},
             {"width", n.width},
@@ -287,7 +295,6 @@ void EditorController::selectNode(QString id) {
         return;
     selectedId_ = std::move(id);
     selectedIds_ = selectedId_.isEmpty() ? QStringList{} : QStringList{selectedId_};
-    emit documentChanged();
     emit selectedChanged();
 }
 void EditorController::toggleNodeSelection(QString id) {
@@ -302,7 +309,6 @@ void EditorController::toggleNodeSelection(QString id) {
         selectedIds_.append(id);
         selectedId_ = id;
     }
-    emit documentChanged();
     emit selectedChanged();
 }
 void EditorController::beginGesture() {
@@ -341,7 +347,25 @@ void EditorController::updateSelected(QString key, QVariant value) {
     const bool keyframedEdit = selectedNode && !selectedNode->keyframes.empty() && transformProperty;
     if (before.isEmpty() || !before.contains(key) || (before[key] == value && !keyframedEdit))
         return;
-    if ((key == "start" || key == "duration" || key == "wordAnimationDurationFrames") &&
+    if (key == "source" && selectedNode && selectedNode->role.rfind("premium:image:", 0) == 0) {
+        const auto source = value.toString();
+        const QFileInfo info(source);
+        if (!info.isFile() ||
+            !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(info.suffix().toLower())) {
+            notify("O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
+            return;
+        }
+        const auto root = QFileInfo(managedMediaRoot_).canonicalFilePath();
+        const auto canonical = info.canonicalFilePath();
+        const auto relative = QDir(root).relativeFilePath(canonical);
+        if (root.isEmpty() || canonical.isEmpty() || relative == ".." || relative.startsWith("../") ||
+            relative.startsWith("..\\") || QFileInfo(relative).isAbsolute()) {
+            notify("Slots premium aceitam apenas imagens importadas para a mídia gerenciada do workspace.");
+            return;
+        }
+    }
+    if ((key == "start" || key == "duration" || key == "motionFrames" || key == "exitFrames" ||
+         key == "wordAnimationDurationFrames") &&
         (!std::isfinite(value.toDouble()) || std::floor(value.toDouble()) != value.toDouble())) {
         notify("Durações e tempos devem ser números inteiros de frames.");
         return;
@@ -368,6 +392,10 @@ void EditorController::updateSelected(QString key, QVariant value) {
                 }
                 if (key == "text")
                     n.text = value.toString().toStdString();
+                else if (key == "source" && n.role.rfind("premium:image:", 0) == 0) {
+                    n.kind = studio::NodeKind::Image;
+                    n.source = value.toString().toStdString();
+                }
                 else if (key == "color")
                     n.color = value.toString().toStdString();
                 else if (key == "x")
@@ -386,6 +414,10 @@ void EditorController::updateSelected(QString key, QVariant value) {
                     n.start = value.toInt();
                 else if (key == "duration")
                     n.duration = value.toInt();
+                else if (key == "motionFrames")
+                    n.motionFrames = value.toInt();
+                else if (key == "exitFrames")
+                    n.exitFrames = value.toInt();
                 else if (key == "animated")
                     n.animated = value.toBool();
                 else if (key == "pose")
@@ -434,6 +466,9 @@ void EditorController::updateSelected(QString key, QVariant value) {
         changed();
     else
         notify(q(error));
+}
+void EditorController::setManagedMediaRoot(QString path) {
+    managedMediaRoot_ = QFileInfo(std::move(path)).absoluteFilePath();
 }
 bool EditorController::setCaptionWordBoundary(int wordIndex, QString edge, int frame) {
     const auto *node = studio::findNode(project(), selectedId_.toStdString());
@@ -979,7 +1014,9 @@ bool EditorController::insertLibraryNode(studio::Node n) {
     }
     auto error = editor_.execute([&](studio::Project &p) {
         if (n.kind == studio::NodeKind::Video)
-            p.schemaVersion = std::max(p.schemaVersion, 5);
+            p.schemaVersion = std::max(p.schemaVersion, 10);
+        if (n.textAutoFit)
+            p.schemaVersion = std::max(p.schemaVersion, 15);
         if (n.role == "background")
             p.nodes.insert(p.nodes.begin(), n);
         else
@@ -1033,7 +1070,10 @@ bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
     }
     const auto rootId = nodes.front().id;
     const auto error = editor_.execute([&](studio::Project &p) {
-        p.schemaVersion = std::max(p.schemaVersion, 3);
+        const bool hasVersion15Data = std::any_of(nodes.begin(), nodes.end(), [](const auto &node) {
+            return node.textAutoFit;
+        });
+        p.schemaVersion = std::max(p.schemaVersion, hasVersion15Data ? 15 : 3);
         p.nodes.insert(p.nodes.end(), nodes.begin(), nodes.end());
     });
     if (!error.empty()) {
@@ -1403,12 +1443,18 @@ void EditorController::resizeShotTransition(QString shotId, int durationFrames) 
         notify(q(error));
 }
 void EditorController::undo() {
+    const bool available = editor_.canUndo();
     if (editor_.undo())
         changed();
+    else if (available)
+        notify("Memória insuficiente para desfazer sem comprometer o projeto atual.");
 }
 void EditorController::redo() {
+    const bool available = editor_.canRedo();
     if (editor_.redo())
         changed();
+    else if (available)
+        notify("Memória insuficiente para refazer sem comprometer o projeto atual.");
 }
 void EditorController::setFrame(int frame) {
     if (playing_)
@@ -1663,6 +1709,24 @@ void EditorController::exportVideo(QUrl url) {
     notify(hasAudio() ? "Exportando vídeo com narração e trilha. Você pode continuar editando."
                       : "Exportando composição sem áudio. Você pode continuar editando.");
     emit exportChanged();
+}
+QVariantList EditorController::analyzeVisualQuality() {
+    const auto quality = studio::VisualQualityAnalyzer::analyze(project());
+    QDir().mkpath(diagnosticsDirectory_);
+    QSaveFile file(diagnosticsDirectory_ + "/visual-quality-last.json");
+    const auto bytes = QJsonDocument(quality.toJson()).toJson(QJsonDocument::Indented);
+    if (file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size())
+        file.commit();
+    QVariantList issues;
+    for (const auto &issue : quality.issues)
+        issues.append(QVariantMap{{"type", issue.type},
+                                  {"severity", issue.toJson()["severity"].toString()},
+                                  {"frame", qlonglong(issue.firstFrame)},
+                                  {"message", issue.displayText()}});
+    notify(quality.issues.empty()
+               ? "Análise concluída: nenhum problema automático encontrado. Isso não substitui a revisão visual."
+               : QString("Análise visual encontrou %1 apontamento(s). Revise antes da exportação.").arg(issues.size()));
+    return issues;
 }
 void EditorController::cancelExport() {
     if (!exporting())

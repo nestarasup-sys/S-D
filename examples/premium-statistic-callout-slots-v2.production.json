@@ -1,0 +1,31 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "Statistic Callout declarativo",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "indicador",
+      "narration": ["O valor abaixo é apenas um exemplo visual e precisa de uma fonte real antes da publicação."],
+      "elements": [
+        {
+          "id": "statistic-callout",
+          "kind": "library",
+          "assetId": "premium:statistic-callout-pack-01",
+          "cue": 0,
+          "slots": {
+            "value": "12,4",
+            "unit": "% DEMONSTRATIVO",
+            "description": "Exemplo fictício para mostrar hierarquia, contexto e referência.",
+            "source": "NÃO É UM DADO REAL · SUBSTITUA POR FONTE VERIFICADA"
+          },
+          "palette": { "surface": "#17232A", "accent": "#54CBB1", "highlight": "#E4B970", "text": "#F0F4EA", "secondary": "#94BEB3", "muted": "#B1C0C4" }
+        }
+      ]
+    }
+  ]
+}

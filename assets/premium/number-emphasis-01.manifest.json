@@ -1,0 +1,80 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 1,
+  "id": "premium:number-emphasis-01",
+  "name": "Number Emphasis · dado em destaque",
+  "description": "Template de número editorial com unidade, contexto e espaço para referência verificável.",
+  "version": "1.0.0",
+  "type": "premium-motion-template",
+  "category": "motion-graphics",
+  "tags": ["number", "statistic", "data", "documentary"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "number-emphasis-root",
+  "layers": [
+    { "id": "number-emphasis-root", "kind": "group", "role": "root" },
+    { "id": "number-surface", "parentId": "number-emphasis-root", "kind": "shape", "role": "surface" },
+    { "id": "number-accent", "parentId": "number-emphasis-root", "kind": "shape", "role": "accent" },
+    { "id": "number-kicker", "parentId": "number-emphasis-root", "kind": "text", "role": "editorial-kicker" },
+    { "id": "number-value", "parentId": "number-emphasis-root", "kind": "text", "role": "value" },
+    { "id": "number-unit", "parentId": "number-emphasis-root", "kind": "text", "role": "unit" },
+    { "id": "number-description", "parentId": "number-emphasis-root", "kind": "text", "role": "description" },
+    { "id": "number-source", "parentId": "number-emphasis-root", "kind": "text", "role": "source" }
+  ],
+  "hierarchy": { "root": "number-emphasis-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["fade-rise", "pop-scale", "stagger-sequence"],
+  "palette": { "tokens": ["surface", "accent", "text", "muted", "secondary"] },
+  "slots": [
+  {
+    "id": "value",
+    "kind": "text",
+    "nodeId": "number-value",
+    "role": "premium:number:value",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "unit",
+    "kind": "text",
+    "nodeId": "number-unit",
+    "role": "premium:number:unit",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 16,
+      "padding": 4
+    }
+  },
+  {
+    "id": "description",
+    "kind": "text",
+    "nodeId": "number-description",
+    "role": "premium:number:description",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 15,
+      "padding": 4
+    }
+  },
+  {
+    "id": "source",
+    "kind": "text",
+    "nodeId": "number-source",
+    "role": "premium:number:source",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 13,
+      "padding": 4
+    }
+  }
+],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

@@ -1,12 +1,19 @@
 #include <QFile>
+#include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
+#include <QImage>
+#include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QPainter>
+#include <QSet>
 #include <QTemporaryDir>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
 #include <studio/core/library.hpp>
 #include <studio/production/compiler.hpp>
@@ -38,6 +45,14 @@ int main(int argc, char **argv) {
     QGuiApplication app(argc, argv);
     QTemporaryDir directory;
     try {
+        check(studio::premiumSlotRole("premium:quote:text"),
+              "legacy premium role cache can initialize before declarative manifests load");
+        QString premiumCatalogError;
+        check(studio::initializePremiumCatalog(&premiumCatalogError) && premiumCatalogError.isEmpty() &&
+                  studio::premiumSlotRole("accent-rule") &&
+                  studio::premiumSlotRole("premium:question-hook:question") &&
+                  studio::premiumSlotRole("illustrative-bar"),
+              "declarative semantic roles become valid after the workspace-first initialization order");
         QFile fixture(QString(STUDIO_SOURCE_DIR) + "/examples/carros-caros.production.json");
         check(fixture.open(QIODevice::ReadOnly), "example exists");
         auto bytes = fixture.readAll();
@@ -524,6 +539,13 @@ int main(int argc, char **argv) {
                   studio::capabilities()["productionCapabilities"].toArray().contains("named-visual-style-presets") &&
                   studio::capabilities()["productionCapabilities"].toArray().contains("external-library-fonts"),
               "generated AI guide and capability manifest expose only the supported local styles and fonts");
+        const auto visualBeatGuide = studio::aiGuide({});
+        check(visualBeatGuide.contains("opacity` inicial seja 0") &&
+                  visualBeatGuide.contains("não interpolam antes do quadro marcado") &&
+                  visualBeatGuide.contains("revelação sequencial de três objetos") &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains(
+                      "instant-visual-beat-show-hide"),
+              "AI guide and capability catalog describe exact-frame Visual Beat visibility");
         auto wordRecipeJson = shotRecipeJson;
         auto wordScene = wordRecipeJson["scenes"].toArray().at(0).toObject();
         auto wordShots = wordScene["shots"].toArray();
@@ -729,6 +751,34 @@ int main(int argc, char **argv) {
         check(compiledShots.error.isEmpty() && compiledShots.project.schemaVersion == 7 &&
                   compiledShots.project.shots.size() == 2 && compiledShots.project.visualBeats.size() == 3,
               "shots and beats compile into editable schema 4 project markers");
+        auto titledSceneJson = shotRecipeJson;
+        auto titledScenes = titledSceneJson["scenes"].toArray();
+        auto titledSceneObject = titledScenes.at(0).toObject();
+        titledSceneObject["title"] = "Rótulo da cena na timeline";
+        titledScenes[0] = titledSceneObject;
+        titledSceneJson["scenes"] = titledScenes;
+        const auto parsedTitledScene =
+            studio::parseRecipe(QJsonDocument(titledSceneJson).toJson(), directory.path());
+        auto compiledTitledScene = parsedTitledScene.error.isEmpty()
+                                       ? studio::compileProduction(parsedTitledScene.recipe, shotAudio,
+                                                                   "titled-scene.wav")
+                                       : studio::CompileResult{};
+        const bool duplicateSceneHeading = std::any_of(
+            compiledTitledScene.project.nodes.begin(), compiledTitledScene.project.nodes.end(),
+            [](const auto &node) { return node.id == "heading-car-story"; });
+        check(parsedTitledScene.error.isEmpty() && compiledTitledScene.error.isEmpty() &&
+                  compiledTitledScene.project.scenes.front().name == "Rótulo da cena na timeline" &&
+                  !duplicateSceneHeading,
+              "v3 scene title is retained as timeline metadata without duplicating a visible heading over shots");
+        auto unknownSceneJson = titledSceneJson;
+        titledScenes = unknownSceneJson["scenes"].toArray();
+        titledSceneObject = titledScenes.at(0).toObject();
+        titledSceneObject["inventedSceneField"] = true;
+        titledScenes[0] = titledSceneObject;
+        unknownSceneJson["scenes"] = titledScenes;
+        check(studio::parseRecipe(QJsonDocument(unknownSceneJson).toJson(), directory.path())
+                      .error.contains("inventedSceneField"),
+              "unknown v3 scene fields name the unsupported key in the parser error");
         const auto compiledCameraPreset =
             studio::compileProduction(parsedCameraPreset.recipe, shotAudio, "camera-preset.wav");
         const auto cameraPresetShot = std::find_if(
@@ -864,9 +914,10 @@ int main(int argc, char **argv) {
                                                             nullptr, &wordMap);
         const auto *wordTimedPrice = studio::findNode(alignedWordElement.project, "price");
         check(alignedWordElement.error.isEmpty() && wordTimedPrice && wordTimedPrice->start == 3 &&
-                  wordTimedPrice->keyframes.size() == 3 && wordTimedPrice->keyframes[1].frame == 6 &&
-                  wordTimedPrice->keyframes[2].frame == 8,
-              "word alignment resolves element entry and editable transform keyframes");
+                  wordTimedPrice->keyframes.size() == 4 && wordTimedPrice->keyframes[0].frame == 4 &&
+                  wordTimedPrice->keyframes[1].frame == 5 && wordTimedPrice->keyframes[2].frame == 6 &&
+                  wordTimedPrice->keyframes[3].frame == 8,
+              "word alignment preserves a pre-reveal hold and editable transform keyframes");
         const auto persistedShots = studio::deserialize(studio::serialize(compiledShots.project));
         check(persistedShots.error.isEmpty() &&
                   persistedShots.project.shots.back().transitionIn == "dissolve" &&
@@ -911,9 +962,25 @@ int main(int argc, char **argv) {
                           [](const auto &key) { return key.frame == 2; }),
               "continuous shot focus records the final frame of its span");
         studio::CompositionPainter transitionPainter;
-        const auto beforeDissolve = transitionPainter.frame(compiledShots.project, 2);
-        const auto dissolveStart = transitionPainter.frame(compiledShots.project, 3);
-        const auto dissolveMiddle = transitionPainter.frame(compiledShots.project, 4);
+        // Use a high-contrast layer to make this transition assertion stable across
+        // Windows and Qt's offscreen font rasterizers; sparse full-frame sampling
+        // should not depend on a particular system font's antialiasing.
+        auto transitionProject = compiledShots.project;
+        studio::Node transitionMarker;
+        transitionMarker.id = "transition-regression-marker";
+        transitionMarker.kind = studio::NodeKind::Shape;
+        transitionMarker.name = "Transition regression marker";
+        transitionMarker.x = 360;
+        transitionMarker.y = 190;
+        transitionMarker.width = 560;
+        transitionMarker.height = 340;
+        transitionMarker.color = "#ff20a0";
+        transitionMarker.shotId = "price-cut";
+        transitionMarker.animated = false;
+        transitionProject.nodes.push_back(transitionMarker);
+        const auto beforeDissolve = transitionPainter.frame(transitionProject, 2);
+        const auto dissolveStart = transitionPainter.frame(transitionProject, 3);
+        const auto dissolveMiddle = transitionPainter.frame(transitionProject, 4);
         check(sampledImageDifference(beforeDissolve, dissolveStart) < 0.5,
               "dissolve starts on the outgoing shot without a visual jump");
         check(sampledImageDifference(dissolveStart, dissolveMiddle) > 0.5,
@@ -973,7 +1040,112 @@ int main(int argc, char **argv) {
         legacy.remove("audioSource");
         check(studio::deserialize(QJsonDocument(legacy).toJson()).project.schemaVersion == 2,
               "v1 migrates into v2 in memory");
+        check(studio::nativeLibrary().size() == 72,
+              "documentary native catalog has expected number of assets");
+        const auto imageBackedCount = std::count_if(studio::nativeLibrary().begin(), studio::nativeLibrary().end(),
+                                                     [](const auto &asset) { return !asset.resourcePath.empty(); });
+        const auto scenePreviewCount = std::count_if(studio::nativeLibrary().begin(), studio::nativeLibrary().end(),
+                                                      [](const auto &asset) { return asset.previewOnly; });
+        check(imageBackedCount == 60 && scenePreviewCount == 12,
+              "60 original native IDs use embedded AI PNG artwork, including 12 preview-only scenes");
+        for (const auto *id : {"person", "bars", "chart-line", "chart-pie", "chart-donut", "chart-area",
+                               "timeline", "flowchart", "network", "dashboard", "progress-ring", "data-table"})
+            check(studio::libraryItem(id) && studio::libraryItem(id)->resourcePath.empty(),
+                  "person and dynamic graph/data natives retain their procedural renderer");
+        check(studio::libraryItem("illustrated:car") == studio::libraryItem("car"),
+              "legacy illustrated IDs resolve to the same original native entry");
+        check(studio::libraryItem("rocket") && studio::libraryItem("night-city") &&
+                  studio::libraryItem("chart-donut"),
+              "new objects, data graphics and backgrounds exist in native catalog");
         studio::CompositionPainter painter;
+        auto artworkFixture = studio::makeEmpty();
+        auto artworkNode = [&](const std::string &id, double x, double y, double width, double height) {
+            studio::Node node;
+            node.id = id; node.kind = studio::NodeKind::Native; node.nativeId = id;
+            node.name = id; node.x = x; node.y = y; node.width = width; node.height = height;
+            node.animated = false; node.motion = "none";
+            artworkFixture.nodes.push_back(node);
+        };
+        artworkNode("car", 24, 400, 460, 210);
+        artworkNode("chip", 360, 80, 220, 220);
+        artworkNode("flask", 660, 68, 220, 255);
+        artworkNode("server", 940, 70, 215, 227);
+        artworkNode("satellite", 645, 365, 340, 255);
+        const auto artworkFrame = painter.frame(artworkFixture, 30);
+        check(!artworkFrame.isNull() && artworkFrame.size() == QSize(1280, 720),
+              "QPainter composes AI artwork when the recipe uses ordinary original native IDs");
+        QFile aiAssetManifest(QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/ai-library/asset-manifest.json");
+        check(aiAssetManifest.open(QIODevice::ReadOnly), "integrated AI asset manifest is present");
+        const auto aiManifest = QJsonDocument::fromJson(aiAssetManifest.readAll()).object();
+        check(aiManifest["importStatus"].toString().startsWith("INSTALLED") &&
+                  aiManifest["studioDarkIntegration"].toObject()["defaultArtworkReplaced"].toBool() &&
+                  !aiManifest["studioDarkIntegration"].toObject()["duplicateLibraryItems"].toBool(),
+              "asset manifest records original-ID replacement without duplicate library rows");
+        int transparentAssets = 0, previewAssets = 0;
+        QSet<QString> nativeIds;
+        for (const auto &entryValue : aiManifest["assets"].toArray()) {
+            const auto entry = entryValue.toObject();
+            const auto nativeId = entry["nativeId"].toString().toStdString();
+            const auto expectedId = nativeId;
+            const auto *asset = studio::libraryItem(expectedId);
+            const auto path = QString::fromStdString(asset ? asset->resourcePath : std::string{});
+            const auto idUnique = !nativeIds.contains(QString::fromStdString(expectedId));
+            nativeIds.insert(QString::fromStdString(expectedId));
+            QImageReader reader(path);
+            const auto decoded = reader.read();
+            check(asset && idUnique &&
+                      asset->fallbackId == nativeId && !decoded.isNull() &&
+                      entry["studioDarkAssetId"].toString() == QString::fromStdString(nativeId) &&
+                      decoded.size() == QSize(entry["size"].toArray()[0].toInt(),
+                                              entry["size"].toArray()[1].toInt()),
+                  "original manifest ID, embedded Qt resource, internal fallback and dimensions agree");
+            if (entry["kind"] == "transparent-illustration") {
+                ++transparentAssets;
+                check(decoded.hasAlphaChannel(), "each transparent native PNG retains its alpha channel");
+            }
+            if (entry["kind"] == "scene-preview") {
+                ++previewAssets;
+                check(asset->previewOnly, "low-resolution scene on its original ID remains preview-only");
+            }
+        }
+        check(transparentAssets == 48 && previewAssets == 12,
+              "the 60 replacements include 48 transparent objects and 12 scene previews");
+        const auto originalCarProject = [&] {
+            auto project = studio::makeEmpty();
+            studio::Node node; node.id = "car"; node.kind = studio::NodeKind::Native; node.nativeId = "car";
+            node.x = 410; node.y = 220; node.width = 460; node.height = 210; node.animated = false;
+            project.nodes.push_back(node);
+            return project;
+        }();
+        auto legacyAliasProject = originalCarProject;
+        legacyAliasProject.nodes.front().nativeId = "illustrated:car";
+        check(painter.frame(originalCarProject, 30) == painter.frame(legacyAliasProject, 30),
+              "legacy illustrated project IDs render the same default PNG as the original native ID");
+        auto proceduralReference = painter.frame(studio::makeEmpty(), 30);
+        {
+            QPainter referencePainter(&proceduralReference);
+            referencePainter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+            referencePainter.translate(originalCarProject.nodes.front().x, originalCarProject.nodes.front().y);
+            studio::paintNative(referencePainter, originalCarProject.nodes.front(), 30);
+        }
+        auto pngReference = painter.frame(studio::makeEmpty(), 30);
+        {
+            QPainter referencePainter(&pngReference);
+            referencePainter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+            referencePainter.translate(originalCarProject.nodes.front().x, originalCarProject.nodes.front().y);
+            const auto *asset = studio::libraryItem("car");
+            QImageReader reader(QString::fromStdString(asset->resourcePath));
+            const auto image = reader.read();
+            QSizeF fitted = image.size();
+            fitted.scale(QSizeF(originalCarProject.nodes.front().width,
+                                originalCarProject.nodes.front().height), Qt::KeepAspectRatio);
+            referencePainter.drawImage(QRectF((originalCarProject.nodes.front().width - fitted.width()) / 2.0,
+                                              (originalCarProject.nodes.front().height - fitted.height()) / 2.0,
+                                              fitted.width(), fitted.height()), image);
+        }
+        check(painter.frame(originalCarProject, 30) == pngReference &&
+                  painter.frame(originalCarProject, 30) != proceduralReference,
+              "ordinary car ID paints the embedded PNG pixels, not the old procedural default");
         for (const auto &asset : studio::nativeLibrary()) {
             auto p = studio::makeEmpty();
             studio::Node n;
@@ -986,6 +1158,67 @@ int main(int argc, char **argv) {
             check(studio::validate(p).empty() && !painter.frame(p, 60).isNull(),
                   "native library asset renders");
         }
+
+        // Simulate a catalogue saved by a previous release: older native registry
+        // plus personal content. Reload must merge new entries, not replace data.
+        QTemporaryDir migrationDir;
+        check(migrationDir.isValid(), "temporary workspace for native migration");
+        studio::WorkspaceStore migrationSeed(migrationDir.path());
+        auto legacyCatalog = migrationSeed.data();
+        QJsonArray oldBuiltins;
+        for (const auto &entry : legacyCatalog["assets"].toArray()) {
+            auto item = entry.toObject();
+            if (item["nativeId"] == "car" || item["nativeId"] == "person")
+                oldBuiltins.append(item);
+        }
+        oldBuiltins.append(QJsonObject{{"id", "illustrated:car"}, {"nativeId", "illustrated:car"},
+                                       {"name", "Carro · ilustração IA"}, {"kind", "native"},
+                                       {"categoryId", "objects"}, {"deleted", false}, {"builtin", true}});
+        oldBuiltins.append(QJsonObject{{"id", "illustrated:street"}, {"nativeId", "illustrated:street"},
+                                       {"name", "Rua · prévia IA"}, {"kind", "native"},
+                                       {"categoryId", "scenes"}, {"deleted", false}, {"builtin", true}});
+        oldBuiltins.append(QJsonObject{{"id", "personal:retained"},
+                                      {"name", "Elemento pessoal"},
+                                      {"kind", "image"},
+                                      {"categoryId", "objects"},
+                                      {"deleted", false},
+                                      {"builtin", false}});
+        legacyCatalog["assets"] = oldBuiltins;
+        QJsonArray legacyCategories;
+        for (const auto &entry : legacyCatalog["categories"].toArray()) {
+            const auto id = entry.toObject()["id"].toString();
+            if (id != "technology" && id != "communication" &&
+                id != "finance" && id != "science")
+                legacyCategories.append(entry);
+        }
+        legacyCatalog["categories"] = legacyCategories;
+        {
+            QFile f(migrationDir.filePath("catalogue.json"));
+            check(f.open(QIODevice::WriteOnly), "write legacy catalogue");
+            f.write(QJsonDocument(legacyCatalog).toJson());
+        }
+        studio::WorkspaceStore upgraded(migrationDir.path());
+        check(upgraded.error().isEmpty() && !upgraded.asset("native:rocket").isEmpty() &&
+                  !upgraded.asset("native:newsroom").isEmpty() &&
+                  upgraded.asset("illustrated:car")["deleted"].toBool() &&
+                  upgraded.asset("illustrated:street")["deleted"].toBool(),
+              "upgrade retires old duplicate rows while registering missing original native IDs");
+        int activeNativeRows = 0;
+        for (const auto &entry : upgraded.data()["assets"].toArray())
+            if (entry.toObject()["kind"] == "native" && !entry.toObject()["deleted"].toBool())
+                ++activeNativeRows;
+        check(activeNativeRows == 72, "workspace upgrade leaves exactly one active row for each native ID");
+        check(upgraded.asset("personal:retained")["name"] == "Elemento pessoal" &&
+                  upgraded.asset("native:person")["name"] == "Personagem",
+              "upgrade preserves personal files and previous native assets");
+        check(upgraded.addCategory("Depois da migração").error.isEmpty(),
+              "updated library categories and natives remain valid for new writes");
+        studio::WorkspaceStore persistedUpgrade(migrationDir.path());
+        check(persistedUpgrade.error().isEmpty() &&
+                  !persistedUpgrade.asset("native:rocket").isEmpty() &&
+                  persistedUpgrade.asset("illustrated:car")["deleted"].toBool() &&
+                  persistedUpgrade.asset("personal:retained")["name"] == "Elemento pessoal",
+              "retired duplicate tombstone and personal assets persist safely");
         studio::WorkspaceStore catalog(directory.filePath("catalog"));
         studio::Node group, part;
         group.id = "template-root";
@@ -1003,6 +1236,610 @@ int main(int argc, char **argv) {
         part.keyframes = {{45, 15, 30, 0, 1, 1}, {65, 60, 30, 0, 1, 1}};
         auto grouped = catalog.addPreset("Painel IA", "objects", {group, part});
         check(grouped.error.isEmpty(), "store reusable group preset");
+        QFile manifestFile(QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium/smartphone-premium-01.manifest.json");
+        check(manifestFile.open(QIODevice::ReadOnly), "read the versioned premium package manifest");
+        auto manifest = QJsonDocument::fromJson(manifestFile.readAll()).object();
+        check(studio::validatePremiumManifest(manifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "version 1 premium manifest validates against its package root");
+        auto internalPathManifest = manifest;
+        auto internalLayers = internalPathManifest["layers"].toArray();
+        auto internalLayer = internalLayers[0].toObject();
+        internalLayer["source"] = "smartphone-premium-01.manifest.json";
+        internalLayers[0] = internalLayer;
+        internalPathManifest["layers"] = internalLayers;
+        check(studio::validatePremiumManifest(internalPathManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifest accepts an existing relative file inside its package");
+        auto traversalManifest = manifest;
+        auto traversalLayers = traversalManifest["layers"].toArray();
+        auto traversalLayer = traversalLayers[0].toObject();
+        traversalLayer["source"] = "../../outside.png";
+        traversalLayers[0] = traversalLayer;
+        traversalManifest["layers"] = traversalLayers;
+        check(!studio::validatePremiumManifest(traversalManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifests reject paths escaping their package");
+        auto duplicateManifest = manifest;
+        auto duplicateLayers = duplicateManifest["layers"].toArray();
+        duplicateLayers.append(duplicateLayers[0]);
+        duplicateManifest["layers"] = duplicateLayers;
+        check(!studio::validatePremiumManifest(duplicateManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "premium manifests reject duplicate layer IDs");
+        auto futureManifest = manifest;
+        futureManifest["manifestVersion"] = 3;
+        check(!studio::validatePremiumManifest(futureManifest, QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/premium").isEmpty(),
+              "unknown future manifest versions fail clearly without corrupting older packages");
+        auto premiumScene = [](QString sceneId, QString narration, QString elementId, QString assetId) {
+            return QJsonObject{{"id", sceneId}, {"narration", QJsonArray{narration}},
+                               {"elements", QJsonArray{QJsonObject{{"id", elementId},
+                                                                   {"kind", "library"},
+                                                                   {"assetId", assetId},
+                                                                   {"cue", 0}}}}};
+        };
+        auto premiumRecipe = QJsonObject{
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Templates editoriais demonstrativos"}, {"captions", false},
+            {"musicGain", 0}, {"effectsGain", 0},
+            {"scenes", QJsonArray{
+                premiumScene("abertura", "Uma ideia começa com um título que se revela aos poucos.",
+                             "title", "premium:title-reveal-01"),
+                premiumScene("objeto", "O smartphone premium apresenta uma composição editável.",
+                             "phone", "premium:smartphone-premium-01"),
+                premiumScene("comparacao", "Compare cenários com informação verificada.",
+                             "comparison", "premium:comparison-pack-01")}}};
+        auto premiumParsed = studio::parseRecipe(QJsonDocument(premiumRecipe).toJson(), directory.path(), catalog.data());
+        std::string premiumDiagnostic = "premium recipe parse: " + premiumParsed.error.toStdString();
+        const auto subtreeNodes = [](const auto &self, const studio::DirectedElement &element) -> int {
+            int total = 1;
+            for (const auto &child : element.children)
+                total += self(self, child);
+            return total;
+        };
+        for (const auto &scene : premiumParsed.recipe.scenes)
+            if (!scene.elements.empty())
+                premiumDiagnostic += " [" + scene.id.toStdString() + ":" +
+                                     std::to_string(subtreeNodes(subtreeNodes, scene.elements.front())) + "]";
+        check(premiumParsed.error.isEmpty() && premiumParsed.recipe.scenes.size() == 3 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[0].elements.front()) == 6 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[1].elements.front()) == 19 &&
+                  subtreeNodes(subtreeNodes, premiumParsed.recipe.scenes[2].elements.front()) == 17,
+              premiumDiagnostic.c_str());
+        QMap<QString, studio::PcmAudio> shortPremiumVoice;
+        for (const auto &scene : premiumParsed.recipe.scenes)
+            for (const auto &utterance : scene.narration) {
+                studio::PcmAudio audio;
+                audio.samples.resize(2 * 48000, 0);
+                shortPremiumVoice.insert(utterance.id, std::move(audio));
+            }
+        const auto compiledPremium = studio::compileProduction(
+            premiumParsed.recipe, shortPremiumVoice, directory.filePath("premium-short-voice.wav"));
+        const auto *shortTitleRoot = studio::findNode(compiledPremium.project, "title");
+        const auto shortTitleValid = !compiledPremium.error.isEmpty()
+                                         ? compiledPremium.error.toStdString()
+                                         : studio::validate(compiledPremium.project);
+        check(compiledPremium.error.isEmpty() && shortTitleValid.empty() && shortTitleRoot &&
+                  shortTitleRoot->duration < 360 && !shortTitleRoot->keyframes.empty() &&
+                  shortTitleRoot->keyframes.back().frame <= shortTitleRoot->start + shortTitleRoot->duration,
+              ("registered premium animations scale to measured narration spans without invalid keyframes: " +
+               shortTitleValid + ", duration=" + (shortTitleRoot ? std::to_string(shortTitleRoot->duration) : "missing") +
+               ", keys=" + (shortTitleRoot ? std::to_string(shortTitleRoot->keyframes.size()) : "0") +
+               ", premium=" + std::to_string(premiumParsed.recipe.scenes.front().elements.front().premiumTemplate) +
+               ", preset=" + std::to_string(premiumParsed.recipe.scenes.front().elements.front().presetTiming) +
+               ", sceneDuration=" + std::to_string(compiledPremium.project.scenes.front().duration)).c_str());
+        check(studio::aiGuide(catalog.data()).contains("premium:smartphone-premium-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:title-reveal-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:comparison-pack-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:dramatic-quote-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:lower-third-editorial-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:source-label-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:number-emphasis-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:question-hook-01") &&
+                  studio::aiGuide(catalog.data()).contains("premium:statistic-callout-pack-01") &&
+                  studio::capabilities()["premiumAssets"].toArray().size() == 9,
+              "AI guide and generated capability catalogue match the nine implemented premium assets");
+        auto quotePaletteScene = QJsonObject{
+            {"id", "quote"},
+            {"narration", QJsonArray{"Uma frase forte ganha espaço e uma referência clara."}},
+            {"elements", QJsonArray{QJsonObject{
+                {"id", "quote-template"}, {"kind", "library"},
+                {"assetId", "premium:dramatic-quote-01"}, {"cue", 0},
+                {"palette", QJsonObject{{"accent", "#5CD6C2"}, {"text", "#F4E1A1"},
+                                         {"muted", "#AEC3D4"}}}}}}};
+        auto paletteRecipe = QJsonObject{{"format", "studio-dark-production"}, {"version", 2},
+                                         {"catalogVersion", 1}, {"title", "Paleta premium"},
+                                         {"captions", false}, {"musicGain", 0}, {"effectsGain", 0},
+                                         {"scenes", QJsonArray{quotePaletteScene}}};
+        const auto paletteParsed = studio::parseRecipe(QJsonDocument(paletteRecipe).toJson(),
+                                                       directory.path(), catalog.data());
+        const auto findRole = [](const auto &self, const studio::DirectedElement &element,
+                                 const std::string &role) -> const studio::Node * {
+            if (element.node.role == role)
+                return &element.node;
+            for (const auto &child : element.children)
+                if (const auto *found = self(self, child, role))
+                    return found;
+            return nullptr;
+        };
+        const QString slotImagePath = directory.filePath("premium-slot-media/screen.png");
+        check(QDir().mkpath(QFileInfo(slotImagePath).absolutePath()), "create isolated premium slot fixture folder");
+        QImage screenFixture(240, 480, QImage::Format_ARGB32_Premultiplied);
+        screenFixture.fill(QColor("#10223a"));
+        {
+            QPainter painter(&screenFixture);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor("#4c83a4"));
+            painter.drawRoundedRect(QRect(24, 48, 192, 84), 18, 18);
+            painter.setBrush(QColor("#b4f078"));
+            painter.drawEllipse(QRect(84, 172, 72, 72));
+            painter.setBrush(QColor("#dbe8ef"));
+            painter.drawRoundedRect(QRect(34, 282, 172, 16), 8, 8);
+        }
+        check(screenFixture.save(slotImagePath), "save a local original smartphone screen fixture");
+        const auto customQuote = [](QString elementId, QString quote, QString attribution, QString source,
+                                   QString color) {
+            return QJsonObject{{"id", elementId}, {"kind", "library"},
+                               {"assetId", "premium:dramatic-quote-01"}, {"cue", 0},
+                               {"slots", QJsonObject{{"quote", quote}, {"attribution", attribution},
+                                                       {"source", source}}},
+                               {"palette", QJsonObject{{"accent", color}, {"text", "#f5ebca"},
+                                                        {"muted", "#b9c6cb"}}}};
+        };
+        const QJsonObject customizedPhone{
+            {"id", "phone-custom"}, {"kind", "library"},
+            {"assetId", "premium:smartphone-premium-01"}, {"cue", 0},
+            {"slots", QJsonObject{{"screen-title", "14:28"},
+                                    {"notification", "Sua análise semanal está disponível."},
+                                    {"screen", "premium-slot-media/screen.png"}}},
+            {"palette", QJsonObject{{"surface", "#18222b"}, {"screen", "#101d2f"},
+                                     {"accent", "#67d8b7"}, {"notification", "#e9f2f4"},
+                                     {"frame", "#8ea3ad"}, {"highlight", "#dbbd71"},
+                                     {"muted", "#c7d6dc"}, {"text", "#f7fbfc"}}}};
+        auto personalizedScene = QJsonObject{
+            {"id", "personalizados"},
+            {"narration", QJsonArray{"Duas citações e um smartphone mostram slots preenchidos pela receita."}},
+            {"elements", QJsonArray{customQuote("quote-one", "A mudança começa\ncom uma pergunta.",
+                                                "CONTEXTO EDITORIAL", "FONTE EXEMPLO · 2026", "#54c9af"),
+                                    customQuote("quote-two", "O dado precisa\nde uma fonte.",
+                                                "NOTA DE PESQUISA", "REFERÊNCIA DEMONSTRATIVA", "#dc9b57"),
+                                    customizedPhone}}};
+        const auto personalizedRecipe = QJsonObject{
+            {"format", "studio-dark-production"}, {"version", 2}, {"catalogVersion", 1},
+            {"title", "Slots premium por receita"}, {"captions", false}, {"musicGain", 0},
+            {"effectsGain", 0}, {"scenes", QJsonArray{personalizedScene}}};
+        const auto personalizedParsed = studio::parseRecipe(QJsonDocument(personalizedRecipe).toJson(),
+                                                            directory.path(), catalog.data());
+        const auto *quoteOneText = personalizedParsed.error.isEmpty()
+                                       ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[0],
+                                                  "premium:quote:text")
+                                       : nullptr;
+        const auto *quoteTwoText = personalizedParsed.error.isEmpty()
+                                       ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[1],
+                                                  "premium:quote:text")
+                                       : nullptr;
+        const auto *phoneText = personalizedParsed.error.isEmpty()
+                                    ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[2],
+                                               "premium:text:notification")
+                                    : nullptr;
+        const auto *quoteOneAccent = personalizedParsed.error.isEmpty()
+                                         ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[0],
+                                                    "palette:accent")
+                                         : nullptr;
+        const auto *quoteTwoAccent = personalizedParsed.error.isEmpty()
+                                         ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[1],
+                                                    "palette:accent")
+                                         : nullptr;
+        const auto *phoneImage = personalizedParsed.error.isEmpty()
+                                     ? findRole(findRole, personalizedParsed.recipe.scenes.front().elements[2],
+                                                "premium:image:screen")
+                                     : nullptr;
+        check(personalizedParsed.error.isEmpty() && quoteOneText && quoteTwoText && phoneText && phoneImage &&
+                  quoteOneText->text == "A mudança começa\ncom uma pergunta." &&
+                  quoteTwoText->text == "O dado precisa\nde uma fonte." &&
+                  quoteOneAccent && quoteTwoAccent && quoteOneAccent->color == "#54c9af" &&
+                  quoteTwoAccent->color == "#dc9b57" &&
+                  phoneText->text == "Sua análise semanal está disponível." &&
+                  phoneImage->kind == studio::NodeKind::Image &&
+                  phoneImage->source == QFileInfo(slotImagePath).canonicalFilePath().toStdString() &&
+                  personalizedParsed.recipe.scenes.front().elements[0].children.size() > 0 &&
+                  personalizedParsed.recipe.scenes.front().elements[1].children.size() > 0,
+              "manifest slot IDs populate separate text/image layers without removing their animation hierarchy");
+        auto unknownSlotRecipe = personalizedRecipe;
+        auto unknownSlotScenes = unknownSlotRecipe["scenes"].toArray();
+        auto unknownSlotScene = unknownSlotScenes[0].toObject();
+        auto unknownSlotElements = unknownSlotScene["elements"].toArray();
+        auto unknownSlotElement = unknownSlotElements[0].toObject();
+        auto unknownSlots = unknownSlotElement["slots"].toObject();
+        unknownSlots["internal-layer-id"] = "Do not allow direct internal layer addressing.";
+        unknownSlotElement["slots"] = unknownSlots;
+        unknownSlotElements[0] = unknownSlotElement;
+        unknownSlotScene["elements"] = unknownSlotElements;
+        unknownSlotScenes[0] = unknownSlotScene;
+        unknownSlotRecipe["scenes"] = unknownSlotScenes;
+        const auto unknownSlotParsed = studio::parseRecipe(QJsonDocument(unknownSlotRecipe).toJson(),
+                                                           directory.path(), catalog.data());
+        check(unknownSlotParsed.error.contains("premium:dramatic-quote-01") &&
+                  unknownSlotParsed.error.contains("internal-layer-id"),
+              "unknown premium layer/slot overrides are rejected with asset and slot IDs");
+        auto unsafeImageRecipe = personalizedRecipe;
+        auto unsafeScenes = unsafeImageRecipe["scenes"].toArray();
+        auto unsafeScene = unsafeScenes[0].toObject();
+        auto unsafeElements = unsafeScene["elements"].toArray();
+        auto unsafePhone = unsafeElements[2].toObject();
+        auto unsafeSlots = unsafePhone["slots"].toObject();
+        unsafeSlots["screen"] = "../../outside.png";
+        unsafePhone["slots"] = unsafeSlots;
+        unsafeElements[2] = unsafePhone;
+        unsafeScene["elements"] = unsafeElements;
+        unsafeScenes[0] = unsafeScene;
+        unsafeImageRecipe["scenes"] = unsafeScenes;
+        const auto unsafeImageParsed = studio::parseRecipe(QJsonDocument(unsafeImageRecipe).toJson(),
+                                                            directory.path(), catalog.data());
+        check(unsafeImageParsed.error.contains("premium:smartphone-premium-01") &&
+                  unsafeImageParsed.error.contains("screen"),
+              "premium image slots reject traversal and identify the offending slot");
+        QMap<QString, studio::PcmAudio> personalizedAudio;
+        studio::PcmAudio personalizedCue;
+        personalizedCue.samples.resize(48000, .05f);
+        personalizedAudio.insert("personalizados-u1", std::move(personalizedCue));
+        auto personalizedCompiled = studio::compileProduction(
+            personalizedParsed.recipe, personalizedAudio, directory.filePath("personalized.wav"));
+        const auto serializedPersonalized = studio::deserialize(studio::serialize(personalizedCompiled.project));
+        const auto findSavedSlot = [](const studio::Project &project, const std::string &rootId,
+                                      const std::string &role) -> const studio::Node * {
+            const auto found = std::find_if(project.nodes.begin(), project.nodes.end(), [&](const auto &node) {
+                return node.id.rfind(rootId + "-preset-", 0) == 0 && node.role == role;
+            });
+            return found == project.nodes.end() ? nullptr : &*found;
+        };
+        const auto *savedQuoteOne = findSavedSlot(serializedPersonalized.project, "quote-one", "premium:quote:text");
+        const auto *savedQuoteTwo = findSavedSlot(serializedPersonalized.project, "quote-two", "premium:quote:text");
+        const auto *savedAccentOne = findSavedSlot(serializedPersonalized.project, "quote-one", "palette:accent");
+        const auto *savedAccentTwo = findSavedSlot(serializedPersonalized.project, "quote-two", "palette:accent");
+        studio::WorkspaceStore managedSlotWorkspace(directory.filePath("slot-media-workspace"));
+        const auto importedScreen = managedSlotWorkspace.importSlotMedia(slotImagePath);
+        check(personalizedCompiled.error.isEmpty() && serializedPersonalized.error.isEmpty() &&
+                  savedQuoteOne && savedQuoteTwo &&
+                  savedQuoteOne->text == "A mudança começa\ncom uma pergunta." &&
+                  savedQuoteTwo->text == "O dado precisa\nde uma fonte." &&
+                  savedQuoteOne->color == "#f5ebca" && savedQuoteTwo->color == "#f5ebca" &&
+                  savedAccentOne && savedAccentTwo && savedAccentOne->color == "#54c9af" &&
+                  savedAccentTwo->color == "#dc9b57" &&
+                  !importedScreen.id.isEmpty() && QFileInfo::exists(importedScreen.id),
+              "slot values and per-instance palette survive production compilation and project reopen; image copy is managed");
+        QFile::remove(slotImagePath);
+        check(QFileInfo::exists(importedScreen.id),
+              "managed premium image remains available after the original recipe image is removed");
+        const auto *quoteColorNode = !paletteParsed.error.isEmpty() || paletteParsed.recipe.scenes.empty()
+                                         ? nullptr
+                                         : findRole(findRole, paletteParsed.recipe.scenes.front().elements.front(),
+                                                    "premium:quote:text");
+        const auto *quoteAccentNode = !paletteParsed.error.isEmpty() || paletteParsed.recipe.scenes.empty()
+                                          ? nullptr
+                                          : findRole(findRole, paletteParsed.recipe.scenes.front().elements.front(),
+                                                     "palette:accent");
+        check(paletteParsed.error.isEmpty() && !paletteParsed.recipe.scenes.empty() &&
+                  quoteColorNode && quoteColorNode->color == "#F4E1A1" && quoteAccentNode &&
+                  quoteAccentNode->color == "#5CD6C2",
+              "validated JSON palette recolors real premium slot and reusable accent component");
+        auto comparisonPaletteScene = QJsonObject{
+            {"id", "comparison-palette"},
+            {"narration", QJsonArray{"Cores de painel e títulos têm papéis independentes."}},
+            {"elements", QJsonArray{QJsonObject{
+                {"id", "comparison-template"}, {"kind", "library"},
+                {"assetId", "premium:comparison-pack-01"}, {"cue", 0},
+                {"palette", QJsonObject{{"left", "#205C50"}, {"right", "#5B3A20"},
+                                         {"accent", "#E9D08C"}, {"text", "#F3F4EE"}}}}}}};
+        auto comparisonPaletteRecipe = paletteRecipe;
+        comparisonPaletteRecipe["scenes"] = QJsonArray{comparisonPaletteScene};
+        const auto comparisonPaletteParsed = studio::parseRecipe(
+            QJsonDocument(comparisonPaletteRecipe).toJson(), directory.path(), catalog.data());
+        const auto *comparisonLeftTitle = comparisonPaletteParsed.error.isEmpty()
+                                              ? findRole(findRole,
+                                                         comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                         "premium:comparison:left-title")
+                                              : nullptr;
+        const auto *comparisonRightTitle = comparisonPaletteParsed.error.isEmpty()
+                                               ? findRole(findRole,
+                                                          comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                          "premium:comparison:right-title")
+                                               : nullptr;
+        const auto *comparisonLeftSurface = comparisonPaletteParsed.error.isEmpty()
+                                                ? findRole(findRole,
+                                                           comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                           "palette:left")
+                                                : nullptr;
+        const auto *comparisonRightSurface = comparisonPaletteParsed.error.isEmpty()
+                                                 ? findRole(findRole,
+                                                            comparisonPaletteParsed.recipe.scenes.front().elements.front(),
+                                                            "palette:right")
+                                                 : nullptr;
+        check(comparisonPaletteParsed.error.isEmpty() && comparisonLeftTitle && comparisonRightTitle &&
+                  comparisonLeftTitle->color == "#E9D08C" && comparisonRightTitle->color == "#E9D08C" &&
+                  comparisonLeftSurface && comparisonLeftSurface->color == "#205C50" &&
+                  comparisonRightSurface && comparisonRightSurface->color == "#5B3A20",
+              "comparison palette keeps panel surfaces distinct from high-contrast headings");
+        bool visualReviewExamplesParse = true;
+        QString visualReviewExampleError;
+        for (const auto &example : {QStringLiteral("visual-quality-review-demo-v3.production.json"),
+                                    QStringLiteral("visual-quality-problematic-v3.production.json")}) {
+            QFile exampleFile(QStringLiteral(STUDIO_SOURCE_DIR) + "/examples/" + example);
+            if (!exampleFile.open(QIODevice::ReadOnly)) {
+                visualReviewExamplesParse = false;
+                visualReviewExampleError = "missing " + example;
+                break;
+            }
+            const auto parsedExample = studio::parseRecipe(exampleFile.readAll(), directory.path(), catalog.data());
+            if (!parsedExample.error.isEmpty()) {
+                visualReviewExamplesParse = false;
+                visualReviewExampleError = example + ": " + parsedExample.error;
+                break;
+            }
+        }
+        check(visualReviewExamplesParse,
+              ("visual-quality review examples parse with the real production parser: " +
+               visualReviewExampleError).toStdString().c_str());
+        const auto findColor = [](const auto &self, const studio::DirectedElement &element,
+                                  const std::string &color) -> bool {
+            if (element.node.color == color)
+                return true;
+            for (const auto &child : element.children)
+                if (self(self, child, color))
+                    return true;
+            return false;
+        };
+        for (const auto &asset : studio::premiumLibrary()) {
+            for (const auto tokenView : asset.paletteTokens) {
+                const auto token = QString::fromUtf8(tokenView.data(), int(tokenView.size()));
+                const auto assetId = QString::fromUtf8(asset.id.data(), int(asset.id.size()));
+                const auto scene = QJsonObject{
+                    {"id", "palette-token-test"}, {"narration", QJsonArray{"Teste de paleta."}},
+                    {"elements", QJsonArray{QJsonObject{
+                        {"id", "premium-palette-test"}, {"kind", "library"}, {"assetId", assetId},
+                        {"cue", 0}, {"palette", QJsonObject{{token, "#C85CB4"}}}}}}};
+                auto recipe = paletteRecipe;
+                recipe["scenes"] = QJsonArray{scene};
+                const auto parsed = studio::parseRecipe(QJsonDocument(recipe).toJson(),
+                                                        directory.path(), catalog.data());
+                if (!parsed.error.isEmpty())
+                    throw std::runtime_error((assetId + ".palette." + token + ": " + parsed.error).toStdString());
+                const auto &elements = parsed.recipe.scenes.front().elements;
+                check(!elements.empty() && findColor(findColor, elements.front(), "#C85CB4"),
+                      "each manifest palette token recolors an actual registered premium layer");
+            }
+        }
+        const auto premiumCatalog = studio::capabilities()["premiumAssets"].toArray();
+        bool catalogSlotsAreEditableOnly = premiumCatalog.size() == 9;
+        for (const auto &assetValue : premiumCatalog) {
+            const auto asset = assetValue.toObject();
+            const auto registered = studio::premiumAsset(asset["id"].toString().toStdString());
+            const auto roles = asset["slots"].toArray();
+            catalogSlotsAreEditableOnly = catalogSlotsAreEditableOnly && registered &&
+                                          roles.size() == int(registered->slotRoles.size());
+            for (const auto &role : roles)
+                catalogSlotsAreEditableOnly = catalogSlotsAreEditableOnly &&
+                                               role.toString().startsWith("premium:");
+        }
+        check(catalogSlotsAreEditableOnly,
+              "AI catalog separates editable premium slots from palette component roles");
+        auto badPaletteRecipe = paletteRecipe;
+        auto badPaletteScene = badPaletteRecipe["scenes"].toArray().at(0).toObject();
+        auto badPaletteElement = badPaletteScene["elements"].toArray().at(0).toObject();
+        badPaletteElement["palette"] = QJsonObject{{"invented", "#123456"}};
+        QJsonArray badPaletteElements;
+        badPaletteElements.append(badPaletteElement);
+        badPaletteScene["elements"] = badPaletteElements;
+        QJsonArray badPaletteScenes;
+        badPaletteScenes.append(badPaletteScene);
+        badPaletteRecipe["scenes"] = badPaletteScenes;
+        check(!studio::parseRecipe(QJsonDocument(badPaletteRecipe).toJson(), directory.path(), catalog.data())
+                   .error.isEmpty(),
+              "palette rejects unknown semantic tokens rather than silently ignoring them");
+        auto nativePaletteScene = QJsonObject{
+            {"id", "native-colors"}, {"narration", QJsonArray{"A forma recebe uma paleta."}},
+            {"elements", QJsonArray{QJsonObject{{"id", "chip"}, {"kind", "native"}, {"asset", "chip"},
+                                                {"palette", QJsonObject{{"primary", "#34AADC"},
+                                                                         {"secondary", "#F2B64B"}}}}}}};
+        auto nativePaletteRecipe = paletteRecipe;
+        nativePaletteRecipe["scenes"] = QJsonArray{nativePaletteScene};
+        const auto nativePaletteParsed = studio::parseRecipe(QJsonDocument(nativePaletteRecipe).toJson(),
+                                                             directory.path());
+        check(nativePaletteParsed.error.isEmpty() &&
+                  nativePaletteParsed.recipe.scenes.front().elements.front().node.color == "#34AADC" &&
+                  nativePaletteParsed.recipe.scenes.front().elements.front().node.secondaryColor == "#F2B64B",
+              "legacy color palette fields remain parseable and are preserved on PNG-backed native nodes");
+        auto paletteNodeProject = studio::makeEmpty();
+        auto paletteNode = nativePaletteParsed.recipe.scenes.front().elements.front().node;
+        paletteNode.id = "chip-palette";
+        paletteNode.x = 420; paletteNode.y = 200; paletteNode.width = 320; paletteNode.height = 240;
+        paletteNode.animated = false;
+        paletteNodeProject.nodes.push_back(paletteNode);
+        auto noPaletteNodeProject = paletteNodeProject;
+        noPaletteNodeProject.nodes.front().color = "#010203";
+        noPaletteNodeProject.nodes.front().secondaryColor = "#AABBCC";
+        check(painter.frame(paletteNodeProject, 30) == painter.frame(noPaletteNodeProject, 30),
+              "color properties do not recolor static PNG pixels");
+        auto pngRecipe = nativePaletteRecipe;
+        auto pngScene = nativePaletteScene;
+        auto pngElement = pngScene["elements"].toArray().at(0).toObject();
+        pngElement["asset"] = "car";
+        pngElement["motion"] = "rise";
+        pngScene["elements"] = QJsonArray{pngElement};
+        pngRecipe["scenes"] = QJsonArray{pngScene};
+        const auto parsedPngRecipe = studio::parseRecipe(QJsonDocument(pngRecipe).toJson(), directory.path());
+        check(parsedPngRecipe.error.isEmpty() &&
+                  parsedPngRecipe.recipe.scenes.front().elements.front().node.nativeId == "car" &&
+                  parsedPngRecipe.recipe.scenes.front().elements.front().node.color == "#34AADC",
+              "AI recipes use the original native ID and retain old color fields without claiming PNG recoloring");
+        auto legacyAliasRecipe = pngRecipe;
+        auto legacyAliasScene = legacyAliasRecipe["scenes"].toArray().at(0).toObject();
+        auto legacyAliasElement = legacyAliasScene["elements"].toArray().at(0).toObject();
+        legacyAliasElement["asset"] = "illustrated:car";
+        legacyAliasScene["elements"] = QJsonArray{legacyAliasElement};
+        legacyAliasRecipe["scenes"] = QJsonArray{legacyAliasScene};
+        const auto parsedLegacyAlias = studio::parseRecipe(QJsonDocument(legacyAliasRecipe).toJson(), directory.path());
+        check(parsedLegacyAlias.error.isEmpty() &&
+                  parsedLegacyAlias.recipe.scenes.front().elements.front().node.nativeId == "illustrated:car",
+              "previously published illustrated IDs remain accepted when importing old recipes");
+        QMap<QString, studio::PcmAudio> pngAudio;
+        for (const auto &scene : parsedPngRecipe.recipe.scenes)
+            for (const auto &utterance : scene.narration) {
+                studio::PcmAudio audio; audio.samples.resize(24000, .02f);
+                pngAudio.insert(utterance.id, std::move(audio));
+            }
+        const auto compiledPngRecipe = studio::compileProduction(
+            parsedPngRecipe.recipe, pngAudio, directory.filePath("native-artwork-library.wav"));
+        check(compiledPngRecipe.error.isEmpty() &&
+                  std::any_of(compiledPngRecipe.project.nodes.begin(), compiledPngRecipe.project.nodes.end(),
+                              [](const auto &node) { return node.nativeId == "car"; }) &&
+                  studio::validate(compiledPngRecipe.project).empty(),
+              "production compiler creates a valid editable project using the original native PNG ID");
+        auto pngProjectRoundtrip = studio::deserialize(studio::serialize(compiledPngRecipe.project));
+        check(pngProjectRoundtrip.error.isEmpty() &&
+                  std::any_of(pngProjectRoundtrip.project.nodes.begin(), pngProjectRoundtrip.project.nodes.end(),
+                              [](const auto &node) { return node.nativeId == "car"; }),
+              "native ID and animation survive project save and reopen");
+        studio::CompositionPainter pngPreviewPainter;
+        check(!pngPreviewPainter.frame(compiledPngRecipe.project, 30).isNull() &&
+                  pngPreviewPainter.frame(compiledPngRecipe.project, 30) !=
+                      pngPreviewPainter.frame(compiledPngRecipe.project, 5),
+              "QPainter preview renders the new default PNG and preserves its external motion");
+        const QStringList premiumFactoryFixtures{
+            "camera-travelling-horizontal-v3.production.json",
+            "camera-travelling-vertical-v3.production.json",
+            "premium-palette-v2.production.json",
+            "premium-factory-motion-showcase-v3.production.json",
+            "visual-beats-sequential-reveal-v3.production.json",
+            "premium-dramatic-quote-slots-v2.production.json",
+            "premium-comparison-slots-v2.production.json",
+            "premium-smartphone-slots-v2.production.json",
+            "premium-question-hook-slots-v2.production.json",
+            "premium-statistic-callout-slots-v2.production.json",
+            "camera-path-spatial-v3.production.json",
+            "camera-path-combined-v3.production.json",
+            "premium-factory-stage14-demo-v3.production.json"};
+        for (const auto &fixtureName : premiumFactoryFixtures) {
+            QFile fixture(QStringLiteral(STUDIO_SOURCE_DIR) + "/examples/" + fixtureName);
+            check(fixture.open(QIODevice::ReadOnly), "read a published small recipe example");
+            const auto parsedFixture = studio::parseRecipe(fixture.readAll(),
+                QFileInfo(fixture.fileName()).absolutePath(), catalog.data());
+            if (!parsedFixture.error.isEmpty())
+                throw std::runtime_error((fixtureName + ": " + parsedFixture.error).toStdString());
+            QMap<QString, studio::PcmAudio> measuredFixtures;
+            for (const auto &scene : parsedFixture.recipe.scenes)
+                for (const auto &utterance : scene.narration) {
+                    studio::PcmAudio audio;
+                    audio.samples.resize(2 * 48000, .02f);
+                    measuredFixtures.insert(utterance.id, std::move(audio));
+                }
+            const auto fixtureProject = studio::compileProduction(
+                parsedFixture.recipe, measuredFixtures, directory.filePath(fixtureName + ".wav"));
+            if (!fixtureProject.error.isEmpty())
+                throw std::runtime_error((fixtureName + " compile: " + fixtureProject.error).toStdString());
+            check(studio::validate(fixtureProject.project).empty() && fixtureProject.project.duration > 0,
+                  "official example parses, compiles and validates into an editable project");
+            studio::CompositionPainter fixturePainter;
+            const auto proofFrame = fixturePainter.frame(fixtureProject.project,
+                std::min<std::int64_t>(fixtureProject.project.duration - 1,
+                                       fixtureProject.project.duration / 2));
+            check(!proofFrame.isNull() && proofFrame.size() ==
+                      QSize(fixtureProject.project.width, fixtureProject.project.height),
+                  "official camera, reveal and color examples render a real QPainter frame");
+            if (fixtureName == "premium-dramatic-quote-slots-v2.production.json" ||
+                fixtureName == "premium-comparison-slots-v2.production.json" ||
+                fixtureName == "premium-smartphone-slots-v2.production.json" ||
+                fixtureName == "premium-question-hook-slots-v2.production.json" ||
+                fixtureName == "premium-statistic-callout-slots-v2.production.json") {
+                const auto projectRoundTrip = studio::deserialize(studio::serialize(fixtureProject.project));
+                check(projectRoundTrip.error.isEmpty() &&
+                          studio::validate(projectRoundTrip.project).empty() &&
+                          projectRoundTrip.project.nodes.size() == fixtureProject.project.nodes.size(),
+                      "slot/palette example survives project save and reopen without losing expanded layers");
+            }
+            if (fixtureName == "premium-dramatic-quote-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) {
+                                      return node.text == "Toda mudança\ncomeça com uma pergunta.";
+                                  }),
+                      "Dramatic Quote JSON replaces the actual quote text layer");
+            if (fixtureName == "premium-comparison-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) { return node.text == "CENÁRIO A"; }) &&
+                          std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                      [](const auto &node) { return node.text == "12,4"; }),
+                      "Comparison Pack JSON replaces panel headings and values in real nodes");
+            if (fixtureName == "premium-question-hook-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) {
+                                      return node.text == "QUEM DECIDE\nO QUE MERECE RESPOSTA?";
+                                  }),
+                      "Question Hook JSON populates its declared question slot");
+            if (fixtureName == "premium-statistic-callout-slots-v2.production.json")
+                check(std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                  [](const auto &node) { return node.text == "12,4"; }) &&
+                          std::any_of(fixtureProject.project.nodes.begin(), fixtureProject.project.nodes.end(),
+                                      [](const auto &node) {
+                                          return node.text == "NÃO É UM DADO REAL · SUBSTITUA POR FONTE VERIFICADA";
+                                      }),
+                      "Statistic Callout JSON populates value and source slots while marking its example");
+            if (fixtureName == "premium-smartphone-slots-v2.production.json") {
+                const auto imageNode = std::find_if(fixtureProject.project.nodes.begin(),
+                    fixtureProject.project.nodes.end(), [](const auto &node) {
+                        return node.role == "premium:image:screen";
+                    });
+                check(imageNode != fixtureProject.project.nodes.end() &&
+                          imageNode->kind == studio::NodeKind::Image &&
+                          QFileInfo::exists(QString::fromStdString(imageNode->source)),
+                      "official smartphone slot recipe resolves its bundled local demo image");
+            }
+            if (fixtureName == "camera-path-spatial-v3.production.json" ||
+                fixtureName == "camera-path-combined-v3.production.json") {
+                const bool combined = fixtureName == "camera-path-combined-v3.production.json";
+                const auto &cameraProject = fixtureProject.project;
+                const auto pathKeys = std::vector<studio::CameraKeyframe>(cameraProject.camera.begin(),
+                                                                           cameraProject.camera.end());
+                check(pathKeys.size() >= 2 &&
+                          pathKeys.back().x != pathKeys.front().x,
+                      "camera.path compiles target framing to editable camera keyframes");
+                const auto colorPixels = [](const QImage &image, const QColor &color) {
+                    qsizetype count = 0;
+                    for (int y = 0; y < image.height(); ++y)
+                        for (int x = 0; x < image.width(); ++x)
+                            if (image.pixelColor(x, y) == color)
+                                ++count;
+                    return count;
+                };
+                studio::CompositionPainter cameraPainter;
+                const QColor chipColor("#4CC9A9");
+                const QColor serverColor("#DC9B57");
+                const auto startFrame = pathKeys.front().frame;
+                const auto endFrame = pathKeys.back().frame;
+                const auto startImage = cameraPainter.frame(cameraProject, startFrame);
+                const auto endImage = cameraPainter.frame(cameraProject, endFrame);
+                check(colorPixels(startImage, chipColor) > 0 && colorPixels(endImage, chipColor) == 0 &&
+                          colorPixels(startImage, serverColor) == 0 &&
+                          colorPixels(endImage, serverColor) > 0,
+                      "camera path moves from the first target to the next, framing one at a time");
+                if (!combined) {
+                    bool spatialEntryObserved = false;
+                    for (auto frame = startFrame + 1; frame < endFrame; ++frame)
+                        if (colorPixels(cameraPainter.frame(cameraProject, frame), serverColor) > 0) {
+                            spatialEntryObserved = true;
+                            break;
+                        }
+                    check(spatialEntryObserved && cameraProject.visualBeats.empty(),
+                          "spatial reveal enters during camera travel without a Visual Beat show");
+                } else {
+                    const auto beat = std::find_if(cameraProject.visualBeats.begin(),
+                        cameraProject.visualBeats.end(), [](const auto &item) {
+                            return item.id == "reveal-server-during-travel";
+                        });
+                    check(beat != cameraProject.visualBeats.end() &&
+                              colorPixels(cameraPainter.frame(cameraProject, beat->frame - 1), serverColor) == 0 &&
+                              colorPixels(cameraPainter.frame(cameraProject, beat->frame), serverColor) > 0,
+                          "combined spatial and temporal reveal stays hidden until its exact Visual Beat frame");
+                }
+            }
+        }
+        check(studio::capabilities()["productionCapabilities"].toArray().contains("personal-library-video-assets"),
+              "AI capability catalogue distinguishes real library video from premium slots");
         auto production = QJsonObject{
             {"format", "studio-dark-production"},
             {"version", 2},
@@ -1244,6 +2081,28 @@ int main(int argc, char **argv) {
                   "guide derives all real library IDs");
         check(studio::capabilities()["nativeAssets"].toArray().size() == int(studio::nativeLibrary().size()),
               "machine catalogue matches renderer registry");
+        const auto nativeCatalogue = studio::capabilities()["nativeAssets"].toArray();
+        int pngDefaultCount = 0, lowResolutionSceneCount = 0, proceduralCount = 0;
+        for (const auto &assetValue : nativeCatalogue) {
+            const auto asset = assetValue.toObject();
+            check(studio::libraryItem(asset["id"].toString().toStdString()) &&
+                      g.contains("`" + asset["id"].toString() + "`"),
+                  "AI guide and catalogue expose only the registered original native IDs");
+            if (asset["rendering"] == "embedded-ai-png") {
+                ++pngDefaultCount;
+                if (asset["previewOnly"].toBool())
+                    ++lowResolutionSceneCount;
+                check(!asset["pixelRecoloring"].toBool(),
+                      "machine catalogue does not promise recoloring of embedded PNG pixels");
+            } else if (asset["rendering"] == "procedural") {
+                ++proceduralCount;
+            }
+        }
+        check(nativeCatalogue.size() == 72 && pngDefaultCount == 60 && lowResolutionSceneCount == 12 &&
+                  proceduralCount == 12 && !studio::capabilities().contains("illustratedAssets") &&
+                  g.contains("asset: \"car\"") && g.contains("não alteram os pixels desses 60 PNGs") &&
+                  g.contains("prévias rasterizadas de baixa resolução"),
+              "AI catalogue exposes 60 default PNGs and 12 procedural natives under 72 original IDs without duplicates");
         std::cout << "PASS: " << checks
                   << " production checks (recipe, audio timing, mix, migration, catalogue, rendering)\n";
         return 0;

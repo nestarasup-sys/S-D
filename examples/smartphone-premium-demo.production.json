@@ -1,0 +1,49 @@
+{
+  "format": "studio-dark-production",
+  "version": 2,
+  "catalogVersion": 1,
+  "title": "O preço do próximo celular",
+  "voice": "auto",
+  "captions": true,
+  "musicGain": 0.025,
+  "effectsGain": 0.02,
+  "scenes": [
+    {
+      "id": "o-custo-da-troca",
+      "narration": [
+        "Um celular novo pesa no orçamento.",
+        "Compare os recursos com seu uso real."
+      ],
+      "elements": [
+        { "id": "telefone-premium", "kind": "library", "assetId": "premium:smartphone-premium-01", "cue": 0 },
+        { "id": "titulo-celular", "kind": "text", "text": "O PRÓXIMO\nCELULAR CUSTA MAIS?", "x": 74, "y": 195, "width": 690, "height": 170, "fontSize": 65, "color": "#e4f5e9", "cue": 0, "motion": "rise" },
+        { "id": "linha-de-apoio", "kind": "text", "text": "Compare os recursos com o seu uso.", "x": 80, "y": 390, "width": 620, "height": 44, "fontSize": 27, "color": "#b4f078", "cue": 1, "motion": "fade" }
+      ],
+      "camera": [
+        { "cue": 0, "x": 640, "y": 360, "zoom": 1.0, "rotation": 0 },
+        { "cue": 1, "x": 675, "y": 350, "zoom": 1.06, "rotation": 0, "easing": "ease-in-out" }
+      ]
+    },
+    {
+      "id": "comparar-com-calma",
+      "narration": [
+        "Seu aparelho atual talvez ainda baste.",
+        "Escolha com informação, não impulso."
+      ],
+      "elements": [
+        { "id": "titulo-comparacao", "kind": "text", "text": "PRECISA MESMO TROCAR?", "x": 95, "y": 105, "width": 1060, "height": 84, "fontSize": 54, "color": "#e4f5e9", "cue": 0, "motion": "rise" },
+        { "id": "painel-atual", "kind": "shape", "x": 115, "y": 255, "width": 460, "height": 265, "color": "#1a2c35", "cue": 0 },
+        { "id": "painel-novo", "kind": "shape", "x": 705, "y": 255, "width": 460, "height": 265, "color": "#24332f", "cue": 0 },
+        { "id": "atual-label", "kind": "text", "text": "O QUE VOCÊ USA", "x": 150, "y": 295, "width": 390, "height": 42, "fontSize": 26, "color": "#96bac6", "cue": 0 },
+        { "id": "atual-value", "kind": "text", "text": "ATENDE\nSUAS NECESSIDADES?", "x": 150, "y": 365, "width": 390, "height": 100, "fontSize": 34, "color": "#e4f5e9", "cue": 0 },
+        { "id": "novo-label", "kind": "text", "text": "O QUE É NOVO", "x": 740, "y": 295, "width": 390, "height": 42, "fontSize": 26, "color": "#b4f078", "cue": 0 },
+        { "id": "novo-value", "kind": "text", "text": "QUAL RECURSO\nVOCÊ VAI USAR?", "x": 740, "y": 365, "width": 390, "height": 100, "fontSize": 34, "color": "#f0f4e9", "cue": 0 },
+        { "id": "fecho", "kind": "text", "text": "ESCOLHA COM INFORMAÇÃO.", "x": 175, "y": 535, "width": 930, "height": 58, "fontSize": 37, "color": "#efb873", "cue": 1, "motion": "rise" }
+      ],
+      "camera": [
+        { "cue": 0, "x": 640, "y": 360, "zoom": 1.0, "rotation": 0 },
+        { "cue": 1, "x": 690, "y": 360, "zoom": 1.05, "rotation": 0, "easing": "ease-in-out" }
+      ]
+    }
+  ]
+}

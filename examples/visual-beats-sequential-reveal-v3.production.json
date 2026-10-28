@@ -1,0 +1,37 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Revelação sequencial por Visual Beats",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "revelacoes",
+      "narration": [
+        "Visual Beats revelam os três objetos, um por vez, durante esta mesma fala."
+      ],
+      "shots": [
+        {
+          "id": "revelacao-progressiva",
+          "name": "Três entradas sincronizadas",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "transitionIn": "cut",
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "vb-first", "kind": "native", "asset": "chip", "x": 100, "y": 220, "width": 220, "height": 190, "opacity": 0 },
+            { "id": "vb-second", "kind": "native", "asset": "network", "x": 530, "y": 220, "width": 220, "height": 190, "opacity": 0 },
+            { "id": "vb-third", "kind": "native", "asset": "brain", "x": 960, "y": 220, "width": 220, "height": 190, "opacity": 0 }
+          ],
+          "beats": [
+            { "id": "vb-reveal-1", "at": { "cue": 0, "cueProgress": 0.20 }, "action": "show", "target": "vb-first" },
+            { "id": "vb-reveal-2", "at": { "cue": 0, "cueProgress": 0.46 }, "action": "show", "target": "vb-second" },
+            { "id": "vb-reveal-3", "at": { "cue": 0, "cueProgress": 0.73 }, "action": "show", "target": "vb-third" }
+          ]
+        }
+      ]
+    }
+  ]
+}

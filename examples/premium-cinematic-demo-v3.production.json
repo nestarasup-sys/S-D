@@ -1,0 +1,69 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Studio Dark — demonstração editorial premium",
+  "voice": "auto",
+  "captions": true,
+  "editing": { "intensity": 42, "rhythm": "manual" },
+  "musicGain": 0.018,
+  "effectsGain": 0.025,
+  "scenes": [
+    {
+      "id": "demonstracao-premium",
+      "narration": [
+        "Uma boa história começa com uma pergunta e um olhar atento.",
+        "Um objeto ganha significado quando observamos cada detalhe. No Studio Dark, as camadas continuam editáveis.",
+        "Na comparação, substitua os campos demonstrativos por dados verificados e suas fontes. Clareza visual ajuda a contar a história."
+      ],
+      "shots": [
+        {
+          "id": "title-reveal",
+          "name": "Abertura — Title Reveal",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "transitionIn": "cut",
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "title-editorial", "kind": "library", "assetId": "premium:title-reveal-01", "cue": 0 }
+          ]
+        },
+        {
+          "id": "smartphone-premium",
+          "name": "Objeto — Smartphone premium",
+          "start": { "cue": 1, "cueProgress": 0 },
+          "transitionIn": { "type": "dissolve", "durationFrames": 12 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "smartphone-editorial", "kind": "library", "assetId": "premium:smartphone-premium-01", "cue": 1 }
+          ],
+          "beats": [
+            { "id": "aproximar-do-objeto", "at": { "cue": 1, "cueProgress": 0.42 }, "action": "camera", "durationFrames": 18, "x": 640, "y": 360, "zoom": 1.16 }
+          ]
+        },
+        {
+          "id": "comparison-pack",
+          "name": "Comparação — dois cenários",
+          "start": { "cue": 2, "cueProgress": 0 },
+          "transitionIn": { "type": "dissolve", "durationFrames": 15 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "comparacao-premium", "kind": "library", "assetId": "premium:comparison-pack-01", "cue": 2 }
+          ]
+        },
+        {
+          "id": "fechamento-editorial",
+          "name": "Encerramento — ideia em foco",
+          "start": { "cue": 2, "cueProgress": 0.75 },
+          "transitionIn": { "type": "dissolve", "durationFrames": 15 },
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "title-encerramento", "kind": "library", "assetId": "premium:title-reveal-01", "cue": 2, "cueProgress": 0.78, "span": "utterance" }
+          ],
+          "beats": [
+            { "id": "fechar-no-titulo", "at": { "cue": 2, "cueProgress": 0.86 }, "action": "camera", "durationFrames": 12, "x": 640, "y": 360, "zoom": 1.06 }
+          ]
+        }
+      ]
+    }
+  ]
+}

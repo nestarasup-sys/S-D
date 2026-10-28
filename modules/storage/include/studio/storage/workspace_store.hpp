@@ -1,5 +1,6 @@
 #pragma once
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -7,6 +8,8 @@
 
 namespace studio {
 QStringList loadWorkspaceFonts(const QString &workspaceDirectory);
+QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot);
+bool initializePremiumCatalog(QString *error = nullptr);
 struct WorkspaceResult {
     QString id, error;
 };
@@ -33,6 +36,7 @@ class WorkspaceStore {
     WorkspaceResult deleteCategory(const QString &id);
     WorkspaceResult addAsset(const QString &name, const QString &category, const QString &source,
                              int width = 0, int height = 0);
+    WorkspaceResult importSlotMedia(const QString &source);
     WorkspaceResult addFont(const QString &family, const QString &source);
     WorkspaceResult addVisualStylePreset(const QString &name, const QJsonObject &style);
     WorkspaceResult addPreset(const QString &name, const QString &category, std::vector<Node> nodes);

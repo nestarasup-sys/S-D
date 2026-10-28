@@ -1,0 +1,83 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 2,
+  "definition": {
+    "definitionVersion": 1,
+    "landscape": {
+      "canvas": { "width": 1280, "height": 720 },
+      "layers": [
+        { "id": "question-hook-root", "component": "group", "kind": "group", "role": "root", "name": "Question Hook", "layout": { "x": 0, "y": 0, "width": 1280, "height": 720 } },
+        { "id": "question-rule", "parentId": "question-hook-root", "component": "rule", "kind": "shape", "role": "accent-rule", "name": "Filete vertical", "layout": { "x": 124, "y": 195, "width": 5, "height": 354 }, "color": "#71d6bd", "paletteToken": "accent", "animation": { "preset": "line-draw", "durationFrames": 26 } },
+        { "id": "question-corner", "parentId": "question-hook-root", "component": "rule", "kind": "shape", "role": "highlight-rule", "name": "Filete superior", "layout": { "x": 160, "y": 194, "width": 178, "height": 3 }, "color": "#e5bb71", "paletteToken": "highlight", "animation": { "preset": "line-draw", "delayFrames": 4, "durationFrames": 24 } },
+        { "id": "question-kicker", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "kicker", "name": "Identificação", "layout": { "x": 160, "y": 214, "width": 980, "height": 36 }, "text": "UMA PERGUNTA PARA COMEÇAR", "fontSize": 17, "color": "#9aafb2", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 2, "durationFrames": 20 } },
+        { "id": "question-main", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "premium:question-hook:question", "name": "Pergunta principal", "layout": { "x": 160, "y": 268, "width": 980, "height": 218 }, "text": "QUEM CONTROLA\nO NOSSO TEMPO?", "fontSize": 76, "color": "#edf4ed", "paletteToken": "text", "animation": { "preset": "stagger-reveal", "delayFrames": 8, "durationFrames": 32, "staggerFrames": 4 } },
+        { "id": "question-context", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "premium:question-hook:context", "name": "Contexto opcional", "layout": { "x": 164, "y": 507, "width": 900, "height": 60 }, "text": "Uma pergunta curta que abre espaço para a investigação.", "fontSize": 25, "color": "#aebfc4", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 24, "durationFrames": 24 } }
+      ]
+    },
+    "portrait": {
+      "canvas": { "width": 1080, "height": 1920 },
+      "layers": [
+        { "id": "question-hook-root", "component": "group", "kind": "group", "role": "root", "name": "Question Hook", "layout": { "x": 0, "y": 0, "width": 1080, "height": 1920 } },
+        { "id": "question-rule", "parentId": "question-hook-root", "component": "rule", "kind": "shape", "role": "accent-rule", "name": "Filete vertical", "layout": { "x": 86, "y": 560, "width": 5, "height": 490 }, "color": "#71d6bd", "paletteToken": "accent", "animation": { "preset": "line-draw", "durationFrames": 26 } },
+        { "id": "question-corner", "parentId": "question-hook-root", "component": "rule", "kind": "shape", "role": "highlight-rule", "name": "Filete superior", "layout": { "x": 120, "y": 558, "width": 178, "height": 3 }, "color": "#e5bb71", "paletteToken": "highlight", "animation": { "preset": "line-draw", "delayFrames": 4, "durationFrames": 24 } },
+        { "id": "question-kicker", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "kicker", "name": "Identificação", "layout": { "x": 120, "y": 580, "width": 850, "height": 40 }, "text": "UMA PERGUNTA PARA COMEÇAR", "fontSize": 18, "color": "#9aafb2", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 2, "durationFrames": 20 } },
+        { "id": "question-main", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "premium:question-hook:question", "name": "Pergunta principal", "layout": { "x": 120, "y": 648, "width": 850, "height": 300 }, "text": "QUEM CONTROLA\nO NOSSO TEMPO?", "fontSize": 68, "color": "#edf4ed", "paletteToken": "text", "animation": { "preset": "stagger-reveal", "delayFrames": 8, "durationFrames": 32, "staggerFrames": 4 } },
+        { "id": "question-context", "parentId": "question-hook-root", "component": "text", "kind": "text", "role": "premium:question-hook:context", "name": "Contexto opcional", "layout": { "x": 124, "y": 985, "width": 810, "height": 120 }, "text": "Uma pergunta curta que abre espaço para a investigação.", "fontSize": 29, "color": "#aebfc4", "paletteToken": "muted", "animation": { "preset": "fade-rise", "delayFrames": 24, "durationFrames": 24 } }
+      ]
+    }
+  },
+  "id": "premium:question-hook-01",
+  "name": "Question Hook · abertura interrogativa",
+  "description": "Abertura tipográfica de documentário com pergunta principal e contexto opcional.",
+  "version": "1.0.0",
+  "type": "premium-typography-template",
+  "category": "kinetic-typography",
+  "tags": ["question", "documentary", "opening", "typography"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "question-hook-root",
+  "layers": [
+    { "id": "question-hook-root", "kind": "group", "role": "root" },
+    { "id": "question-rule", "parentId": "question-hook-root", "kind": "shape", "role": "accent-rule" },
+    { "id": "question-corner", "parentId": "question-hook-root", "kind": "shape", "role": "highlight-rule" },
+    { "id": "question-kicker", "parentId": "question-hook-root", "kind": "text", "role": "kicker" },
+    { "id": "question-main", "parentId": "question-hook-root", "kind": "text", "role": "premium:question-hook:question" },
+    { "id": "question-context", "parentId": "question-hook-root", "kind": "text", "role": "premium:question-hook:context" }
+  ],
+  "hierarchy": { "root": "question-hook-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["fade-rise", "line-draw", "stagger-reveal"],
+  "palette": { "tokens": ["accent", "highlight", "muted", "text"] },
+  "slots": [
+  {
+    "id": "question",
+    "kind": "text",
+    "nodeId": "question-main",
+    "role": "premium:question-hook:question",
+    "editable": true,
+    "optional": false,
+    "maxLength": 280,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 28,
+      "padding": 4
+    }
+  },
+  {
+    "id": "context",
+    "kind": "text",
+    "nodeId": "question-context",
+    "role": "premium:question-hook:context",
+    "editable": true,
+    "optional": true,
+    "maxLength": 300,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 24,
+      "padding": 4
+    }
+  }
+],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

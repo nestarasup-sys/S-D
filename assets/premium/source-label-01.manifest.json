@@ -1,0 +1,53 @@
+{
+  "format": "studio-dark-premium",
+  "manifestVersion": 1,
+  "id": "premium:source-label-01",
+  "name": "Source Label · referência editorial",
+  "description": "Etiqueta de fonte compacta para identificar publicação, seção e contexto verificável.",
+  "version": "1.0.0",
+  "type": "premium-overlay",
+  "category": "editorial-overlays",
+  "tags": ["source", "citation", "documentary", "editorial"],
+  "preview": { "mode": "rendered-from-layers", "width": 480, "height": 270 },
+  "dependencies": [],
+  "canvas": { "width": 1280, "height": 720, "responsive": ["landscape", "portrait"] },
+  "rootNodeId": "source-label-root",
+  "layers": [
+    { "id": "source-label-root", "kind": "group", "role": "root" },
+    { "id": "source-label-surface", "parentId": "source-label-root", "kind": "shape", "role": "surface" },
+    { "id": "source-label-accent", "parentId": "source-label-root", "kind": "shape", "role": "accent" },
+    { "id": "source-label-title", "parentId": "source-label-root", "kind": "text", "role": "source-title" },
+    { "id": "source-label-detail", "parentId": "source-label-root", "kind": "text", "role": "source-detail" }
+  ],
+  "hierarchy": { "root": "source-label-root", "parentReferences": "layers[].parentId", "remapIdsOnInstantiate": true },
+  "suggestedAnimation": ["slide-in-left", "fade-rise", "stagger-sequence"],
+  "palette": { "tokens": ["surface", "highlight", "text", "muted"] },
+  "slots": [
+  {
+    "id": "title",
+    "kind": "text",
+    "nodeId": "source-label-title",
+    "role": "premium:source-label:title",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 18,
+      "padding": 4
+    }
+  },
+  {
+    "id": "detail",
+    "kind": "text",
+    "nodeId": "source-label-detail",
+    "role": "premium:source-label:detail",
+    "editable": true,
+    "textLayout": {
+      "mode": "shrink",
+      "minimumFontSize": 14,
+      "padding": 4
+    }
+  }
+],
+  "license": { "spdx": "LicenseRef-StudioDark-Original", "redistribution": "Studio Dark project only" },
+  "origin": { "kind": "created-in-house", "thirdPartyAssets": false }
+}

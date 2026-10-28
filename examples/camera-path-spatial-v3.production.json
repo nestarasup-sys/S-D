@@ -1,0 +1,58 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Travelling horizontal com revelação espacial",
+  "voice": "auto",
+  "captions": false,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [
+    {
+      "id": "laboratorio-horizontal",
+      "narration": ["A câmera enquadra o chip, atravessa o laboratório e encontra o servidor."],
+      "shots": [
+        {
+          "id": "travelling-espacial",
+          "name": "Do chip ao servidor",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": {
+            "path": {
+              "safeMargin": 0.06,
+              "captionSafeBottom": 0.16,
+              "targets": [
+                { "target": "chip-anchor", "at": { "cue": 0, "cueProgress": 0 }, "padding": 1.15, "reveal": "spatial" },
+                { "target": "server-anchor", "at": { "cue": 0, "cueProgress": 0.82 }, "padding": 1.15, "easing": "ease-in-out", "reveal": "spatial" }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "chip-group",
+              "kind": "group",
+              "motion": "none",
+              "x": 70,
+              "y": 220,
+              "children": [
+                { "id": "chip-anchor", "kind": "shape", "x": 0, "y": 0, "width": 400, "height": 280, "color": "#4CC9A9", "opacity": 1, "motion": "none" },
+                { "id": "chip-label", "kind": "text", "x": 30, "y": 220, "width": 340, "height": 44, "text": "PONTO A · PROCESSAMENTO", "color": "#101820", "fontSize": 24, "opacity": 1, "motion": "none" }
+              ]
+            },
+            {
+              "id": "server-group",
+              "kind": "group",
+              "motion": "none",
+              "x": 760,
+              "y": 220,
+              "children": [
+                { "id": "server-anchor", "kind": "shape", "x": 0, "y": 0, "width": 400, "height": 280, "color": "#DC9B57", "opacity": 1, "motion": "none" },
+                { "id": "server-label", "kind": "text", "x": 30, "y": 220, "width": 340, "height": 44, "text": "PONTO B · ARMAZENAMENTO", "color": "#1A1B1A", "fontSize": 24, "opacity": 1, "motion": "none" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -12,31 +12,19 @@ Rectangle {
     property bool snapEnabled: true
     property int snapGuideFrame: -1
     property bool selectedCaptionTrackAvailable: {
-        const rows = editor.nodeItems
-        for (let i = 0; i < rows.length; ++i)
-            if (rows[i].id === editor.selectedId && rows[i].role === "caption" && rows[i].wordAligned)
-                return true
-        return false
+        return editor.selected.id === editor.selectedId && editor.selected.role === "caption" &&
+               editor.selected.wordAligned
     }
-    property int selectedTrackIndex: {
-        const rows = editor.nodeItems
-        for (let i = 0; i < rows.length; ++i)
-            if (rows[i].id === editor.selectedId)
-                return i
-        return -1
-    }
+    property int selectedTrackIndex: editor.nodeRow(editor.selectedId)
     function visibleFrames() { return Math.max(1, (editor.duration - 1) / timelineZoom) }
     function maxStartFrame() { return Math.max(0, (editor.duration - 1) - visibleFrames()) }
     function viewStartFrame() { return timelineOffset * maxStartFrame() }
     function frameToX(frame, width) { return (frame - viewStartFrame()) / visibleFrames() * width }
     function xToFrame(x, width) { return viewStartFrame() + x / Math.max(1, width) * visibleFrames() }
     function revealSelectedTrack() {
-        const rows = editor.nodeItems
-        for (let i = 0; i < rows.length; ++i)
-            if (rows[i].id === editor.selectedId) {
-                tracks.positionViewAtIndex(i, ListView.Contain)
-                return
-            }
+        const row = editor.nodeRow(editor.selectedId)
+        if (row >= 0)
+            tracks.positionViewAtIndex(row, ListView.Contain)
     }
     function setZoomAt(value, x, width) {
         const ratio = Math.max(0, Math.min(1, x / Math.max(1, width)))

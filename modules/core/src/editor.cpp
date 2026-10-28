@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <algorithm>
+#include <new>
 #include <utility>
 #include <studio/core/editor.hpp>
 
@@ -43,7 +44,7 @@ void Editor::remember(Project project) {
         past_.erase(past_.begin());
     past_.push_back(std::move(project));
 }
-std::string Editor::execute(const std::function<void(Project &)> &mutation) {
+std::string Editor::execute(const std::function<void(Project &)> &mutation) try {
     auto candidate = project_;
     mutation(candidate);
     synchronizeLinkedVideoAudio(candidate);
@@ -56,6 +57,8 @@ std::string Editor::execute(const std::function<void(Project &)> &mutation) {
     project_ = std::move(candidate);
     future_.clear();
     return {};
+} catch (const std::bad_alloc &) {
+    return "Memória insuficiente para validar e aplicar esta edição; o projeto atual foi preservado.";
 }
 void Editor::beginGesture() {
     if (gesturing_)
@@ -72,7 +75,7 @@ void Editor::endGesture() {
     gesturing_ = false;
     gestureChanged_ = false;
 }
-bool Editor::undo() {
+bool Editor::undo() try {
     endGesture();
     if (past_.empty())
         return false;
@@ -80,8 +83,10 @@ bool Editor::undo() {
     project_ = std::move(past_.back());
     past_.pop_back();
     return true;
+} catch (const std::bad_alloc &) {
+    return false;
 }
-bool Editor::redo() {
+bool Editor::redo() try {
     endGesture();
     if (future_.empty())
         return false;
@@ -89,5 +94,7 @@ bool Editor::redo() {
     project_ = std::move(future_.back());
     future_.pop_back();
     return true;
+} catch (const std::bad_alloc &) {
+    return false;
 }
 } // namespace studio

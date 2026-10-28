@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QSvgRenderer>
 #include <QTemporaryDir>
@@ -15,6 +16,7 @@
 #include <cmath>
 #include <vector>
 #include <studio/composition/painter.hpp>
+#include <studio/composition/visual_quality.hpp>
 #include <studio/media/wave.hpp>
 #include <studio/storage/project_store.hpp>
 #include <studio/storage/workspace_store.hpp>
@@ -34,7 +36,8 @@ int main(int argc, char **argv) {
                                "/workspace");
     QCommandLineParser parser;
     parser.addHelpOption();
-    for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still", "still-sequence"})
+    for (auto key : {"project", "output", "ffmpeg", "cancel-file", "still", "still-sequence",
+                     "quality-report"})
         parser.addOption({key, key, key});
     parser.process(app);
     if (parser.isSet("ffmpeg"))
@@ -46,6 +49,20 @@ int main(int argc, char **argv) {
     };
     if (!loaded.error.isEmpty())
         return fail(loaded.error);
+    if (parser.isSet("quality-report")) {
+        const auto quality = studio::VisualQualityAnalyzer::analyze(loaded.project);
+        QSaveFile file(parser.value("quality-report"));
+        const auto bytes = QJsonDocument(quality.toJson()).toJson(QJsonDocument::Indented);
+        if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit())
+            return fail("Não foi possível gravar o relatório de qualidade visual.");
+        QTextStream stream(stdout);
+        stream.setEncoding(QStringConverter::Utf8);
+        stream << QJsonDocument(QJsonObject{{"progress", 100}, {"issueCount", int(quality.issues.size())},
+                                            {"sampledFrameCount", int(quality.sampledFrames.size())}})
+                      .toJson(QJsonDocument::Compact)
+               << Qt::endl;
+        return 0;
+    }
     studio::CompositionPainter painter;
     if (parser.isSet("still-sequence")) {
         const auto frameValues = parser.value("still-sequence").split(',', Qt::SkipEmptyParts);

@@ -48,6 +48,44 @@ match = re.search(r"average:([0-9.]+|inf)", comparison.stderr)
 assert match, comparison.stderr
 psnr = float(match.group(1))
 assert psnr > 30, f"Preview/export discrepancy: {psnr} dB"
+
+# Exercise the installed Qt Image Formats WebP plugin through the same
+# composition and FFmpeg worker paths used by the editor.
+webp_source = out / "transparency.webp"
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+     "nullsrc=size=96x64:rate=1,format=rgba", "-vf",
+     "geq=r='0':g='255*gte(X,48)':b='0':a='255*gte(X,48)'",
+     "-frames:v", "1", "-c:v", "libwebp", "-lossless", "1", webp_source])
+webp_decode = subprocess.run([str(ffmpeg), "-hide_banner", "-loglevel", "error", "-i", str(webp_source),
+                              "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "pipe:1"],
+                             capture_output=True, timeout=30)
+assert webp_decode.returncode == 0, webp_decode.stderr.decode("utf-8", errors="replace")
+assert len(webp_decode.stdout) == 96 * 64 * 4
+assert webp_decode.stdout[(2 * 96 + 2) * 4 + 3] == 0
+assert webp_decode.stdout[(32 * 96 + 70) * 4 + 3] >= 240
+webp_project_data = json.loads(project.read_text(encoding="utf-8"))
+webp_node = next(node.copy() for node in webp_project_data["nodes"] if node["kind"] == "shape")
+webp_node.update({"id": "smoke-webp", "name": "Translucent WebP", "kind": "image", "source": str(webp_source),
+                  "parentId": "", "shotId": "", "x": 980, "y": 500, "width": 240, "height": 160,
+                  "start": 0, "duration": webp_project_data["duration"], "opacity": 1,
+                  "animated": False, "keyframes": [], "captionWords": []})
+webp_project_data["nodes"].append(webp_node)
+webp_project = out / "webp.studio.json"
+webp_project.write_text(json.dumps(webp_project_data, ensure_ascii=False, indent=2), encoding="utf-8")
+webp_worker = [bin_dir / "studio_render.exe", "--project", webp_project]
+webp_still = out / "webp-expected.png"
+webp_video = out / "webp.mp4"
+run(webp_worker + ["--still", "90", "--output", webp_still])
+webp_render = run(webp_worker + ["--output", webp_video, "--ffmpeg", ffmpeg])
+run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-i", webp_video,
+     "-vf", "select=eq(n\\,90)", "-frames:v", "1", out / "webp-decoded.png"])
+webp_comparison = run([ffmpeg, "-hide_banner", "-i", webp_still, "-i", out / "webp-decoded.png",
+                       "-lavfi", "psnr", "-f", "null", "-"])
+webp_match = re.search(r"average:([0-9.]+|inf)", webp_comparison.stderr)
+assert webp_match, webp_comparison.stderr
+webp_psnr = float(webp_match.group(1))
+assert webp_psnr > 30, f"WebP preview/export discrepancy: {webp_psnr} dB"
+(out / "webp-render.log").write_text(webp_render.stdout + webp_render.stderr, encoding="utf-8")
 before = hashlib.sha256(video.read_bytes()).hexdigest()
 run(worker + ["--output", video, "--ffmpeg", ffmpeg], expected=1)
 assert hashlib.sha256(video.read_bytes()).hexdigest() == before
@@ -63,9 +101,13 @@ missing_path.write_text(json.dumps(missing), encoding="utf-8")
 run([bin_dir / "studio_render.exe", "--project", missing_path, "--output", out / "missing.mp4", "--ffmpeg", ffmpeg], expected=1)
 assert not (out / "missing.mp4").exists()
 summary = {"status": "passed", "frames": 360, "resolution": "1280x720", "fps": 30,
-           "durationSeconds": 12, "previewExportPsnrDb": psnr, "videoBytes": video.stat().st_size,
+           "durationSeconds": 12, "previewExportPsnrDb": psnr, "webpPreviewExportPsnrDb": webp_psnr,
+           "webpAlpha": "transparent and opaque pixels preserved by source decode",
+           "videoBytes": video.stat().st_size,
            "elapsedSeconds": round(time.monotonic() - started, 2),
            "checks": ["QML startup", "window capture", "MP4 encoding", "360 decoded frames",
-                      "preview/export frame comparison", "overwrite refused", "cancellation", "missing media refused"]}
+                      "preview/export frame comparison", "WebP alpha decode", "WebP still/video rendering",
+                      "WebP preview/export frame comparison", "overwrite refused", "cancellation",
+                      "missing media refused"]}
 (out / "report.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(out), **summary}, indent=2))

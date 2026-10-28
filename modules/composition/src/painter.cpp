@@ -1,21 +1,34 @@
-#include <QFileInfo>
+#include <QCoreApplication>
+#include <QFile>
 #include <QCryptographicHash>
+#include <QDir>
+#include <QFileInfo>
 #include <QFont>
+#include <QFontMetricsF>
 #include <QImageReader>
 #include <QLinearGradient>
 #include <QProcess>
 #include <QProcessEnvironment>
-#include <QSvgRenderer>
-#include <QFontMetricsF>
+#include <QResource>
 #include <QRegularExpression>
+#include <QSvgRenderer>
 #include <algorithm>
 #include <functional>
 #include <optional>
-#include <QCoreApplication>
-#include <QDir>
+#include <studio/core/library.hpp>
 #include <studio/composition/native_painter.hpp>
 #include <studio/composition/painter.hpp>
+#include <studio/composition/text_layout.hpp>
+#include <studio/composition/render_snapshot.hpp>
 #include <vector>
+
+static void initializeAiLibraryResources() {
+    static const bool initialized = [] {
+        Q_INIT_RESOURCE(ai_library);
+        return true;
+    }();
+    (void)initialized;
+}
 
 namespace studio {
 namespace {
@@ -26,10 +39,12 @@ QString videoFrameCacheKey(const Node &node, const Project &project, int width, 
                            std::int64_t localFrame) {
     const auto source = QString::fromStdString(node.source);
     const QFileInfo sourceInfo(source);
-    const auto fingerprint = QStringList{QString::fromStdString(node.id), source,
+    const auto fingerprint = QStringList{QString::fromStdString(node.id),
+                                         source,
                                          QString::number(sourceInfo.size()),
                                          QString::number(sourceInfo.lastModified().toMSecsSinceEpoch()),
-                                         QString::number(width), QString::number(height),
+                                         QString::number(width),
+                                         QString::number(height),
                                          QString::number(node.videoSourceInSeconds, 'f', 6),
                                          QString::number(node.videoPlaybackRate, 'f', 6),
                                          QString::number(node.videoCropX, 'f', 6),
@@ -41,6 +56,16 @@ QString videoFrameCacheKey(const Node &node, const Project &project, int width, 
                                  .join(QChar(0));
     const auto digest = QCryptographicHash::hash(fingerprint.toUtf8(), QCryptographicHash::Sha256).toHex();
     return QString::fromLatin1(digest) + ':' + QString::number(localFrame);
+}
+
+QString svgRendererCacheKey(const QString &source) {
+    const QFileInfo info(source);
+    QFile file(source);
+    const auto digest = file.open(QIODevice::ReadOnly)
+                            ? QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex()
+                            : QByteArray{};
+    return source + QChar(0) + QString::number(info.size()) + QChar(0) +
+           QString::number(info.lastModified().toMSecsSinceEpoch()) + QChar(0) + QString::fromLatin1(digest);
 }
 
 double firstVideoFrameAtOrAfter(const QString &ffmpeg, const QString &source, double sourceInSeconds,
@@ -60,8 +85,8 @@ double firstVideoFrameAtOrAfter(const QString &ffmpeg, const QString &source, do
     const auto startMatch = startExpression.match(diagnostic);
     const auto frameRateMatch = frameRateExpression.match(diagnostic);
     const double startTime = startMatch.hasMatch() ? startMatch.captured(1).toDouble() : 0.0;
-    const double frameRate = frameRateMatch.hasMatch() ? frameRateMatch.captured(1).toDouble()
-                                                       : fallbackFrameRate;
+    const double frameRate =
+        frameRateMatch.hasMatch() ? frameRateMatch.captured(1).toDouble() : fallbackFrameRate;
     if (frameRate <= 0.0)
         return startTime;
     return startTime + std::ceil(std::max(0.0, sourceInSeconds - startTime) * frameRate - 1e-9) / frameRate;
@@ -80,16 +105,6 @@ const ArtDirection &artDirectionFor(const Project &project, const std::string &s
     return project.artDirection;
 }
 
-const ArtDirection &artDirectionAt(const Project &project, std::int64_t frame) {
-    for (const auto &shot : project.shots)
-        if (frame >= shot.start && frame < shot.start + shot.duration)
-            return artDirectionFor(project, shot.sceneId, shot.id);
-    for (const auto &scene : project.scenes)
-        if (frame >= scene.start && frame < scene.start + scene.duration)
-            return artDirectionFor(project, scene.id);
-    return project.artDirection;
-}
-
 void paintBackground(QPainter &painter, const Project &project, const ArtDirection &art) {
     const auto background = QColor(QString::fromStdString(art.backgroundColor));
     const auto glowColor = QColor(QString::fromStdString(art.glowColor));
@@ -100,84 +115,84 @@ void paintBackground(QPainter &painter, const Project &project, const ArtDirecti
     painter.fillRect(QRect(0, 0, project.width, project.height), glow);
 }
 
+void paintNativeArtwork(QPainter &painter, const Node &node, std::int64_t frame,
+                        QCache<QString, QImage> &images) {
+    const auto *asset = libraryItem(node.nativeId);
+    if (!asset || asset->resourcePath.empty()) {
+        paintNative(painter, node, frame);
+        return;
+    }
+
+    initializeAiLibraryResources();
+    const auto path = QString::fromStdString(asset->resourcePath);
+    if (!images.contains(path)) {
+        QImageReader reader(path);
+        reader.setAutoTransform(true);
+        auto *decoded = new QImage(reader.read());
+        const auto cost = std::max<qsizetype>(1, decoded->sizeInBytes() / 1024);
+        images.insert(path, decoded, int(cost));
+    }
+    const auto *image = images.object(path);
+    if (image && !image->isNull()) {
+        QSizeF fitted = image->size();
+        fitted.scale(QSizeF(node.width, node.height), Qt::KeepAspectRatio);
+        painter.drawImage(QRectF((node.width - fitted.width()) / 2.0,
+                                 (node.height - fitted.height()) / 2.0,
+                                 fitted.width(), fitted.height()), *image);
+        return;
+    }
+
+    // Procedural artwork is an internal recovery path, never a second library choice.
+    Node fallback = node;
+    fallback.nativeId = asset->fallbackId;
+    paintNative(painter, fallback, frame);
+}
+
 double animationEaseOut(double progress) {
     const auto t = std::clamp(progress, 0.0, 1.0);
     return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
 }
 
-void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
-                const std::optional<std::string> &shotId, NodePass pass, QCache<QString, QImage> &images,
-                const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
-    const auto camera = evaluateCamera(project, frame);
+void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnapshot &snapshot, NodePass pass,
+                QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
+                SvgCacheStats &svgCacheStats,
+                const std::function<QImage(const Node &, std::int64_t)> &videoFrame,
+                const std::string *nodeId = nullptr, bool localLayer = false) {
+    const auto frame = snapshot.frame;
     painter.save();
-    painter.translate(project.width / 2.0, project.height / 2.0);
-    painter.scale(camera.zoom, camera.zoom);
-    painter.rotate(camera.rotation);
-    painter.translate(-camera.x, -camera.y);
-    for (const auto &node : project.nodes) {
+    for (const auto &resolved : snapshot.nodes) {
+        const auto &node = resolved.node;
+        if (nodeId && node.id != *nodeId)
+            continue;
         if (pass == NodePass::Captions && (node.role != "caption" || !node.shotId.empty()))
             continue;
         if (pass == NodePass::ShotComposition) {
-            const bool belongsToShot = shotId && node.shotId == *shotId;
+            const bool belongsToShot = snapshot.shotId && node.shotId == *snapshot.shotId;
             const bool isShared = node.shotId.empty() && node.role != "caption";
             if (!belongsToShot && !isShared)
                 continue;
         }
-        std::vector<const Node *> chain{&node};
-        auto parentId = node.parentId;
-        while (!parentId.empty()) {
-            const auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
-                                             [&](const Node &candidate) { return candidate.id == parentId; });
-            if (parent == project.nodes.end())
-                break;
-            chain.push_back(&*parent);
-            parentId = parent->parentId;
-        }
-        std::reverse(chain.begin(), chain.end());
-        double opacity = 1;
-        bool visible = true;
-        for (const auto *part : chain) {
-            const auto state = evaluate(*part, frame);
-            if (state.opacity <= 0 || !active(*part, frame)) {
-                visible = false;
-                break;
-            }
-            opacity *= state.opacity;
-        }
-        if (!visible || node.kind == NodeKind::Group)
+        if (!resolved.visible || node.kind == NodeKind::Group)
             continue;
-        auto styleSceneId = node.sceneId;
-        auto styleShotId = node.shotId;
-        if (styleShotId.empty() && shotId)
-            styleShotId = *shotId;
-        if (styleSceneId.empty() && !styleShotId.empty())
-            for (const auto &shot : project.shots)
-                if (shot.id == styleShotId) {
-                    styleSceneId = shot.sceneId;
-                    break;
-                }
-        if (styleSceneId.empty())
-            for (const auto &scene : project.scenes)
-                if (frame >= scene.start && frame < scene.start + scene.duration) {
-                    styleSceneId = scene.id;
-                    break;
-                }
-        if (node.role == "caption" && styleShotId.empty())
-            for (const auto &shot : project.shots)
-                if (shot.sceneId == styleSceneId && frame >= shot.start && frame < shot.start + shot.duration) {
-                    styleShotId = shot.id;
-                    break;
-                }
-        const auto &art = artDirectionFor(project, styleSceneId, styleShotId);
+        const auto &art = resolved.artDirection;
         painter.save();
-        painter.setOpacity(opacity);
-        for (const auto *part : chain) {
-            const auto state = evaluate(*part, frame);
-            painter.translate(state.x, state.y);
-            painter.translate(part->width / 2, part->height / 2);
-            painter.rotate(state.rotation);
-            painter.scale(state.scale, state.scale);
-            painter.translate(-part->width / 2, -part->height / 2);
+        painter.setOpacity(localLayer ? 1.0 : resolved.inheritedOpacity);
+        // Captions are viewport overlays. Camera movement belongs to scene
+        // content, while synchronized subtitles remain in a fixed safe area.
+        if (!localLayer && node.role != "caption") {
+            painter.translate(project.width / 2.0, project.height / 2.0);
+            painter.scale(snapshot.camera.zoom, snapshot.camera.zoom);
+            painter.rotate(snapshot.camera.rotation);
+            painter.translate(-snapshot.camera.x, -snapshot.camera.y);
+        }
+        if (!localLayer) {
+            for (const auto &part : resolved.transformChain) {
+                painter.translate(part.state.x, part.state.y);
+                painter.translate(part.width / 2.0, part.height / 2.0);
+                painter.rotate(part.state.rotation);
+                painter.scale(part.state.scale, part.state.scale);
+                painter.translate(-part.width / 2.0, -part.height / 2.0);
+            }
         }
         const QRectF bounds(0, 0, node.width, node.height);
         if (node.kind == NodeKind::Shape) {
@@ -185,11 +200,19 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
             painter.setBrush(QColor(QString::fromStdString(node.color)));
             painter.drawRoundedRect(bounds, std::min(12., node.height / 2), std::min(12., node.height / 2));
         } else if (node.kind == NodeKind::Native) {
-            paintNative(painter, node, frame);
+            paintNativeArtwork(painter, node, frame, images);
         } else if (node.kind == NodeKind::Svg) {
-            QSvgRenderer svg(QString::fromStdString(node.source));
-            if (svg.isValid())
-                svg.render(&painter, bounds);
+            const auto source = QString::fromStdString(node.source);
+            const auto key = svgRendererCacheKey(source);
+            if (svgRenderers.contains(key))
+                ++svgCacheStats.hits;
+            else {
+                ++svgCacheStats.misses;
+                svgRenderers.insert(key, new QSvgRenderer(source));
+            }
+            auto *svg = svgRenderers.object(key);
+            if (svg && svg->isValid())
+                svg->render(&painter, bounds);
         } else if (node.kind == NodeKind::Video) {
             const auto image = videoFrame(node, frame);
             if (!image.isNull()) {
@@ -204,11 +227,14 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
             } else {
                 painter.fillRect(bounds, QColor("#18232b"));
                 painter.setPen(Qt::white);
-                painter.drawText(bounds, Qt::AlignCenter, "Vídeo indisponível\n" +
-                                                            QFileInfo(QString::fromStdString(node.source)).fileName());
+                painter.drawText(bounds, Qt::AlignCenter,
+                                 "Vídeo indisponível\n" +
+                                     QFileInfo(QString::fromStdString(node.source)).fileName());
             }
         } else if (node.kind == NodeKind::Text) {
-            const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8) : bounds;
+            const auto textLayout = resolvePremiumTextLayout(node, art);
+            const QRectF textBounds = node.role == "caption" ? bounds.adjusted(20, 8, -20, -8)
+                                                               : (node.textAutoFit ? textLayout.contentBounds : bounds);
             if (node.role == "caption") {
                 painter.setPen(Qt::NoPen);
                 auto captionBackground = QColor(QString::fromStdString(art.captionBackgroundColor));
@@ -217,10 +243,10 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                 painter.drawRoundedRect(bounds, 12, 12);
             }
             QFont font(QString::fromStdString(art.fontFamily));
-            font.setPixelSize(qRound(node.fontSize));
+            font.setPixelSize(textLayout.pixelSize);
             font.setWeight(QFont::DemiBold);
-            painter.setFont(font);
             if (node.role == "caption" && !node.captionWords.empty()) {
+                painter.setFont(font);
                 struct CaptionPart {
                     QString text;
                     QColor color;
@@ -234,28 +260,28 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                     qreal width{0};
                 };
                 const QFontMetricsF metrics(font);
-                const auto baseColor = QColor(QString::fromStdString(node.role == "caption" ? art.textColor
-                                                                                              : node.color));
+                const auto baseColor =
+                    QColor(QString::fromStdString(node.role == "caption" ? art.textColor : node.color));
                 const auto highlightColor = QColor(QString::fromStdString(art.captionHighlightColor));
-                const auto words = QString::fromStdString(node.text).split(QRegularExpression("\\s+"),
-                                                                           Qt::SkipEmptyParts);
+                const auto words =
+                    QString::fromStdString(node.text).split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
                 std::vector<CaptionLine> lines(1);
                 std::size_t cueIndex = 0;
                 const qreal wordGap = metrics.horizontalAdvance(QLatin1Char(' '));
                 for (const auto &word : words) {
                     const bool hasCue = cueIndex < node.captionWords.size();
                     const auto cue = hasCue ? node.captionWords[cueIndex] : CaptionWordCue{};
-                    const bool highlighted = hasCue && frame >= cue.start && frame < cue.end &&
-                                             node.wordAnimationPreset != "none";
+                    const bool highlighted =
+                        hasCue && frame >= cue.start && frame < cue.end && node.wordAnimationPreset != "none";
                     const qreal width = metrics.horizontalAdvance(word);
                     qreal wordScale = 1, wordOpacity = 1, wordOffsetY = 0;
                     if (hasCue && frame >= cue.start && frame < cue.end) {
                         const auto elapsed = std::max<std::int64_t>(0, frame - cue.start);
-                        const auto progress = animationEaseOut(
-                            double(elapsed) / std::max(1, node.wordAnimationDurationFrames));
+                        const auto progress =
+                            animationEaseOut(double(elapsed) / std::max(1, node.wordAnimationDurationFrames));
                         if (node.wordAnimationPreset == "pop" || node.wordAnimationPreset == "pop-rise")
-                            wordScale = node.wordAnimationStartScale +
-                                        (1 - node.wordAnimationStartScale) * progress;
+                            wordScale =
+                                node.wordAnimationStartScale + (1 - node.wordAnimationStartScale) * progress;
                         if (node.wordAnimationPreset == "rise" || node.wordAnimationPreset == "pop-rise")
                             wordOffsetY = -node.wordAnimationTravelY * (1 - progress);
                         if (node.wordAnimationPreset == "fade")
@@ -277,9 +303,9 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                 }
                 const qreal lineHeight = metrics.height();
                 const qreal totalHeight = lineHeight * lines.size();
-                qreal baseline = textBounds.y() + std::max<qreal>(metrics.ascent(),
-                                                                  (textBounds.height() - totalHeight) / 2 +
-                                                                      metrics.ascent());
+                qreal baseline = textBounds.y() +
+                                 std::max<qreal>(metrics.ascent(),
+                                                 (textBounds.height() - totalHeight) / 2 + metrics.ascent());
                 painter.save();
                 for (const auto &line : lines) {
                     qreal x = textBounds.x() + (textBounds.width() - line.width) / 2;
@@ -306,10 +332,24 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
                 }
                 painter.restore();
             } else {
+                const auto alignment = (node.role == "caption" ? Qt::AlignCenter
+                                                                : Qt::AlignLeft | Qt::AlignTop) |
+                                       Qt::TextWordWrap;
+                const auto displayText = QString::fromStdString(node.text);
+                painter.setFont(font);
                 painter.setPen(QColor(QString::fromStdString(node.color)));
-                painter.drawText(textBounds, (node.role == "caption" ? Qt::AlignCenter : Qt::AlignLeft | Qt::AlignTop) |
-                                                  Qt::TextWordWrap,
-                                 QString::fromStdString(node.text));
+                if (node.role == "premium:title:main") {
+                    const double linear = std::clamp(double(frame - node.start) /
+                                                          std::max(1, node.motionFrames),
+                                                      0.0, 1.0);
+                    const double reveal = 1.0 - std::pow(1.0 - linear, 3.0);
+                    painter.save();
+                    painter.setClipRect(QRectF(0, 0, node.width * reveal, node.height));
+                    painter.drawText(textBounds, alignment, displayText);
+                    painter.restore();
+                } else {
+                    painter.drawText(textBounds, alignment, displayText);
+                }
             }
         } else {
             const auto path = QString::fromStdString(node.source);
@@ -345,7 +385,8 @@ void paintNodes(QPainter &painter, const Project &project, std::int64_t frame,
 }
 
 QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &shot,
-                 QCache<QString, QImage> &images,
+                 QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
+                 SvgCacheStats &svgCacheStats,
                  const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
     QImage image(project.width, project.height, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
@@ -354,7 +395,11 @@ QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &s
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     paintBackground(painter, project, artDirectionFor(project, shot.sceneId, shot.id));
-    paintNodes(painter, project, frame, shot.id, NodePass::ShotComposition, images, videoFrame);
+    // The requested layer can be the outgoing shot while the frame time has
+    // advanced into the incoming shot. Resolve it explicitly for this layer.
+    const auto layer = buildRenderFrameSnapshot(project, frame, shot.id);
+    paintNodes(painter, project, layer, NodePass::ShotComposition, images, svgRenderers, svgCacheStats,
+               videoFrame);
     painter.end();
     return image;
 }
@@ -380,7 +425,9 @@ CompositionPainter::~CompositionPainter() = default;
 void CompositionPainter::clearCache() {
     images_.clear();
     videoFrames_.clear();
+    svgRenderers_.clear();
     videoCacheStats_ = {};
+    svgCacheStats_ = {};
     for (auto &[id, decoder] : videoDecoders_) {
         Q_UNUSED(id);
         if (decoder->process.state() != QProcess::NotRunning) {
@@ -422,11 +469,12 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
     };
     const bool decoderSettingsChanged =
         decoder.source != source || decoder.width != width || decoder.height != height ||
-        decoder.sourceInSeconds != node.videoSourceInSeconds || decoder.playbackRate != node.videoPlaybackRate ||
-        decoder.cropX != node.videoCropX || decoder.cropY != node.videoCropY ||
-        decoder.cropWidth != node.videoCropWidth || decoder.cropHeight != node.videoCropHeight;
-    const bool jumpedAhead = decoder.decodedFrame >= 0 &&
-                             localFrame - decoder.decodedFrame > sequentialVideoDecodeWindow;
+        decoder.sourceInSeconds != node.videoSourceInSeconds ||
+        decoder.playbackRate != node.videoPlaybackRate || decoder.cropX != node.videoCropX ||
+        decoder.cropY != node.videoCropY || decoder.cropWidth != node.videoCropWidth ||
+        decoder.cropHeight != node.videoCropHeight;
+    const bool jumpedAhead =
+        decoder.decodedFrame >= 0 && localFrame - decoder.decodedFrame > sequentialVideoDecodeWindow;
     if (decoderSettingsChanged || localFrame < decoder.decodedFrame || jumpedAhead)
         stopDecoder();
     decoder.source = source;
@@ -463,13 +511,12 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         filters << QString("fps=%1/%2").arg(project.fps.numerator).arg(project.fps.denominator);
         QStringList arguments{"-nostdin", "-hide_banner", "-loglevel", "error"};
         if (decoder.decodeStartFrame > 0) {
-            const double projectSecondsPerFrame =
-                double(project.fps.denominator) / project.fps.numerator;
+            const double projectSecondsPerFrame = double(project.fps.denominator) / project.fps.numerator;
             const double fallbackFrameRate = double(project.fps.numerator) / project.fps.denominator;
-            const double firstSourceFrame = firstVideoFrameAtOrAfter(
-                ffmpeg, source, node.videoSourceInSeconds, fallbackFrameRate);
-            const double sourceTime = firstSourceFrame +
-                                      decoder.decodeStartFrame * projectSecondsPerFrame * node.videoPlaybackRate;
+            const double firstSourceFrame =
+                firstVideoFrameAtOrAfter(ffmpeg, source, node.videoSourceInSeconds, fallbackFrameRate);
+            const double sourceTime =
+                firstSourceFrame + decoder.decodeStartFrame * projectSecondsPerFrame * node.videoPlaybackRate;
             arguments << "-ss" << QString::number(sourceTime, 'f', 6);
             ++videoCacheStats_.seekStarts;
         }
@@ -494,7 +541,8 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
         QByteArray bytes = decoder.pending.left(qsizetype(frameBytes));
         decoder.pending.remove(0, qsizetype(frameBytes));
         decoder.lastImage = QImage(reinterpret_cast<const uchar *>(bytes.constData()), width, height,
-                                   width * 4, QImage::Format_RGBA8888).copy();
+                                   width * 4, QImage::Format_RGBA8888)
+                                .copy();
         ++decoder.decodedFrame;
         ++videoCacheStats_.decodedFrames;
         const auto frameKey = videoFrameCacheKey(node, project, width, height, decoder.decodedFrame);
@@ -508,53 +556,56 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    const auto snapshot = RenderSnapshot::build(project, frame);
     if (project.shots.empty()) {
-        paintBackground(painter, project, artDirectionAt(project, frame));
-        paintNodes(painter, project, frame, std::nullopt, NodePass::All, images_,
-                   [this, &project](const Node &node, std::int64_t number) {
+        paintBackground(painter, project, snapshot.primary().backgroundArt);
+        paintNodes(painter, project, snapshot.primary(), NodePass::All, images_, svgRenderers_,
+                   svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
         return;
     }
 
     const ShotMarker *currentShot = nullptr;
-    for (const auto &shot : project.shots)
-        if (frame >= shot.start && frame < shot.start + shot.duration &&
-            (!currentShot || shot.start > currentShot->start))
-            currentShot = &shot;
+    if (snapshot.primary().shotId)
+        for (const auto &shot : snapshot.shots())
+            if (shot.id == *snapshot.primary().shotId) {
+                currentShot = &shot;
+                break;
+            }
     if (!currentShot) {
-        paintBackground(painter, project, artDirectionAt(project, frame));
-        paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_,
-                   [this, &project](const Node &node, std::int64_t number) {
+        paintBackground(painter, project, snapshot.primary().backgroundArt);
+        paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
+                   svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
         return;
     }
 
     const ShotMarker *previousShot = nullptr;
-    if (currentShot->transitionIn != "cut" &&
-        frame < currentShot->start + currentShot->transitionDurationFrames) {
-        for (const auto &shot : project.shots)
-            if (shot.sceneId == currentShot->sceneId && shot.start + shot.duration == currentShot->start)
+    if (snapshot.transition())
+        for (const auto &shot : snapshot.shots())
+            if (shot.id == snapshot.transition()->outgoingShotId) {
                 previousShot = &shot;
-    }
+                break;
+            }
 
     if (!previousShot || currentShot->transitionIn == "cut") {
         paintBackground(painter, project, artDirectionFor(project, currentShot->sceneId, currentShot->id));
-        paintNodes(painter, project, frame, currentShot->id, NodePass::ShotComposition, images_,
-                   [this, &project](const Node &node, std::int64_t number) {
+        paintNodes(painter, project, snapshot.primary(), NodePass::ShotComposition, images_, svgRenderers_,
+                   svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
     } else {
-        const auto previousFrame = previousShot->start + previousShot->duration - 1;
+        const auto previousFrame = snapshot.transition()->outgoingFrame;
         const auto decoder = [this, &project](const Node &node, std::int64_t number) {
             return videoFrame(node, project, number);
         };
-        const auto outgoing = shotLayer(project, previousFrame, *previousShot, images_, decoder);
-        const auto incoming = shotLayer(project, frame, *currentShot, images_, decoder);
-        const double progress = std::clamp(double(frame - currentShot->start) /
-                                               std::max(1, currentShot->transitionDurationFrames - 1),
-                                           0.0, 1.0);
+        const auto outgoing =
+            shotLayer(project, previousFrame, *previousShot, images_, svgRenderers_, svgCacheStats_, decoder);
+        const auto incoming =
+            shotLayer(project, frame, *currentShot, images_, svgRenderers_, svgCacheStats_, decoder);
+        const double progress = snapshot.transition()->progress;
         if (currentShot->transitionIn == "dissolve") {
             painter.setCompositionMode(QPainter::CompositionMode_Plus);
             painter.setOpacity(1.0 - progress);
@@ -600,8 +651,8 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
                 incoming);
         }
     }
-    paintNodes(painter, project, frame, std::nullopt, NodePass::Captions, images_,
-               [this, &project](const Node &node, std::int64_t number) {
+    paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
+               svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                    return videoFrame(node, project, number);
                });
 }
@@ -611,6 +662,35 @@ QImage CompositionPainter::frame(const Project &project, std::int64_t frameNumbe
     image.fill(Qt::black);
     QPainter painter(&image);
     paint(painter, project, frameNumber);
+    painter.end();
+    return image;
+}
+
+QImage CompositionPainter::rasterNodeLayer(const Project &project, const RenderFrameSnapshot &snapshot,
+                                           const RenderNodeSnapshot &node, double supersamplingScale) {
+    if (!node.visible || node.node.kind == NodeKind::Group || node.node.kind == NodeKind::Video)
+        return {};
+    const auto scale = std::clamp(supersamplingScale, 1.0, 4.0);
+    const QSize size(std::clamp(qCeil(node.node.width * scale), 1, 4096),
+                     std::clamp(qCeil(node.node.height * scale), 1, 4096));
+    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    painter.scale(scale, scale);
+    paintNodes(painter, project, snapshot, NodePass::All, images_, svgRenderers_, svgCacheStats_,
+               [this, &project](const Node &current, std::int64_t frame) {
+                   return videoFrame(current, project, frame);
+               },
+               &node.node.id, true);
+    painter.end();
+    return image;
+}
+
+QImage CompositionPainter::rasterBackgroundLayer(const Project &project, const ArtDirection &art) {
+    QImage image(project.width, project.height, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    paintBackground(painter, project, art);
     painter.end();
     return image;
 }

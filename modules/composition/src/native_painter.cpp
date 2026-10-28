@@ -5,6 +5,7 @@
 #include <studio/composition/native_painter.hpp>
 
 namespace studio {
+bool paintExtendedNative(QPainter &, const Node &, std::int64_t);
 namespace {
 void box(QPainter &p, QRectF r, QColor c, double radius = 8) {
     p.setPen(Qt::NoPen);
@@ -41,6 +42,8 @@ void building(QPainter &p, QRectF r, QColor c) {
 void paintNative(QPainter &p, const Node &n, std::int64_t frame) {
     const auto id = n.nativeId;
     const QColor color(QString::fromStdString(n.color)), skin(QString::fromStdString(n.secondaryColor));
+    if (paintExtendedNative(p, n, frame))
+        return;
     p.save();
     p.setClipRect(QRectF(0, 0, n.width, n.height), Qt::IntersectClip);
     if (id == "street" || id == "office" || id == "showroom" || id == "studio") {

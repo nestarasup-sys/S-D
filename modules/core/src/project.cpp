@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <new>
 #include <studio/core/library.hpp>
 #include <studio/core/project.hpp>
 #include <unordered_map>
@@ -40,8 +41,8 @@ double eased(double t, const std::string &curve) {
     return t; // Preserve original interpolation when easing was absent.
 }
 } // namespace
-std::string validate(const Project &p) {
-    if (p.schemaVersion < 2 || p.schemaVersion > 14)
+std::string validate(const Project &p) try {
+    if (p.schemaVersion < 2 || p.schemaVersion > 15)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -52,9 +53,9 @@ std::string validate(const Project &p) {
     if (p.fps.numerator <= 0 || p.fps.numerator > 120000 || p.fps.denominator <= 0 ||
         p.fps.denominator > 10000 || p.fps.value() < 1 || p.fps.value() > 120)
         return "Taxa de quadros inválida.";
-    if (p.duration < 1 || p.duration > 18000 || p.nodes.size() > 200 || p.shots.size() > 256 ||
-        p.visualBeats.size() > 4096 || p.audioTracks.size() > 32)
-        return "Projeto excede os limites deste protótipo.";
+    if (p.duration < 1 || p.duration > 18000 || p.shots.size() > 256 || p.visualBeats.size() > 4096 ||
+        p.audioTracks.size() > 32)
+        return "Duração, quantidade de shots, Visual Beats ou pistas de áudio fora dos limites suportados.";
     if (p.schemaVersion < 4 && !p.audioTracks.empty())
         return "Pistas de áudio exigem a versão 4 do projeto.";
     if (p.schemaVersion < 5 && std::any_of(p.nodes.begin(), p.nodes.end(),
@@ -77,6 +78,10 @@ std::string validate(const Project &p) {
     std::unordered_set<std::string> sceneIds;
     std::unordered_set<std::string> shotIds;
     std::unordered_set<std::string> beatIds;
+    std::unordered_map<std::string, const Node *> nodesById;
+    nodesById.reserve(p.nodes.size());
+    std::unordered_map<std::string, const SceneMarker *> scenesById;
+    scenesById.reserve(p.scenes.size());
     std::int64_t sceneEnd = 0;
     for (const auto &scene : p.scenes) {
         if (scene.id.empty() || !sceneIds.insert(scene.id).second || scene.start < sceneEnd ||
@@ -84,11 +89,13 @@ std::string validate(const Project &p) {
             return "Marcadores de cena inválidos ou sobrepostos.";
         if (scene.artDirection && (p.schemaVersion < 11 || !validArtDirection(*scene.artDirection)))
             return "Direção de arte da cena inválida; exige schema 11.";
+        scenesById.emplace(scene.id, &scene);
         sceneEnd = scene.start + scene.duration;
     }
     for (const auto &n : p.nodes) {
         if (n.id.empty() || !ids.insert(n.id).second)
             return "Identificação de objeto duplicada ou vazia.";
+        nodesById.emplace(n.id, &n);
         if (n.kind == NodeKind::Group)
             parentIds.insert(n.id);
         if (p.schemaVersion < 3 && (n.kind == NodeKind::Group || !n.parentId.empty() || !n.keyframes.empty()))
@@ -102,6 +109,13 @@ std::string validate(const Project &p) {
             n.width > 10000 || n.height > 10000 || !std::isfinite(n.opacity) || n.opacity < 0 ||
             n.opacity > 1 || !std::isfinite(n.fontSize) || n.fontSize < 8 || n.fontSize > 300)
             return "Propriedade visual inválida.";
+        if (n.textAutoFit && (p.schemaVersion < 15 || n.kind != NodeKind::Text ||
+                              !std::isfinite(n.textMinFontSize) || n.textMinFontSize < 8 ||
+                              n.textMinFontSize > n.fontSize || !std::isfinite(n.textPadding) ||
+                              n.textPadding < 0 || n.textPadding * 2 >= std::min(n.width, n.height)))
+            return "Política de ajuste de texto inválida ou exige schema 15.";
+        if (!n.textAutoFit && (std::abs(n.textMinFontSize - 12) > 1e-9 || std::abs(n.textPadding) > 1e-9))
+            return "Parâmetros de ajuste de texto exigem uma política habilitada.";
         if (n.color.size() != 7 || n.color[0] != '#' ||
             !std::all_of(n.color.begin() + 1, n.color.end(),
                          [](unsigned char c) { return std::isxdigit(c); }))
@@ -163,11 +177,13 @@ std::string validate(const Project &p) {
             return "Objeto nativo desconhecido.";
         if (!n.sceneId.empty() && !sceneIds.contains(n.sceneId))
             return "Objeto aponta para cena inexistente.";
-        if (!n.sceneId.empty())
-            for (const auto &scene : p.scenes)
-                if (scene.id == n.sceneId &&
-                    (n.start < scene.start || n.start + n.duration > scene.start + scene.duration))
-                    return "Objeto ultrapassa o intervalo da sua cena.";
+        if (!n.sceneId.empty()) {
+            const auto scene = scenesById.find(n.sceneId);
+            if (scene != scenesById.end() &&
+                (n.start < scene->second->start ||
+                 n.start + n.duration > scene->second->start + scene->second->duration))
+                return "Objeto ultrapassa o intervalo da sua cena.";
+        }
         if (!supportedMotion(n.motion) || !supportedPose(n.pose))
             return "Movimento ou pose não suportado.";
         if (!std::isfinite(n.rotation) || std::abs(n.rotation) > 3600 || !std::isfinite(n.scale) ||
@@ -180,7 +196,8 @@ std::string validate(const Project &p) {
             !std::all_of(n.secondaryColor.begin() + 1, n.secondaryColor.end(),
                          [](unsigned char c) { return std::isxdigit(c); }))
             return "Cor secundária inválida.";
-        if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header")
+        if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header" &&
+            !premiumSlotRole(n.role))
             return "Papel visual desconhecido.";
     }
     std::unordered_map<std::string, const ShotMarker *> shotsById;
@@ -203,11 +220,9 @@ std::string validate(const Project &p) {
             return "Duração ou direção da transição inválida.";
         if (shot.artDirection && (p.schemaVersion < 11 || !validArtDirection(*shot.artDirection)))
             return "Direção de arte do shot inválida; exige schema 11.";
-        const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
-            return candidate.id == shot.sceneId;
-        });
-        if (scene == p.scenes.end() || shot.start < scene->start ||
-            shot.start + shot.duration > scene->start + scene->duration)
+        const auto scene = scenesById.find(shot.sceneId);
+        if (scene == scenesById.end() || shot.start < scene->second->start ||
+            shot.start + shot.duration > scene->second->start + scene->second->duration)
             return "Plano visual fica fora da cena narrativa.";
         shotsById.emplace(shot.id, &shot);
         shotsByScene[shot.sceneId].push_back(&shot);
@@ -215,11 +230,10 @@ std::string validate(const Project &p) {
     for (auto &[sceneId, sceneShots] : shotsByScene) {
         std::sort(sceneShots.begin(), sceneShots.end(),
                   [](const auto *a, const auto *b) { return a->start < b->start; });
-        const auto scene = std::find_if(p.scenes.begin(), p.scenes.end(), [&](const SceneMarker &candidate) {
-            return candidate.id == sceneId;
-        });
-        if (sceneShots.front()->start != scene->start ||
-            sceneShots.back()->start + sceneShots.back()->duration != scene->start + scene->duration)
+        const auto scene = scenesById.find(sceneId);
+        if (scene == scenesById.end() || sceneShots.front()->start != scene->second->start ||
+            sceneShots.back()->start + sceneShots.back()->duration !=
+                scene->second->start + scene->second->duration)
             return "Planos visuais precisam cobrir toda a cena narrativa.";
         if (sceneShots.front()->transitionIn != "cut")
             return "O primeiro plano da cena não pode ter transição de entrada.";
@@ -267,10 +281,8 @@ std::string validate(const Project &p) {
         if (cameraBeat != beat.targetId.empty())
             return "Visual Beat precisa de alvo visual, exceto quando controla a câmera.";
         if (!cameraBeat) {
-            const auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
-                return candidate.id == beat.targetId;
-            });
-            if (node == p.nodes.end() || node->shotId != beat.shotId || beat.action == "camera")
+            const auto node = nodesById.find(beat.targetId);
+            if (node == nodesById.end() || node->second->shotId != beat.shotId || beat.action == "camera")
                 return "Visual Beat aponta para um elemento inexistente ou de outro shot.";
         }
         auto validNumber = [](const std::optional<double> &value, double minimum, double maximum) {
@@ -287,26 +299,15 @@ std::string validate(const Project &p) {
             (cameraBeat && !(beat.x || beat.y || beat.rotation || beat.zoom)))
             return "Propriedades do Visual Beat inválidas.";
     }
+    std::unordered_map<std::string, unsigned char> hierarchyState;
+    hierarchyState.reserve(p.nodes.size());
     for (const auto &n : p.nodes) {
         if (!n.parentId.empty() && (n.parentId == n.id || !parentIds.contains(n.parentId)))
             return "Grupo pai inexistente ou inválido.";
-        std::unordered_set<std::string> seen{n.id};
-        auto parent = n.parentId;
-        while (!parent.empty()) {
-            if (!seen.insert(parent).second)
-                return "Ciclo encontrado na hierarquia de grupos.";
-            auto it = std::find_if(p.nodes.begin(), p.nodes.end(),
-                                   [&](const Node &candidate) { return candidate.id == parent; });
-            if (it == p.nodes.end())
-                return "Grupo pai inexistente.";
-            parent = it->parentId;
-        }
         if (!n.parentId.empty()) {
-            const auto parentNode = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
-                return candidate.id == n.parentId;
-            });
-            if (n.start < parentNode->start ||
-                n.start + n.duration > parentNode->start + parentNode->duration)
+            const auto parentNode = nodesById.find(n.parentId);
+            if (parentNode == nodesById.end() || n.start < parentNode->second->start ||
+                n.start + n.duration > parentNode->second->start + parentNode->second->duration)
                 return "Elemento ultrapassa o intervalo do seu grupo.";
         }
         if (n.keyframes.size() > 256)
@@ -322,6 +323,33 @@ std::string validate(const Project &p) {
             previous = key.frame;
         }
     }
+    // Resolve every parent chain once. This detects cycles without recursive calls or
+    // quadratic repeated walks in deeply nested documents.
+    for (const auto &node : p.nodes) {
+        auto found = hierarchyState.find(node.id);
+        if (found != hierarchyState.end() && found->second == 2)
+            continue;
+        std::vector<const Node *> path;
+        const Node *current = &node;
+        while (current) {
+            auto state = hierarchyState.find(current->id);
+            if (state != hierarchyState.end()) {
+                if (state->second == 1)
+                    return "Ciclo encontrado na hierarquia de grupos.";
+                break;
+            }
+            hierarchyState.emplace(current->id, 1);
+            path.push_back(current);
+            if (current->parentId.empty())
+                break;
+            auto parent = nodesById.find(current->parentId);
+            if (parent == nodesById.end())
+                return "Grupo pai inexistente.";
+            current = parent->second;
+        }
+        for (const auto *part : path)
+            hierarchyState[part->id] = 2;
+    }
     if (p.schemaVersion < 3 && !p.camera.empty())
         return "Câmera animada exige a versão 3 do projeto.";
     if (p.camera.size() > 20000)
@@ -333,6 +361,16 @@ std::string validate(const Project &p) {
             std::abs(key.y) > 10000 || !std::isfinite(key.zoom) || key.zoom < 0.1 || key.zoom > 10 ||
             !std::isfinite(key.rotation) || std::abs(key.rotation) > 360 || !supportedEasing(key.easing))
             return "Keyframes da câmera inválidos ou fora de ordem.";
+        const bool hasPathMetadata = !key.targetId.empty() || !key.revealMode.empty() || key.safeMargin != 0 ||
+                                     key.captionSafeBottom != 0;
+        if (hasPathMetadata && (p.schemaVersion < 15 || key.targetId.empty() ||
+                                (key.revealMode != "spatial" && key.revealMode != "temporal" &&
+                                 key.revealMode != "combined") || !std::isfinite(key.safeMargin) ||
+                                key.safeMargin < 0 || key.safeMargin > .2 ||
+                                !std::isfinite(key.captionSafeBottom) || key.captionSafeBottom < 0 ||
+                                key.captionSafeBottom > .35 || key.safeMargin * 2 + key.captionSafeBottom >= .65 ||
+                                !nodesById.contains(key.targetId)))
+            return "Metadados de enquadramento de camera.path inválidos ou exigem schema 15.";
         if (!key.shotId.empty()) {
             const auto shot = shotsById.find(key.shotId);
             if (shot == shotsById.end() || key.frame < std::max<std::int64_t>(0, shot->second->start - 1) ||
@@ -382,6 +420,8 @@ std::string validate(const Project &p) {
     if (p.voiceDuckingSource.size() > 4096)
         return "Caminho da voz para ducking inválido.";
     return {};
+} catch (const std::bad_alloc &) {
+    return "Memória insuficiente para validar o projeto.";
 }
 Project makeEmpty() {
     Project p;
@@ -493,10 +533,10 @@ VisualState evaluate(const Node &n, std::int64_t frame) {
     const auto upper =
         std::upper_bound(n.keyframes.begin(), n.keyframes.end(), frame,
                          [](std::int64_t f, const TransformKeyframe &key) { return f < key.frame; });
-    if (upper == n.keyframes.begin()) {
-        const auto &key = *upper;
-        return {key.x, key.y, key.opacity, key.rotation, key.scale};
-    }
+    // A future key must not leak backward in time. Before the first key, keep
+    // the node's own animated/base state; the first key takes effect on its frame.
+    if (upper == n.keyframes.begin())
+        return state;
     if (upper == n.keyframes.end()) {
         const auto &key = n.keyframes.back();
         return {key.x, key.y, key.opacity, key.rotation, key.scale};

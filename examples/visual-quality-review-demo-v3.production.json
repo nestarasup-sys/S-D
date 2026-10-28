@@ -1,0 +1,174 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Revisão de qualidade visual · demonstração",
+  "voice": "auto",
+  "speechRate": 2,
+  "captions": true,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [
+    {
+      "id": "pergunta",
+      "narration": ["Quando o sistema sugere, quem escolhe?"],
+      "shots": [
+        {
+          "id": "pergunta-shot",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": {},
+          "elements": [
+            {
+              "id": "question-hook",
+              "kind": "library",
+              "assetId": "premium:question-hook-01",
+              "cue": 0,
+              "slots": {
+                "question": "QUEM ESCOLHE O PRÓXIMO PASSO?",
+                "context": "TECNOLOGIA, DECISÃO E RESPONSABILIDADE"
+              },
+              "palette": {
+                "accent": "#58D6BA",
+                "highlight": "#E9B967",
+                "muted": "#B5C7C8",
+                "text": "#F2F3EC"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "citacao",
+      "narration": ["Uma ferramenta organiza sinais e sugere caminhos. Decisões ainda exigem contexto, critérios verificáveis e responsabilidade."],
+      "shots": [
+        {
+          "id": "citacao-shot",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": {},
+          "elements": [
+            {
+              "id": "quote-personalizada",
+              "kind": "library",
+              "assetId": "premium:dramatic-quote-01",
+              "cue": 0,
+              "slots": {
+                "quote": "A ferramenta pode ordenar sinais e sugerir caminhos, mas decisões exigem contexto. Critérios precisam ser verificáveis, recomendações compreensíveis e limites conhecidos. Quem confirma um resultado precisa entender por que aquela opção surgiu e responder pelo próximo passo.",
+                "attribution": "NOTA EDITORIAL",
+                "source": "TEXTO DEMONSTRATIVO · SEM ATRIBUIÇÃO HISTÓRICA"
+              },
+              "palette": {
+                "accent": "#DB9B57",
+                "text": "#F4E4BC",
+                "muted": "#AFBEC5"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comparacao",
+      "narration": ["Manual ou assistido? Este quadro compara processos, não resultados."],
+      "shots": [
+        {
+          "id": "comparacao-shot",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": {},
+          "elements": [
+            {
+              "id": "comparison-personalizada",
+              "kind": "library",
+              "assetId": "premium:comparison-pack-01",
+              "cue": 0,
+              "slots": {
+                "left-title": "PROCESSO MANUAL",
+                "right-title": "PROCESSO ASSISTIDO",
+                "left-value": "ESCOLHA",
+                "right-value": "SUGESTÃO",
+                "left-description": "A pessoa percorre as opções e decide.",
+                "right-description": "O sistema organiza sinais; a pessoa confirma."
+              },
+              "palette": {
+                "left": "#205C50",
+                "right": "#5B3A20",
+                "accent": "#E9D08C",
+                "text": "#F3F4EE"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travelling",
+      "narration": ["A origem.", "A pergunta.", "A escolha."],
+      "shots": [
+        {
+          "id": "travelling-shot",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "camera": {
+            "path": {
+              "safeMargin": 0.06,
+              "captionSafeBottom": 0.16,
+              "targets": [
+                { "target": "origin-group", "at": { "cue": 0, "cueProgress": 0 }, "padding": 1.18, "reveal": "spatial" },
+                { "target": "reveal-group", "at": { "cue": 1, "cueProgress": 0.5 }, "padding": 1.18, "easing": "ease-in-out", "reveal": "combined" },
+                { "target": "destination-group", "at": { "cue": 2, "cueProgress": 0.8 }, "padding": 1.18, "easing": "ease-in-out", "reveal": "spatial" }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "origin-group",
+              "kind": "group",
+              "x": -150,
+              "y": 300,
+              "width": 900,
+              "height": 400,
+              "motion": "none",
+              "children": [
+                { "id": "origin-panel", "kind": "shape", "x": 0, "y": 0, "width": 900, "height": 400, "color": "#111B22", "motion": "none" },
+                { "id": "signal-origin", "kind": "shape", "x": 350, "y": 70, "width": 200, "height": 155, "color": "#48B9A2", "motion": "none" },
+                { "id": "origin-label", "kind": "text", "x": 120, "y": 270, "width": 660, "height": 48, "text": "SINAL DE ORIGEM", "fontSize": 24, "color": "#DDF2EA", "motion": "none" }
+              ]
+            },
+            {
+              "id": "reveal-group",
+              "kind": "group",
+              "x": 200,
+              "y": 300,
+              "width": 900,
+              "height": 400,
+              "opacity": 0,
+              "motion": "none",
+              "children": [
+                { "id": "reveal-panel", "kind": "shape", "x": 0, "y": 0, "width": 900, "height": 400, "color": "#16232B", "motion": "none" },
+                { "id": "signal-reveal", "kind": "shape", "x": 350, "y": 70, "width": 200, "height": 155, "color": "#D58D50", "motion": "none" },
+                { "id": "reveal-label", "kind": "text", "x": 120, "y": 270, "width": 660, "height": 48, "text": "UMA PERGUNTA EM FOCO", "fontSize": 24, "color": "#F3E8D8", "motion": "none" }
+              ]
+            },
+            {
+              "id": "destination-group",
+              "kind": "group",
+              "x": 550,
+              "y": 300,
+              "width": 900,
+              "height": 400,
+              "motion": "none",
+              "children": [
+                { "id": "destination-panel", "kind": "shape", "x": 0, "y": 0, "width": 900, "height": 400, "color": "#121B28", "motion": "none" },
+                { "id": "signal-destination", "kind": "shape", "x": 350, "y": 70, "width": 200, "height": 155, "color": "#46677F", "motion": "none" },
+                { "id": "destination-label", "kind": "text", "x": 120, "y": 270, "width": 660, "height": 48, "text": "DECISÃO CONSCIENTE", "fontSize": 24, "color": "#E6EFF2", "motion": "none" }
+              ]
+            }
+          ],
+          "beats": [
+            { "id": "reveal-during-travel", "at": { "cue": 1, "cueProgress": 0.5 }, "action": "show", "target": "reveal-group" }
+          ]
+        }
+      ]
+    }
+  ]
+}

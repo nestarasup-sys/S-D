@@ -1,0 +1,521 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Studio Dark · Premium Factory e câmera assistida",
+  "voice": "auto",
+  "captions": true,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "scenes": [
+    {
+      "id": "abertura-citacao",
+      "narration": [
+        "Toda descoberta começa com uma pergunta."
+      ],
+      "shots": [
+        {
+          "id": "abertura-citacao-shot",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {},
+          "elements": [
+            {
+              "id": "quote-abertura",
+              "kind": "library",
+              "assetId": "premium:dramatic-quote-01",
+              "cue": 0,
+              "slots": {
+                "quote": "O que muda quando olhamos de perto?",
+                "attribution": "UMA PERGUNTA PARA INVESTIGAR",
+                "source": "ABERTURA EDITORIAL · EXEMPLO"
+              },
+              "palette": {
+                "accent": "#57D2B3",
+                "text": "#F2D99B",
+                "muted": "#AFBEC5"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comparacao-direcionada",
+      "narration": [
+        "Dois cenários revelam diferenças."
+      ],
+      "shots": [
+        {
+          "id": "comparacao-direcionada-shot",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {},
+          "elements": [
+            {
+              "id": "comparison-personalizada",
+              "kind": "library",
+              "assetId": "premium:comparison-pack-01",
+              "cue": 0,
+              "slots": {
+                "left-title": "CENÁRIO A",
+                "right-title": "CENÁRIO B",
+                "left-value": "BASE",
+                "right-value": "MUDANÇA",
+                "left-description": "Condição inicial · texto demonstrativo.",
+                "right-description": "Nova condição · texto demonstrativo."
+              },
+              "palette": {
+                "left": "#48BDA6",
+                "right": "#D89956",
+                "accent": "#ECD08E",
+                "text": "#F3F4EE"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travelling-horizontal-espacial",
+      "narration": [
+        "A câmera atravessa o espaço até outro ponto."
+      ],
+      "shots": [
+        {
+          "id": "horizontal-espacial-shot",
+          "name": "Travelling horizontal · revelação espacial",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "path": {
+              "safeMargin": 0.06,
+              "captionSafeBottom": 0.16,
+              "targets": [
+                {
+                  "target": "horizontal-chip",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0
+                  },
+                  "padding": 1.15,
+                  "reveal": "spatial"
+                },
+                {
+                  "target": "horizontal-server",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0.82
+                  },
+                  "padding": 1.15,
+                  "easing": "ease-in-out",
+                  "reveal": "spatial"
+                }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "horizontal-chip-group",
+              "kind": "group",
+              "x": 55,
+              "y": 220,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "horizontal-chip",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#4CC9A9",
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "horizontal-chip-label",
+                  "kind": "text",
+                  "x": 28,
+                  "y": 216,
+                  "width": 344,
+                  "height": 42,
+                  "text": "01 · PROCESSAMENTO",
+                  "fontSize": 23,
+                  "color": "#10221F",
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            },
+            {
+              "id": "horizontal-server-group",
+              "kind": "group",
+              "x": 790,
+              "y": 220,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "horizontal-server",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#DC9B57",
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "horizontal-server-label",
+                  "kind": "text",
+                  "x": 28,
+                  "y": 216,
+                  "width": 344,
+                  "height": 42,
+                  "text": "02 · ARMAZENAMENTO",
+                  "fontSize": 23,
+                  "color": "#292016",
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travelling-vertical-espacial",
+      "narration": [
+        "Agora desce e descobre a próxima etapa."
+      ],
+      "shots": [
+        {
+          "id": "vertical-espacial-shot",
+          "name": "Travelling vertical · revelação espacial",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "path": {
+              "safeMargin": 0.06,
+              "captionSafeBottom": 0.14,
+              "targets": [
+                {
+                  "target": "vertical-source",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0
+                  },
+                  "padding": 1.12,
+                  "reveal": "spatial"
+                },
+                {
+                  "target": "vertical-result",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0.82
+                  },
+                  "padding": 1.12,
+                  "easing": "ease-in-out",
+                  "reveal": "spatial"
+                }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "vertical-source-group",
+              "kind": "group",
+              "x": 340,
+              "y": 100,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "vertical-source",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#4CC9A9",
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "vertical-source-label",
+                  "kind": "text",
+                  "x": 25,
+                  "y": 220,
+                  "width": 350,
+                  "height": 40,
+                  "text": "ETAPA 01 · ENTRADA",
+                  "fontSize": 22,
+                  "color": "#10221F",
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            },
+            {
+              "id": "vertical-result-group",
+              "kind": "group",
+              "x": 340,
+              "y": 1140,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "vertical-result",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#DC9B57",
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "vertical-result-label",
+                  "kind": "text",
+                  "x": 25,
+                  "y": 220,
+                  "width": 350,
+                  "height": 40,
+                  "text": "ETAPA 02 · RESULTADO",
+                  "fontSize": 22,
+                  "color": "#292016",
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travelling-com-revelacao-temporal",
+      "narration": [
+        "No percurso, outro alvo surge no instante combinado."
+      ],
+      "shots": [
+        {
+          "id": "combined-path-shot",
+          "name": "Travelling e Visual Beat",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {
+            "path": {
+              "safeMargin": 0.06,
+              "captionSafeBottom": 0.16,
+              "targets": [
+                {
+                  "target": "combined-chip",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0
+                  },
+                  "padding": 1.15,
+                  "reveal": "spatial"
+                },
+                {
+                  "target": "combined-server",
+                  "at": {
+                    "cue": 0,
+                    "cueProgress": 0.82
+                  },
+                  "padding": 1.15,
+                  "easing": "ease-in-out",
+                  "reveal": "combined"
+                }
+              ]
+            }
+          },
+          "elements": [
+            {
+              "id": "combined-chip-group",
+              "kind": "group",
+              "x": 55,
+              "y": 220,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "combined-chip",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#4CC9A9",
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "combined-chip-label",
+                  "kind": "text",
+                  "x": 28,
+                  "y": 216,
+                  "width": 344,
+                  "height": 42,
+                  "text": "01 · ORIGEM",
+                  "fontSize": 23,
+                  "color": "#10221F",
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            },
+            {
+              "id": "combined-server-group",
+              "kind": "group",
+              "x": 790,
+              "y": 220,
+              "exitFrames": 0,
+              "motion": "none",
+              "children": [
+                {
+                  "id": "combined-server",
+                  "kind": "shape",
+                  "x": 0,
+                  "y": 0,
+                  "width": 400,
+                  "height": 280,
+                  "color": "#DC9B57",
+                  "opacity": 0,
+                  "exitFrames": 0,
+                  "motion": "none"
+                },
+                {
+                  "id": "combined-server-label",
+                  "kind": "text",
+                  "x": 28,
+                  "y": 216,
+                  "width": 344,
+                  "height": 42,
+                  "text": "02 · REVELADO NO PERCURSO",
+                  "fontSize": 21,
+                  "color": "#292016",
+                  "opacity": 0,
+                  "exitFrames": 0,
+                  "motion": "none"
+                }
+              ]
+            }
+          ],
+          "beats": [
+            {
+              "id": "combined-server-show",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.56
+              },
+              "action": "show",
+              "target": "combined-server"
+            },
+            {
+              "id": "combined-server-label-show",
+              "at": {
+                "cue": 0,
+                "cueProgress": 0.56
+              },
+              "action": "show",
+              "target": "combined-server-label"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "question-hook-declarativo",
+      "narration": [
+        "A pergunta organiza a investigação."
+      ],
+      "shots": [
+        {
+          "id": "question-hook-declarativo-shot",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {},
+          "elements": [
+            {
+              "id": "question-hook-ia",
+              "kind": "library",
+              "assetId": "premium:question-hook-01",
+              "cue": 0,
+              "slots": {
+                "question": "O que mudou no caminho?",
+                "context": "Uma pergunta demonstrativa para abrir a investigação."
+              },
+              "palette": {
+                "accent": "#65D9BE",
+                "highlight": "#E9BE71",
+                "muted": "#AABFC2",
+                "text": "#F4F6F0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistic-callout-declarativo",
+      "narration": [
+        "Todo número precisa de contexto e fonte."
+      ],
+      "shots": [
+        {
+          "id": "statistic-callout-declarativo-shot",
+          "start": {
+            "cue": 0,
+            "cueProgress": 0
+          },
+          "camera": {},
+          "elements": [
+            {
+              "id": "statistic-callout-ia",
+              "kind": "library",
+              "assetId": "premium:statistic-callout-pack-01",
+              "cue": 0,
+              "slots": {
+                "value": "00,0",
+                "unit": "VALOR ILUSTRATIVO",
+                "description": "Exemplo visual: substitua por um dado verificado e explique seu período e contexto.",
+                "source": "DEMONSTRATIVO · NÃO É DADO REAL"
+              },
+              "palette": {
+                "surface": "#17242B",
+                "accent": "#63D5B8",
+                "highlight": "#EBC578",
+                "text": "#F3F5EE",
+                "secondary": "#92B9B1",
+                "muted": "#B6C5C6"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

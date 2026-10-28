@@ -1,0 +1,45 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Travelling horizontal dirigido",
+  "voice": "auto",
+  "captions": false,
+  "editing": { "intensity": 0, "rhythm": "manual" },
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [{
+    "id": "travelling-horizontal",
+    "narration": [
+      "A câmera começa no primeiro ponto de interesse.",
+      "Ela avança quando a narração apresenta o segundo.",
+      "O terceiro entra somente no enquadramento final."
+    ],
+    "shots": [{
+      "id": "plano-horizontal",
+      "name": "Um ponto por enquadramento",
+      "start": { "cue": 0, "cueProgress": 0 },
+      "camera": { "x": 250, "y": 250, "zoom": 1.25, "rotation": 0 },
+      "elements": [
+        { "id": "titulo-cena", "kind": "text", "text": "TRAVELLING  /  HORIZONTAL", "x": 62, "y": 54, "width": 650, "height": 48, "fontSize": 32, "color": "#EAF2F5", "cue": 0 },
+        { "id": "ponto-a", "kind": "native", "asset": "chip", "x": 140, "y": 250, "width": 220, "height": 170, "color": "#64D8C5", "cue": 0 },
+        { "id": "rotulo-a", "kind": "text", "text": "01  /  ORIGEM", "x": 145, "y": 444, "width": 280, "height": 42, "fontSize": 22, "color": "#EAF2F5", "cue": 0 },
+        { "id": "ponto-b", "kind": "native", "asset": "server", "x": 790, "y": 250, "width": 220, "height": 170, "color": "#6EAFFF", "opacity": 0, "cue": 0 },
+        { "id": "rotulo-b", "kind": "text", "text": "02  /  PROCESSO", "x": 790, "y": 444, "width": 330, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+        { "id": "ponto-c", "kind": "native", "asset": "cloud", "x": 1440, "y": 250, "width": 220, "height": 170, "color": "#F3BD68", "opacity": 0, "cue": 0 },
+        { "id": "rotulo-c", "kind": "text", "text": "03  /  RESULTADO", "x": 1440, "y": 444, "width": 330, "height": 42, "fontSize": 22, "color": "#EAF2F5", "opacity": 0, "cue": 0 },
+        { "id": "trilho", "kind": "shape", "x": 230, "y": 515, "width": 1260, "height": 3, "color": "#355261", "cue": 0 }
+      ],
+      "beats": [
+        { "id": "oculta-titulo", "at": { "cue": 1, "cueProgress": 0 }, "action": "hide", "target": "titulo-cena" },
+        { "id": "camera-para-b", "at": { "cue": 1, "cueProgress": 0.05 }, "action": "camera", "x": 900, "y": 250, "durationFrames": 24 },
+        { "id": "revela-b", "at": { "cue": 1, "cueProgress": 0.58 }, "action": "show", "target": "ponto-b" },
+        { "id": "revela-rotulo-b", "at": { "cue": 1, "cueProgress": 0.6 }, "action": "show", "target": "rotulo-b" },
+        { "id": "camera-para-c", "at": { "cue": 2, "cueProgress": 0.05 }, "action": "camera", "x": 1550, "y": 250, "durationFrames": 24 },
+        { "id": "revela-c", "at": { "cue": 2, "cueProgress": 0.58 }, "action": "show", "target": "ponto-c" },
+        { "id": "revela-rotulo-c", "at": { "cue": 2, "cueProgress": 0.6 }, "action": "show", "target": "rotulo-c" }
+      ]
+    }]
+  }]
+}

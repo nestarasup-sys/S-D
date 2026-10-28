@@ -9,6 +9,7 @@
 #include <limits>
 #include <map>
 #include <numeric>
+#include <unordered_map>
 #include <studio/production/compiler.hpp>
 
 namespace studio {
@@ -69,11 +70,26 @@ bool compileElement(const DirectedElement &directed,
     const auto anchor = directed.shotRelative
                             ? shotStart
                             : cueFrame(cue, directed.offsetSeconds, directed.cueProgress, directed.wordIndex, words);
-    node.start = anchor + (directed.presetTiming ? node.start : 0);
+    const auto presetLocalStart = node.start;
+    const auto presetDuration = std::max<std::int64_t>(1, node.duration);
+    node.start = anchor + (directed.presetTiming ? presetLocalStart : 0);
     const auto availableEnd =
         directed.utteranceOnly ? (cue.second + samplesPerFrame - 1) / samplesPerFrame : sceneEnd;
-    auto end =
-        directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
+    auto end = directed.presetTiming ? std::min(availableEnd, node.start + node.duration) : availableEnd;
+    if (directed.premiumTemplate && directed.presetTiming && end > node.start &&
+        end - node.start < presetDuration) {
+        const auto availableDuration = end - node.start;
+        const double timeScale = double(availableDuration) / double(presetDuration);
+        node.start = anchor + std::llround(double(presetLocalStart) * timeScale);
+        node.duration = availableDuration;
+        end = node.start + node.duration;
+        for (auto &key : node.keyframes)
+            key.frame = std::llround(double(key.frame) * timeScale);
+        node.motionFrames = std::max(1, int(std::llround(double(node.motionFrames) * timeScale)));
+        node.exitFrames = node.exitFrames == 0
+                              ? 0
+                              : std::max(1, int(std::llround(double(node.exitFrames) * timeScale)));
+    }
     if (node.kind == NodeKind::Video && directed.videoDurationFrames > 0) {
         if (directed.videoDurationFrames > availableEnd - node.start) {
             error = "video.durationFrames ultrapassa o intervalo disponível: " + QString::fromStdString(node.id);
@@ -251,10 +267,10 @@ bool narrationShotStarts(const DirectedScene &scene,
     }
     return true;
 }
-VisualState beatState(const VisualState &current, const DirectedBeat &beat, double baseOpacity) {
+VisualState beatState(const VisualState &current, const DirectedBeat &beat, double visibleOpacity) {
     auto next = current;
     if (beat.action == "show")
-        next.opacity = baseOpacity;
+        next.opacity = visibleOpacity;
     else if (beat.action == "hide")
         next.opacity = 0;
     if (beat.x)
@@ -270,16 +286,17 @@ VisualState beatState(const VisualState &current, const DirectedBeat &beat, doub
     return next;
 }
 bool frameCameraOnTarget(const Project &project, const Node &target, std::int64_t frame, double padding,
-                         CameraState &camera) {
+                         CameraState &camera, const std::unordered_map<std::string, std::size_t> &nodeIndices,
+                         double safeMargin = 0, double captionSafeBottom = 0) {
     std::vector<const Node *> chain{&target};
     auto parentId = target.parentId;
     while (!parentId.empty()) {
-        auto parent = std::find_if(project.nodes.begin(), project.nodes.end(),
-                                   [&](const auto &node) { return node.id == parentId; });
-        if (parent == project.nodes.end())
+        const auto parent = nodeIndices.find(parentId);
+        if (parent == nodeIndices.end() || parent->second >= project.nodes.size())
             return false;
-        chain.push_back(&*parent);
-        parentId = parent->parentId;
+        const auto &parentNode = project.nodes[parent->second];
+        chain.push_back(&parentNode);
+        parentId = parentNode.parentId;
     }
     const auto mapToWorld = [&](QPointF point) {
         for (const auto *part : chain) {
@@ -321,9 +338,13 @@ bool frameCameraOnTarget(const Project &project, const Node &target, std::int64_
     }
     const double boundsWidth = std::max(1.0, cameraRight - cameraLeft);
     const double boundsHeight = std::max(1.0, cameraBottom - cameraTop);
+    const double availableWidth = project.width * (1 - safeMargin * 2);
+    const double availableHeight = project.height * (1 - safeMargin * 2 - captionSafeBottom);
     camera.zoom = std::clamp(
-        std::min(project.width / (boundsWidth * padding), project.height / (boundsHeight * padding)), 0.1,
+        std::min(availableWidth / (boundsWidth * padding), availableHeight / (boundsHeight * padding)), 0.1,
         10.0);
+    // Keep the focus inside the safe viewport above the reserved caption band.
+    camera.y += captionSafeBottom * project.height / (2 * camera.zoom);
     return std::isfinite(camera.x) && std::isfinite(camera.y) && std::isfinite(camera.zoom);
 }
 } // namespace
@@ -365,8 +386,14 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         return r;
     }
     std::vector<std::int64_t> transitions;
-    int captionIndex = 0, compiledCameraPresetKeys = 0;
+    int captionIndex = 0, compiledCameraPresetKeys = 0, compiledCameraPathKeys = 0;
     CameraState previousShotCamera{p.width / 2.0, p.height / 2.0, 1, 0};
+    std::unordered_map<std::string, std::size_t> nodeIndices;
+    const auto indexNewNodes = [&](std::size_t first) {
+        nodeIndices.reserve(p.nodes.size());
+        for (std::size_t index = first; index < p.nodes.size(); ++index)
+            nodeIndices.emplace(p.nodes[index].id, index);
+    };
     for (std::size_t sceneIndex = 0; sceneIndex < recipe.scenes.size(); ++sceneIndex) {
         const auto &scene = recipe.scenes[sceneIndex];
         const ArtDirection &sceneArt = scene.artDirection ? *scene.artDirection : recipe.artDirection;
@@ -545,7 +572,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
             kicker.role = "header";
             p.nodes.push_back(kicker);
         }
-        if (!scene.title.isEmpty()) {
+        // In v3 the scene title labels the scene in the project/timeline. Shots
+        // own the visible composition, so do not repeat that label over every shot.
+        if (recipe.version < 3 && !scene.title.isEmpty()) {
             auto title = textNode("heading-" + scene.id.toStdString(), scene.title.toStdString(),
                                   sceneThemed ? sceneArt.safeMargin : 70, 92,
                                   sceneThemed ? p.width - sceneArt.safeMargin * 2 : p.width - 140, 140,
@@ -611,22 +640,111 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     p.shots.back().artDirection = directedShot.artDirection;
                     p.schemaVersion = std::max(p.schemaVersion, 11);
                 }
-                for (const auto &element : directedShot.elements)
+                for (const auto &element : directedShot.elements) {
+                    const auto firstNode = p.nodes.size();
                     if (!compileElement(element, cues, wordStarts, shotStart, shotStart, shotEnd,
                                         scene.id.toStdString(), directedShot.id.toStdString(), samplesPerFrame, p,
                                         r.error))
                         return r;
+                    indexNewNodes(firstNode);
+                }
 
                 CameraState shotCamera{directedShot.cameraX, directedShot.cameraY, directedShot.cameraZoom,
                                        directedShot.cameraRotation};
+                struct ResolvedCameraTarget {
+                    std::int64_t frame;
+                    CameraState camera;
+                    const DirectedCameraTarget *source;
+                };
+                std::vector<ResolvedCameraTarget> resolvedCameraPath;
+                if (directedShot.cameraPath) {
+                    if (!directedShot.cameraPreset.isEmpty() || !directedShot.focusTargetId.isEmpty() ||
+                        directedShot.focusFollow ||
+                        std::any_of(directedShot.beats.begin(), directedShot.beats.end(),
+                                    [](const auto &beat) { return beat.action == "camera"; })) {
+                        r.error = "camera.path é exclusivo de focus, cameraPreset e Visual Beats de câmera no shot: " +
+                                  directedShot.id;
+                        return r;
+                    }
+                    std::int64_t previousTargetFrame = -1;
+                    for (std::size_t targetIndex = 0;
+                         targetIndex < directedShot.cameraPath->targets.size(); ++targetIndex) {
+                        const auto &point = directedShot.cameraPath->targets[targetIndex];
+                        const auto targetFrame = resolveTime(point.at, cues, wordStarts);
+                        if (targetFrame < shotStart || targetFrame >= shotEnd || targetFrame <= previousTargetFrame ||
+                            (targetIndex == 0 && targetFrame != shotStart)) {
+                            r.error = "camera.path precisa começar no corte e ter tempos crescentes dentro do shot: " +
+                                      directedShot.id;
+                            return r;
+                        }
+                        const auto nodeFound = nodeIndices.find(point.targetId.toStdString());
+                        if (nodeFound == nodeIndices.end() || nodeFound->second >= p.nodes.size() ||
+                            p.nodes[nodeFound->second].shotId != directedShot.id.toStdString()) {
+                            r.error = "camera.path aponta para alvo ausente ou de outro shot: " + point.targetId;
+                            return r;
+                        }
+                        const auto &target = p.nodes[nodeFound->second];
+                        const auto hasShow = std::any_of(directedShot.beats.begin(), directedShot.beats.end(),
+                            [&](const auto &beat) {
+                                return beat.action == "show" && beat.targetId == point.targetId;
+                            });
+                        if (point.reveal == "spatial" && hasShow) {
+                            r.error = "camera.path reveal spatial não aceita show para o mesmo alvo; use reveal combined: " +
+                                      point.targetId;
+                            return r;
+                        }
+                        if ((point.reveal == "temporal" || point.reveal == "combined") && !hasShow) {
+                            r.error = "camera.path reveal temporal/combined exige Visual Beat show para o alvo: " +
+                                      point.targetId;
+                            return r;
+                        }
+                        const auto effectiveOpacity = [&](const Node &node, std::int64_t frame) {
+                            double opacity = 1;
+                            const Node *current = &node;
+                            std::size_t depth = 0;
+                            while (current && depth++ <= 8) {
+                                opacity *= evaluate(*current, frame).opacity;
+                                if (current->parentId.empty())
+                                    break;
+                                const auto parent = nodeIndices.find(current->parentId);
+                                current = parent == nodeIndices.end() ? nullptr : &p.nodes[parent->second];
+                            }
+                            return opacity;
+                        };
+                        if ((point.reveal == "temporal" || point.reveal == "combined") &&
+                            effectiveOpacity(target, shotStart) > 0) {
+                            r.error = "camera.path reveal temporal/combined exige o alvo inicialmente invisível: " +
+                                      point.targetId;
+                            return r;
+                        }
+                        if (point.reveal == "spatial" &&
+                            (!active(target, targetFrame) || effectiveOpacity(target, targetFrame) <= 0)) {
+                            r.error = "camera.path reveal spatial exige o alvo visível no espaço da cena: " +
+                                      point.targetId + " (frame=" + QString::number(targetFrame) +
+                                      ", intervalo=" + QString::number(target.start) + ".." +
+                                      QString::number(target.start + target.duration - 1) +
+                                      ", opacity=" + QString::number(effectiveOpacity(target, targetFrame), 'f', 3) + ")";
+                            return r;
+                        }
+                        CameraState targetCamera{directedShot.cameraX, directedShot.cameraY,
+                                                 directedShot.cameraZoom, directedShot.cameraRotation};
+                        if (!frameCameraOnTarget(p, target, targetFrame, point.padding, targetCamera, nodeIndices,
+                                                 directedShot.cameraPath->safeMargin,
+                                                 directedShot.cameraPath->captionSafeBottom)) {
+                            r.error = "Não foi possível enquadrar o target de camera.path: " + point.targetId;
+                            return r;
+                        }
+                        resolvedCameraPath.push_back({targetFrame, targetCamera, &point});
+                        previousTargetFrame = targetFrame;
+                    }
+                    shotCamera = resolvedCameraPath.front().camera;
+                }
                 if (!directedShot.focusTargetId.isEmpty()) {
-                    auto focusTarget = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const auto &node) {
-                        return node.id == directedShot.focusTargetId.toStdString() &&
-                               node.shotId == directedShot.id.toStdString();
-                    });
-                    if (focusTarget == p.nodes.end() ||
-                        !frameCameraOnTarget(p, *focusTarget, shotStart, directedShot.focusPadding,
-                                             shotCamera)) {
+                    const auto focus = nodeIndices.find(directedShot.focusTargetId.toStdString());
+                    if (focus == nodeIndices.end() || focus->second >= p.nodes.size() ||
+                        p.nodes[focus->second].shotId != directedShot.id.toStdString() ||
+                        !frameCameraOnTarget(p, p.nodes[focus->second], shotStart, directedShot.focusPadding,
+                                             shotCamera, nodeIndices)) {
                         r.error = "Não foi possível enquadrar o alvo da câmera no shot: " + directedShot.id;
                         return r;
                     }
@@ -642,9 +760,35 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     p.camera.push_back({shotStart - 1, previousShotCamera.x, previousShotCamera.y,
                                         previousShotCamera.zoom, previousShotCamera.rotation, "linear",
                                         directedShot.id.toStdString()});
-                p.camera.push_back({shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
-                                    shotCamera.rotation, "linear", directedShot.id.toStdString()});
-                if (!directedShot.cameraPreset.isEmpty()) {
+                CameraKeyframe initialCamera{shotStart, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                             shotCamera.rotation, "linear", directedShot.id.toStdString()};
+                if (!resolvedCameraPath.empty()) {
+                    const auto &firstTarget = resolvedCameraPath.front();
+                    initialCamera.targetId = firstTarget.source->targetId.toStdString();
+                    initialCamera.revealMode = firstTarget.source->reveal.toStdString();
+                    initialCamera.safeMargin = directedShot.cameraPath->safeMargin;
+                    initialCamera.captionSafeBottom = directedShot.cameraPath->captionSafeBottom;
+                    p.schemaVersion = 15;
+                }
+                p.camera.push_back(std::move(initialCamera));
+                if (!resolvedCameraPath.empty()) {
+                    for (std::size_t i = 1; i < resolvedCameraPath.size(); ++i) {
+                        const auto &target = resolvedCameraPath[i];
+                        if (++compiledCameraPathKeys > 4096) {
+                            r.error = "A produção excede 4096 pontos compilados de camera.path.";
+                            return r;
+                        }
+                        CameraKeyframe cameraKey{target.frame, target.camera.x, target.camera.y,
+                                                 target.camera.zoom, target.camera.rotation,
+                                                 target.source->easing, directedShot.id.toStdString()};
+                        cameraKey.targetId = target.source->targetId.toStdString();
+                        cameraKey.revealMode = target.source->reveal.toStdString();
+                        cameraKey.safeMargin = directedShot.cameraPath->safeMargin;
+                        cameraKey.captionSafeBottom = directedShot.cameraPath->captionSafeBottom;
+                        p.camera.push_back(std::move(cameraKey));
+                        shotCamera = target.camera;
+                    }
+                } else if (!directedShot.cameraPreset.isEmpty()) {
                     if (directedShot.focusFollow ||
                         std::any_of(directedShot.beats.begin(), directedShot.beats.end(),
                                     [](const auto &beat) { return beat.action == "camera"; })) {
@@ -679,9 +823,11 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                                   beat.id;
                         return r;
                     }
-                std::sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
+                std::stable_sort(beats.begin(), beats.end(), [&](const auto &a, const auto &b) {
                     return resolveTime(a.at, cues, wordStarts) < resolveTime(b.at, cues, wordStarts);
                 });
+                std::unordered_map<std::string, double> visibleOpacityByNode;
+                std::unordered_map<std::string, std::vector<TransformKeyframe>> opacityKeyframesByNode;
                 for (const auto &beat : beats) {
                     const auto beatFrame = resolveTime(beat.at, cues, wordStarts);
                     if (beatFrame < shotStart || beatFrame >= shotEnd ||
@@ -723,53 +869,79 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                             p.camera.push_back({beatFrame, shotCamera.x, shotCamera.y, shotCamera.zoom,
                                                 shotCamera.rotation, "linear",
                                                 directedShot.id.toStdString()});
+                        else if (beatFrame > shotStart)
+                            p.camera.push_back({beatFrame - 1, shotCamera.x, shotCamera.y, shotCamera.zoom,
+                                                shotCamera.rotation, "linear",
+                                                directedShot.id.toStdString()});
                         p.camera.push_back({beatFrame + beat.durationFrames, target.x, target.y, target.zoom,
                                             target.rotation, "linear", directedShot.id.toStdString()});
                         shotCamera = target;
                     } else {
-                        auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const Node &candidate) {
-                            return candidate.id == beat.targetId.toStdString();
-                        });
-                        if (node == p.nodes.end() || node->shotId != directedShot.id.toStdString()) {
+                        const auto nodeFound = nodeIndices.find(beat.targetId.toStdString());
+                        if (nodeFound == nodeIndices.end() || nodeFound->second >= p.nodes.size() ||
+                            p.nodes[nodeFound->second].shotId != directedShot.id.toStdString()) {
                             r.error =
                                 "Visual Beat aponta para um elemento que não foi criado no shot: " + beat.id;
                             return r;
                         }
-                        auto current = evaluate(*node, beatFrame);
-                        const auto target = beatState(current, beat, node->opacity);
+                        auto &node = p.nodes[nodeFound->second];
+                        auto current = evaluate(node, beatFrame);
+                        auto sourceKeyframes = opacityKeyframesByNode.find(node.id);
+                        if (sourceKeyframes == opacityKeyframesByNode.end())
+                            sourceKeyframes = opacityKeyframesByNode.emplace(node.id, node.keyframes).first;
+                        auto visibleOpacity = visibleOpacityByNode.find(node.id);
+                        if (visibleOpacity == visibleOpacityByNode.end()) {
+                            double initialOpacity = node.opacity;
+                            for (const auto &key : sourceKeyframes->second)
+                                if (key.frame <= beatFrame && key.opacity > 0)
+                                    initialOpacity = key.opacity;
+                            visibleOpacity = visibleOpacityByNode.emplace(
+                                node.id, initialOpacity > 0 ? initialOpacity : 1.0).first;
+                        }
+                        for (const auto &key : sourceKeyframes->second)
+                            if (key.frame <= beatFrame && key.opacity > 0)
+                                visibleOpacity->second = key.opacity;
+                        if (beat.action == "transform" && beat.opacity && *beat.opacity > 0)
+                            visibleOpacity->second = *beat.opacity;
+                        const auto target = beatState(current, beat, visibleOpacity->second);
                         std::map<std::int64_t, TransformKeyframe> keysByFrame;
-                        for (const auto &key : node->keyframes)
+                        for (const auto &key : node.keyframes)
                             keysByFrame[key.frame] = key;
+                        if ((beat.action == "show" || beat.action == "hide" || beat.durationFrames == 0) &&
+                            node.start < beatFrame) {
+                            const auto beforeFrame = beatFrame - 1;
+                            const auto before = evaluate(node, beforeFrame);
+                            keysByFrame[beforeFrame] = {beforeFrame, before.x, before.y, before.rotation,
+                                                        before.scale, before.opacity};
+                        }
                         if (beat.durationFrames > 0)
                             keysByFrame[beatFrame] = {beatFrame,        current.x,     current.y,
                                                       current.rotation, current.scale, current.opacity};
                         const auto targetFrame = beatFrame + beat.durationFrames;
                         keysByFrame[targetFrame] = {targetFrame,     target.x,     target.y,
                                                     target.rotation, target.scale, target.opacity};
-                        node->keyframes.clear();
+                        node.keyframes.clear();
                         for (const auto &[frame, key] : keysByFrame) {
                             Q_UNUSED(frame);
-                            node->keyframes.push_back(key);
+                            node.keyframes.push_back(key);
                         }
                     }
                 }
                 previousShotCamera = shotCamera;
                 if (directedShot.focusFollow) {
-                    auto focusTarget = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const auto &node) {
-                        return node.id == directedShot.focusTargetId.toStdString() &&
-                               node.shotId == directedShot.id.toStdString();
-                    });
-                    if (focusTarget == p.nodes.end() ||
-                        !frameCameraOnTarget(p, *focusTarget, shotEnd - 1, directedShot.focusPadding,
-                                             previousShotCamera)) {
+                    const auto focus = nodeIndices.find(directedShot.focusTargetId.toStdString());
+                    if (focus == nodeIndices.end() || focus->second >= p.nodes.size() ||
+                        p.nodes[focus->second].shotId != directedShot.id.toStdString() ||
+                        !frameCameraOnTarget(p, p.nodes[focus->second], shotEnd - 1,
+                                             directedShot.focusPadding, previousShotCamera, nodeIndices)) {
                         r.error =
                             "Não foi possível determinar o enquadramento final do shot: " + directedShot.id;
                         return r;
                     }
                     for (auto frame = shotStart + 1; frame < shotEnd - 1; ++frame) {
                         auto trackedCamera = previousShotCamera;
-                        if (!frameCameraOnTarget(p, *focusTarget, frame, directedShot.focusPadding,
-                                                 trackedCamera)) {
+                        if (!frameCameraOnTarget(p, p.nodes[focus->second], frame, directedShot.focusPadding,
+                                                 trackedCamera, nodeIndices)) {
                             r.error =
                                 "Não foi possível acompanhar o alvo da câmera no shot: " + directedShot.id;
                             return r;
@@ -806,6 +978,8 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
                     node.videoCropY != 0 || node.videoCropWidth != 1 || node.videoCropHeight != 1);
         }))
         p.schemaVersion = std::max(p.schemaVersion, 10);
+    if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.textAutoFit; }))
+        p.schemaVersion = 15;
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

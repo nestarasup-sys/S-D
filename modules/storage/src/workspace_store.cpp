@@ -4,16 +4,21 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLockFile>
 #include <QMap>
 #include <QSaveFile>
+#include <QRegularExpression>
+#include <QResource>
 #include <QSet>
 #include <QUuid>
 #include <studio/core/library.hpp>
 #include <studio/storage/project_store.hpp>
 #include <studio/storage/workspace_store.hpp>
+
+static void initializePremiumManifestResources() { Q_INIT_RESOURCE(premium_manifests); }
 
 namespace studio {
 namespace {
@@ -31,7 +36,14 @@ bool write(const QString &path, const QByteArray &b) {
     return f.open(QIODevice::WriteOnly) && f.write(b) == b.size() && f.commit();
 }
 QString nativeCategory(const std::string &s) {
-    return s == "personagens" ? "characters" : s == "cenários" ? "scenes" : s == "dados" ? "data" : "objects";
+    if (s == "personagens") return "characters";
+    if (s == "cenários") return "scenes";
+    if (s == "dados" || s == "gráficos") return "data";
+    if (s == "tecnologia") return "technology";
+    if (s == "comunicação") return "communication";
+    if (s == "finanças") return "finance";
+    if (s == "ciência") return "science";
+    return "objects";
 }
 bool categoryExists(const QJsonObject &data, const QString &id);
 void ensureCategory(QJsonObject &data, const QString &id, const QString &name) {
@@ -49,6 +61,130 @@ bool categoryExists(const QJsonObject &data, const QString &id) {
         if (v.toObject()["id"] == id)
             return true;
     return false;
+}
+QString string(std::string_view value) {
+    return QString::fromUtf8(value.data(), int(value.size()));
+}
+QString manifestKind(NodeKind kind) {
+    switch (kind) {
+    case NodeKind::Group: return "group";
+    case NodeKind::Shape: return "shape";
+    case NodeKind::Text: return "text";
+    case NodeKind::Native: return "native";
+    case NodeKind::Image: return "image";
+    case NodeKind::Svg: return "svg";
+    case NodeKind::Video: return "video";
+    }
+    return {};
+}
+QString workspacePremiumCategory(std::string_view category) {
+    if (category == "technology") return "technology";
+    if (category == "data" || category == "motion-graphics") return "data";
+    if (category == "communication" || category == "typography") return "communication";
+    return "uncategorized";
+}
+struct PremiumRegistry {
+    QJsonArray assets;
+    QString error;
+};
+const PremiumRegistry &premiumRegistry() {
+    static const PremiumRegistry registry = [] {
+        initializePremiumManifestResources();
+        PremiumRegistry result;
+        if (!initializePremiumCatalog(&result.error))
+            return result;
+        for (const auto &definition : premiumLibrary()) {
+            QFile file(":/studio/premium/" + string(definition.manifestResource));
+            if (!file.open(QIODevice::ReadOnly) || file.size() > 512 * 1024) {
+                result.error = "Manifesto premium embutido ausente: " + string(definition.id);
+                break;
+            }
+            QJsonParseError parse;
+            const auto document = QJsonDocument::fromJson(file.readAll(), &parse);
+            if (parse.error != QJsonParseError::NoError || !document.isObject()) {
+                result.error = "Manifesto premium embutido inválido: " + string(definition.id);
+                break;
+            }
+            const auto manifest = document.object();
+            const auto manifestError = validatePremiumManifest(manifest, {});
+            const auto nodes = makePremiumAsset(definition.id, 1280, 720);
+            QJsonArray manifestSlotRoles, definitionSlotRoles;
+            for (const auto &slot : manifest["slots"].toArray())
+                manifestSlotRoles.append(slot.toObject()["role"]);
+            for (const auto &role : definition.slotRoles)
+                definitionSlotRoles.append(QString::fromUtf8(role.data(), int(role.size())));
+            QJsonArray manifestPaletteTokens;
+            for (const auto &token : definition.paletteTokens)
+                manifestPaletteTokens.append(QString::fromUtf8(token.data(), int(token.size())));
+            if (!manifestError.isEmpty() || manifest["id"].toString() != string(definition.id) ||
+                manifest["name"].toString() != string(definition.name) ||
+                manifest["type"].toString() != string(definition.type) ||
+                manifestSlotRoles != definitionSlotRoles ||
+                manifest["palette"]["tokens"].toArray() != manifestPaletteTokens ||
+                manifest["layers"].toArray().size() != int(nodes.size()) || nodes.empty() ||
+                manifest["rootNodeId"].toString() != QString::fromStdString(nodes.front().id)) {
+                result.error = "Manifesto e definição premium divergiram: " + string(definition.id) +
+                               (manifestError.isEmpty() ? QString{} : " — " + manifestError);
+                break;
+            }
+            QMap<QString, const Node *> nodesById;
+            for (const auto &node : nodes)
+                nodesById.insert(QString::fromStdString(node.id), &node);
+            bool layersMatch = true;
+            for (const auto &value : manifest["layers"].toArray()) {
+                const auto layer = value.toObject();
+                const auto id = layer["id"].toString();
+                const auto node = nodesById.value(id);
+                const auto declaredKind = layer["kind"].toString();
+                const bool compatibleKind = node &&
+                    (declaredKind == manifestKind(node->kind) ||
+                     (declaredKind == "shape-or-image" &&
+                      (node->kind == NodeKind::Shape || node->kind == NodeKind::Image)));
+                if (!node || !compatibleKind ||
+                    layer["parentId"].toString() != QString::fromStdString(node->parentId)) {
+                    layersMatch = false;
+                    break;
+                }
+            }
+            for (const auto &value : manifest["slots"].toArray()) {
+                const auto slot = value.toObject();
+                const auto node = nodesById.value(slot["nodeId"].toString());
+                if (!node || slot["role"].toString() != QString::fromStdString(node->role) ||
+                    !premiumSlotRole(node->role)) {
+                    layersMatch = false;
+                    break;
+                }
+                const auto kind = slot["kind"].toString();
+                if ((kind == "text" && node->kind != NodeKind::Text) ||
+                    (kind == "image" && node->kind != NodeKind::Shape && node->kind != NodeKind::Image) ||
+                    (kind == "video" && node->kind != NodeKind::Video)) {
+                    layersMatch = false;
+                    break;
+                }
+            }
+            auto project = makeEmpty();
+            project.name = string(definition.name).toStdString();
+            project.schemaVersion = 15;
+            project.nodes = nodes;
+            if (!layersMatch || !validate(project).empty()) {
+                result.error = "Camadas, slots ou projeto premium divergiram do manifesto: " +
+                               string(definition.id);
+                break;
+            }
+            QJsonArray roles;
+            for (const auto &slot : manifest["slots"].toArray())
+                roles.append(slot.toObject()["role"]);
+            result.assets.append(QJsonObject{
+                {"id", string(definition.id)}, {"name", string(definition.name)}, {"kind", "premium"},
+                {"premiumType", string(definition.type)}, {"manifestVersion", definition.manifestVersion},
+                {"manifest", manifest},
+                {"preset", QJsonDocument::fromJson(serialize(project)).object()},
+                {"categoryId", workspacePremiumCategory(definition.category)}, {"deleted", false},
+                {"builtin", true}, {"slots", roles}, {"createdAt", "2026-10-26T00:00:00.000Z"}});
+        }
+        return result;
+    }();
+    return registry;
 }
 QJsonObject find(const QJsonObject &data, const char *key, const QString &id) {
     for (auto v : data[key].toArray())
@@ -105,6 +241,10 @@ QJsonObject defaults() {
     QJsonArray categories;
     for (auto pair : {std::pair{"objects", "Objetos"},
                       {"characters", "Personagens"},
+                      {"technology", "Tecnologia"},
+                      {"communication", "Comunicação"},
+                      {"finance", "Finanças"},
+                      {"science", "Ciência"},
                       {"scenes", "Cenários"},
                       {"data", "Dados"},
                       {"fonts", "Fontes"},
@@ -121,6 +261,8 @@ QJsonObject defaults() {
                                   {"deleted", false},
                                   {"builtin", true},
                                   {"createdAt", now()}});
+    for (const auto &asset : premiumRegistry().assets)
+        assets.append(asset);
     return {{"format", "studio-dark-workspace"},
             {"version", 1},
             {"projects", QJsonArray{}},
@@ -153,11 +295,152 @@ QStringList loadWorkspaceFonts(const QString &workspaceDirectory) {
     }
     return loadedFamilies;
 }
+QString validatePremiumManifest(const QJsonObject &manifest, const QString &packageRoot) {
+    const int manifestVersion = manifest["manifestVersion"].toInt();
+    if (manifest["format"] != "studio-dark-premium" ||
+        (manifestVersion != 1 && manifestVersion != 2) ||
+        (manifestVersion == 1 && manifest.contains("definition")) ||
+        (manifestVersion == 2 && (!manifest["definition"].isObject() ||
+                                  manifest["definition"]["definitionVersion"] != 1)))
+        return "Formato ou versão de manifesto premium não suportado.";
+    const auto id = manifest["id"].toString();
+    static const QRegularExpression validId("^premium:[a-z0-9][a-z0-9-]{2,78}$");
+    static const QRegularExpression semanticVersion("^\\d+\\.\\d+\\.\\d+$");
+    const auto packageType = manifest["type"].toString();
+    const auto canvas = manifest["canvas"].toObject();
+    if (!validId.match(id).hasMatch() || !validName(manifest["name"].toString()) ||
+        !semanticVersion.match(manifest["version"].toString()).hasMatch() ||
+        !QStringList{"premium-object", "premium-scene-kit", "premium-motion-template",
+                     "premium-typography-template", "premium-overlay"}.contains(packageType) ||
+        manifest["category"].toString().isEmpty() || !canvas["width"].isDouble() ||
+        !canvas["height"].isDouble() || canvas["width"].toInt() < 1 || canvas["height"].toInt() < 1 ||
+        canvas["width"].toInt() > 30000 || canvas["height"].toInt() > 30000 ||
+        !manifest["license"].isObject() || manifest["license"]["spdx"].toString().isEmpty() ||
+        !manifest["origin"].isObject() || manifest["origin"]["kind"].toString().isEmpty() ||
+        !manifest["tags"].isArray() || manifest["tags"].toArray().size() > 32 ||
+        !manifest["preview"].isObject() || !manifest["hierarchy"].isObject() ||
+        !manifest["layers"].isArray() ||
+        manifest["layers"].toArray().isEmpty() ||
+        !manifest["slots"].isArray() || manifest["slots"].toArray().size() > 64 ||
+        !manifest["dependencies"].isArray() || manifest["dependencies"].toArray().size() > 64)
+        return "Metadados, limites, ID ou tipo de pacote premium inválidos.";
+    if (manifest.contains("palette")) {
+        const auto palette = manifest["palette"].toObject();
+        if (manifest["palette"].isObject() == false || palette.size() != 1 ||
+            !palette["tokens"].isArray() || palette["tokens"].toArray().isEmpty() ||
+            palette["tokens"].toArray().size() > 12)
+            return "Metadados de paleta premium inválidos.";
+        static const QSet<QString> tokens{"primary", "secondary", "accent", "surface", "text", "muted",
+                                           "highlight", "left", "right", "frame", "screen", "notification"};
+        QSet<QString> declared;
+        for (const auto &value : palette["tokens"].toArray()) {
+            const auto token = value.toString();
+            if (!value.isString() || !tokens.contains(token) || declared.contains(token))
+                return "Token de cor premium desconhecido ou repetido.";
+            declared.insert(token);
+        }
+    }
+    QSet<QString> layerIds, slotIds, dependencies;
+    QMap<QString, QString> layerParents;
+    const auto insidePackage = [&](const QString &relative) {
+        const auto root = QFileInfo(packageRoot).canonicalFilePath();
+        const auto resolved = QFileInfo(QDir(packageRoot).filePath(relative)).canonicalFilePath();
+        if (root.isEmpty() || resolved.isEmpty())
+            return false;
+        const auto child = QDir(root).relativeFilePath(resolved);
+        return !QFileInfo(child).isAbsolute() && child != ".." &&
+               !child.startsWith("../") && !child.startsWith("..\\");
+    };
+    for (const auto &value : manifest["layers"].toArray()) {
+        const auto layer = value.toObject();
+        const auto layerId = layer["id"].toString();
+        const auto kind = layer["kind"].toString();
+        if (layerId.isEmpty() || layerId.size() > 80 || layerIds.contains(layerId) ||
+            !QStringList{"group", "shape", "text", "native", "image", "svg", "video", "shape-or-image"}.contains(kind))
+            return "Camada premium inválida ou com ID duplicado.";
+        layerIds.insert(layerId);
+        if (layer.contains("parentId") && !layer["parentId"].isString())
+            return "Relação pai de camada premium inválida.";
+        layerParents.insert(layerId, layer["parentId"].toString());
+        if (layer.contains("source")) {
+            const auto source = layer["source"].toString();
+            const auto relative = QDir::cleanPath(source);
+            if (source.isEmpty() || QFileInfo(source).isAbsolute() || source.contains("://") ||
+                relative == ".." || relative.startsWith("../") || relative.startsWith("..\\"))
+                return "Caminho de camada fora do pacote premium.";
+            if (!insidePackage(relative))
+                return "Arquivo de pacote ausente ou fora da raiz permitida.";
+        }
+    }
+    const auto rootId = manifest["rootNodeId"].toString();
+    if (!layerIds.contains(rootId) || !layerParents[rootId].isEmpty())
+        return "Nó raiz premium não existe na lista de camadas.";
+    for (const auto &layerId : layerIds) {
+        QSet<QString> ancestry;
+        auto parent = layerParents.value(layerId);
+        int depth = 1;
+        while (!parent.isEmpty()) {
+            if (!layerIds.contains(parent) || ancestry.contains(parent) || parent == layerId)
+                return "Hierarquia premium contém pai ausente ou ciclo.";
+            ancestry.insert(parent);
+            parent = layerParents.value(parent);
+            if (++depth > 8)
+                return "Hierarquia premium excede oito níveis.";
+        }
+    }
+    for (const auto &value : manifest["slots"].toArray()) {
+        const auto slot = value.toObject();
+        const auto slotId = slot["id"].toString();
+        const auto kind = slot["kind"].toString();
+        if (slotId.isEmpty() || slotId.size() > 80 || slotIds.contains(slotId) ||
+            !QStringList{"text", "image", "video", "icon"}.contains(kind) ||
+            !layerIds.contains(slot["nodeId"].toString()))
+            return "Slot premium inválido, duplicado ou aponta para camada ausente.";
+        slotIds.insert(slotId);
+        if (slot.contains("maxLength") &&
+            (!slot["maxLength"].isDouble() || std::floor(slot["maxLength"].toDouble()) !=
+                                                  slot["maxLength"].toDouble() ||
+             slot["maxLength"].toInt() < 1 || slot["maxLength"].toInt() > 2000))
+            return "Tamanho máximo de slot premium inválido.";
+        if (kind == "text" && slot.contains("maxLength") && slot["maxLength"].toInt() > 1000)
+            return "Slot de texto premium não pode exceder 1000 caracteres.";
+        if (slot.contains("textLayout")) {
+            const auto policy = slot["textLayout"].toObject();
+            if (kind != "text" || !slot["textLayout"].isObject() || policy.size() != 3 ||
+                policy["mode"] != "shrink" || !policy["minimumFontSize"].isDouble() ||
+                !policy["padding"].isDouble() || policy["minimumFontSize"].toDouble() < 8 ||
+                policy["minimumFontSize"].toDouble() > 72 || policy["padding"].toDouble() < 0 ||
+                policy["padding"].toDouble() > 64)
+                return "Política de adequação textual inválida no slot premium '" + slotId + "'.";
+        }
+    }
+    for (const auto &value : manifest["dependencies"].toArray()) {
+        if (!value.isString() || value.toString().isEmpty() || value.toString() == id ||
+            dependencies.contains(value.toString()))
+            return "Dependências premium inválidas ou duplicadas.";
+        dependencies.insert(value.toString());
+    }
+    const auto preview = manifest["preview"].toObject();
+    if (preview.contains("source")) {
+        const auto source = preview["source"].toString();
+        const auto relative = QDir::cleanPath(source);
+        if (source.isEmpty() || QFileInfo(source).isAbsolute() || source.contains("://") ||
+            relative == ".." || relative.startsWith("../") || relative.startsWith("..\\"))
+            return "Caminho de preview fora do pacote premium.";
+        if (!insidePackage(relative))
+            return "Preview premium ausente ou fora da raiz permitida.";
+    }
+    return {};
+}
 WorkspaceStore::WorkspaceStore(QString directory) : root_(QDir(directory).absolutePath()) {
     QDir().mkpath(root_);
     reload();
 }
 bool WorkspaceStore::reload() {
+    if (!premiumRegistry().error.isEmpty()) {
+        error_ = premiumRegistry().error;
+        return false;
+    }
     auto path = root_ + "/catalogue.json";
     if (!QFile::exists(path)) {
         data_ = defaults();
@@ -182,6 +465,47 @@ bool WorkspaceStore::reload() {
         return false;
     }
     data_ = doc.object();
+    // Keep personal items and deletions intact, but register new built-in resources
+    // in existing workspace catalogues when the application is upgraded.
+    ensureCategory(data_, "technology", "Tecnologia");
+    ensureCategory(data_, "communication", "Comunicação");
+    ensureCategory(data_, "finance", "Finanças");
+    ensureCategory(data_, "science", "Ciência");
+    auto assets = data_["assets"].toArray();
+    // The previous release exposed PNG artwork under duplicate `illustrated:*`
+    // IDs. Retire only those built-in catalogue rows; old project node IDs remain
+    // valid aliases in core::libraryItem and render through their original native ID.
+    for (qsizetype index = 0; index < assets.size(); ++index) {
+        auto entry = assets[index].toObject();
+        const auto id = entry["id"].toString();
+        if (entry["builtin"].toBool() && entry["kind"] == "native" &&
+            id.startsWith("illustrated:") && entry["nativeId"].toString() == id &&
+            !entry["deleted"].toBool()) {
+            entry["deleted"] = true;
+            assets[index] = entry;
+        }
+    }
+    QSet<QString> known;
+    for (const auto &entry : assets)
+        known.insert(entry.toObject()["id"].toString());
+    for (const auto &item : nativeLibrary()) {
+        const auto id = "native:" + QString::fromStdString(item.id);
+        if (known.contains(id))
+            continue;
+        assets.append(QJsonObject{{"id", id},
+                                  {"nativeId", QString::fromStdString(item.id)},
+                                  {"name", QString::fromStdString(item.name)},
+                                  {"kind", "native"},
+                                  {"categoryId", nativeCategory(item.category)},
+                                  {"deleted", false},
+                                  {"builtin", true},
+                                  {"createdAt", now()}});
+        known.insert(id);
+    }
+    for (const auto &premium : premiumRegistry().assets)
+        if (!known.contains(premium.toObject()["id"].toString()))
+            assets.append(premium);
+    data_["assets"] = assets;
     revision_ = hash(bytes);
     error_.clear();
     return true;
@@ -395,9 +719,10 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
         return {{}, "Informe um nome de até 120 caracteres."};
     QFile f(source);
     auto extension = QFileInfo(source).suffix().toLower();
-    if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg"}.contains(extension) ||
+    const QStringList videoExtensions{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+    if (!QStringList{"png", "jpg", "jpeg", "webp", "bmp", "svg", "mp4", "mov", "mkv", "webm", "avi", "m4v"}.contains(extension) ||
         !f.open(QIODevice::ReadOnly) || f.size() < 1 || f.size() > 32 * 1024 * 1024)
-        return {{}, "Use imagem PNG/JPG/WebP/BMP ou SVG, até 32 MiB."};
+        return {{}, "Use imagem PNG/JPG/WebP/BMP/SVG ou vídeo MP4/MOV/MKV/WebM/AVI/M4V, até 32 MiB."};
     auto bytes = f.readAll();
     auto owned = root_ + "/library/media/" + QString::fromLatin1(hash(bytes)) + "." + extension;
     auto id = uuid();
@@ -410,7 +735,7 @@ WorkspaceResult WorkspaceStore::addAsset(const QString &input, const QString &ca
             return WorkspaceResult{{}, "Não foi possível copiar a mídia para a biblioteca."};
         auto list = d["assets"].toArray();
         QJsonObject asset{
-            {"id", id},         {"name", name},           {"kind", extension == "svg" ? "svg" : "image"},
+            {"id", id},         {"name", name},           {"kind", extension == "svg" ? "svg" : videoExtensions.contains(extension) ? "video" : "image"},
             {"source", owned},  {"categoryId", category}, {"deleted", false},
             {"builtin", false}, {"createdAt", now()}};
         if (width > 0 && height > 0) {
@@ -427,8 +752,8 @@ WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &c
     const auto name = input.trimmed();
     if (!validName(name))
         return {{}, "Informe um nome de até 120 caracteres."};
-    if (nodes.empty() || nodes.size() > 200)
-        return {{}, "Seleção vazia ou maior que 200 objetos."};
+    if (nodes.empty())
+        return {{}, "Selecione ao menos um objeto para criar o preset."};
     const auto origin = nodes.front().start;
     const auto clipDuration = nodes.front().duration;
     if (origin < 0 || clipDuration < 1 || clipDuration > 18000)
@@ -485,6 +810,36 @@ WorkspaceResult WorkspaceStore::addPreset(const QString &input, const QString &c
         d["assets"] = list;
         return WorkspaceResult{id, {}};
     });
+}
+WorkspaceResult WorkspaceStore::importSlotMedia(const QString &source) {
+    const auto path = QFileInfo(source).canonicalFilePath();
+    const QFileInfo info(path);
+    const auto extension = info.suffix().toLower();
+    if (path.isEmpty() || !info.isFile() ||
+        !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(extension))
+        return {{}, "O slot aceita um arquivo PNG, JPEG, WebP ou BMP existente."};
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 32 * 1024 * 1024)
+        return {{}, "A imagem do slot deve ter entre 1 byte e 32 MiB."};
+    QImageReader reader(path);
+    const auto size = reader.size();
+    if (!reader.canRead() || size.isEmpty() || qint64(size.width()) * size.height() > 40000000 ||
+        reader.read().isNull())
+        return {{}, "A imagem não pôde ser decodificada ou excede 40 megapixels."};
+    if (!file.seek(0))
+        return {{}, "Não foi possível reler a imagem selecionada."};
+    const auto bytes = file.readAll();
+    const auto destination = root_ + "/library/media/" +
+                             QString::fromLatin1(hash(bytes)) + "." + extension;
+    if (!QDir().mkpath(root_ + "/library/media"))
+        return {{}, "Não foi possível preparar o armazenamento de mídia do workspace."};
+    if (QFile::exists(destination)) {
+        QFile existing(destination);
+        if (!existing.open(QIODevice::ReadOnly) || existing.readAll() != bytes)
+            return {{}, "O arquivo existente no armazenamento gerenciado não corresponde ao hash."};
+    } else if (!write(destination, bytes))
+        return {{}, "Não foi possível copiar a imagem para o armazenamento gerenciado."};
+    return {destination, {}};
 }
 WorkspaceResult WorkspaceStore::addFont(const QString &family, const QString &source) {
     const auto name = family.trimmed();

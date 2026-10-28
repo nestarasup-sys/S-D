@@ -2,7 +2,7 @@
 
 Data: 24/10/2026. Referência analisada: **Gravação de Tela 2026-10-24 170027.mp4**, enviada pelo usuário.
 
-**Estado deste documento: visão de produto com snapshot histórico.** O andamento de implementação é mantido em [`docs/NOVAS FUNCIONALIDADES.md`](docs/NOVAS%20FUNCIONALIDADES.md), que é a referência atual para o que já existe e o que continua pendente. Atualizado em 25/10/2026 para registrar a seleção múltipla na timeline.
+**Estado deste documento: visão de produto com snapshot histórico.** O andamento de implementação é mantido em [`docs/NOVAS FUNCIONALIDADES.md`](docs/NOVAS%20FUNCIONALIDADES.md), que é a referência atual para o que já existe e o que continua pendente. Atualizado em 26/10/2026 com medições iniciais do Scene Graph e a decisão do motor 2.0.
 
 ## Resumo executivo
 
@@ -21,7 +21,7 @@ O app já transforma uma receita JSON em projeto editável e MP4, tem biblioteca
 
 ### Em andamento
 
-- Etapa 0: provar a fundação e comparar o render atual com Qt Quick Scene Graph em cenas representativas. A comparação ainda não foi medida.
+- Etapa 0: comparação inicial medida nos três canvases. Scene Graph teve menor tempo neste protótipo, mas usou 2,3–2,4× o RSS e a paridade visual ficou em ~24 dB; a migração não foi aprovada.
 - Etapa 1: composição livre, presets agrupados e seleção múltipla/movimento conjunto na timeline já estão no código; o editor ainda agrupa um elemento por vez e não tem componentes vinculados.
 - Etapa 2: câmera básica funciona; faltam enquadramento por alvo, transições e conectores que acompanhem os objetos.
 - Etapa 5 (IA externa): guia, receitas v2, duração-alvo por quadro e referência proporcional à fala estão implementados em código; faltam edição parcial de projeto, propostas revisáveis e eventos por palavra com alinhamento confiável. Integração de chat/provedor dentro do Studio Dark não faz parte desta etapa.
@@ -333,13 +333,13 @@ Para vídeo, manter uma interface de acesso a frames separada do modelo. `QVideo
 
 Evitar dois sistemas independentes de animação: um para a janela e outro para o MP4. Podemos ter adaptadores de renderização, mas o cálculo de tempo e transformações deve permanecer comum.
 
-Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora do enquadramento. Medir tempo de busca, resposta da interface, RAM, custo por frame e velocidade de exportação com uma cena representativa. Não há benchmark desse motor futuro nesta entrega.
+Adicionar proxies de vídeo, cache de mídia/texto e descarte de elementos fora do enquadramento. A primeira medição está registrada na [ADR 0032](docs/architecture/0032-render-engine-2.md), com protótipo isolado e limites de sua representatividade; faltam cenas com texto, nativos, imagens, efeitos e vídeo.
 
 ## 13. Ordem de implementação recomendada
 
 | Etapa | Estado | Entrega concreta | Critério de passagem |
 | --- | --- | --- |
-| 0 — Prova da fundação | Parcial | Modelo de grupos, câmera e animação existe; falta comparação de renderizadores com cena de teste e métricas. | Composição salva/reaberta, enquadramentos reproduzíveis, medições registradas e caminho escolhido. |
+| 0 — Prova da fundação | Parcial | Comparação QPainter/Scene Graph, cache de SVG e decisão arquitetural inicial registrados na ADR 0032. O Scene Graph ainda não tem paridade visual suficiente para adoção. | RenderSnapshot compartilhado, golden images para os tipos visuais, testes em múltiplas APIs e memória dentro do orçamento. |
 | 1 — Composição livre | Parcial | Grupos, keyframes, receita v2, presets compostos e seleção múltipla de timeline existem; faltam âncoras e componentes parametrizados. | IA constrói composição autoral e cada filho continua editável/reutilizável. |
 | 2 — Câmera e conexões | Parcial | Pan/zoom/rotação explícitos existem; faltam alvo, transições e conectores acompanhando objetos. | Mostrar detalhe e quadro completo sem perder relações ou identidade. |
 | 3 — Documentos e vídeo | Não iniciado | Vídeo com trecho de origem; páginas, crop, máscara e regiões destacadas. | Palestra em cartão e aproximação de frase funcionam na prévia e no MP4. |
@@ -383,7 +383,7 @@ Esse piloto deve ser concluído antes de expandir o catálogo de efeitos e model
 - O estilo investigativo será um kit configurável, e outras linguagens visuais poderão compartilhar o motor.
 - Os próximos investimentos principais são composição, câmera e mídia/documentos; a gestão de projetos e biblioteca da versão 0.3 continua sendo aproveitada.
 
-Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderização**, antes de acrescentar efeitos e vídeo. A receita v2 e a base de grupos/câmera já existem; seus limites atuais estão marcados na matriz e no progresso abaixo.
+Próxima ação recomendada: **extrair um RenderSnapshot imutável por quadro**, preservando o QPainter atual como consumidor de referência. Depois, adaptar uma primitiva vetorial ao Scene Graph e elevar a paridade antes de considerar mais recursos ou a exportação GPU.
 
 ## 16. Progresso da implementação
 
@@ -398,5 +398,5 @@ Próxima ação recomendada: **medir a etapa 0 e fechar a estratégia de renderi
 - O editor agrupa um elemento por vez; componentes vinculados ainda faltam. A timeline permite selecionar vários clipes e movê-los juntos; veja a ADR 0018. Presets de grupos com keyframes já são suportados.
 - `kind: library` aceita mídia, presets simples e grupos animados; o JSON continua dependente do catálogo local e não empacota mídia.
 - `timingMode: fit-to-duration` aloca frames fixos por cena e fala depois do TTS, com `cueProgress` e filtro do FFmpeg. Só acelera até 15%, preserva o tom e adiciona pausas; alvo inviável é rejeitado.
-- Benchmark entre renderizadores, curvas Bézier personalizadas, conectores, regiões de documento, vídeo e migração explícita continuam pendentes.
+- Benchmark inicial entre QPainter e Scene Graph concluído; migração e RenderSnapshot compartilhado continuam pendentes. Curvas Bézier personalizadas, conectores e regiões de documento também continuam pendentes.
 - O build do desktop e dos workers concluiu em 24/10/2026; a suíte automatizada não foi executada nestes cortes.
