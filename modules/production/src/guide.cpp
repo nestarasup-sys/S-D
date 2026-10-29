@@ -189,6 +189,14 @@ O usuário escreve o roteiro fora do aplicativo, fornece este guia à IA e salva
 
 Receitas v1 e v2 continuam aceitas por compatibilidade. Para novas produções com cortes dentro da mesma fala, use v3.
 
+## Prioridade editorial — investigação visual de alta retenção
+
+Ao produzir para um canal informativo e investigativo, **não transforme cada fala em um cartão com título, subtítulo e ícone**. A voz conduz a história; a imagem mostra a evidência, o percurso, a relação causal, a comparação ou o detalhe que a voz está revelando. Cada shot deve ter uma função visual identificável, e cada mudança de estado deve acrescentar informação, não somente movimento decorativo.
+
+Planeje um ritmo **variável**, alternando cortes rápidos, explicações que evoluem na mesma composição, aproximações dirigidas e pausas deliberadas. A referência de aproximadamente três segundos sem mudança visual significativa é um **sinal para revisar**, nunca um limite rígido para duração de shot, plano ou leitura de evidência. Evite texto duplicando literalmente a fala; priorize números verificáveis, datas, locais, rótulos de relações, citações curtas e informações essenciais de fonte.
+
+Aplique primeiro a gramática criativa do [guia de direção de roteiro dinâmico](DIRECAO-ROTEIRO-DINAMICO.md) e depois o contrato JSON documentado abaixo. Não confunda proposta editorial com campo implementado: só use propriedades, slots e IDs que este guia e o catálogo `capabilities` realmente anunciam.
+
 ## Como planejar a receita
 
 - Responda **somente com JSON válido**, sem comentários, cercas Markdown nem texto de apresentação. Use `format: "studio-dark-production"` e `catalogVersion: 1`; escolha `version: 3` para shots/Visual Beats ou `version: 2` para a composição de cena tradicional.
@@ -598,7 +606,27 @@ Veja o exemplo v3 executável [apresentador com poses e caminhada](../examples/p
 
 ### Direção para roteiro dinâmico
 
-Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
+### Direção para roteiro investigativo e montagem visual
+
+**Intenção editorial:** investigação informativa com progressão de curiosidade, sem sensacionalismo, dramatização enganosa ou texto de preenchimento. O espectador precisa descobrir algo, entender *por que* importa e visualizar *como* acontece. A narração não deve apenas enumerar assuntos: construa pergunta → contexto verificável → evidência → mecanismo/contraste → consequência → conclusão honesta. Se uma conclusão ainda é incerta, sinalize a incerteza.
+
+**Unidade de montagem:** para cada fala ou conjunto curto de falas, defina: (1) informação nova da voz, (2) pergunta que o público está tentando responder, (3) informação visual complementar, (4) mudança perceptível no quadro, (5) fonte ou grau de certeza quando relevante. Se a imagem apenas reproduz a narração em letras grandes, replaneje. Não use um título e um subtítulo genéricos como receita obrigatória.
+
+**Ritmo com propósito:** varie planos breves e cenas mais longas; em um plano extenso, revele novos estados por câmera, aproximação, troca de objeto, comparação, animação de fluxo ou Visual Beats. Aproximadamente três segundos sem alteração significativa podem indicar um trecho estagnado, mas não corte uma evidência, um número ou um mecanismo antes que seja compreendido. Não crie cortes ou efeitos apenas para cumprir frequência. Uma pausa após uma revelação pode ser intencional.
+
+**Escolha do recurso pela função:** use os PNGs nativos (por exemplo, `car`, `chip`, `flask`) para objetos; os 12 cenários nativos de baixa resolução apenas com consciência de seu limite de qualidade; `person` para gestos e explicações pontuais, não como presença obrigatória; os 11 gráficos procedurais para comparações e processos ilustrativos; e `ui:*` para painéis de dados, documentos, dispositivos com conteúdo mascarado, camadas, Op Art ou máquinas. Os 66 `uiComponentAssets` são recursos *adicionais* e não substituem os 72 IDs nativos. Consulte o catálogo para IDs e `slotDefinitions` reais; nunca invente um slot.
+
+**Texto e legibilidade:** use texto apenas quando ele carrega informação que precisa ser lida ou identificada. Prefira um dado ou rótulo preciso a blocos de prosa; não duplique legendas automáticas em títulos com a mesma frase. Preserve margens e espaço de captions. Uma tela inteira com documento ou dado importante pode ficar mais tempo, desde que a atenção tenha foco e a leitura seja possível.
+
+**Voz, tempo e câmera:** escreva ou preserve falas curtas e faláveis, com pontuação de respiração. Planeje `shots` e `visualBeats` em torno de `cue`, `cueProgress` e, se o alinhamento real existir, `wordIndex`; não adivinhe o tempo do áudio sintético. Use `camera.path` para revelar alvos espaciais e `show`/`hide` para revelar alvos temporais, conforme o contrato. Evite pan/zoom arbitrários e não combine `cameraPresets` com Visual Beats de câmera no mesmo shot.
+
+**Evidência e confiança:** não fabrique laudos, fontes, datas, números, depoimentos ou notícias para fechar uma narrativa. `sources` registra referências fornecidas, não pesquisa nem verificação automática. Ilustração, animação conceitual e reconstrução não são prova fotográfica; se uma cena reconstitui um fato, deixe sua natureza clara. Quando o tema exigir dados atuais ou o usuário não fornecer as fontes, peça material verificável ou produza somente uma explicação conceitual sem alegar fatos específicos.
+
+**Áudio e acabamento:** a voz deve permanecer inteligível; use música, ambiência, ducking e efeitos pontuais onde reforçam a descoberta, não um efeito sonoro por corte. Faça uma revisão dos momentos de primeiro enquadramento, beats, textos, legendas, máscara de telas, destinos da câmera e MP4 final. O analisador de qualidade visual é consultivo e não avalia intenção, fatos, ou todo frame.
+
+**Exemplo de planejamento antes do JSON:** na fala "A amostra foi coletada na estação; o percurso até as casas é outra etapa", primeiro mostre um local de coleta identificado, depois revele o percurso e termine na residência. O valor não está em exibir "O caminho da água" como título, mas em fazer o espectador **ver a diferença** entre ponto de medição e destino. Use `ui:archive-photo-frame` para uma evidência documental apenas se houver imagem real fornecida, e `ui:device-smartphone` com `slots.screen` apenas para conteúdo pertinente e disponível.
+
+O guia de estilo completo está em `docs/DIRECAO-ROTEIRO-DINAMICO.md`. Os exemplos e contratos reais estão nas seções de receita v3, câmera, elementos, `uiComponentAssets`, `poseKeyframes` e `walk` deste documento.
 
 **Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 48 objetos ilustrados, os 12 cenários e `person` usam PNG incorporado (72 imagens em 61 IDs nativos); os 11 gráficos/dados continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
