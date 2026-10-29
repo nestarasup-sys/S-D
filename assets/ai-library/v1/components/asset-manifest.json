@@ -1,0 +1,2546 @@
+{
+  "format": "studio-dark-ai-component-pack",
+  "version": 1,
+  "status": "assets prepared; app integration and slot coordinates require Codex implementation/validation",
+  "compatibility": {
+    "preserve_existing_ids": true,
+    "do_not_override_native_assets": true,
+    "existing_collections": [
+      "48 illustration assets",
+      "12 scene artworks",
+      "presenter character poses",
+      "dynamic chart assets"
+    ],
+    "id_namespace": "ui:",
+    "runtime_registration": "additional components only"
+  },
+  "source_notes": {
+    "alpha": "source RGBA real; preserve unchanged artwork",
+    "cutting": "connected alpha components assigned to grid items rather than naïve square cuts",
+    "slots": "suggested content slots; masks are derived candidates and require visual validation"
+  },
+  "sheets": [
+    {
+      "id": "editorial-panels",
+      "file": "original-sheets/editorial-panels.png",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "grid_cell_width": 362.0,
+      "grid_cell_height": 362.0,
+      "members": [
+        "ui:editorial-panel",
+        "ui:rounded-card",
+        "ui:tech-frame",
+        "ui:vertical-info-panel",
+        "ui:quote-panel",
+        "ui:stat-panel",
+        "ui:comparison-panel",
+        "ui:lower-third",
+        "ui:alert-card",
+        "ui:science-card",
+        "ui:process-step",
+        "ui:documentary-panel"
+      ]
+    },
+    {
+      "id": "device-frames",
+      "file": "original-sheets/device-frames.png",
+      "columns": 3,
+      "rows": 2,
+      "width": 1536,
+      "height": 1024,
+      "grid_cell_width": 512.0,
+      "grid_cell_height": 512.0,
+      "members": [
+        "ui:device-smartphone",
+        "ui:device-tablet",
+        "ui:device-laptop",
+        "ui:device-desktop-monitor",
+        "ui:device-tv-screen",
+        "ui:device-kiosk"
+      ]
+    },
+    {
+      "id": "parallax-layers",
+      "file": "original-sheets/parallax-layers.png",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "grid_cell_width": 362.0,
+      "grid_cell_height": 362.0,
+      "members": [
+        "ui:foreground-plant-left",
+        "ui:foreground-plant-right",
+        "ui:street-lamp",
+        "ui:architectural-column",
+        "ui:industrial-pipes",
+        "ui:laboratory-bench",
+        "ui:server-rack-side",
+        "ui:urban-railing",
+        "ui:control-console",
+        "ui:bookshelf-prop",
+        "ui:industrial-tank",
+        "ui:science-equipment"
+      ]
+    },
+    {
+      "id": "documentary-archive",
+      "file": "original-sheets/documentary-archive.png",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "grid_cell_width": 362.0,
+      "grid_cell_height": 362.0,
+      "members": [
+        "ui:archive-photo-frame",
+        "ui:polaroid-frame",
+        "ui:film-frame",
+        "ui:document-frame",
+        "ui:dossier-folder",
+        "ui:newspaper-frame",
+        "ui:evidence-card",
+        "ui:archival-slide",
+        "ui:map-display-frame",
+        "ui:projector-frame",
+        "ui:research-board",
+        "ui:magnified-document-frame"
+      ]
+    },
+    {
+      "id": "optical-motion",
+      "file": "original-sheets/optical-motion.png",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "grid_cell_width": 362.0,
+      "grid_cell_height": 362.0,
+      "members": [
+        "ui:concentric-waves",
+        "ui:optical-spiral",
+        "ui:halftone-disc",
+        "ui:geometric-sunburst",
+        "ui:flowing-ribbons",
+        "ui:parallel-tunnel",
+        "ui:interlocking-rings",
+        "ui:wave-mesh",
+        "ui:abstract-particle-field",
+        "ui:geometric-wipe",
+        "ui:optical-diamond",
+        "ui:modular-orbit"
+      ]
+    },
+    {
+      "id": "process-machinery",
+      "file": "original-sheets/process-machinery.png",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "grid_cell_width": 362.0,
+      "grid_cell_height": 362.0,
+      "members": [
+        "ui:straight-pipe",
+        "ui:pipe-elbow",
+        "ui:pipe-junction",
+        "ui:control-valve",
+        "ui:treatment-tank",
+        "ui:filter-chamber",
+        "ui:industrial-pump",
+        "ui:glass-chamber",
+        "ui:pressure-gauge",
+        "ui:reactor-chamber",
+        "ui:sectional-filter",
+        "ui:flow-distributor"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "ui:editorial-panel",
+      "name": "editorial-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/editorial-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        34,
+        106,
+        408,
+        332
+      ],
+      "dimensions": [
+        374,
+        226
+      ],
+      "sha256": "11a66b1ebc00fb762c56c04c083f85bed7b22779658256e5c720e397845dae24",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.16,
+            0.76,
+            0.69
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:rounded-card",
+      "name": "rounded-card",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/rounded-card.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        422,
+        98,
+        742,
+        336
+      ],
+      "dimensions": [
+        320,
+        238
+      ],
+      "sha256": "2db0393cc5e49287afbe952b137c9d9c29df430bfe613f3e2e7e10d1c0954ce5",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.13,
+            0.17,
+            0.74,
+            0.66
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:tech-frame",
+      "name": "tech-frame",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/tech-frame.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        757,
+        96,
+        1117,
+        343
+      ],
+      "dimensions": [
+        360,
+        247
+      ],
+      "sha256": "ff3ed8bfbbd33dae33a8312a18b3dee0f757dfed2f4b09b32c57affc109a2de4",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.17,
+            0.76,
+            0.65
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:vertical-info-panel",
+      "name": "vertical-info-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/vertical-info-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 1,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1155,
+        63,
+        1410,
+        369
+      ],
+      "dimensions": [
+        255,
+        306
+      ],
+      "sha256": "d8a0edb6f7c938455f505368e0d2f5c5e0761fe6456f8fdba5a5757bae322468",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.24,
+            0.76,
+            0.64
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:quote-panel",
+      "name": "quote-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/quote-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        27,
+        427,
+        380,
+        659
+      ],
+      "dimensions": [
+        353,
+        232
+      ],
+      "sha256": "e042c81d3eee69766ebf1106f52fec3a1c9b7753ca28b32c061dc714444ee9f3",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "quote",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.19,
+            0.18,
+            0.71,
+            0.63
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:stat-panel",
+      "name": "stat-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/stat-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        400,
+        414,
+        727,
+        671
+      ],
+      "dimensions": [
+        327,
+        257
+      ],
+      "sha256": "a287bb9c244b039c5a89c299b2956b8db2da21d7d24ce0ce34c6447c7d7d9958",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "value",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.15,
+            0.76,
+            0.44
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        },
+        {
+          "id": "caption",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.73,
+            0.76,
+            0.18
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:comparison-panel",
+      "name": "comparison-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/comparison-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        751,
+        426,
+        1101,
+        667
+      ],
+      "dimensions": [
+        350,
+        241
+      ],
+      "sha256": "db807860b216b78ddec0593ba2d3afac81e4574a9014c95f457f75b69984f414",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "left",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.08,
+            0.2,
+            0.39,
+            0.66
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        },
+        {
+          "id": "right",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.53,
+            0.2,
+            0.39,
+            0.66
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:lower-third",
+      "name": "lower-third",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/lower-third.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 2,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1111,
+        498,
+        1427,
+        612
+      ],
+      "dimensions": [
+        316,
+        114
+      ],
+      "sha256": "1d116d3dccb7b019c8253d737349c4a545bc301a5d8aa0626a77cf96cf6bda5d",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.22,
+            0.17,
+            0.7,
+            0.67
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:alert-card",
+      "name": "alert-card",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/alert-card.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 3,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        28,
+        765,
+        361,
+        965
+      ],
+      "dimensions": [
+        333,
+        200
+      ],
+      "sha256": "5dd01ba5c4d4676fba6ec4686ebb258fa047e09dbc73529e247c33cd82f31763",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.27,
+            0.16,
+            0.65,
+            0.68
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:science-card",
+      "name": "science-card",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/science-card.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 3,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        376,
+        748,
+        727,
+        980
+      ],
+      "dimensions": [
+        351,
+        232
+      ],
+      "sha256": "2ed4981d267587daf9ae1afcbdcaa128c7983a350a76bdaaa0248d3b0eae0d77",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.16,
+            0.18,
+            0.7,
+            0.64
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:process-step",
+      "name": "process-step",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/process-step.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 3,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        742,
+        756,
+        1085,
+        966
+      ],
+      "dimensions": [
+        343,
+        210
+      ],
+      "sha256": "3c4ea6fa06e0746e3ea971eca3843648e14db18bf85f6c755f193d844fd19c16",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.14,
+            0.16,
+            0.72,
+            0.66
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:documentary-panel",
+      "name": "documentary-panel",
+      "type": "overlay-container",
+      "folder": "editorial-panels",
+      "path": "assets/ai-library/v1/components/editorial-panels/documentary-panel.png",
+      "source": "editorial-panels",
+      "source_cell": {
+        "row": 3,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1094,
+        775,
+        1426,
+        946
+      ],
+      "dimensions": [
+        332,
+        171
+      ],
+      "sha256": "188b349b6207fb90c335c35fe5385eff90d2e2dfba5b47ebef54e74075ed36fa",
+      "render": "panel-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-text",
+          "rect_norm": [
+            0.12,
+            0.19,
+            0.76,
+            0.6
+          ],
+          "status": "layout hint; adjust to real inset during integration"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-smartphone",
+      "name": "device-smartphone",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-smartphone.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        113,
+        46,
+        369,
+        497
+      ],
+      "dimensions": [
+        256,
+        451
+      ],
+      "sha256": "bdb38363b89a34cef5909be038798a7fd0031b3992c9a95d24d4179e26611d5a",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-smartphone.slot-1-mask.png",
+          "bbox_px": [
+            40,
+            33,
+            186,
+            371
+          ],
+          "rect_norm": [
+            0.15625,
+            0.07317,
+            0.72656,
+            0.82262
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-tablet",
+      "name": "device-tablet",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-tablet.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        529,
+        43,
+        896,
+        497
+      ],
+      "dimensions": [
+        367,
+        454
+      ],
+      "sha256": "7135b3f9e6d85d1ba85c02f304e60a2d2f64139e9e279b477c7c9620ca801249",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-tablet.slot-1-mask.png",
+          "bbox_px": [
+            36,
+            42,
+            291,
+            369
+          ],
+          "rect_norm": [
+            0.09809,
+            0.09251,
+            0.79292,
+            0.81278
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-laptop",
+      "name": "device-laptop",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-laptop.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        947,
+        93,
+        1495,
+        481
+      ],
+      "dimensions": [
+        548,
+        388
+      ],
+      "sha256": "a340caff8fb9e7b0849c18055f95926bd234477b088df96f0aed82d393c69766",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-laptop.slot-1-mask.png",
+          "bbox_px": [
+            88,
+            35,
+            375,
+            230
+          ],
+          "rect_norm": [
+            0.16058,
+            0.09021,
+            0.68431,
+            0.59278
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-desktop-monitor",
+      "name": "device-desktop-monitor",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-desktop-monitor.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        58,
+        574,
+        515,
+        975
+      ],
+      "dimensions": [
+        457,
+        401
+      ],
+      "sha256": "ecdc44f0d04937b502da9e127567c020376e5099a01c59cdc2e7e8d00d654016",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-desktop-monitor.slot-1-mask.png",
+          "bbox_px": [
+            31,
+            33,
+            394,
+            220
+          ],
+          "rect_norm": [
+            0.06783,
+            0.08229,
+            0.86214,
+            0.54863
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-tv-screen",
+      "name": "device-tv-screen",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-tv-screen.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        545,
+        598,
+        1105,
+        970
+      ],
+      "dimensions": [
+        560,
+        372
+      ],
+      "sha256": "28ddcec498a7dcd310eda0fcecb385f801e7fe60ce6a22b845b0d6edd6c738b1",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-tv-screen.slot-1-mask.png",
+          "bbox_px": [
+            33,
+            34,
+            495,
+            269
+          ],
+          "rect_norm": [
+            0.05893,
+            0.0914,
+            0.88393,
+            0.72312
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:device-kiosk",
+      "name": "device-kiosk",
+      "type": "screen-container",
+      "folder": "device-frames",
+      "path": "assets/ai-library/v1/components/device-frames/device-kiosk.png",
+      "source": "device-frames",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        1181,
+        507,
+        1418,
+        975
+      ],
+      "dimensions": [
+        237,
+        468
+      ],
+      "sha256": "60ed86ac6bacc1b90faf28219c4479b2efa1eb8880572d25f93d5eda1e2a0e69",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "screen",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/device-frames/device-kiosk.slot-1-mask.png",
+          "bbox_px": [
+            44,
+            40,
+            149,
+            257
+          ],
+          "rect_norm": [
+            0.18565,
+            0.08547,
+            0.62869,
+            0.54915
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:foreground-plant-left",
+      "name": "foreground-plant-left",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/foreground-plant-left.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        41,
+        7,
+        329,
+        365
+      ],
+      "dimensions": [
+        288,
+        358
+      ],
+      "sha256": "3fbf44e0926f4816019172a30f166f9317ab9972afa95e2722bf357dc978250a",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:foreground-plant-right",
+      "name": "foreground-plant-right",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/foreground-plant-right.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        418,
+        7,
+        697,
+        366
+      ],
+      "dimensions": [
+        279,
+        359
+      ],
+      "sha256": "1ee9e548f89f7ac492a42690942d857fdf9532decc69a14f6eb67e0f43ea1525",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:street-lamp",
+      "name": "street-lamp",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/street-lamp.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        832,
+        2,
+        1025,
+        365
+      ],
+      "dimensions": [
+        193,
+        363
+      ],
+      "sha256": "0e64c1cc78fc25d4a00d5907d6e1378da0cefee058572b5a4c0838d222102688",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:architectural-column",
+      "name": "architectural-column",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/architectural-column.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 1,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1199,
+        2,
+        1356,
+        363
+      ],
+      "dimensions": [
+        157,
+        361
+      ],
+      "sha256": "8494fb70caf7b534a4f9694eb15d52e9cef5af3fcb3e75dd6ed743216d0008a8",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:industrial-pipes",
+      "name": "industrial-pipes",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/industrial-pipes.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        15,
+        375,
+        343,
+        709
+      ],
+      "dimensions": [
+        328,
+        334
+      ],
+      "sha256": "afe35f186ec93513aee56eda880a00d2cf3af00323de20cf00be7b5e9c19fd40",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:laboratory-bench",
+      "name": "laboratory-bench",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/laboratory-bench.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        366,
+        381,
+        719,
+        710
+      ],
+      "dimensions": [
+        353,
+        329
+      ],
+      "sha256": "94f44058d46c33f2ecab66536acc26d7a6a7b745e706785ae7eeadc0c5b269a4",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:server-rack-side",
+      "name": "server-rack-side",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/server-rack-side.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        779,
+        370,
+        1015,
+        715
+      ],
+      "dimensions": [
+        236,
+        345
+      ],
+      "sha256": "0e03a2ef96b8ed0f8c2b47e30ba2fa41f518df5a605a1adda9633a9f594aa32b",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:urban-railing",
+      "name": "urban-railing",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/urban-railing.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 2,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1082,
+        455,
+        1439,
+        684
+      ],
+      "dimensions": [
+        357,
+        229
+      ],
+      "sha256": "aa5d0acaa73c177f20a77482fa8273ea6592ae78adc77a1b15c3591c2fb71e9c",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:control-console",
+      "name": "control-console",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/control-console.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 3,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        9,
+        776,
+        404,
+        1062
+      ],
+      "dimensions": [
+        395,
+        286
+      ],
+      "sha256": "eb1e514526cb48cec560050d5b7cf0838e21c8024f07326ab1036953ec387d97",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:bookshelf-prop",
+      "name": "bookshelf-prop",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/bookshelf-prop.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 3,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        416,
+        707,
+        671,
+        1069
+      ],
+      "dimensions": [
+        255,
+        362
+      ],
+      "sha256": "887178b754643d082d97aa4f553cad04cc9c8bbe3f0fc75b2a23a2c938f4a0eb",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:industrial-tank",
+      "name": "industrial-tank",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/industrial-tank.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 3,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        776,
+        714,
+        1048,
+        1064
+      ],
+      "dimensions": [
+        272,
+        350
+      ],
+      "sha256": "c11dc6a03e57f3481c332f0a32beb0c6500089e1d74bfa73a20d2f0a08cafa85",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:science-equipment",
+      "name": "science-equipment",
+      "type": "decoration",
+      "folder": "parallax-layers",
+      "path": "assets/ai-library/v1/components/parallax-layers/science-equipment.png",
+      "source": "parallax-layers",
+      "source_cell": {
+        "row": 3,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1087,
+        748,
+        1434,
+        1060
+      ],
+      "dimensions": [
+        347,
+        312
+      ],
+      "sha256": "7f5347a31513c497ec316efa3c0c2fdb0f0a12a334440dcfc47064ca33b1c0a6",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:archive-photo-frame",
+      "name": "archive-photo-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/archive-photo-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        31,
+        55,
+        388,
+        326
+      ],
+      "dimensions": [
+        357,
+        271
+      ],
+      "sha256": "dcf4995593fddac98966e45dd3ef5a7c4ad48099f7f007db7a80b314f571e17b",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/archive-photo-frame.slot-1-mask.png",
+          "bbox_px": [
+            40,
+            43,
+            273,
+            185
+          ],
+          "rect_norm": [
+            0.11204,
+            0.15867,
+            0.76471,
+            0.68266
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:polaroid-frame",
+      "name": "polaroid-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/polaroid-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        420,
+        31,
+        693,
+        335
+      ],
+      "dimensions": [
+        273,
+        304
+      ],
+      "sha256": "ebbc67bd4d10b4040d917bed0de2bd6263e753e0bda0d7d65a5799c35ad97d20",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/polaroid-frame.slot-1-mask.png",
+          "bbox_px": [
+            50,
+            25,
+            201,
+            207
+          ],
+          "rect_norm": [
+            0.18315,
+            0.08224,
+            0.73626,
+            0.68092
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:film-frame",
+      "name": "film-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/film-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        736,
+        54,
+        1080,
+        325
+      ],
+      "dimensions": [
+        344,
+        271
+      ],
+      "sha256": "30cec6f0637de7fd62c78d4657244d9615f3878a21366805ac130679a79c246d",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/film-frame.slot-1-mask.png",
+          "bbox_px": [
+            73,
+            22,
+            224,
+            222
+          ],
+          "rect_norm": [
+            0.21221,
+            0.08118,
+            0.65116,
+            0.81919
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:document-frame",
+      "name": "document-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/document-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 1,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1120,
+        38,
+        1418,
+        343
+      ],
+      "dimensions": [
+        298,
+        305
+      ],
+      "sha256": "3c63cbb1747af21c7211ad71da08b575388342499fb7efe31a5ae3ba37a85ec8",
+      "render": "document-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-content",
+          "rect_norm": [
+            0.12,
+            0.12,
+            0.76,
+            0.72
+          ],
+          "status": "initial content-area hint; requires visual checking"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:dossier-folder",
+      "name": "dossier-folder",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/dossier-folder.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        19,
+        373,
+        392,
+        662
+      ],
+      "dimensions": [
+        373,
+        289
+      ],
+      "sha256": "19d851319592ae3aa59b23bcb3b833a45d6a188a041489324fab5853a5ce745a",
+      "render": "document-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-content",
+          "rect_norm": [
+            0.12,
+            0.12,
+            0.76,
+            0.72
+          ],
+          "status": "initial content-area hint; requires visual checking"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:newspaper-frame",
+      "name": "newspaper-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/newspaper-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        413,
+        356,
+        717,
+        683
+      ],
+      "dimensions": [
+        304,
+        327
+      ],
+      "sha256": "d4e430bb9c578af821643b42a400022fa477e6d79c01c89ae465b1a37b3e41d0",
+      "render": "document-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-content",
+          "rect_norm": [
+            0.12,
+            0.12,
+            0.76,
+            0.72
+          ],
+          "status": "initial content-area hint; requires visual checking"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:evidence-card",
+      "name": "evidence-card",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/evidence-card.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        758,
+        386,
+        1082,
+        677
+      ],
+      "dimensions": [
+        324,
+        291
+      ],
+      "sha256": "e0e53500cace9ab618b13986c32bf65d35e909c0b61d5ca16cfaa623969d5bf7",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/evidence-card.slot-1-mask.png",
+          "bbox_px": [
+            26,
+            28,
+            268,
+            177
+          ],
+          "rect_norm": [
+            0.08025,
+            0.09622,
+            0.82716,
+            0.60825
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:archival-slide",
+      "name": "archival-slide",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/archival-slide.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 2,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1115,
+        383,
+        1419,
+        665
+      ],
+      "dimensions": [
+        304,
+        282
+      ],
+      "sha256": "c301d00f0ad9058f9fd21df51c52546dd1b229799bef3b2d155a4e7b005d26b2",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/archival-slide.slot-1-mask.png",
+          "bbox_px": [
+            53,
+            71,
+            200,
+            136
+          ],
+          "rect_norm": [
+            0.17434,
+            0.25177,
+            0.65789,
+            0.48227
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:map-display-frame",
+      "name": "map-display-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/map-display-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 3,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        26,
+        710,
+        383,
+        1017
+      ],
+      "dimensions": [
+        357,
+        307
+      ],
+      "sha256": "8966a9d623679a386014a130b0f22ca51d11c32c7b0f214466ed68d9c1a17837",
+      "render": "document-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-content",
+          "rect_norm": [
+            0.12,
+            0.12,
+            0.76,
+            0.72
+          ],
+          "status": "initial content-area hint; requires visual checking"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:projector-frame",
+      "name": "projector-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/projector-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 3,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        388,
+        720,
+        741,
+        1008
+      ],
+      "dimensions": [
+        353,
+        288
+      ],
+      "sha256": "51755b79dca6127c4eb47b702fd7260e589a77c134b5eec62f1d8166f01df05c",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/projector-frame.slot-1-mask.png",
+          "bbox_px": [
+            46,
+            38,
+            261,
+            171
+          ],
+          "rect_norm": [
+            0.13031,
+            0.13194,
+            0.73938,
+            0.59375
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:research-board",
+      "name": "research-board",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/research-board.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 3,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        752,
+        695,
+        1081,
+        1009
+      ],
+      "dimensions": [
+        329,
+        314
+      ],
+      "sha256": "4186b060405b3e5f08bf0937b43759ba4d198e3559546e20e3a0370d1dda151f",
+      "render": "document-with-overlay-content",
+      "slots": [
+        {
+          "id": "body",
+          "kind": "overlay-content",
+          "rect_norm": [
+            0.12,
+            0.12,
+            0.76,
+            0.72
+          ],
+          "status": "initial content-area hint; requires visual checking"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:magnified-document-frame",
+      "name": "magnified-document-frame",
+      "type": "mixed-documentary",
+      "folder": "documentary-archive",
+      "path": "assets/ai-library/v1/components/documentary-archive/magnified-document-frame.png",
+      "source": "documentary-archive",
+      "source_cell": {
+        "row": 3,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1106,
+        713,
+        1428,
+        1017
+      ],
+      "dimensions": [
+        322,
+        304
+      ],
+      "sha256": "85d297d709a8d94cd823b1c9c361d13397748adf2a7d10c9017b53895c20b466",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/magnified-document-frame.slot-1-mask.png",
+          "bbox_px": [
+            48,
+            37,
+            216,
+            197
+          ],
+          "rect_norm": [
+            0.14907,
+            0.12171,
+            0.67081,
+            0.64803
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        },
+        {
+          "id": "window-2",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/documentary-archive/magnified-document-frame.slot-2-mask.png",
+          "bbox_px": [
+            202,
+            182,
+            101,
+            101
+          ],
+          "rect_norm": [
+            0.62733,
+            0.59868,
+            0.31366,
+            0.33224
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:concentric-waves",
+      "name": "concentric-waves",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/concentric-waves.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        27,
+        13,
+        369,
+        359
+      ],
+      "dimensions": [
+        342,
+        346
+      ],
+      "sha256": "67f2c74e63fe65c9ecb1fcaee1a2c060fbd661d7015ad92560ab2bb7ed01f2af",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:optical-spiral",
+      "name": "optical-spiral",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/optical-spiral.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        390,
+        28,
+        713,
+        356
+      ],
+      "dimensions": [
+        323,
+        328
+      ],
+      "sha256": "5ae527b66bb83f6287b2e4e7f245bef6fc1fa37d45362e8f38879fe1897f8788",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:halftone-disc",
+      "name": "halftone-disc",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/halftone-disc.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        750,
+        30,
+        1071,
+        341
+      ],
+      "dimensions": [
+        321,
+        311
+      ],
+      "sha256": "4df6768f043c4ef3e4ea60cdaf9f272f4607571d58ce19ca0512831900046e84",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:geometric-sunburst",
+      "name": "geometric-sunburst",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/geometric-sunburst.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 1,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1103,
+        11,
+        1440,
+        369
+      ],
+      "dimensions": [
+        337,
+        358
+      ],
+      "sha256": "917a92b25c58646dd66293a36565c266688dc960260dd7eef8698f9024fadabf",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:flowing-ribbons",
+      "name": "flowing-ribbons",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/flowing-ribbons.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        15,
+        385,
+        369,
+        675
+      ],
+      "dimensions": [
+        354,
+        290
+      ],
+      "sha256": "b27ad3673542493cddab16d1262222eadd462fbd0c99bb7edf4e31f8c18d980c",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:parallel-tunnel",
+      "name": "parallel-tunnel",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/parallel-tunnel.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        398,
+        373,
+        709,
+        674
+      ],
+      "dimensions": [
+        311,
+        301
+      ],
+      "sha256": "b0fa8744b40cc989bf54848bd26014c1c755d84013a58bb17000d38c35d60673",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:interlocking-rings",
+      "name": "interlocking-rings",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/interlocking-rings.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        745,
+        374,
+        1076,
+        680
+      ],
+      "dimensions": [
+        331,
+        306
+      ],
+      "sha256": "fd21be52c034347c2dccfb7af85ca25b7f1b958a308145730c56740f0aa8990d",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:wave-mesh",
+      "name": "wave-mesh",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/wave-mesh.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 2,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1104,
+        391,
+        1436,
+        676
+      ],
+      "dimensions": [
+        332,
+        285
+      ],
+      "sha256": "de290db6b6f5686daf97baad7c57d749fc288f5c2f0be8d71ab25b8c0ed48d37",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:abstract-particle-field",
+      "name": "abstract-particle-field",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/abstract-particle-field.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 3,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        28,
+        700,
+        374,
+        1039
+      ],
+      "dimensions": [
+        346,
+        339
+      ],
+      "sha256": "7705d5714fee450630fde91a84bc88ac8a1c817408840e570f0634232936910f",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:geometric-wipe",
+      "name": "geometric-wipe",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/geometric-wipe.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 3,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        397,
+        710,
+        727,
+        1039
+      ],
+      "dimensions": [
+        330,
+        329
+      ],
+      "sha256": "945808d81fa2f2ef612c0ef19ed090ff6e8a6c0b124221661ab53236b6830577",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:optical-diamond",
+      "name": "optical-diamond",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/optical-diamond.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 3,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        729,
+        693,
+        1081,
+        1044
+      ],
+      "dimensions": [
+        352,
+        351
+      ],
+      "sha256": "713415542bb02c43f6248ae44621ff45d4213bf5c01b05c497c3b51a12d762a9",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:modular-orbit",
+      "name": "modular-orbit",
+      "type": "decorative-motion",
+      "folder": "optical-motion",
+      "path": "assets/ai-library/v1/components/optical-motion/modular-orbit.png",
+      "source": "optical-motion",
+      "source_cell": {
+        "row": 3,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1099,
+        698,
+        1433,
+        1040
+      ],
+      "dimensions": [
+        334,
+        342
+      ],
+      "sha256": "f86eab61ea97dac4929ae8272da8000284b9d604e8df7a14ddedb6c4e99d4d58",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": [
+        "Static image only; native transforms supported after integration. Fine lines may cause moire when scaled."
+      ]
+    },
+    {
+      "id": "ui:straight-pipe",
+      "name": "straight-pipe",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/straight-pipe.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 1,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        21,
+        138,
+        370,
+        303
+      ],
+      "dimensions": [
+        349,
+        165
+      ],
+      "sha256": "eb775ebe30eb8736627bf94161aac0ec6cd08ad20aca67ae67c87f5108d58a48",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:pipe-elbow",
+      "name": "pipe-elbow",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/pipe-elbow.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 1,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        403,
+        55,
+        679,
+        308
+      ],
+      "dimensions": [
+        276,
+        253
+      ],
+      "sha256": "667ee332702d38a86100a626df144a14d8f78cb98c9791e416a97027d9f4107e",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:pipe-junction",
+      "name": "pipe-junction",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/pipe-junction.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 1,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        727,
+        82,
+        1079,
+        319
+      ],
+      "dimensions": [
+        352,
+        237
+      ],
+      "sha256": "9408ec2dc844d077a5bec1063be1b7fcc74784f3b8e6f46a0fe68b9c85b02673",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:control-valve",
+      "name": "control-valve",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/control-valve.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 1,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1105,
+        48,
+        1429,
+        317
+      ],
+      "dimensions": [
+        324,
+        269
+      ],
+      "sha256": "68ed39a102429386dae8838601602a9dfd1efa9190e0c7b8beaa509923c4449b",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:treatment-tank",
+      "name": "treatment-tank",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/treatment-tank.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 2,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        16,
+        375,
+        388,
+        665
+      ],
+      "dimensions": [
+        372,
+        290
+      ],
+      "sha256": "9e56049565f608ee723b1cd89d833586f0d6bf784ddd7e5b98f70c6fdcc64260",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/treatment-tank.slot-1-mask.png",
+          "bbox_px": [
+            96,
+            101,
+            182,
+            122
+          ],
+          "rect_norm": [
+            0.25806,
+            0.34828,
+            0.48925,
+            0.42069
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:filter-chamber",
+      "name": "filter-chamber",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/filter-chamber.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 2,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        404,
+        331,
+        694,
+        666
+      ],
+      "dimensions": [
+        290,
+        335
+      ],
+      "sha256": "6c6c4a505d12c9bbc2f0b3facdb3bb3068f276102b3639062c12ca645dc7f2fa",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/filter-chamber.slot-1-mask.png",
+          "bbox_px": [
+            104,
+            122,
+            85,
+            121
+          ],
+          "rect_norm": [
+            0.35862,
+            0.36418,
+            0.2931,
+            0.36119
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:industrial-pump",
+      "name": "industrial-pump",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/industrial-pump.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 2,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        714,
+        405,
+        1088,
+        666
+      ],
+      "dimensions": [
+        374,
+        261
+      ],
+      "sha256": "9fe5d8dac03c8ab9745755809fe629a1967977518dd3df26c9209c9c9d1da765",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    },
+    {
+      "id": "ui:glass-chamber",
+      "name": "glass-chamber",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/glass-chamber.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 2,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1111,
+        345,
+        1433,
+        674
+      ],
+      "dimensions": [
+        322,
+        329
+      ],
+      "sha256": "a5e8438ab31acdb2f4b024eb8d9f7ea24a5595aa62d71bfa6c9b8550ba723e45",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/glass-chamber.slot-1-mask.png",
+          "bbox_px": [
+            98,
+            86,
+            125,
+            147
+          ],
+          "rect_norm": [
+            0.30435,
+            0.2614,
+            0.3882,
+            0.44681
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:pressure-gauge",
+      "name": "pressure-gauge",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/pressure-gauge.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 3,
+        "column": 1
+      },
+      "source_crop_bbox_xyxy": [
+        50,
+        716,
+        298,
+        1035
+      ],
+      "dimensions": [
+        248,
+        319
+      ],
+      "sha256": "b5c9be24cc3fa74337fc8452c116be14504822b9bffd35308eba0def2290c9e8",
+      "render": "rgba-overlay",
+      "slots": [
+        {
+          "id": "needle",
+          "kind": "overlay-rotatable-needle",
+          "rect_norm": [
+            0.22,
+            0.22,
+            0.56,
+            0.56
+          ],
+          "status": "suggested; programmatic needle needed; not implemented in images"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:reactor-chamber",
+      "name": "reactor-chamber",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/reactor-chamber.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 3,
+        "column": 2
+      },
+      "source_crop_bbox_xyxy": [
+        367,
+        665,
+        693,
+        1035
+      ],
+      "dimensions": [
+        326,
+        370
+      ],
+      "sha256": "8e288832cdfe58b0a7a51f7126bbb316067623063bd476178ebc238a40c28d4a",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/reactor-chamber.slot-1-mask.png",
+          "bbox_px": [
+            116,
+            120,
+            93,
+            155
+          ],
+          "rect_norm": [
+            0.35583,
+            0.32432,
+            0.28528,
+            0.41892
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:sectional-filter",
+      "name": "sectional-filter",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/sectional-filter.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 3,
+        "column": 3
+      },
+      "source_crop_bbox_xyxy": [
+        696,
+        758,
+        1091,
+        1009
+      ],
+      "dimensions": [
+        395,
+        251
+      ],
+      "sha256": "b77c95199709f2a9500f79098d673de8f1f04b131ce0e80dd06750bb5d28850b",
+      "render": "alpha-hole-container",
+      "slots": [
+        {
+          "id": "window-1",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/sectional-filter.slot-1-mask.png",
+          "bbox_px": [
+            90,
+            75,
+            55,
+            109
+          ],
+          "rect_norm": [
+            0.22785,
+            0.2988,
+            0.13924,
+            0.43426
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        },
+        {
+          "id": "window-2",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/sectional-filter.slot-2-mask.png",
+          "bbox_px": [
+            171,
+            75,
+            53,
+            109
+          ],
+          "rect_norm": [
+            0.43291,
+            0.2988,
+            0.13418,
+            0.43426
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        },
+        {
+          "id": "window-3",
+          "kind": "masked-content",
+          "mask_path": "assets/ai-library/v1/components/process-machinery/sectional-filter.slot-3-mask.png",
+          "bbox_px": [
+            251,
+            75,
+            52,
+            109
+          ],
+          "rect_norm": [
+            0.63544,
+            0.2988,
+            0.13165,
+            0.43426
+          ],
+          "status": "candidate auto-detected transparent hole; visually verify before exposing as editable slot"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "ui:flow-distributor",
+      "name": "flow-distributor",
+      "type": "machine-component",
+      "folder": "process-machinery",
+      "path": "assets/ai-library/v1/components/process-machinery/flow-distributor.png",
+      "source": "process-machinery",
+      "source_cell": {
+        "row": 3,
+        "column": 4
+      },
+      "source_crop_bbox_xyxy": [
+        1091,
+        740,
+        1439,
+        993
+      ],
+      "dimensions": [
+        348,
+        253
+      ],
+      "sha256": "8095eddf18e2c7c9b47e2771e300cb51682772390ac5a43c06b10d138b1837d5",
+      "render": "rgba-overlay",
+      "slots": [],
+      "notes": []
+    }
+  ],
+  "statistics": {
+    "sheets": 6,
+    "unique_assets": 66,
+    "illustrations": 48,
+    "containers_and_panels": 18,
+    "candidate_window_masks": 21,
+    "note": "Counts classify four 12-asset sheets plus 12 panels and 6 devices; archive and process assets may also have slots."
+  }
+}

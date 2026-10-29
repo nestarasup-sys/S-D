@@ -1,0 +1,52 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Componentes UI adicionais",
+  "voice": "auto",
+  "captions": true,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "scenes": [
+    {
+      "id": "componentes-editoriais",
+      "narration": ["Molduras e dispositivos recebem conteúdo editável."],
+      "shots": [
+        {
+          "id": "componentes-editoriais-shot",
+          "name": "Componentes editoriais",
+          "start": {"cue": 0, "cueProgress": 0},
+          "camera": {"x": 640, "y": 360, "zoom": 1},
+          "elements": [
+            {
+              "id": "telefone-ui",
+              "kind": "library",
+              "assetId": "ui:device-smartphone",
+              "x": 80,
+              "y": 100,
+              "slots": {"screen": "Conteúdo da tela"}
+            },
+            {
+              "id": "arquivo-ui",
+              "kind": "library",
+              "assetId": "ui:archive-photo-frame",
+              "x": 495,
+              "y": 120,
+              "scale": 0.48,
+              "slots": {"window-1": "Fotografia ou documento"}
+            },
+            {
+              "id": "painel-ui",
+              "kind": "library",
+              "assetId": "ui:documentary-panel",
+              "x": 430,
+              "y": 515,
+              "scale": 0.58,
+              "slots": {"body": "Texto editável dentro do painel"}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

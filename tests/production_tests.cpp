@@ -2258,6 +2258,124 @@ int main(int argc, char **argv) {
                   g.contains("prévias rasterizadas de baixa resolução") &&
                   g.contains("person"),
               "AI catalogue exposes 61 default PNGs and 11 dynamic natives under 72 original IDs without duplicates");
+
+        studio::WorkspaceStore uiCatalog(directory.filePath("ui-components-workspace"));
+        check(uiCatalog.error().isEmpty() && studio::builtInUiComponents().size() == 66 &&
+                  studio::capabilities()["uiComponentAssets"].toArray().size() == 66 &&
+                  studio::capabilities()["uiComponentCategories"].toArray().size() == 6,
+              "the additional UI registry exposes 66 assets across six categories in the machine catalogue");
+        QFile uiExample(QString(STUDIO_SOURCE_DIR) + "/examples/ui-components-additional-v1.production.json");
+        check(uiExample.open(QIODevice::ReadOnly), "official UI component recipe example exists");
+        const auto uiExampleBytes = uiExample.readAll();
+        auto uiExampleResult = studio::parseRecipe(uiExampleBytes, directory.path(), uiCatalog.data());
+        const auto uiExampleElementCount =
+            uiExampleResult.recipe.scenes.size() == 1 && uiExampleResult.recipe.scenes.front().shots.size() == 1
+                ? uiExampleResult.recipe.scenes.front().shots.front().elements.size()
+                : 0;
+        const auto uiExampleReason =
+            "the official recipe example parses against the actual registered component IDs and text slots: " +
+            uiExampleResult.error.toStdString() + ", scenes=" +
+            std::to_string(uiExampleResult.recipe.scenes.size()) +
+            (uiExampleResult.recipe.scenes.empty()
+                 ? std::string{}
+                 : ", shots=" + std::to_string(uiExampleResult.recipe.scenes.front().shots.size()) +
+                       ", elements=" + std::to_string(uiExampleElementCount));
+        check(uiExampleResult.error.isEmpty() && uiExampleElementCount == 3,
+              uiExampleReason.c_str());
+        check(studio::aiGuide(uiCatalog.data()).contains("ui:device-smartphone") &&
+                  studio::aiGuide(uiCatalog.data()).contains("ui:archive-photo-frame") &&
+                  studio::aiGuide(uiCatalog.data()).contains("ui:pressure-gauge") &&
+                  studio::capabilities()["projectVersion"] == 17 &&
+                  studio::capabilities()["productionCapabilities"].toArray().contains(
+                      "ui-component-masked-image-video-slots"),
+              "AI guide and capability contract describe the real IDs, slots and schema 17 masks");
+
+        QImage slotImage(80, 120, QImage::Format_ARGB32_Premultiplied);
+        slotImage.fill(QColor("#e33d50"));
+        const auto uiSlotImagePath = directory.filePath("ui-slot-image.png");
+        check(slotImage.save(uiSlotImagePath), "create a test image for the component mask");
+        QFile slotVideo(directory.filePath("ui-slot-video.mp4"));
+        check(slotVideo.open(QIODevice::WriteOnly) && slotVideo.write("test-video-slot") == 15,
+              "create a local video path for recipe type validation");
+        slotVideo.close();
+        auto uiMediaRoot = QJsonDocument::fromJson(uiExampleBytes).object();
+        auto uiMediaScenes = uiMediaRoot["scenes"].toArray();
+        auto uiMediaScene = uiMediaScenes.at(0).toObject();
+        auto uiMediaShots = uiMediaScene["shots"].toArray();
+        auto uiMediaShot = uiMediaShots.at(0).toObject();
+        auto uiMediaElements = uiMediaShot["elements"].toArray();
+        auto archiveElement = uiMediaElements[1].toObject();
+        archiveElement["slots"] = QJsonObject{{"window-1", QJsonObject{{"type", "image"},
+                                                                         {"source", "ui-slot-image.png"}}}};
+        uiMediaElements[1] = archiveElement;
+        uiMediaElements.append(QJsonObject{{"id", "tablet-video-ui"}, {"kind", "library"},
+                                           {"assetId", "ui:device-tablet"}, {"x", 850}, {"y", 90},
+                                           {"cue", 0}, {"slots", QJsonObject{{"screen",
+                                               QJsonObject{{"type", "video"}, {"source", "ui-slot-video.mp4"}}}}}});
+        uiMediaShot["elements"] = uiMediaElements;
+        uiMediaShots[0] = uiMediaShot;
+        uiMediaScene["shots"] = uiMediaShots;
+        uiMediaScenes[0] = uiMediaScene;
+        uiMediaRoot["scenes"] = uiMediaScenes;
+        auto uiMediaParsed = studio::parseRecipe(QJsonDocument(uiMediaRoot).toJson(), directory.path(),
+                                                 uiCatalog.data());
+        const auto uiMediaParseReason = "masked image and v3 video slots parse from safe local relative paths: " +
+                                        uiMediaParsed.error.toStdString();
+        check(uiMediaParsed.error.isEmpty(), uiMediaParseReason.c_str());
+        QMap<QString, studio::PcmAudio> uiSpeech;
+        studio::PcmAudio uiUtterance;
+        uiUtterance.samples.resize(24000, .12f);
+        uiSpeech.insert(uiMediaParsed.recipe.scenes.front().narration.front().id, uiUtterance);
+        auto uiCompiled = studio::compileProduction(uiMediaParsed.recipe, uiSpeech,
+                                                   directory.filePath("ui-components-master.wav"));
+        check(uiCompiled.error.isEmpty() && uiCompiled.project.schemaVersion == 17 &&
+                  studio::validate(uiCompiled.project).empty(),
+              "component text, masked image and masked video compile into a valid editable schema 17 project");
+        const auto imageSlotNode = std::find_if(uiCompiled.project.nodes.begin(), uiCompiled.project.nodes.end(),
+            [](const auto &node) { return node.role == "ui:slot:window-1" && node.kind == studio::NodeKind::Image; });
+        const auto videoSlotNode = std::find_if(uiCompiled.project.nodes.begin(), uiCompiled.project.nodes.end(),
+            [](const auto &node) { return node.role == "ui:slot:screen" && node.kind == studio::NodeKind::Video; });
+        check(imageSlotNode != uiCompiled.project.nodes.end() && imageSlotNode->source == uiSlotImagePath.toStdString() &&
+                  !imageSlotNode->maskSource.empty() && videoSlotNode != uiCompiled.project.nodes.end() &&
+                  !videoSlotNode->maskSource.empty(),
+              "image and video slot nodes preserve their individual mask and component identity");
+        const auto reopenedUiProject = studio::deserialize(studio::serialize(uiCompiled.project));
+        check(reopenedUiProject.error.isEmpty() &&
+                  std::any_of(reopenedUiProject.project.nodes.begin(), reopenedUiProject.project.nodes.end(),
+                              [](const auto &node) { return node.kind == studio::NodeKind::Video &&
+                                                            !node.maskSource.empty(); }),
+              "masked image/video slot references survive project save and re-open");
+        studio::CompositionPainter uiComposition;
+        const auto uiPreview = uiComposition.frame(uiCompiled.project, 4);
+        const auto uiSnapshot = studio::buildRenderFrameSnapshot(uiCompiled.project, 4);
+        const auto renderedImageSlot = std::find_if(uiSnapshot.nodes.begin(), uiSnapshot.nodes.end(),
+            [&](const auto &node) { return node.node.id == imageSlotNode->id; });
+        check(!uiPreview.isNull() && renderedImageSlot != uiSnapshot.nodes.end() &&
+                  renderedImageSlot->visible &&
+                  uiPreview.pixelColor(renderedImageSlot->sceneBounds.center().toPoint()).red() > 150 &&
+                  uiPreview.pixelColor(renderedImageSlot->sceneBounds.center().toPoint()).green() < 120,
+              "QPainter preview fills the frame opening with image content through the alpha mask");
+        auto unknownUiSlot = uiMediaRoot;
+        auto badScenes = unknownUiSlot["scenes"].toArray();
+        auto badScene = badScenes.at(0).toObject();
+        auto badShots = badScene["shots"].toArray();
+        auto badShot = badShots.at(0).toObject();
+        auto badElements = badShot["elements"].toArray();
+        auto badArchive = badElements[1].toObject();
+        auto badSlots = badArchive["slots"].toObject();
+        badSlots.insert("private-layer", "not exposed by the manifest");
+        badArchive["slots"] = badSlots;
+        badElements[1] = badArchive;
+        badShot["elements"] = badElements;
+        badShots[0] = badShot;
+        badScene["shots"] = badShots;
+        badScenes[0] = badScene;
+        unknownUiSlot["scenes"] = badScenes;
+        const auto unknownSlotResult = studio::parseRecipe(QJsonDocument(unknownUiSlot).toJson(),
+                                                           directory.path(), uiCatalog.data());
+        check(unknownSlotResult.error.contains("ui:archive-photo-frame") &&
+                  unknownSlotResult.error.contains("private-layer"),
+              "unknown component slot errors identify the real asset and slot");
         std::cout << "PASS: " << checks
                   << " production checks (recipe, audio timing, mix, migration, catalogue, rendering)\n";
         return 0;

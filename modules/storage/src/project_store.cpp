@@ -182,6 +182,12 @@ QByteArray serialize(const Project &p) {
                                                  {"stopPose", text(n.walkCycle->stopPose)}};
             serializedNode["poseAnimation"] = animation;
         }
+        if (p.schemaVersion >= 17 && !n.maskSource.empty())
+            serializedNode["mask"] = QJsonObject{{"source", text(n.maskSource)},
+                                                  {"crop", QJsonObject{{"x", n.maskCropX},
+                                                                        {"y", n.maskCropY},
+                                                                        {"width", n.maskCropWidth},
+                                                                        {"height", n.maskCropHeight}}}};
         nodes.append(serializedNode);
     }
     QJsonArray scenes;
@@ -315,7 +321,8 @@ LoadResult deserialize(const QByteArray &bytes) try {
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
                                          o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
                                          o["schemaVersion"] != 13 && o["schemaVersion"] != 14 &&
-                                         o["schemaVersion"] != 15 && o["schemaVersion"] != 16))
+                                         o["schemaVersion"] != 15 && o["schemaVersion"] != 16 &&
+                                         o["schemaVersion"] != 17))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -447,6 +454,21 @@ LoadResult deserialize(const QByteArray &bytes) try {
         n.text = str(v, "text");
         n.color = str(v, "color");
         n.source = str(v, "source");
+        if (v.contains("mask")) {
+            if (p.schemaVersion < 17 || !v["mask"].isObject())
+                return fail("Máscara de slot UI exige schema 17.");
+            const auto mask = v["mask"].toObject();
+            const auto crop = mask["crop"].toObject();
+            if (mask.size() != 2 || !mask["source"].isString() || !mask["crop"].isObject() ||
+                crop.size() != 4 || !crop["x"].isDouble() || !crop["y"].isDouble() ||
+                !crop["width"].isDouble() || !crop["height"].isDouble())
+                return fail("Máscara de slot UI incompleta ou com campos desconhecidos.");
+            n.maskSource = mask["source"].toString().toStdString();
+            n.maskCropX = crop["x"].toDouble();
+            n.maskCropY = crop["y"].toDouble();
+            n.maskCropWidth = crop["width"].toDouble();
+            n.maskCropHeight = crop["height"].toDouble();
+        }
         if (v.contains("textLayout")) {
             if (p.schemaVersion < 15 || n.kind != NodeKind::Text || !v["textLayout"].isObject())
                 return fail("Política adaptativa de texto exige um texto e schema 15.");

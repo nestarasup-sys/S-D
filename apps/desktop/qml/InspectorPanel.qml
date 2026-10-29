@@ -23,6 +23,16 @@ Rectangle {
                 editor.updateSelected("source", managedPath)
         }
     }
+    FileDialog {
+        id: uiVideoDialog
+        title: "Substituir vídeo do slot"
+        nameFilters: ["Vídeos (*.mp4 *.mov *.mkv *.webm *.avi *.m4v)"]
+        onAccepted: {
+            const managedPath = workspace.importSlotMedia(selectedFile)
+            if (managedPath)
+                editor.updateSelected("source", managedPath)
+        }
+    }
     Dialog {
         id: stylePresetDialog
         anchors.centerIn: parent
@@ -63,7 +73,15 @@ Rectangle {
             "premium:comparison:left-value": "VALOR ESQUERDO",
             "premium:comparison:right-value": "VALOR DIREITO",
             "premium:comparison:left-description": "DESCRIÇÃO ESQUERDA",
-            "premium:comparison:right-description": "DESCRIÇÃO DIREITA"
+            "premium:comparison:right-description": "DESCRIÇÃO DIREITA",
+            "ui:slot:screen": "CONTEÚDO DA TELA",
+            "ui:slot:window-1": "JANELA 1",
+            "ui:slot:window-2": "JANELA 2",
+            "ui:slot:window-3": "JANELA 3",
+            "ui:slot:body": "CONTEÚDO INTERNO",
+            "ui:slot:quote": "CITAÇÃO",
+            "ui:slot:value": "VALOR",
+            "ui:slot:caption": "LEGENDA"
         }
         return labels[role] || "CONTEÚDO"
     }
@@ -151,11 +169,12 @@ Rectangle {
             width: parent.width; spacing: 12
             Label { text: "INSPETOR"; font.pixelSize: 10; font.letterSpacing: 2; color: "#8c9aa7" }
             Label { text: panel.node.name || "Nenhum objeto"; font.pixelSize: 17; font.weight: Font.DemiBold; color: "#e1e8ed"; elide: Text.ElideRight; Layout.fillWidth: true }
-            Label { visible: !!panel.node.role && String(panel.node.role).startsWith("premium:"); text: "SLOT EDITÁVEL · " + String(panel.node.role || "").replace("premium:", ""); color: "#b4f078"; font.pixelSize: 10; font.letterSpacing: 1 }
-            StudioButton { visible: !!panel.node.role && String(panel.node.role).startsWith("premium:image:"); text: "Substituir imagem deste slot"; Layout.fillWidth: true; quiet: true; onClicked: premiumImageDialog.open() }
+            Label { visible: !!panel.node.role && (String(panel.node.role).startsWith("premium:") || String(panel.node.role).startsWith("ui:slot:")); text: "SLOT EDITÁVEL · " + String(panel.node.role || "").replace("premium:", "").replace("ui:slot:", ""); color: "#b4f078"; font.pixelSize: 10; font.letterSpacing: 1 }
+            StudioButton { visible: !!panel.node.role && panel.node.kind === "image" && (String(panel.node.role).startsWith("premium:image:") || String(panel.node.role).startsWith("ui:slot:")); text: "Preencher / substituir imagem"; Layout.fillWidth: true; quiet: true; onClicked: premiumImageDialog.open() }
+            StudioButton { visible: !!panel.node.role && panel.node.kind === "video" && String(panel.node.role).startsWith("ui:slot:"); text: "Preencher / substituir vídeo"; Layout.fillWidth: true; quiet: true; onClicked: uiVideoDialog.open() }
             Label {
-                visible: panel.node.mediaMissing && String(panel.node.role || "").startsWith("premium:image:")
-                text: "Arquivo do slot ausente. Selecione uma nova imagem; cópias gerenciadas ficam no workspace local."
+                visible: panel.node.mediaMissing && (String(panel.node.role || "").startsWith("premium:image:") || String(panel.node.role || "").startsWith("ui:slot:"))
+                text: "Arquivo do slot ausente. Selecione nova mídia; a cópia gerenciada fica no workspace local."
                 color: "#efb873"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
             Label { text: "Selecione um objeto na biblioteca\nou diretamente na prévia."; visible: !panel.node.id; color: "#83919e"; font.pixelSize: 11 }
@@ -409,7 +428,7 @@ Rectangle {
                         }
                     }
                 }
-                Label { text: panel.slotLabel(panel.node.role); color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" }
+                Label { text: panel.slotLabel(panel.node.role); color: "#8193a2"; font.pixelSize: 10; visible: panel.node.kind === "text" && String(panel.node.role || "").startsWith("ui:slot:") }
                 TextArea {
                     id: textEditor
                     property string editingId: ""

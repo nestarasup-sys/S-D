@@ -4,6 +4,7 @@
 #include <QImageReader>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QMap>
 #include <QRegularExpression>
 #include <QSet>
 #include <QSvgRenderer>
@@ -396,6 +397,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     QJsonObject premiumManifest;
     QString premiumId;
     const PremiumAssetDefinition *premiumDefinition = nullptr;
+    bool uiComponentTemplate = false;
     if (kind == "group") {
         if (version < 2 || !e["children"].isArray() || e["children"].toArray().isEmpty())
             return fail("Grupo exige uma lista não vazia de filhos na receita v2.");
@@ -498,6 +500,23 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             n.name = asset["name"].toString().toStdString();
             // A single legacy preset remains stretched to the scene as before.
             element.presetTiming = presetNodes.size() > 1 || !n.keyframes.empty();
+        } else if (assetKind == "ui-component") {
+            if (e.contains("slots") && !e["slots"].isObject())
+                return fail("Componente UI '" + assetId + "': slots deve ser um objeto.");
+            uiComponentTemplate = true;
+            QString componentError;
+            presetNodes = instantiateUiComponent(asset, canvasWidth, canvasHeight,
+                                                 e.value("slots").toObject(), baseDirectory,
+                                                 componentError, version);
+            if (presetNodes.empty())
+                return fail(componentError.isEmpty() ? "Componente UI indisponível: " + assetId
+                                                      : componentError);
+            n = presetNodes.front();
+            n.parentId.clear();
+            n.name = asset["name"].toString().toStdString();
+            // Unlike stored presets, UI components inherit the recipe's timing and
+            // keyframes so the root group remains fully animatable.
+            element.presetTiming = false;
         } else
             return fail("Tipo de item pessoal não suportado na receita: " + assetId);
         n.id = id.toStdString();
@@ -707,12 +726,15 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (e.contains("assetId") && kind != "library")
         return fail("Campo assetId só vale para elementos library.");
     if (e.contains("slots")) {
-        if (version < 2 || kind != "library" || !element.premiumTemplate || !e["slots"].isObject())
-            return fail("slots exige um premium oficial registrado e um objeto em receita v2/v3.");
-        QString slotError;
-        if (!applyPremiumSlots(presetNodes, premiumManifest, e["slots"].toObject(), baseDirectory,
-                              premiumId, slotError))
-            return fail(slotError);
+        if (version < 2 || kind != "library" ||
+            (!element.premiumTemplate && !uiComponentTemplate) || !e["slots"].isObject())
+            return fail("slots exige um premium ou componente UI registrado e um objeto em receita v2/v3.");
+        if (element.premiumTemplate) {
+            QString slotError;
+            if (!applyPremiumSlots(presetNodes, premiumManifest, e["slots"].toObject(), baseDirectory,
+                                  premiumId, slotError))
+                return fail(slotError);
+        }
     }
     if (e.contains("source") && kind != "image" && kind != "svg" && kind != "video")
         return fail("Campo source só vale para imagem, SVG ou vídeo.");
@@ -838,8 +860,8 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
             parsedChild.node.parentId = n.id;
             element.children.push_back(std::move(parsedChild));
         }
-    if (!presetNodes.empty() && element.presetTiming) {
-        if (e.contains("keyframes"))
+    if (!presetNodes.empty() && (element.presetTiming || uiComponentTemplate)) {
+        if (e.contains("keyframes") && element.presetTiming)
             return fail("Presets animados usam suas próprias chaves; não combine com keyframes no JSON.");
         std::size_t expanded = 1;
         const auto recipeId = id;
@@ -868,7 +890,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     child.cueProgress = element.cueProgress;
                     child.wordIndex = element.wordIndex;
                     child.utteranceOnly = element.utteranceOnly;
-                    child.presetTiming = true;
+                    child.presetTiming = element.presetTiming;
                     child.premiumTemplate = element.premiumTemplate;
                     if (!expand(child, part.id, level + 1))
                         return false;
@@ -894,6 +916,278 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     return true;
 }
 } // namespace
+std::vector<Node> instantiateUiComponent(const QJsonObject &asset, int canvasWidth, int canvasHeight,
+                                         const QJsonObject &slotOverrides, const QString &recipeDirectory,
+                                         QString &error, int recipeVersion) {
+    error.clear();
+    const auto manifest = asset.value("manifest").toObject();
+    const auto assetId = asset.value("id").toString();
+    const QString packagePrefix = "assets/ai-library/v1/components/";
+    const QString resourcePrefix = ":/studio/ai-library/v1/components/";
+    const auto packagePath = manifest.value("path").toString();
+    const auto expectedSource = packagePath.startsWith(packagePrefix)
+                                    ? resourcePrefix + packagePath.mid(packagePrefix.size())
+                                    : QString{};
+    const auto dimensions = manifest.value("dimensions").toArray();
+    if (asset.value("kind") != "ui-component" || assetId.isEmpty() || manifest.value("id") != assetId ||
+        expectedSource.isEmpty() || asset.value("source").toString() != expectedSource ||
+        packagePath.contains("..") || packagePath.contains('\\') || !packagePath.endsWith(".png") ||
+        dimensions.size() != 2 || !dimensions[0].isDouble() || !dimensions[1].isDouble() ||
+        dimensions[0].toInt() < 1 || dimensions[1].toInt() < 1 || !manifest.value("slots").isArray() ||
+        canvasWidth < 64 || canvasHeight < 64) {
+        error = "Manifesto inválido para o componente UI '" + assetId + "'.";
+        return {};
+    }
+    if (slotOverrides.isEmpty() && !asset.value("slots").isArray()) {
+        error = "Catálogo de slots ausente no componente UI '" + assetId + "'.";
+        return {};
+    }
+    const int sourceWidth = dimensions[0].toInt();
+    const int sourceHeight = dimensions[1].toInt();
+    const double fitScale = std::min({1.35, canvasWidth * .72 / sourceWidth,
+                                      canvasHeight * .72 / sourceHeight});
+    const double width = sourceWidth * fitScale;
+    const double height = sourceHeight * fitScale;
+    Node root;
+    root.id = "ui-root";
+    root.name = asset.value("name").toString().toStdString();
+    root.kind = NodeKind::Group;
+    root.x = (canvasWidth - width) / 2.0;
+    root.y = (canvasHeight - height) / 2.0;
+    root.width = width;
+    root.height = height;
+    root.duration = 360;
+    root.animated = false;
+    root.motion = "none";
+
+    struct PreparedSlot {
+        QJsonObject declaration;
+        QString type;
+        QString text;
+        QString source;
+    };
+    QMap<QString, QJsonObject> declarations;
+    for (const auto &value : manifest.value("slots").toArray()) {
+        const auto declaration = value.toObject();
+        const auto id = declaration.value("id").toString();
+        if (!id.isEmpty())
+            declarations.insert(id, declaration);
+    }
+    QMap<QString, PreparedSlot> prepared;
+    for (auto it = slotOverrides.begin(); it != slotOverrides.end(); ++it) {
+        const auto declaration = declarations.value(it.key());
+        if (declaration.isEmpty()) {
+            error = "Componente UI '" + assetId + "': slot desconhecido '" + it.key() + "'.";
+            return {};
+        }
+        const auto slotKind = declaration.value("kind").toString();
+        if (slotKind == "overlay-rotatable-needle") {
+            error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                    "': esta sugestão do pacote ainda não possui conteúdo editável.";
+            return {};
+        }
+        if (slotKind != "overlay-text" && slotKind != "overlay-content" && slotKind != "masked-content") {
+            error = "Componente UI '" + assetId + "', slot '" + it.key() + "': tipo de slot não suportado.";
+            return {};
+        }
+        PreparedSlot value;
+        value.declaration = declaration;
+        if (it.value().isString()) {
+            value.type = "text";
+            value.text = it.value().toString();
+            if (value.text.size() > 4000) {
+                error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                        "': o texto excede 4000 caracteres.";
+                return {};
+            }
+        } else if (it.value().isObject()) {
+            const auto media = it.value().toObject();
+            value.type = media.value("type").toString();
+            const auto relativeSource = media.value("source").toString();
+            if (!allowed(media, {"type", "source"}) ||
+                (value.type != "image" && value.type != "video") || !media.value("source").isString() ||
+                relativeSource.isEmpty() || relativeSource.size() > 512 ||
+                (slotKind != "overlay-content" && slotKind != "masked-content")) {
+                error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                        "': use texto ou {type: image|video, source: caminho local relativo}.";
+                return {};
+            }
+            if (value.type == "video" && recipeVersion > 0 && recipeVersion < 3) {
+                error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                        "': slots de vídeo exigem receita v3.";
+                return {};
+            }
+            const auto normalized = QDir::cleanPath(relativeSource);
+            const auto base = QFileInfo(recipeDirectory).canonicalFilePath();
+            if (QFileInfo(relativeSource).isAbsolute() || relativeSource.contains("://") ||
+                relativeSource.startsWith("//") || relativeSource.startsWith("\\\\") ||
+                normalized == ".." || normalized.startsWith("../") || normalized.startsWith("..\\") ||
+                normalized.contains("/../") || normalized.contains("\\..\\") || base.isEmpty()) {
+                error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                        "': o caminho deve ser relativo e seguro dentro da pasta da receita.";
+                return {};
+            }
+            const auto resolved = QFileInfo(QDir(base).filePath(normalized)).canonicalFilePath();
+            const auto relative = QDir(base).relativeFilePath(resolved);
+            const QFileInfo file(resolved);
+            if (resolved.isEmpty() || !file.isFile() || relative == ".." || relative.startsWith("../") ||
+                relative.startsWith("..\\") || QFileInfo(relative).isAbsolute() || file.size() <= 0) {
+                error = "Componente UI '" + assetId + "', slot '" + it.key() + "': mídia ausente ou fora da pasta da receita.";
+                return {};
+            }
+            if (value.type == "image") {
+                static const QStringList formats{"png", "jpg", "jpeg", "webp", "bmp"};
+                QImageReader reader(resolved);
+                const auto mediaSize = reader.size();
+                if (file.size() > 32 * 1024 * 1024 || !formats.contains(file.suffix().toLower()) ||
+                    !reader.canRead() || mediaSize.isEmpty() ||
+                    qint64(mediaSize.width()) * mediaSize.height() > 40000000 || reader.read().isNull()) {
+                    error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                            "': imagem inválida, não decodificável ou acima dos limites suportados.";
+                    return {};
+                }
+            } else {
+                static const QStringList formats{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+                if (!formats.contains(file.suffix().toLower())) {
+                    error = "Componente UI '" + assetId + "', slot '" + it.key() +
+                            "': extensão de vídeo não suportada.";
+                    return {};
+                }
+            }
+            value.source = resolved;
+        } else {
+            error = "Componente UI '" + assetId + "', slot '" + it.key() + "': valor de slot inválido.";
+            return {};
+        }
+        if (slotKind == "overlay-text" && value.type != "text") {
+            error = "Componente UI '" + assetId + "', slot '" + it.key() + "': este slot aceita apenas texto.";
+            return {};
+        }
+        prepared.insert(it.key(), value);
+    }
+
+    for (auto it = prepared.cbegin(); it != prepared.cend(); ++it) {
+        const auto slot = it.value().declaration;
+        const auto rect = slot.value("rect_norm").toArray();
+        if (rect.size() != 4 || !rect[0].isDouble() || !rect[1].isDouble() || !rect[2].isDouble() ||
+            !rect[3].isDouble()) {
+            error = "Componente UI '" + assetId + "', slot '" + it.key() + "': retângulo de slot inválido.";
+            return {};
+        }
+    }
+
+    std::vector<Node> nodes;
+    nodes.push_back(root);
+    auto makeSlotNode = [&](const QString &slotId, const QJsonObject &declaration,
+                            const PreparedSlot *override) -> std::optional<Node> {
+        const auto kind = declaration.value("kind").toString();
+        const auto rect = declaration.value("rect_norm").toArray();
+        Node slot;
+        slot.id = ("ui-slot-" + slotId).toStdString();
+        slot.parentId = root.id;
+        slot.role = ("ui:slot:" + slotId).toStdString();
+        slot.name = slotId.toUpper().replace('-', ' ').toStdString();
+        slot.x = rect[0].toDouble() * width;
+        slot.y = rect[1].toDouble() * height;
+        slot.width = rect[2].toDouble() * width;
+        slot.height = rect[3].toDouble() * height;
+        slot.duration = root.duration;
+        slot.animated = false;
+        slot.motion = "none";
+        slot.color = (manifest.value("id") == "ui:tech-frame" ||
+                      (kind == "masked-content" && manifest.value("folder") == "process-machinery"))
+                         ? "#f2f4ef"
+                         : "#202d34";
+        if (kind == "masked-content") {
+            const auto maskPath = declaration.value("mask_path").toString();
+            const auto bbox = declaration.value("bbox_px").toArray();
+            if (maskPath.isEmpty() || !maskPath.startsWith(packagePrefix) || maskPath.contains("..") ||
+                maskPath.contains('\\') || bbox.size() != 4 || !bbox[0].isDouble() ||
+                !bbox[1].isDouble() || !bbox[2].isDouble() || !bbox[3].isDouble() ||
+                bbox[0].toInt() < 0 || bbox[1].toInt() < 0 || bbox[2].toInt() < 1 ||
+                bbox[3].toInt() < 1 || bbox[0].toInt() + bbox[2].toInt() > sourceWidth ||
+                bbox[1].toInt() + bbox[3].toInt() > sourceHeight)
+                return std::nullopt;
+            slot.maskSource = (resourcePrefix + maskPath.mid(packagePrefix.size())).toStdString();
+            slot.maskCropX = double(bbox[0].toInt()) / sourceWidth;
+            slot.maskCropY = double(bbox[1].toInt()) / sourceHeight;
+            slot.maskCropWidth = double(bbox[2].toInt()) / sourceWidth;
+            slot.maskCropHeight = double(bbox[3].toInt()) / sourceHeight;
+        }
+        const bool textSlot = kind == "overlay-text" || kind == "overlay-content" || kind == "masked-content";
+        if (override && override->type == "text") {
+            slot.kind = NodeKind::Text;
+            slot.text = override->text.toStdString();
+        } else if (override && override->type == "image") {
+            slot.kind = NodeKind::Image;
+            slot.source = override->source.toStdString();
+        } else if (override && override->type == "video") {
+            slot.kind = NodeKind::Video;
+            slot.source = override->source.toStdString();
+        } else if (kind == "masked-content") {
+            slot.kind = NodeKind::Image;
+            slot.color = "#36b9b0";
+            slot.name = (slotId.toUpper() + " · ÁREA DE MÍDIA").toStdString();
+        } else if (textSlot) {
+            slot.kind = NodeKind::Text;
+            slot.text = kind == "overlay-text" ? "Texto editável" : "Conteúdo editável";
+        } else {
+            return std::nullopt;
+        }
+        if (slot.kind == NodeKind::Text) {
+            slot.fontSize = std::clamp(slot.height * .18, 12.0, 72.0);
+            slot.textAutoFit = true;
+            slot.textMinFontSize = std::max(8.0, slot.fontSize * .55);
+            slot.textPadding = std::min(5.0, std::min(slot.width, slot.height) * .08);
+        }
+        return slot;
+    };
+
+    const auto slotArray = manifest.value("slots").toArray();
+    for (const auto &value : slotArray) {
+        const auto declaration = value.toObject();
+        if (declaration.value("kind") != "masked-content")
+            continue;
+        const auto slotId = declaration.value("id").toString();
+        const auto override = prepared.constFind(slotId);
+        auto slot = makeSlotNode(slotId, declaration, override == prepared.cend() ? nullptr : &override.value());
+        if (!slot) {
+            error = "Componente UI '" + assetId + "', slot '" + slotId + "': máscara ou posição inválida.";
+            return {};
+        }
+        nodes.push_back(std::move(*slot));
+    }
+    Node artwork;
+    artwork.id = "ui-art";
+    artwork.parentId = root.id;
+    artwork.name = asset.value("name").toString().toStdString();
+    artwork.kind = NodeKind::Image;
+    artwork.source = expectedSource.toStdString();
+    artwork.x = 0;
+    artwork.y = 0;
+    artwork.role = "ui:art";
+    artwork.width = width;
+    artwork.height = height;
+    artwork.duration = root.duration;
+    artwork.animated = false;
+    artwork.motion = "none";
+    nodes.push_back(std::move(artwork));
+    for (const auto &value : slotArray) {
+        const auto declaration = value.toObject();
+        const auto kind = declaration.value("kind").toString();
+        if (kind == "masked-content" || kind == "overlay-rotatable-needle")
+            continue;
+        const auto slotId = declaration.value("id").toString();
+        const auto override = prepared.constFind(slotId);
+        auto slot = makeSlotNode(slotId, declaration, override == prepared.cend() ? nullptr : &override.value());
+        if (!slot) {
+            error = "Componente UI '" + assetId + "', slot '" + slotId + "': tipo ou posição inválida.";
+            return {};
+        }
+        nodes.push_back(std::move(*slot));
+    }
+    return nodes;
+}
 RecipeResult parseRecipe(const QByteArray &bytes, const QString &baseDirectory, const QJsonObject &library) try {
     RecipeResult result;
     QString catalogError;

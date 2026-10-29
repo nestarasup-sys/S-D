@@ -33,9 +33,10 @@ static void report(QString stage, int progress, QString error = {}) {
         << Qt::endl;
 }
 static QString missingMedia(const studio::DirectedElement &element) {
-    if (element.node.kind == studio::NodeKind::Image || element.node.kind == studio::NodeKind::Svg) {
+    if (element.node.kind == studio::NodeKind::Image || element.node.kind == studio::NodeKind::Svg ||
+        element.node.kind == studio::NodeKind::Video) {
         const auto source = QString::fromStdString(element.node.source);
-        if (!QFileInfo::exists(source))
+        if (!source.startsWith(":/") && !QFileInfo::exists(source))
             return source;
     }
     for (const auto &child : element.children)
@@ -43,12 +44,17 @@ static QString missingMedia(const studio::DirectedElement &element) {
             return missing;
     return {};
 }
-static bool managePremiumSlotMedia(studio::DirectedElement &element, studio::WorkspaceStore *workspace,
+static bool manageRecipeSlotMedia(studio::DirectedElement &element, studio::WorkspaceStore *workspace,
                                   QString &error) {
-    if (element.node.role.rfind("premium:image:", 0) == 0 &&
-        element.node.kind == studio::NodeKind::Image) {
+    const bool premiumImage = element.node.role.rfind("premium:image:", 0) == 0 &&
+                              element.node.kind == studio::NodeKind::Image;
+    const bool uiMedia = element.node.role.rfind("ui:slot:", 0) == 0 &&
+                         !element.node.maskSource.empty() &&
+                         (element.node.kind == studio::NodeKind::Image ||
+                          element.node.kind == studio::NodeKind::Video);
+    if (premiumImage || uiMedia) {
         if (!workspace) {
-            error = "Slots de imagem premium precisam de um workspace para armazenar a cópia gerenciada.";
+            error = "Slots de mídia precisam de um workspace para armazenar a cópia gerenciada.";
             return false;
         }
         const auto imported = workspace->importSlotMedia(QString::fromStdString(element.node.source));
@@ -59,7 +65,7 @@ static bool managePremiumSlotMedia(studio::DirectedElement &element, studio::Wor
         element.node.source = imported.id.toStdString();
     }
     for (auto &child : element.children)
-        if (!managePremiumSlotMedia(child, workspace, error))
+        if (!manageRecipeSlotMedia(child, workspace, error))
             return false;
     return true;
 }
@@ -180,14 +186,14 @@ int main(int argc, char **argv) try {
     QString slotMediaError;
     for (auto &scene : parsed.recipe.scenes) {
         for (auto &element : scene.elements) {
-            if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+            if (!manageRecipeSlotMedia(element, workspace.get(), slotMediaError))
                 return fail(slotMediaError);
             if (auto missing = missingMedia(element); !missing.isEmpty())
                 return fail("Mídia local ausente: " + missing);
         }
         for (auto &shot : scene.shots)
             for (auto &element : shot.elements) {
-                if (!managePremiumSlotMedia(element, workspace.get(), slotMediaError))
+                if (!manageRecipeSlotMedia(element, workspace.get(), slotMediaError))
                     return fail(slotMediaError);
                 if (auto missing = missingMedia(element); !missing.isEmpty())
                     return fail("Mídia local ausente: " + missing);

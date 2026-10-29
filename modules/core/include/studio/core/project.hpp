@@ -70,6 +70,8 @@ struct Node {
     std::string text;
     std::string color{"#e4f5e9"};
     std::string source; // Local image path; asset catalogue replaces this in the next slice.
+    std::string maskSource; // Embedded grayscale mask for editable UI-library slots.
+    double maskCropX{0}, maskCropY{0}, maskCropWidth{1}, maskCropHeight{1};
     std::int64_t start{0};
     std::int64_t duration{360};
     double x{100}, y{100}, width{600}, height{100};

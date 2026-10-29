@@ -73,6 +73,7 @@ struct DirectedElement {
     bool shotRelative{false};
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     bool premiumTemplate{false}; // Registered official template; internal animation scales to the measured cue span.
+    bool uiComponentTemplate{false}; // Manifest-driven image/frame component with normal editable child nodes.
     std::vector<DirectedKeyframe> keyframes;
     std::vector<DirectedPoseKeyframe> poseKeyframes;
     std::optional<DirectedWalkCycle> walkCycle;
@@ -145,6 +146,9 @@ struct RecipeResult {
     ProductionRecipe recipe;
     QString error;
 };
+std::vector<Node> instantiateUiComponent(const QJsonObject &asset, int canvasWidth, int canvasHeight,
+                                         const QJsonObject &slotOverrides, const QString &recipeDirectory,
+                                         QString &error, int recipeVersion = 0);
 RecipeResult parseRecipe(const QByteArray &, const QString &baseDirectory, const QJsonObject &library = {});
 QJsonObject capabilities();
 QString aiGuide(const QJsonObject &library = {});

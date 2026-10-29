@@ -1025,7 +1025,9 @@ CompileResult compileProduction(const ProductionRecipe &recipe, const QMap<QStri
         }))
         p.schemaVersion = std::max(p.schemaVersion, 10);
     if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return node.textAutoFit; }))
-        p.schemaVersion = 15;
+        p.schemaVersion = std::max(p.schemaVersion, 15);
+    if (std::any_of(p.nodes.begin(), p.nodes.end(), [](const auto &node) { return !node.maskSource.empty(); }))
+        p.schemaVersion = std::max(p.schemaVersion, 17);
     if (fixed && p.duration != timing->targetFrames) {
         r.error = "A produção não alcançou o número de quadros solicitado.";
         return r;

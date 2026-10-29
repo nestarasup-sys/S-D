@@ -127,6 +127,7 @@ Rectangle {
                 Layout.fillWidth: true; spacing: 12
                 StudioButton { text: "Nativos básicos"; quiet: workspace.assetTypeFilter !== "basic"; accent: workspace.assetTypeFilter === "basic"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "basic" ? "" : "basic" }
                 StudioButton { text: "Premium"; quiet: workspace.assetTypeFilter !== "premium"; accent: workspace.assetTypeFilter === "premium"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "premium" ? "" : "premium" }
+                StudioButton { text: "Elementos UI"; quiet: workspace.assetTypeFilter !== "ui"; accent: workspace.assetTypeFilter === "ui"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "ui" ? "" : "ui" }
                 StudioButton { text: "Mídia real"; quiet: workspace.assetTypeFilter !== "media"; accent: workspace.assetTypeFilter === "media"; onClicked: workspace.assetTypeFilter = workspace.assetTypeFilter === "media" ? "" : "media" }
                 StudioField { Layout.fillWidth: true; placeholderText: "Buscar na biblioteca…"; text: workspace.assetSearch; onTextEdited: workspace.assetSearch = text }
                 StudioButton { text: "Salvar seleção do editor"; enabled: workspace.canSaveSelection; onClicked: { itemAction = "preset"; itemDialog.open() } ToolTip.text: "Selecione um objeto ou grupo raiz para salvar a composição"; ToolTip.visible: hovered }

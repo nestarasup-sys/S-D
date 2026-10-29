@@ -16,6 +16,7 @@ struct VideoCacheStats {
 struct SvgCacheStats {
     std::uint64_t hits{0}, misses{0};
 };
+void initializeCompositionResources();
 
 class CompositionPainter {
   public:
@@ -40,6 +41,7 @@ class CompositionPainter {
     struct VideoDecoder;
     QImage videoFrame(const Node &, const Project &, std::int64_t frame);
     QCache<QString, QImage> images_{128 * 1024};      // KiB; bounded decoded image memory.
+    QCache<QString, QImage> masks_{16 * 1024};        // KiB; bounded decoded alpha-mask memory.
     QCache<QString, QImage> videoFrames_{64 * 1024};  // KiB; keeps recent video seeks within a fixed budget.
     QCache<QString, QSvgRenderer> svgRenderers_{128}; // Bounded parsed SVG documents.
     VideoCacheStats videoCacheStats_;

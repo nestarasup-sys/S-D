@@ -12,7 +12,35 @@
 namespace studio {
 QJsonObject capabilities() {
     initializePremiumCatalog();
-    QJsonArray items, motions, poses;
+    QJsonArray items, motions, poses, uiComponentItems;
+    for (const auto &assetValue : builtInUiComponents()) {
+        const auto asset = assetValue.toObject();
+        QJsonArray slotIds, slotDefinitions;
+        for (const auto &slotValue : asset.value("slots").toArray()) {
+            const auto slot = slotValue.toObject();
+            const auto kind = slot.value("kind").toString();
+            const bool media = kind == "masked-content" || kind == "overlay-content";
+            QJsonArray acceptedTypes{"text"};
+            if (media) {
+                acceptedTypes.append("image");
+                acceptedTypes.append("video");
+            }
+            QJsonObject definition{{"id", slot.value("id")}, {"kind", kind},
+                                   {"rect", slot.value("rect_norm")},
+                                   {"acceptedTypes", acceptedTypes},
+                                   {"masked", kind == "masked-content"}};
+            if (kind == "masked-content")
+                definition.insert("imageAndVideoCrop", true);
+            slotIds.append(slot.value("id"));
+            slotDefinitions.append(definition);
+        }
+        uiComponentItems.append(QJsonObject{
+            {"id", asset.value("id")}, {"name", asset.value("name")},
+            {"category", asset.value("categoryId")}, {"componentType", asset.value("componentType")},
+            {"width", asset.value("width")}, {"height", asset.value("height")},
+            {"rendering", "embedded-ai-png"}, {"pixelRecoloring", false},
+            {"slots", slotIds}, {"slotDefinitions", slotDefinitions}, {"status", "implemented"}});
+    }
     for (const auto &asset : nativeLibrary()) {
         QJsonObject entry{{"id", QString::fromStdString(asset.id)},
                           {"name", QString::fromStdString(asset.name)},
@@ -66,7 +94,7 @@ QJsonObject capabilities() {
     return {{"format", "studio-dark-capabilities"},
             {"catalogVersion", 1},
             {"productionVersion", 3},
-            {"projectVersion", 16},
+            {"projectVersion", 17},
             {"productionCapabilities",
              QJsonArray{"free-scene-layout", "nested-groups", "v3-scene-title-metadata", "transform-keyframes-linear",
                         "camera-2d-keyframes", "keyframe-easing-curves", "personal-library-assets",
@@ -92,6 +120,8 @@ QJsonObject capabilities() {
                         "premium-palette-overrides", "premium-factory-editorial-templates",
                         "video-layer-broll", "video-source-trim", "video-speed-control", "video-normalized-crop",
                         "personal-library-video-assets",
+                        "ui-component-library-66", "ui-component-text-slots",
+                        "ui-component-masked-image-video-slots",
                         "native-id-ai-png-default-artwork", "low-resolution-native-scene-previews",
                         "presenter-12-raster-poses", "timed-presenter-pose-keyframes",
                         "presenter-walk-cycle-with-position-keyframes",
@@ -105,6 +135,7 @@ QJsonObject capabilities() {
                         "visual-beat-linked-audio-tracks",
                         "video-layers", "video-trim-speed-crop", "scene-art-direction", "shot-art-direction",
                         "audio-track-fades", "audio-gain-automation",
+                        "masked-ui-library-slots",
                         "word-timed-caption-highlights", "word-animated-caption-presets",
                         "independent-caption-highlight-color"}},
             {"width", 1280},
@@ -115,6 +146,14 @@ QJsonObject capabilities() {
                  QJsonObject{{"name", "Retrato"}, {"width", 1080}, {"height", 1920}}}},
             {"fps", 30},
             {"nativeAssets", items},
+            {"uiComponentAssets", uiComponentItems},
+            {"uiComponentCategories", QJsonArray{
+                 QJsonObject{{"id", "ui-panels"}, {"name", "Painéis e molduras"}},
+                 QJsonObject{{"id", "ui-devices"}, {"name", "Dispositivos"}},
+                 QJsonObject{{"id", "ui-scenes"}, {"name", "Peças de cenário"}},
+                 QJsonObject{{"id", "ui-archive"}, {"name", "Arquivo documental"}},
+                 QJsonObject{{"id", "ui-op-art"}, {"name", "Op Art"}},
+                 QJsonObject{{"id", "ui-machinery"}, {"name", "Equipamentos e processos"}}}},
             {"premiumAssets", premiumItems},
             {"premiumAssetCategories", QJsonArray{"basic-native", "premium", "real-media"}},
             {"motions", motions},
@@ -140,7 +179,7 @@ QString aiGuide(const QJsonObject &library) {
     initializePremiumCatalog();
     QString guide = QString::fromUtf8(R"GUIDE(# Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 16 · Native Lab 0.5
+Catálogo 1 · Receita 3 · Projeto 17 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -486,6 +525,14 @@ Para testar uma receita criada por outra IA, consulte o pacote `docs/ai-evaluati
 
 Personalize cores em `palette`, usando apenas `premiumAssets[].paletteTokens` e valores `#RRGGBB`. Elementos `native` aceitam `palette.primary` e `palette.secondary`. A paleta muda as camadas sem substituir o conteúdo dos slots. Veja os exemplos executáveis `examples/premium-dramatic-quote-slots-v2.production.json`, `examples/premium-comparison-slots-v2.production.json`, `examples/premium-smartphone-slots-v2.production.json`, `examples/premium-question-hook-slots-v2.production.json` e `examples/premium-statistic-callout-slots-v2.production.json`.
 
+### Biblioteca adicional de componentes UI
+
+Há 66 componentes adicionais sob IDs `ui:*`, distribuídos em seis categorias. Eles não substituem nem duplicam os 72 nativos, os nove premium ou a mídia real. Cada componente é uma arte PNG incorporada ao aplicativo e permanece visualmente igual ao pacote original: paletas e cores não recolorem pixels. Posição, escala, rotação, opacidade, grupos, câmera, keyframes e animações externas do nó continuam funcionando.
+
+Use `{"id":"meu-dispositivo","kind":"library","assetId":"ui:device-smartphone","cue":0,"slots":{"screen":"Painel de demonstração"}}`. `slots` aceita somente IDs apresentados em `uiComponentAssets[].slotDefinitions`. Slots `overlay-text` aceitam texto. Slots `overlay-content` aceitam texto ou mídia. Slots `masked-content` preservam a moldura PNG e recortam conteúdo rasterizado pela máscara em tons de cinza; aceitam texto, imagem ou vídeo. Para imagem use `{"type":"image","source":"tela.png"}`; para vídeo, `{"type":"video","source":"tela.mp4"}` e receita v3. Caminhos são locais, relativos à pasta do `.production.json`, sem traversal, URL ou acesso fora dela. Na importação, o worker copia imagens/vídeos de slots para a mídia gerenciada do workspace; projetos continuam vinculados ao workspace local e não viram um pacote portátil entre computadores. Vídeo depende do FFmpeg configurado no aplicativo.
+
+Componentes sem um slot declarado são artes fixas; o ponteiro do `ui:pressure-gauge` é apenas uma sugestão gráfica e **não** é editável nem animável. Conteúdo dos slots continua como nós editáveis normais. A máscara é persistida no schema 17, compartilhada por prévia QPainter e exportação. Consulte `uiComponentAssets` e `uiComponentCategories` no catálogo para IDs, dimensões e slots exatos. O exemplo textual executável está em `examples/ui-components-additional-v1.production.json`.
+
 ### Premium Factory declarativa
 
 Definições oficiais manifest v2 em `assets/premium/*.manifest.json` podem conter `definition.definitionVersion: 1`, variantes `landscape` e `portrait`, canvas de referência e uma lista ordenada de camadas. Os componentes validados são `group`, `panel`, `rule`, `badge` e `text`; cada camada descreve layout, cor/token, papel, texto e, opcionalmente, um preset de animação suportado (`fade-rise`, `slide-left/right/up/down`, `pop-scale`, `soft-float`, `line-draw`, `stagger-reveal`). As keyframes resultantes são keyframes normais dos nós. A definição é dado validado, não código: não há scripts, caminhos de assets, plugins nem execução arbitrária. Manifesto, variantes, hierarquia, papéis, slots e tokens são comparados ao registro antes de aceitar o item.
@@ -557,7 +604,7 @@ Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilust
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio, animação de legenda por palavra e, para `person`, poseKeyframes e caminhada sincronizados. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14, políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15, e keyframes discretos de pose/ciclo de caminhada do `person` usam schema 16.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio, animação de legenda por palavra e, para `person`, poseKeyframes e caminhada sincronizados. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v17 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14, políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15, keyframes discretos de pose/ciclo de caminhada do `person` usam schema 16, e as máscaras dos slots dos componentes UI usam schema 17.
 
 ## Checklist de limites e publicação
 
@@ -571,6 +618,21 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
 )GUIDE";
     guide += QString::fromUtf8(QJsonDocument(capabilities()).toJson());
     guide += "```\n";
-    return guide;
+    const auto uiComponents = capabilities().value("uiComponentAssets").toArray();
+    guide += "\n## IDs dos componentes UI registrados\n\n";
+    for (const auto &value : uiComponents) {
+        const auto item = value.toObject();
+        QStringList slotDescriptions;
+        for (const auto &slotValue : item.value("slotDefinitions").toArray()) {
+            const auto slot = slotValue.toObject();
+            slotDescriptions.append(slot.value("id").toString() + " (" + slot.value("kind").toString() + ")");
+        }
+        guide += "- `" + item.value("id").toString() + "` — " + item.value("name").toString();
+        if (!slotDescriptions.isEmpty())
+            guide += "; slots: " + slotDescriptions.join(", ");
+        guide += ".\n";
+    }
+    guide += "\nO campo `uiComponentAssets` no catálogo também descreve tipos de entrada, máscara e dimensões.\n\n";
+    return guide.trimmed() + '\n';
 }
 } // namespace studio

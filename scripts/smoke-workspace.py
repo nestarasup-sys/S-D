@@ -29,7 +29,7 @@ def capture(page, destination, project=None):
 
 
 empty = capture("projects", "home-empty")
-assert empty["projects"] == 0 and empty["assets"] == 81 and empty["categories"] == 11
+assert empty["projects"] == 0 and empty["assets"] == 147 and empty["categories"] == 17
 assert empty["newProjectCanvasOptions"] == 3, empty
 base = json.loads((profile / "demo.studio.json").read_text(encoding="utf-8"))
 fixtures = out / "fixtures"
@@ -44,9 +44,9 @@ for index, name in enumerate(("Histórias que merecem espaço", "Identidade do m
     filled = capture("projects", "home-projects", path)
 assert filled["projects"] == 2
 library = capture("library", "asset-library", path)
-assert library["assets"] == 81 and library["categories"] == 11 and library["projects"] == 2
+assert library["assets"] == 147 and library["categories"] == 17 and library["projects"] == 2
 editor = capture("editor", "editor-navigation", path)
 assert editor["projects"] == 2
-report = {"status": "passed", "projects": 2, "nativeAssets": 72, "defaultAiPngNativeAssets": 61, "presenterPosePngs": 12, "previewOnlyScenes": 12, "proceduralDynamicNatives": 11, "premiumAssets": 9, "libraryItems": 81, "categories": 11, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "72 original native IDs with 61 PNG-backed IDs (48 illustrated objects, 12 scene previews and person with 12 poses), 11 dynamic graph/data assets and nine premium assets", "12 low-resolution native scenes marked explicitly", "person inserted with new neutral artwork", "font and visual-style library categories", "editor navigation", "QML error-free captures"]}
+report = {"status": "passed", "projects": 2, "nativeAssets": 72, "defaultAiPngNativeAssets": 61, "presenterPosePngs": 12, "previewOnlyScenes": 12, "proceduralDynamicNatives": 11, "premiumAssets": 9, "uiComponents": 66, "libraryItems": 147, "categories": 17, "checks": ["empty home", "project cards and previews", "persistent project catalogue", "72 original native IDs with 61 PNG-backed IDs (48 illustrated objects, 12 scene previews and person with 12 poses), 11 dynamic graph/data assets and nine premium assets", "66 additional UI components in six new categories", "12 low-resolution native scenes marked explicitly", "person inserted with new neutral artwork", "font and visual-style library categories", "editor navigation", "QML error-free captures"]}
 (out / "verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 print(json.dumps({"artifacts": str(out), **report}, indent=2))

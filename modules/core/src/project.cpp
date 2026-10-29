@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cmath>
 #include <new>
+#include <string_view>
 #include <studio/core/library.hpp>
 #include <studio/core/project.hpp>
 #include <unordered_map>
@@ -19,6 +20,17 @@ bool validColor(const std::string &value) {
     return value.size() == 7 && value[0] == '#' &&
            std::all_of(value.begin() + 1, value.end(),
                        [](unsigned char c) { return std::isxdigit(c); });
+}
+bool uiComponentRole(std::string_view role) {
+    if (role == "ui:art")
+        return true;
+    constexpr std::string_view prefix{"ui:slot:"};
+    if (!role.starts_with(prefix) || role.size() > prefix.size() + 48)
+        return false;
+    const auto slot = role.substr(prefix.size());
+    return !slot.empty() && std::all_of(slot.begin(), slot.end(), [](unsigned char ch) {
+        return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-';
+    });
 }
 bool validArtDirection(const ArtDirection &art) {
     return validColor(art.backgroundColor) && validColor(art.glowColor) && validColor(art.primaryColor) &&
@@ -42,7 +54,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) try {
-    if (p.schemaVersion < 2 || p.schemaVersion > 16)
+    if (p.schemaVersion < 2 || p.schemaVersion > 17)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -122,6 +134,24 @@ std::string validate(const Project &p) try {
             return "Cor inválida; use #RRGGBB.";
         if (n.text.size() > 4000 || n.name.size() > 240 || n.source.size() > 4096)
             return "Texto ou caminho excede o limite.";
+        const bool maskedSlotPlaceholder = n.kind == NodeKind::Image && n.source.empty() &&
+                                           !n.maskSource.empty() && n.role.rfind("ui:slot:", 0) == 0;
+        if (n.kind == NodeKind::Image && n.source.empty() && !maskedSlotPlaceholder)
+            return "Imagem sem arquivo de origem.";
+        if (!n.maskSource.empty()) {
+            if (p.schemaVersion < 17 || (n.kind != NodeKind::Image && n.kind != NodeKind::Video &&
+                                         n.kind != NodeKind::Text && n.kind != NodeKind::Shape) ||
+                n.role.rfind("ui:slot:", 0) != 0 ||
+                n.maskSource.rfind(":/studio/ai-library/v1/components/", 0) != 0 ||
+                n.maskSource.size() > 4096 || !std::isfinite(n.maskCropX) ||
+                !std::isfinite(n.maskCropY) || !std::isfinite(n.maskCropWidth) ||
+                !std::isfinite(n.maskCropHeight) || n.maskCropX < 0 || n.maskCropY < 0 ||
+                n.maskCropWidth <= 0 || n.maskCropHeight <= 0 ||
+                n.maskCropX + n.maskCropWidth > 1.000001 || n.maskCropY + n.maskCropHeight > 1.000001)
+                return "Máscara de slot UI inválida ou exige schema 17.";
+        } else if (std::abs(n.maskCropX) > 1e-9 || std::abs(n.maskCropY) > 1e-9 ||
+                   std::abs(n.maskCropWidth - 1) > 1e-9 || std::abs(n.maskCropHeight - 1) > 1e-9)
+            return "Recorte de máscara exige uma máscara declarada.";
         if (n.captionWords.size() > 300)
             return "Legenda excede 300 intervalos de palavra.";
         if (!n.captionWords.empty() && p.schemaVersion < 7)
@@ -152,8 +182,6 @@ std::string validate(const Project &p) try {
             (p.schemaVersion < 12 || n.role != "caption" ||
              (n.wordAnimationPreset != "none" && n.captionWords.empty())))
             return "Animação por palavra exige uma legenda alinhada e schema 12.";
-        if (n.kind == NodeKind::Image && n.source.empty())
-            return "Imagem sem arquivo de origem.";
         if (n.kind == NodeKind::Svg && n.source.empty())
             return "Vetor SVG sem arquivo de origem.";
         if (n.kind == NodeKind::Video && n.source.empty())
@@ -197,7 +225,7 @@ std::string validate(const Project &p) try {
                          [](unsigned char c) { return std::isxdigit(c); }))
             return "Cor secundária inválida.";
         if (n.role != "" && n.role != "caption" && n.role != "background" && n.role != "header" &&
-            !premiumSlotRole(n.role))
+            !premiumSlotRole(n.role) && !uiComponentRole(n.role))
             return "Papel visual desconhecido.";
     }
     std::unordered_map<std::string, const ShotMarker *> shotsById;

@@ -82,8 +82,12 @@ run([sys.executable, root / "scripts/embed-ai-production-example.py", "--guide",
      "--example", root / "examples/carros-caros-directors-cut-90s.production.json"])
 guide_text = guide.read_text(encoding="utf-8")
 assert all(f"`{item['id']}`" in guide_text for item in catalog["nativeAssets"])
-assert "Catálogo 1 · Receita 3 · Projeto 16" in guide_text
-assert catalog["projectVersion"] == 16
+assert "Catálogo 1 · Receita 3 · Projeto 17" in guide_text
+assert catalog["projectVersion"] == 17
+assert len(catalog["uiComponentAssets"]) == 66 and len(catalog["uiComponentCategories"]) == 6
+assert {"ui-component-library-66", "ui-component-text-slots",
+        "ui-component-masked-image-video-slots"}.issubset(set(catalog["productionCapabilities"]))
+assert "ui:device-smartphone" in guide_text and "ui:pressure-gauge" in guide_text
 assert {"video-source-trim", "video-speed-control", "video-normalized-crop"}.issubset(
     set(catalog["productionCapabilities"]))
 assert "embedded-video-audio-with-source-trim-and-speed" in catalog["productionCapabilities"]

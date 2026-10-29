@@ -107,7 +107,7 @@ void WorkspaceController::setCategoryFilter(QString v) {
     emit assetsChanged();
 }
 void WorkspaceController::setAssetTypeFilter(QString v) {
-    if (v != "" && v != "basic" && v != "premium" && v != "media")
+    if (v != "" && v != "basic" && v != "premium" && v != "media" && v != "ui")
         return;
     assetTypeFilter_ = std::move(v);
     emit assetsChanged();
@@ -200,13 +200,15 @@ QVariantList WorkspaceController::assetChoices() const {
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
         if (!o["deleted"].toBool() && !isRetiredArtworkAlias(o) &&
-            (o["kind"] == "native" || o["kind"] == "premium" || o["kind"] == "image" || o["kind"] == "svg" ||
+            (o["kind"] == "native" || o["kind"] == "premium" || o["kind"] == "ui-component" ||
+             o["kind"] == "image" || o["kind"] == "svg" ||
              o["kind"] == "preset"))
             result.append(o.toVariantMap());
     }
     return result;
 }
 QVariantList WorkspaceController::assets() const {
+    studio::initializeCompositionResources();
     QVariantList result;
     for (auto value : store_.data()["assets"].toArray()) {
         auto o = value.toObject();
@@ -215,7 +217,8 @@ QVariantList WorkspaceController::assets() const {
             continue;
         if ((assetTypeFilter_ == "basic" && kind != "native") ||
             (assetTypeFilter_ == "premium" && kind != "premium" && kind != "preset") ||
-            (assetTypeFilter_ == "media" && kind != "image" && kind != "svg" && kind != "video"))
+            (assetTypeFilter_ == "media" && kind != "image" && kind != "svg" && kind != "video") ||
+            (assetTypeFilter_ == "ui" && kind != "ui-component"))
             continue;
         if (o["deleted"].toBool() != assetTrash_ ||
             (!categoryFilter_.isEmpty() && o["categoryId"] != categoryFilter_) ||
@@ -245,6 +248,9 @@ QVariantList WorkspaceController::assets() const {
                 }
             }
             o["thumbnail"] = QFileInfo::exists(path) ? QUrl::fromLocalFile(path).toString() : QString{};
+        } else if (kind == "ui-component") {
+            o["thumbnail"] = QUrl("qrc" + o["source"].toString()).toString();
+            o["missing"] = false;
         } else if (kind == "video") {
             o["thumbnail"] = QString{};
             o["missing"] = !QFileInfo::exists(o["source"].toString());
@@ -259,7 +265,10 @@ QVariantList WorkspaceController::assets() const {
                                  ? studio::libraryItem(o["nativeId"].toString().toStdString())
                                  : nullptr;
         const bool imageBacked = native && !native->resourcePath.empty();
-        o["typeLabel"] = kind == "native" && imageBacked && native->previewOnly ? "PRÉVIA"
+        if (kind == "ui-component")
+            o["typeLabel"] = "COMPONENTE UI";
+        else
+            o["typeLabel"] = kind == "native" && imageBacked && native->previewOnly ? "PRÉVIA"
                          : kind == "native" && imageBacked ? "ARTE IA"
                          : kind == "native"        ? "NATIVO"
                          : kind == "premium"     ? "PREMIUM"
@@ -478,7 +487,7 @@ QString WorkspaceController::importSlotMedia(QUrl source) {
         notify(result.error);
         return {};
     }
-    notify("Imagem copiada para a mídia gerenciada pelo workspace.");
+    notify("Mídia copiada para o armazenamento gerenciado pelo workspace.");
     return result.id;
 }
 bool WorkspaceController::addFont(QUrl source) {
@@ -602,6 +611,15 @@ bool WorkspaceController::useAsset(QString id) {
         n.width = asset->width;
         n.height = asset->height;
         n.color = "#efb873";
+    } else if (kind == "ui-component") {
+        QString error;
+        presetNodes = studio::instantiateUiComponent(item, editor_->canvasWidth(), editor_->canvasHeight(),
+                                                     {}, {}, error);
+        if (presetNodes.empty()) {
+            notify(error.isEmpty() ? "Componente visual inválido." : error);
+            return false;
+        }
+        n = presetNodes.front();
     } else if (kind == "preset" || kind == "premium") {
         if (kind == "premium" && studio::premiumAsset(id.toStdString())) {
             presetNodes = studio::makePremiumAsset(id.toStdString(), editor_->canvasWidth(),
@@ -646,7 +664,7 @@ bool WorkspaceController::useAsset(QString id) {
         }
     }
     n.name = item["name"].toString().toStdString();
-    const bool compound = (kind == "preset" || kind == "premium") &&
+    const bool compound = (kind == "preset" || kind == "premium" || kind == "ui-component") &&
                           (presetNodes.size() > 1 || !presetNodes.front().keyframes.empty() ||
                            presetNodes.front().kind == studio::NodeKind::Group);
     if (compound)

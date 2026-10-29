@@ -32,6 +32,7 @@ static void initializeAiLibraryResources() {
 }
 
 namespace studio {
+void initializeCompositionResources() { initializeAiLibraryResources(); }
 namespace {
 enum class NodePass { All, ShotComposition, Captions };
 constexpr std::int64_t sequentialVideoDecodeWindow = 24;
@@ -180,7 +181,8 @@ double animationEaseOut(double progress) {
 }
 
 void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnapshot &snapshot, NodePass pass,
-                QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
+                QCache<QString, QImage> &images, QCache<QString, QImage> &masks,
+                QCache<QString, QSvgRenderer> &svgRenderers,
                 SvgCacheStats &svgCacheStats,
                 const std::function<QImage(const Node &, std::int64_t)> &videoFrame,
                 const std::string *nodeId = nullptr, bool localLayer = false) {
@@ -221,6 +223,7 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             }
         }
         const QRectF bounds(0, 0, node.width, node.height);
+        auto drawNodeContents = [&](QPainter &painter) {
         if (node.kind == NodeKind::Shape) {
             painter.setPen(Qt::NoPen);
             painter.setBrush(QColor(QString::fromStdString(node.color)));
@@ -358,8 +361,9 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                 }
                 painter.restore();
             } else {
-                const auto alignment = (node.role == "caption" ? Qt::AlignCenter
-                                                                : Qt::AlignLeft | Qt::AlignTop) |
+                const auto alignment = (node.role == "caption" || node.role.rfind("ui:slot:", 0) == 0
+                                            ? Qt::AlignCenter
+                                            : Qt::AlignLeft | Qt::AlignTop) |
                                        Qt::TextWordWrap;
                 const auto displayText = QString::fromStdString(node.text);
                 painter.setFont(font);
@@ -377,6 +381,8 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                     painter.drawText(textBounds, alignment, displayText);
                 }
             }
+        } else if (node.kind == NodeKind::Image && node.source.empty()) {
+            painter.fillRect(bounds, QColor(QString::fromStdString(node.color)));
         } else {
             const auto path = QString::fromStdString(node.source);
             if (!images.contains(path)) {
@@ -395,7 +401,10 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
             const auto image = cached ? *cached : QImage{};
             if (!image.isNull()) {
                 QSizeF size = image.size();
-                size.scale(bounds.size(), Qt::KeepAspectRatio);
+                size.scale(bounds.size(), node.maskSource.empty() ? Qt::KeepAspectRatio
+                                                                  : Qt::KeepAspectRatioByExpanding);
+                if (!node.maskSource.empty())
+                    painter.setClipRect(bounds);
                 painter.drawImage(QRectF((node.width - size.width()) / 2, (node.height - size.height()) / 2,
                                          size.width(), size.height()),
                                   image);
@@ -405,13 +414,80 @@ void paintNodes(QPainter &painter, const Project &project, const RenderFrameSnap
                 painter.drawText(bounds, Qt::AlignCenter, "Imagem ausente\n" + QFileInfo(path).fileName());
             }
         }
+        };
+        if (node.maskSource.empty()) {
+            drawNodeContents(painter);
+        } else {
+            auto layerScale = std::max(1.0, std::max(std::hypot(painter.transform().m11(), painter.transform().m12()),
+                                                    std::hypot(painter.transform().m21(), painter.transform().m22())));
+            layerScale = std::min(layerScale, 4.0);
+            const auto maxPixels = 8.0 * 1024.0 * 1024.0;
+            if (node.width * node.height * layerScale * layerScale > maxPixels)
+                layerScale = std::sqrt(maxPixels / (node.width * node.height));
+            const QSize layerSize(std::clamp(qCeil(node.width * layerScale), 1, 4096),
+                                  std::clamp(qCeil(node.height * layerScale), 1, 4096));
+            QImage layer(layerSize, QImage::Format_ARGB32_Premultiplied);
+            if (layer.isNull()) {
+                qWarning().noquote() << "Não foi possível preparar a área do slot UI mascarado:" <<
+                                            QString::fromStdString(node.id);
+                painter.restore();
+                continue;
+            }
+            layer.fill(Qt::transparent);
+            QPainter contentPainter(&layer);
+            contentPainter.setRenderHint(QPainter::Antialiasing);
+            contentPainter.setRenderHint(QPainter::TextAntialiasing);
+            contentPainter.setRenderHint(QPainter::SmoothPixmapTransform);
+            contentPainter.scale(layer.width() / node.width, layer.height() / node.height);
+            drawNodeContents(contentPainter);
+            contentPainter.end();
+
+            const auto maskPath = QString::fromStdString(node.maskSource);
+            const bool loadMask = !masks.contains(maskPath);
+            if (loadMask) {
+                QImageReader reader(maskPath);
+                const auto rawMask = reader.read().convertToFormat(QImage::Format_ARGB32);
+                QImage alphaMask(rawMask.size(), QImage::Format_ARGB32_Premultiplied);
+                if (!rawMask.isNull() && !alphaMask.isNull()) {
+                    for (int y = 0; y < rawMask.height(); ++y) {
+                        const auto *sourceRow = reinterpret_cast<const QRgb *>(rawMask.constScanLine(y));
+                        auto *targetRow = reinterpret_cast<QRgb *>(alphaMask.scanLine(y));
+                        for (int x = 0; x < rawMask.width(); ++x) {
+                            const auto pixel = sourceRow[x];
+                            const int coverage = qGray(pixel) * qAlpha(pixel) / 255;
+                            targetRow[x] = qRgba(coverage, coverage, coverage, coverage);
+                        }
+                    }
+                }
+                const auto cost = std::max<qsizetype>(1, alphaMask.sizeInBytes() / 1024);
+                masks.insert(maskPath, new QImage(std::move(alphaMask)), int(cost));
+                const auto *loadedMask = masks.object(maskPath);
+                if (!loadedMask || loadedMask->isNull())
+                    qWarning().noquote() << "Máscara UI não pôde ser carregada; conteúdo do slot foi omitido:" <<
+                                                maskPath << reader.errorString();
+            }
+            const auto *alphaMask = masks.object(maskPath);
+            if (!alphaMask || alphaMask->isNull()) {
+                painter.restore();
+                continue;
+            }
+            QPainter maskPainter(&layer);
+            maskPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+            const QRectF sourceCrop(node.maskCropX * alphaMask->width(), node.maskCropY * alphaMask->height(),
+                                   node.maskCropWidth * alphaMask->width(),
+                                   node.maskCropHeight * alphaMask->height());
+            maskPainter.drawImage(QRectF(0, 0, layer.width(), layer.height()), *alphaMask, sourceCrop);
+            maskPainter.end();
+            painter.drawImage(bounds, layer);
+        }
         painter.restore();
     }
     painter.restore();
 }
 
 QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &shot,
-                 QCache<QString, QImage> &images, QCache<QString, QSvgRenderer> &svgRenderers,
+                 QCache<QString, QImage> &images, QCache<QString, QImage> &masks,
+                 QCache<QString, QSvgRenderer> &svgRenderers,
                  SvgCacheStats &svgCacheStats,
                  const std::function<QImage(const Node &, std::int64_t)> &videoFrame) {
     QImage image(project.width, project.height, QImage::Format_ARGB32_Premultiplied);
@@ -424,7 +500,7 @@ QImage shotLayer(const Project &project, std::int64_t frame, const ShotMarker &s
     // The requested layer can be the outgoing shot while the frame time has
     // advanced into the incoming shot. Resolve it explicitly for this layer.
     const auto layer = buildRenderFrameSnapshot(project, frame, shot.id);
-    paintNodes(painter, project, layer, NodePass::ShotComposition, images, svgRenderers, svgCacheStats,
+    paintNodes(painter, project, layer, NodePass::ShotComposition, images, masks, svgRenderers, svgCacheStats,
                videoFrame);
     painter.end();
     return image;
@@ -450,6 +526,7 @@ CompositionPainter::~CompositionPainter() = default;
 
 void CompositionPainter::clearCache() {
     images_.clear();
+    masks_.clear();
     videoFrames_.clear();
     svgRenderers_.clear();
     videoCacheStats_ = {};
@@ -579,13 +656,14 @@ QImage CompositionPainter::videoFrame(const Node &node, const Project &project, 
 }
 
 void CompositionPainter::paint(QPainter &painter, const Project &project, std::int64_t frame) {
+    initializeAiLibraryResources();
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     const auto snapshot = RenderSnapshot::build(project, frame);
     if (project.shots.empty()) {
         paintBackground(painter, project, snapshot.primary().backgroundArt);
-        paintNodes(painter, project, snapshot.primary(), NodePass::All, images_, svgRenderers_,
+        paintNodes(painter, project, snapshot.primary(), NodePass::All, images_, masks_, svgRenderers_,
                    svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
@@ -601,7 +679,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
             }
     if (!currentShot) {
         paintBackground(painter, project, snapshot.primary().backgroundArt);
-        paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
+        paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, masks_, svgRenderers_,
                    svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
@@ -618,7 +696,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
 
     if (!previousShot || currentShot->transitionIn == "cut") {
         paintBackground(painter, project, artDirectionFor(project, currentShot->sceneId, currentShot->id));
-        paintNodes(painter, project, snapshot.primary(), NodePass::ShotComposition, images_, svgRenderers_,
+        paintNodes(painter, project, snapshot.primary(), NodePass::ShotComposition, images_, masks_, svgRenderers_,
                    svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                        return videoFrame(node, project, number);
                    });
@@ -628,9 +706,9 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
             return videoFrame(node, project, number);
         };
         const auto outgoing =
-            shotLayer(project, previousFrame, *previousShot, images_, svgRenderers_, svgCacheStats_, decoder);
+            shotLayer(project, previousFrame, *previousShot, images_, masks_, svgRenderers_, svgCacheStats_, decoder);
         const auto incoming =
-            shotLayer(project, frame, *currentShot, images_, svgRenderers_, svgCacheStats_, decoder);
+            shotLayer(project, frame, *currentShot, images_, masks_, svgRenderers_, svgCacheStats_, decoder);
         const double progress = snapshot.transition()->progress;
         if (currentShot->transitionIn == "dissolve") {
             painter.setCompositionMode(QPainter::CompositionMode_Plus);
@@ -677,7 +755,7 @@ void CompositionPainter::paint(QPainter &painter, const Project &project, std::i
                 incoming);
         }
     }
-    paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, svgRenderers_,
+    paintNodes(painter, project, snapshot.primary(), NodePass::Captions, images_, masks_, svgRenderers_,
                svgCacheStats_, [this, &project](const Node &node, std::int64_t number) {
                    return videoFrame(node, project, number);
                });
@@ -703,7 +781,7 @@ QImage CompositionPainter::rasterNodeLayer(const Project &project, const RenderF
     image.fill(Qt::transparent);
     QPainter painter(&image);
     painter.scale(scale, scale);
-    paintNodes(painter, project, snapshot, NodePass::All, images_, svgRenderers_, svgCacheStats_,
+    paintNodes(painter, project, snapshot, NodePass::All, images_, masks_, svgRenderers_, svgCacheStats_,
                [this, &project](const Node &current, std::int64_t frame) {
                    return videoFrame(current, project, frame);
                },

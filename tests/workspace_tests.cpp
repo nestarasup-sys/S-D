@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
         check(ui.page() == "projects" && !ui.hasDocument(), "startup opens project home");
         check(ui.projectCount() == 0 &&
                   ui.assetCount() == int(studio::nativeLibrary().size()) +
-                                         int(studio::premiumLibrary().size()) &&
-                  ui.categories().size() == 11 &&
+                                         int(studio::premiumLibrary().size()) + 66 &&
+                  ui.categories().size() == 17 &&
                   !named(ui.categories(), "Tecnologia").isEmpty() &&
                   !named(ui.categories(), "Comunicação").isEmpty() &&
                   !named(ui.categories(), "Finanças").isEmpty() &&
@@ -71,8 +71,23 @@ int main(int argc, char **argv) {
                   nativeScene["id"] == "native:street" && nativeScene["nativeId"] == "street" &&
                   nativeScene["previewOnly"].toBool() && nativeScene["sourceWidth"].toInt() == 483 &&
                   nativeScene["sourceHeight"].toInt() == 272 && nativeScene["typeLabel"] == "PRÉVIA" &&
-                  ui.assetCount() == 81,
+                  ui.assetCount() == 147,
               "the library shows each original ID once and labels low-resolution native scenes as previews");
+        ui.setAssetTypeFilter("ui");
+        const auto uiComponents = ui.assets();
+        const auto deviceComponent = named(uiComponents, "Device Smartphone");
+        check(uiComponents.size() == 66 && deviceComponent["id"] == "ui:device-smartphone" &&
+                  deviceComponent["kind"] == "ui-component" &&
+                  deviceComponent["thumbnail"].toString().startsWith("qrc:/studio/ai-library/v1/") &&
+                  QImageReader(deviceComponent["source"].toString()).canRead(),
+              "66 additional UI components are embedded, filterable and previewable without replacing native IDs");
+        check(std::any_of(uiComponents.begin(), uiComponents.end(), [](const auto &value) {
+                  const auto item = value.toMap();
+                  return item["id"] == "ui:sectional-filter" &&
+                         QJsonObject::fromVariantMap(item["manifest"].toMap())["slots"].toArray().size() == 3;
+              }),
+              "the multi-window filter exposes its three data-driven masked slots");
+        ui.setAssetTypeFilter("");
         const auto premium = named(ui.assets(), "Smartphone premium");
         check(premium["id"] == "premium:smartphone-premium-01" &&
                   premium["kind"] == "premium" && !premium["thumbnail"].toString().isEmpty(),
@@ -116,6 +131,50 @@ int main(int argc, char **argv) {
         const auto primaryProject = named(ui.projects(), "Minha história");
         const auto firstId = primaryProject["id"].toString();
         const auto path = primaryProject["path"].toString();
+        const bool insertedUiSmartphone = ui.useAsset("ui:device-smartphone");
+        const auto uiInsertReason = "a masked smartphone component inserts into the editable project: " +
+                                    ui.message().toStdString();
+        check(insertedUiSmartphone, uiInsertReason.c_str());
+        const auto uiSlot = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                                         [](const auto &node) { return node.role == "ui:slot:screen"; });
+        const auto uiRoot = uiSlot == editor.project().nodes.end()
+                                ? editor.project().nodes.end()
+                                : std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+                                               [&](const auto &node) { return node.id == uiSlot->parentId; });
+        check(uiSlot != editor.project().nodes.end() && uiRoot != editor.project().nodes.end() &&
+                  uiSlot->kind == studio::NodeKind::Image && uiSlot->source.empty() &&
+                  !uiSlot->maskSource.empty() && editor.project().schemaVersion == 17 &&
+                  studio::validate(editor.project()).empty(),
+              "masked UI slot is a valid editable project node using schema 17");
+        studio::CompositionPainter uiPainter;
+        const auto uiFrame = uiPainter.frame(editor.project(), 0);
+        const auto screenCenter = uiFrame.pixelColor(qRound(uiRoot->x + uiSlot->x + uiSlot->width / 2),
+                                                     qRound(uiRoot->y + uiSlot->y + uiSlot->height / 2));
+        const auto screenColorReason = "QPainter fills the device screen through the grayscale mask while preserving the PNG frame: pixel=" +
+                                       screenCenter.name(QColor::HexArgb).toStdString() +
+                                       ", mask=" + uiSlot->maskSource +
+                                       ", source=" + uiRoot->source;
+        check(!uiFrame.isNull() && screenCenter.green() > screenCenter.red() + 35 &&
+                  screenCenter.blue() > screenCenter.red() + 35,
+              screenColorReason.c_str());
+        QImage slotReplacement(48, 48, QImage::Format_ARGB32_Premultiplied);
+        slotReplacement.fill(QColor("#d4304c"));
+        const auto replacementPath = temp.filePath("slot-replacement.png");
+        check(slotReplacement.save(replacementPath), "create a small image for a masked media slot");
+        const auto managedSlotPath = ui.importSlotMedia(QUrl::fromLocalFile(replacementPath));
+        editor.selectNode(QString::fromStdString(uiSlot->id));
+        editor.updateSelected("source", managedSlotPath);
+        const auto filledSlot = studio::findNode(editor.project(), uiSlot->id);
+        check(!managedSlotPath.isEmpty() && filledSlot && filledSlot->source == managedSlotPath.toStdString() &&
+                  !filledSlot->maskSource.empty() && studio::validate(editor.project()).empty(),
+              "a UI image slot accepts workspace-managed media without losing its mask");
+        const auto maskedProjectPath = temp.filePath("masked-ui-component.studio.json");
+        check(editor.save(QUrl::fromLocalFile(maskedProjectPath)), "save the UI component project");
+        const auto reopenedMaskedProject = studio::loadProject(maskedProjectPath);
+        check(reopenedMaskedProject.error.isEmpty() &&
+                  std::any_of(reopenedMaskedProject.project.nodes.begin(), reopenedMaskedProject.project.nodes.end(),
+                              [](const auto &node) { return node.role == "ui:slot:screen" && !node.maskSource.empty(); }),
+              "schema 17 masked slot references survive project save and reopen");
         check(ui.useAsset("native:car"), "the original native ID inserts the default PNG artwork");
         const auto insertedArtwork = std::find_if(
             editor.project().nodes.begin(), editor.project().nodes.end(),
@@ -189,7 +248,7 @@ int main(int argc, char **argv) {
         editor.selectNode(imageSlotId);
         editor.updateSelected("source", imagePath);
         check(studio::findNode(editor.project(), imageSlotId.toStdString())->kind == studio::NodeKind::Shape &&
-                  editor.message().contains("gerenciada"),
+                  editor.message().contains("workspace local"),
               "direct external paths are rejected for premium image slots");
         const auto managedImage = ui.importSlotMedia(QUrl::fromLocalFile(imagePath));
         check(!managedImage.isEmpty() && managedImage != imagePath &&
@@ -458,15 +517,20 @@ int main(int argc, char **argv) {
         check(editor.title() == "História renomeada" &&
                   studio::loadProject(path).project.name == "História renomeada",
               "rename persists and refreshes current editor");
+        const auto projectsBeforeDuplicate = ui.projectCount();
         const auto duplicatedProject = ui.duplicateProject(firstId);
-        check(duplicatedProject && ui.projectCount() == 2, "duplicate project");
+        const auto projectsAfterDuplicate = ui.projectCount();
+        const auto duplicateReason = "duplicate project: " + ui.message().toStdString() +
+                                     ", count=" + std::to_string(projectsAfterDuplicate);
+        check(duplicatedProject && projectsAfterDuplicate == projectsBeforeDuplicate + 1,
+              duplicateReason.c_str());
         auto copy = named(ui.projects(), "História renomeada (cópia)");
         auto originalProject = studio::loadProject(path).project,
              copyProject = studio::loadProject(copy["path"].toString()).project;
         check(originalProject.id != copyProject.id &&
                   originalProject.nodes.size() == copyProject.nodes.size(),
               "duplicate gets independent document identity");
-        check(ui.deleteProject(firstId) && ui.projectCount() == 1 && !ui.hasDocument(),
+        check(ui.deleteProject(firstId) && ui.projectCount() == projectsAfterDuplicate - 1 && !ui.hasDocument(),
               "delete current project closes editing and removes card");
         check(QFile::exists(path) && QFile::exists(owned),
               "project deletion retains actual project and media");
@@ -564,7 +628,8 @@ int main(int argc, char **argv) {
         auto index = temp.filePath("workspace/catalogue.json");
         check(QFile::exists(index + ".previous"), "catalogue previous snapshot retained");
         studio::WorkspaceStore reopened(temp.filePath("workspace"));
-        check(reopened.data()["projects"].toArray().size() == 2, "catalogue persists across sessions");
+        check(reopened.data()["projects"].toArray().size() == projectsAfterDuplicate,
+              "catalogue persists across sessions, including the saved copy and duplicate project");
         check(ui.createProject("Projeto vertical", 1080, 1920) && editor.project().width == 1080 &&
                   editor.project().height == 1920,
               "create a managed portrait project with its chosen canvas dimensions");

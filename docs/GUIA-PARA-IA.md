@@ -1,6 +1,6 @@
 # Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 16 · Native Lab 0.5
+Catálogo 1 · Receita 3 · Projeto 17 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -1351,6 +1351,14 @@ Para testar uma receita criada por outra IA, consulte o pacote `docs/ai-evaluati
 
 Personalize cores em `palette`, usando apenas `premiumAssets[].paletteTokens` e valores `#RRGGBB`. Elementos `native` aceitam `palette.primary` e `palette.secondary`. A paleta muda as camadas sem substituir o conteúdo dos slots. Veja os exemplos executáveis `examples/premium-dramatic-quote-slots-v2.production.json`, `examples/premium-comparison-slots-v2.production.json`, `examples/premium-smartphone-slots-v2.production.json`, `examples/premium-question-hook-slots-v2.production.json` e `examples/premium-statistic-callout-slots-v2.production.json`.
 
+### Biblioteca adicional de componentes UI
+
+Há 66 componentes adicionais sob IDs `ui:*`, distribuídos em seis categorias. Eles não substituem nem duplicam os 72 nativos, os nove premium ou a mídia real. Cada componente é uma arte PNG incorporada ao aplicativo e permanece visualmente igual ao pacote original: paletas e cores não recolorem pixels. Posição, escala, rotação, opacidade, grupos, câmera, keyframes e animações externas do nó continuam funcionando.
+
+Use `{"id":"meu-dispositivo","kind":"library","assetId":"ui:device-smartphone","cue":0,"slots":{"screen":"Painel de demonstração"}}`. `slots` aceita somente IDs apresentados em `uiComponentAssets[].slotDefinitions`. Slots `overlay-text` aceitam texto. Slots `overlay-content` aceitam texto ou mídia. Slots `masked-content` preservam a moldura PNG e recortam conteúdo rasterizado pela máscara em tons de cinza; aceitam texto, imagem ou vídeo. Para imagem use `{"type":"image","source":"tela.png"}`; para vídeo, `{"type":"video","source":"tela.mp4"}` e receita v3. Caminhos são locais, relativos à pasta do `.production.json`, sem traversal, URL ou acesso fora dela. Na importação, o worker copia imagens/vídeos de slots para a mídia gerenciada do workspace; projetos continuam vinculados ao workspace local e não viram um pacote portátil entre computadores. Vídeo depende do FFmpeg configurado no aplicativo.
+
+Componentes sem um slot declarado são artes fixas; o ponteiro do `ui:pressure-gauge` é apenas uma sugestão gráfica e **não** é editável nem animável. Conteúdo dos slots continua como nós editáveis normais. A máscara é persistida no schema 17, compartilhada por prévia QPainter e exportação. Consulte `uiComponentAssets` e `uiComponentCategories` no catálogo para IDs, dimensões e slots exatos. O exemplo textual executável está em `examples/ui-components-additional-v1.production.json`.
+
 ### Premium Factory declarativa
 
 Definições oficiais manifest v2 em `assets/premium/*.manifest.json` podem conter `definition.definitionVersion: 1`, variantes `landscape` e `portrait`, canvas de referência e uma lista ordenada de camadas. Os componentes validados são `group`, `panel`, `rule`, `badge` e `text`; cada camada descreve layout, cor/token, papel, texto e, opcionalmente, um preset de animação suportado (`fade-rise`, `slide-left/right/up/down`, `pop-scale`, `soft-float`, `line-draw`, `stagger-reveal`). As keyframes resultantes são keyframes normais dos nós. A definição é dado validado, não código: não há scripts, caminhos de assets, plugins nem execução arbitrária. Manifesto, variantes, hierarquia, papéis, slots e tokens são comparados ao registro antes de aceitar o item.
@@ -1489,7 +1497,7 @@ Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilust
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio, animação de legenda por palavra e, para `person`, poseKeyframes e caminhada sincronizados. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14, políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15, e keyframes discretos de pose/ciclo de caminhada do `person` usam schema 16.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio, animação de legenda por palavra e, para `person`, poseKeyframes e caminhada sincronizados. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v17 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14, políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15, keyframes discretos de pose/ciclo de caminhada do `person` usam schema 16, e as máscaras dos slots dos componentes UI usam schema 17.
 
 ## Checklist de limites e publicação
 
@@ -3043,6 +3051,9 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "video-speed-control",
         "video-normalized-crop",
         "personal-library-video-assets",
+        "ui-component-library-66",
+        "ui-component-text-slots",
+        "ui-component-masked-image-video-slots",
         "native-id-ai-png-default-artwork",
         "low-resolution-native-scene-previews",
         "presenter-12-raster-poses",
@@ -3071,11 +3082,12 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "shot-art-direction",
         "audio-track-fades",
         "audio-gain-automation",
+        "masked-ui-library-slots",
         "word-timed-caption-highlights",
         "word-animated-caption-presets",
         "independent-caption-highlight-color"
     ],
-    "projectVersion": 16,
+    "projectVersion": 17,
     "shotTransitionTypes": [
         "cut",
         "fade",
@@ -3100,6 +3112,1768 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "width": 1080
         }
     ],
+    "uiComponentAssets": [
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 226,
+            "id": "ui:editorial-panel",
+            "name": "Editorial Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.16,
+                        0.76,
+                        0.69
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 374
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 238,
+            "id": "ui:rounded-card",
+            "name": "Rounded Card",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.13,
+                        0.17,
+                        0.74,
+                        0.66
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 320
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 247,
+            "id": "ui:tech-frame",
+            "name": "Tech Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.17,
+                        0.76,
+                        0.65
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 360
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 306,
+            "id": "ui:vertical-info-panel",
+            "name": "Vertical Info Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.24,
+                        0.76,
+                        0.64
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 255
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 232,
+            "id": "ui:quote-panel",
+            "name": "Quote Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "quote",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.19,
+                        0.18,
+                        0.71,
+                        0.63
+                    ]
+                }
+            ],
+            "slots": [
+                "quote"
+            ],
+            "status": "implemented",
+            "width": 353
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 257,
+            "id": "ui:stat-panel",
+            "name": "Stat Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "value",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.15,
+                        0.76,
+                        0.44
+                    ]
+                },
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "caption",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.73,
+                        0.76,
+                        0.18
+                    ]
+                }
+            ],
+            "slots": [
+                "value",
+                "caption"
+            ],
+            "status": "implemented",
+            "width": 327
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 241,
+            "id": "ui:comparison-panel",
+            "name": "Comparison Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "left",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.08,
+                        0.2,
+                        0.39,
+                        0.66
+                    ]
+                },
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "right",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.53,
+                        0.2,
+                        0.39,
+                        0.66
+                    ]
+                }
+            ],
+            "slots": [
+                "left",
+                "right"
+            ],
+            "status": "implemented",
+            "width": 350
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 114,
+            "id": "ui:lower-third",
+            "name": "Lower Third",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.22,
+                        0.17,
+                        0.7,
+                        0.67
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 316
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 200,
+            "id": "ui:alert-card",
+            "name": "Alert Card",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.27,
+                        0.16,
+                        0.65,
+                        0.68
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 333
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 232,
+            "id": "ui:science-card",
+            "name": "Science Card",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.16,
+                        0.18,
+                        0.7,
+                        0.64
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 351
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 210,
+            "id": "ui:process-step",
+            "name": "Process Step",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.14,
+                        0.16,
+                        0.72,
+                        0.66
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 343
+        },
+        {
+            "category": "ui-panels",
+            "componentType": "overlay-container",
+            "height": 171,
+            "id": "ui:documentary-panel",
+            "name": "Documentary Panel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-text",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.19,
+                        0.76,
+                        0.6
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 332
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 451,
+            "id": "ui:device-smartphone",
+            "name": "Device Smartphone",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.15625,
+                        0.07317,
+                        0.72656,
+                        0.82262
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 256
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 454,
+            "id": "ui:device-tablet",
+            "name": "Device Tablet",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.09809,
+                        0.09251,
+                        0.79292,
+                        0.81278
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 367
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 388,
+            "id": "ui:device-laptop",
+            "name": "Device Laptop",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.16058,
+                        0.09021,
+                        0.68431,
+                        0.59278
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 548
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 401,
+            "id": "ui:device-desktop-monitor",
+            "name": "Device Desktop Monitor",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.06783,
+                        0.08229,
+                        0.86214,
+                        0.54863
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 457
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 372,
+            "id": "ui:device-tv-screen",
+            "name": "Device Tv Screen",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.05893,
+                        0.0914,
+                        0.88393,
+                        0.72312
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 560
+        },
+        {
+            "category": "ui-devices",
+            "componentType": "screen-container",
+            "height": 468,
+            "id": "ui:device-kiosk",
+            "name": "Device Kiosk",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "screen",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.18565,
+                        0.08547,
+                        0.62869,
+                        0.54915
+                    ]
+                }
+            ],
+            "slots": [
+                "screen"
+            ],
+            "status": "implemented",
+            "width": 237
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 358,
+            "id": "ui:foreground-plant-left",
+            "name": "Foreground Plant Left",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 288
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 359,
+            "id": "ui:foreground-plant-right",
+            "name": "Foreground Plant Right",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 279
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 363,
+            "id": "ui:street-lamp",
+            "name": "Street Lamp",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 193
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 361,
+            "id": "ui:architectural-column",
+            "name": "Architectural Column",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 157
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 334,
+            "id": "ui:industrial-pipes",
+            "name": "Industrial Pipes",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 328
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 329,
+            "id": "ui:laboratory-bench",
+            "name": "Laboratory Bench",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 353
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 345,
+            "id": "ui:server-rack-side",
+            "name": "Server Rack Side",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 236
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 229,
+            "id": "ui:urban-railing",
+            "name": "Urban Railing",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 357
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 286,
+            "id": "ui:control-console",
+            "name": "Control Console",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 395
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 362,
+            "id": "ui:bookshelf-prop",
+            "name": "Bookshelf Prop",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 255
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 350,
+            "id": "ui:industrial-tank",
+            "name": "Industrial Tank",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 272
+        },
+        {
+            "category": "ui-scenes",
+            "componentType": "decoration",
+            "height": 312,
+            "id": "ui:science-equipment",
+            "name": "Science Equipment",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 347
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 271,
+            "id": "ui:archive-photo-frame",
+            "name": "Archive Photo Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.11204,
+                        0.15867,
+                        0.76471,
+                        0.68266
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 357
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 304,
+            "id": "ui:polaroid-frame",
+            "name": "Polaroid Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.18315,
+                        0.08224,
+                        0.73626,
+                        0.68092
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 273
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 271,
+            "id": "ui:film-frame",
+            "name": "Film Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.21221,
+                        0.08118,
+                        0.65116,
+                        0.81919
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 344
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 305,
+            "id": "ui:document-frame",
+            "name": "Document Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-content",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.12,
+                        0.76,
+                        0.72
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 298
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 289,
+            "id": "ui:dossier-folder",
+            "name": "Dossier Folder",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-content",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.12,
+                        0.76,
+                        0.72
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 373
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 327,
+            "id": "ui:newspaper-frame",
+            "name": "Newspaper Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-content",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.12,
+                        0.76,
+                        0.72
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 304
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 291,
+            "id": "ui:evidence-card",
+            "name": "Evidence Card",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.08025,
+                        0.09622,
+                        0.82716,
+                        0.60825
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 324
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 282,
+            "id": "ui:archival-slide",
+            "name": "Archival Slide",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.17434,
+                        0.25177,
+                        0.65789,
+                        0.48227
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 304
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 307,
+            "id": "ui:map-display-frame",
+            "name": "Map Display Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-content",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.12,
+                        0.76,
+                        0.72
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 357
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 288,
+            "id": "ui:projector-frame",
+            "name": "Projector Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.13031,
+                        0.13194,
+                        0.73938,
+                        0.59375
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 353
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 314,
+            "id": "ui:research-board",
+            "name": "Research Board",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "body",
+                    "kind": "overlay-content",
+                    "masked": false,
+                    "rect": [
+                        0.12,
+                        0.12,
+                        0.76,
+                        0.72
+                    ]
+                }
+            ],
+            "slots": [
+                "body"
+            ],
+            "status": "implemented",
+            "width": 329
+        },
+        {
+            "category": "ui-archive",
+            "componentType": "mixed-documentary",
+            "height": 304,
+            "id": "ui:magnified-document-frame",
+            "name": "Magnified Document Frame",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.14907,
+                        0.12171,
+                        0.67081,
+                        0.64803
+                    ]
+                },
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-2",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.62733,
+                        0.59868,
+                        0.31366,
+                        0.33224
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1",
+                "window-2"
+            ],
+            "status": "implemented",
+            "width": 322
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 346,
+            "id": "ui:concentric-waves",
+            "name": "Concentric Waves",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 342
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 328,
+            "id": "ui:optical-spiral",
+            "name": "Optical Spiral",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 323
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 311,
+            "id": "ui:halftone-disc",
+            "name": "Halftone Disc",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 321
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 358,
+            "id": "ui:geometric-sunburst",
+            "name": "Geometric Sunburst",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 337
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 290,
+            "id": "ui:flowing-ribbons",
+            "name": "Flowing Ribbons",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 354
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 301,
+            "id": "ui:parallel-tunnel",
+            "name": "Parallel Tunnel",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 311
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 306,
+            "id": "ui:interlocking-rings",
+            "name": "Interlocking Rings",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 331
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 285,
+            "id": "ui:wave-mesh",
+            "name": "Wave Mesh",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 332
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 339,
+            "id": "ui:abstract-particle-field",
+            "name": "Abstract Particle Field",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 346
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 329,
+            "id": "ui:geometric-wipe",
+            "name": "Geometric Wipe",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 330
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 351,
+            "id": "ui:optical-diamond",
+            "name": "Optical Diamond",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 352
+        },
+        {
+            "category": "ui-op-art",
+            "componentType": "decorative-motion",
+            "height": 342,
+            "id": "ui:modular-orbit",
+            "name": "Modular Orbit",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 334
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 165,
+            "id": "ui:straight-pipe",
+            "name": "Straight Pipe",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 349
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 253,
+            "id": "ui:pipe-elbow",
+            "name": "Pipe Elbow",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 276
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 237,
+            "id": "ui:pipe-junction",
+            "name": "Pipe Junction",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 352
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 269,
+            "id": "ui:control-valve",
+            "name": "Control Valve",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 324
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 290,
+            "id": "ui:treatment-tank",
+            "name": "Treatment Tank",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.25806,
+                        0.34828,
+                        0.48925,
+                        0.42069
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 372
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 335,
+            "id": "ui:filter-chamber",
+            "name": "Filter Chamber",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.35862,
+                        0.36418,
+                        0.2931,
+                        0.36119
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 290
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 261,
+            "id": "ui:industrial-pump",
+            "name": "Industrial Pump",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 374
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 329,
+            "id": "ui:glass-chamber",
+            "name": "Glass Chamber",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.30435,
+                        0.2614,
+                        0.3882,
+                        0.44681
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 322
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 319,
+            "id": "ui:pressure-gauge",
+            "name": "Pressure Gauge",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 248
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 370,
+            "id": "ui:reactor-chamber",
+            "name": "Reactor Chamber",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.35583,
+                        0.32432,
+                        0.28528,
+                        0.41892
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1"
+            ],
+            "status": "implemented",
+            "width": 326
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 251,
+            "id": "ui:sectional-filter",
+            "name": "Sectional Filter",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-1",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.22785,
+                        0.2988,
+                        0.13924,
+                        0.43426
+                    ]
+                },
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-2",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.43291,
+                        0.2988,
+                        0.13418,
+                        0.43426
+                    ]
+                },
+                {
+                    "acceptedTypes": [
+                        "text",
+                        "image",
+                        "video"
+                    ],
+                    "id": "window-3",
+                    "imageAndVideoCrop": true,
+                    "kind": "masked-content",
+                    "masked": true,
+                    "rect": [
+                        0.63544,
+                        0.2988,
+                        0.13165,
+                        0.43426
+                    ]
+                }
+            ],
+            "slots": [
+                "window-1",
+                "window-2",
+                "window-3"
+            ],
+            "status": "implemented",
+            "width": 395
+        },
+        {
+            "category": "ui-machinery",
+            "componentType": "machine-component",
+            "height": 253,
+            "id": "ui:flow-distributor",
+            "name": "Flow Distributor",
+            "pixelRecoloring": false,
+            "rendering": "embedded-ai-png",
+            "slotDefinitions": [
+            ],
+            "slots": [
+            ],
+            "status": "implemented",
+            "width": 348
+        }
+    ],
+    "uiComponentCategories": [
+        {
+            "id": "ui-panels",
+            "name": "Painéis e molduras"
+        },
+        {
+            "id": "ui-devices",
+            "name": "Dispositivos"
+        },
+        {
+            "id": "ui-scenes",
+            "name": "Peças de cenário"
+        },
+        {
+            "id": "ui-archive",
+            "name": "Arquivo documental"
+        },
+        {
+            "id": "ui-op-art",
+            "name": "Op Art"
+        },
+        {
+            "id": "ui-machinery",
+            "name": "Equipamentos e processos"
+        }
+    ],
     "width": 1280
 }
 ```
+
+## IDs dos componentes UI registrados
+
+- `ui:editorial-panel` — Editorial Panel; slots: body (overlay-text).
+- `ui:rounded-card` — Rounded Card; slots: body (overlay-text).
+- `ui:tech-frame` — Tech Frame; slots: body (overlay-text).
+- `ui:vertical-info-panel` — Vertical Info Panel; slots: body (overlay-text).
+- `ui:quote-panel` — Quote Panel; slots: quote (overlay-text).
+- `ui:stat-panel` — Stat Panel; slots: value (overlay-text), caption (overlay-text).
+- `ui:comparison-panel` — Comparison Panel; slots: left (overlay-text), right (overlay-text).
+- `ui:lower-third` — Lower Third; slots: body (overlay-text).
+- `ui:alert-card` — Alert Card; slots: body (overlay-text).
+- `ui:science-card` — Science Card; slots: body (overlay-text).
+- `ui:process-step` — Process Step; slots: body (overlay-text).
+- `ui:documentary-panel` — Documentary Panel; slots: body (overlay-text).
+- `ui:device-smartphone` — Device Smartphone; slots: screen (masked-content).
+- `ui:device-tablet` — Device Tablet; slots: screen (masked-content).
+- `ui:device-laptop` — Device Laptop; slots: screen (masked-content).
+- `ui:device-desktop-monitor` — Device Desktop Monitor; slots: screen (masked-content).
+- `ui:device-tv-screen` — Device Tv Screen; slots: screen (masked-content).
+- `ui:device-kiosk` — Device Kiosk; slots: screen (masked-content).
+- `ui:foreground-plant-left` — Foreground Plant Left.
+- `ui:foreground-plant-right` — Foreground Plant Right.
+- `ui:street-lamp` — Street Lamp.
+- `ui:architectural-column` — Architectural Column.
+- `ui:industrial-pipes` — Industrial Pipes.
+- `ui:laboratory-bench` — Laboratory Bench.
+- `ui:server-rack-side` — Server Rack Side.
+- `ui:urban-railing` — Urban Railing.
+- `ui:control-console` — Control Console.
+- `ui:bookshelf-prop` — Bookshelf Prop.
+- `ui:industrial-tank` — Industrial Tank.
+- `ui:science-equipment` — Science Equipment.
+- `ui:archive-photo-frame` — Archive Photo Frame; slots: window-1 (masked-content).
+- `ui:polaroid-frame` — Polaroid Frame; slots: window-1 (masked-content).
+- `ui:film-frame` — Film Frame; slots: window-1 (masked-content).
+- `ui:document-frame` — Document Frame; slots: body (overlay-content).
+- `ui:dossier-folder` — Dossier Folder; slots: body (overlay-content).
+- `ui:newspaper-frame` — Newspaper Frame; slots: body (overlay-content).
+- `ui:evidence-card` — Evidence Card; slots: window-1 (masked-content).
+- `ui:archival-slide` — Archival Slide; slots: window-1 (masked-content).
+- `ui:map-display-frame` — Map Display Frame; slots: body (overlay-content).
+- `ui:projector-frame` — Projector Frame; slots: window-1 (masked-content).
+- `ui:research-board` — Research Board; slots: body (overlay-content).
+- `ui:magnified-document-frame` — Magnified Document Frame; slots: window-1 (masked-content), window-2 (masked-content).
+- `ui:concentric-waves` — Concentric Waves.
+- `ui:optical-spiral` — Optical Spiral.
+- `ui:halftone-disc` — Halftone Disc.
+- `ui:geometric-sunburst` — Geometric Sunburst.
+- `ui:flowing-ribbons` — Flowing Ribbons.
+- `ui:parallel-tunnel` — Parallel Tunnel.
+- `ui:interlocking-rings` — Interlocking Rings.
+- `ui:wave-mesh` — Wave Mesh.
+- `ui:abstract-particle-field` — Abstract Particle Field.
+- `ui:geometric-wipe` — Geometric Wipe.
+- `ui:optical-diamond` — Optical Diamond.
+- `ui:modular-orbit` — Modular Orbit.
+- `ui:straight-pipe` — Straight Pipe.
+- `ui:pipe-elbow` — Pipe Elbow.
+- `ui:pipe-junction` — Pipe Junction.
+- `ui:control-valve` — Control Valve.
+- `ui:treatment-tank` — Treatment Tank; slots: window-1 (masked-content).
+- `ui:filter-chamber` — Filter Chamber; slots: window-1 (masked-content).
+- `ui:industrial-pump` — Industrial Pump.
+- `ui:glass-chamber` — Glass Chamber; slots: window-1 (masked-content).
+- `ui:pressure-gauge` — Pressure Gauge.
+- `ui:reactor-chamber` — Reactor Chamber; slots: window-1 (masked-content).
+- `ui:sectional-filter` — Sectional Filter; slots: window-1 (masked-content), window-2 (masked-content), window-3 (masked-content).
+- `ui:flow-distributor` — Flow Distributor.
+
+O campo `uiComponentAssets` no catálogo também descreve tipos de entrada, máscara e dimensões.

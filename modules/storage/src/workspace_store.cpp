@@ -19,6 +19,7 @@
 #include <studio/storage/workspace_store.hpp>
 
 static void initializePremiumManifestResources() { Q_INIT_RESOURCE(premium_manifests); }
+static void initializeUiComponentManifestResources() { Q_INIT_RESOURCE(ui_component_manifest); }
 
 namespace studio {
 namespace {
@@ -82,6 +83,131 @@ QString workspacePremiumCategory(std::string_view category) {
     if (category == "data" || category == "motion-graphics") return "data";
     if (category == "communication" || category == "typography") return "communication";
     return "uncategorized";
+}
+QString workspaceUiCategory(const QString &folder) {
+    if (folder == "editorial-panels") return "ui-panels";
+    if (folder == "device-frames") return "ui-devices";
+    if (folder == "parallax-layers") return "ui-scenes";
+    if (folder == "documentary-archive") return "ui-archive";
+    if (folder == "optical-motion") return "ui-op-art";
+    if (folder == "process-machinery") return "ui-machinery";
+    return "uncategorized";
+}
+QString uiResourcePath(const QString &packagePath) {
+    const QString prefix = "assets/ai-library/v1/";
+    if (!packagePath.startsWith(prefix) || packagePath.contains("..") || packagePath.contains('\\'))
+        return {};
+    return ":/studio/ai-library/v1/" + packagePath.mid(prefix.size());
+}
+QString uiDisplayName(const QString &name) {
+    auto parts = name.split('-', Qt::SkipEmptyParts);
+    for (auto &part : parts)
+        if (!part.isEmpty())
+            part[0] = part[0].toUpper();
+    return parts.join(' ');
+}
+struct UiComponentRegistry {
+    QJsonArray assets;
+    QString error;
+};
+const UiComponentRegistry &uiComponentRegistry() {
+    static const UiComponentRegistry registry = [] {
+        initializeUiComponentManifestResources();
+        UiComponentRegistry result;
+        QFile file(":/studio/ui-components/asset-manifest.json");
+        if (!file.open(QIODevice::ReadOnly) || file.size() > 2 * 1024 * 1024) {
+            result.error = "Manifesto dos componentes visuais embutido ausente ou grande demais.";
+            return result;
+        }
+        QJsonParseError parse;
+        const auto document = QJsonDocument::fromJson(file.readAll(), &parse);
+        if (parse.error != QJsonParseError::NoError || !document.isObject()) {
+            result.error = "Manifesto dos componentes visuais inválido.";
+            return result;
+        }
+        const auto manifest = document.object();
+        if (manifest["format"] != "studio-dark-ai-component-pack" || manifest["version"] != 1 ||
+            !manifest["assets"].isArray() || manifest["assets"].toArray().size() != 66) {
+            result.error = "Formato, versão ou quantidade do manifesto de componentes inesperada.";
+            return result;
+        }
+        static const QRegularExpression validId("^ui:[a-z0-9]+(?:-[a-z0-9]+)*$");
+        const QSet<QString> folders{"editorial-panels", "device-frames", "parallax-layers",
+                                    "documentary-archive", "optical-motion", "process-machinery"};
+        QSet<QString> ids, paths;
+        for (const auto &value : manifest["assets"].toArray()) {
+            const auto definition = value.toObject();
+            const auto id = definition["id"].toString();
+            const auto path = definition["path"].toString();
+            const auto source = uiResourcePath(path);
+            const auto dimensions = definition["dimensions"].toArray();
+            const auto folder = definition["folder"].toString();
+            if (!validId.match(id).hasMatch() || ids.contains(id) || source.isEmpty() ||
+                paths.contains(path) || !folders.contains(folder) || dimensions.size() != 2 ||
+                !dimensions[0].isDouble() || !dimensions[1].isDouble() || dimensions[0].toInt() < 1 ||
+                dimensions[1].toInt() < 1 || dimensions[0].toInt() > 10000 ||
+                dimensions[1].toInt() > 10000 || !definition["slots"].isArray()) {
+                result.error = "ID, caminho, dimensões ou slots inválidos no manifesto UI: " + id;
+                break;
+            }
+            QSet<QString> slotIds;
+            QJsonArray exposedSlots;
+            for (const auto &slotValue : definition["slots"].toArray()) {
+                const auto slot = slotValue.toObject();
+                const auto slotId = slot["id"].toString();
+                const auto kind = slot["kind"].toString();
+                const auto rect = slot["rect_norm"].toArray();
+                bool validRect = rect.size() == 4;
+                double values[4]{};
+                for (qsizetype i = 0; validRect && i < 4; ++i) {
+                    validRect = rect[i].isDouble();
+                    if (validRect) values[i] = rect[i].toDouble();
+                }
+                validRect = validRect && values[0] >= 0 && values[1] >= 0 && values[2] > 0 &&
+                            values[3] > 0 && values[0] + values[2] <= 1.00001 &&
+                            values[1] + values[3] <= 1.00001;
+                const bool masked = kind == "masked-content";
+                const bool supportedSlot = kind == "overlay-text" || kind == "overlay-content" || masked;
+                if (slotId.isEmpty() || slotId.size() > 48 || slotIds.contains(slotId) || !validRect) {
+                    result.error = "Slot inválido no componente UI " + id + ": " + slotId;
+                    break;
+                }
+                slotIds.insert(slotId);
+                if (!supportedSlot && kind != "overlay-rotatable-needle") {
+                    result.error = "Tipo de slot UI desconhecido em " + id + ": " + slotId;
+                    break;
+                }
+                if (masked && uiResourcePath(slot["mask_path"].toString()).isEmpty()) {
+                    result.error = "Máscara ausente no componente UI " + id + ": " + slotId;
+                    break;
+                }
+                if (supportedSlot)
+                    exposedSlots.append(slot);
+            }
+            if (!result.error.isEmpty())
+                break;
+            ids.insert(id);
+            paths.insert(path);
+            QJsonObject libraryAsset{{"id", id},
+                                     {"name", uiDisplayName(definition["name"].toString())},
+                                     {"kind", "ui-component"},
+                                     {"componentType", definition["type"]},
+                                     {"categoryId", workspaceUiCategory(folder)},
+                                     {"source", source},
+                                     {"width", dimensions[0]},
+                                     {"height", dimensions[1]},
+                                     {"slots", exposedSlots},
+                                     {"manifest", definition},
+                                     {"deleted", false},
+                                     {"builtin", true},
+                                     {"createdAt", "2026-10-28T00:00:00.000Z"}};
+            result.assets.append(libraryAsset);
+        }
+        if (result.error.isEmpty() && ids.size() != 66)
+            result.error = "O manifesto não produziu 66 IDs UI únicos.";
+        return result;
+    }();
+    return registry;
 }
 struct PremiumRegistry {
     QJsonArray assets;
@@ -249,7 +375,13 @@ QJsonObject defaults() {
                       {"data", "Dados"},
                       {"fonts", "Fontes"},
                       {"visual-styles", "Estilos visuais"},
-                      {"uncategorized", "Sem categoria"}})
+                      {"uncategorized", "Sem categoria"},
+                      {"ui-panels", "Painéis e molduras"},
+                      {"ui-devices", "Dispositivos"},
+                      {"ui-scenes", "Peças de cenário"},
+                      {"ui-archive", "Arquivo documental"},
+                      {"ui-op-art", "Op Art"},
+                      {"ui-machinery", "Equipamentos e processos"}})
         categories.append(QJsonObject{{"id", pair.first}, {"name", pair.second}});
     QJsonArray assets;
     for (const auto &a : nativeLibrary())
@@ -263,6 +395,8 @@ QJsonObject defaults() {
                                   {"createdAt", now()}});
     for (const auto &asset : premiumRegistry().assets)
         assets.append(asset);
+    for (const auto &asset : uiComponentRegistry().assets)
+        assets.append(asset);
     return {{"format", "studio-dark-workspace"},
             {"version", 1},
             {"projects", QJsonArray{}},
@@ -270,6 +404,7 @@ QJsonObject defaults() {
             {"assets", assets}};
 }
 } // namespace
+QJsonArray builtInUiComponents() { return uiComponentRegistry().assets; }
 QStringList loadWorkspaceFonts(const QString &workspaceDirectory) {
     static QSet<QString> registeredPaths;
     QStringList loadedFamilies;
@@ -441,6 +576,10 @@ bool WorkspaceStore::reload() {
         error_ = premiumRegistry().error;
         return false;
     }
+    if (!uiComponentRegistry().error.isEmpty()) {
+        error_ = uiComponentRegistry().error;
+        return false;
+    }
     auto path = root_ + "/catalogue.json";
     if (!QFile::exists(path)) {
         data_ = defaults();
@@ -471,6 +610,12 @@ bool WorkspaceStore::reload() {
     ensureCategory(data_, "communication", "Comunicação");
     ensureCategory(data_, "finance", "Finanças");
     ensureCategory(data_, "science", "Ciência");
+    ensureCategory(data_, "ui-panels", "Painéis e molduras");
+    ensureCategory(data_, "ui-devices", "Dispositivos");
+    ensureCategory(data_, "ui-scenes", "Peças de cenário");
+    ensureCategory(data_, "ui-archive", "Arquivo documental");
+    ensureCategory(data_, "ui-op-art", "Op Art");
+    ensureCategory(data_, "ui-machinery", "Equipamentos e processos");
     auto assets = data_["assets"].toArray();
     // The previous release exposed PNG artwork under duplicate `illustrated:*`
     // IDs. Retire only those built-in catalogue rows; old project node IDs remain
@@ -517,6 +662,9 @@ bool WorkspaceStore::reload() {
     for (const auto &premium : premiumRegistry().assets)
         if (!known.contains(premium.toObject()["id"].toString()))
             assets.append(premium);
+    for (const auto &component : uiComponentRegistry().assets)
+        if (!known.contains(component.toObject()["id"].toString()))
+            assets.append(component);
     data_["assets"] = assets;
     revision_ = hash(bytes);
     error_.clear();
@@ -827,17 +975,22 @@ WorkspaceResult WorkspaceStore::importSlotMedia(const QString &source) {
     const auto path = QFileInfo(source).canonicalFilePath();
     const QFileInfo info(path);
     const auto extension = info.suffix().toLower();
-    if (path.isEmpty() || !info.isFile() ||
-        !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(extension))
-        return {{}, "O slot aceita um arquivo PNG, JPEG, WebP ou BMP existente."};
+    static const QStringList imageExtensions{"png", "jpg", "jpeg", "webp", "bmp"};
+    static const QStringList videoExtensions{"mp4", "mov", "mkv", "webm", "avi", "m4v"};
+    const bool image = imageExtensions.contains(extension);
+    const bool video = videoExtensions.contains(extension);
+    if (path.isEmpty() || !info.isFile() || (!image && !video))
+        return {{}, "O slot aceita imagem PNG/JPEG/WebP/BMP ou vídeo MP4/MOV/MKV/WebM/AVI/M4V existente."};
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly) || file.size() < 1 || file.size() > 32 * 1024 * 1024)
-        return {{}, "A imagem do slot deve ter entre 1 byte e 32 MiB."};
-    QImageReader reader(path);
-    const auto size = reader.size();
-    if (!reader.canRead() || size.isEmpty() || qint64(size.width()) * size.height() > 40000000 ||
-        reader.read().isNull())
-        return {{}, "A imagem não pôde ser decodificada ou excede 40 megapixels."};
+        return {{}, "A mídia do slot deve ter entre 1 byte e 32 MiB."};
+    if (image) {
+        QImageReader reader(path);
+        const auto size = reader.size();
+        if (!reader.canRead() || size.isEmpty() || qint64(size.width()) * size.height() > 40000000 ||
+            reader.read().isNull())
+            return {{}, "A imagem do slot não pôde ser decodificada ou excede 40 megapixels."};
+    }
     if (!file.seek(0))
         return {{}, "Não foi possível reler a imagem selecionada."};
     const auto bytes = file.readAll();

@@ -353,12 +353,20 @@ void EditorController::updateSelected(QString key, QVariant value) {
     const bool keyframedEdit = selectedNode && !selectedNode->keyframes.empty() && transformProperty;
     if (before.isEmpty() || !before.contains(key) || (before[key] == value && !keyframedEdit))
         return;
-    if (key == "source" && selectedNode && selectedNode->role.rfind("premium:image:", 0) == 0) {
+    const bool premiumImageSlot = selectedNode && selectedNode->role.rfind("premium:image:", 0) == 0;
+    const bool uiMediaSlot = selectedNode && !selectedNode->maskSource.empty() &&
+                             selectedNode->role.rfind("ui:slot:", 0) == 0 &&
+                             (selectedNode->kind == studio::NodeKind::Image ||
+                              selectedNode->kind == studio::NodeKind::Video);
+    if (key == "source" && (premiumImageSlot || uiMediaSlot)) {
         const auto source = value.toString();
         const QFileInfo info(source);
-        if (!info.isFile() ||
-            !QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(info.suffix().toLower())) {
-            notify("O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
+        const auto extension = info.suffix().toLower();
+        const bool image = QStringList{"png", "jpg", "jpeg", "webp", "bmp"}.contains(extension);
+        const bool video = QStringList{"mp4", "mov", "mkv", "webm", "avi", "m4v"}.contains(extension);
+        if (!info.isFile() || (!image && !(uiMediaSlot && video))) {
+            notify(uiMediaSlot ? "O slot aceita imagem PNG/JPEG/WebP/BMP ou vídeo MP4/MOV/MKV/WebM/AVI/M4V."
+                               : "O slot aceita uma imagem PNG, JPEG, WebP ou BMP existente.");
             return;
         }
         const auto root = QFileInfo(managedMediaRoot_).canonicalFilePath();
@@ -366,7 +374,7 @@ void EditorController::updateSelected(QString key, QVariant value) {
         const auto relative = QDir(root).relativeFilePath(canonical);
         if (root.isEmpty() || canonical.isEmpty() || relative == ".." || relative.startsWith("../") ||
             relative.startsWith("..\\") || QFileInfo(relative).isAbsolute()) {
-            notify("Slots premium aceitam apenas imagens importadas para a mídia gerenciada do workspace.");
+            notify("Slots editáveis aceitam apenas mídia importada para o workspace local.");
             return;
         }
     }
@@ -398,9 +406,15 @@ void EditorController::updateSelected(QString key, QVariant value) {
                 }
                 if (key == "text")
                     n.text = value.toString().toStdString();
-                else if (key == "source" && n.role.rfind("premium:image:", 0) == 0) {
-                    n.kind = studio::NodeKind::Image;
+                else if (key == "source" &&
+                         (n.role.rfind("premium:image:", 0) == 0 ||
+                          (!n.maskSource.empty() && n.role.rfind("ui:slot:", 0) == 0))) {
+                    const auto extension = QFileInfo(value.toString()).suffix().toLower();
+                    n.kind = QStringList{"mp4", "mov", "mkv", "webm", "avi", "m4v"}.contains(extension)
+                                 ? studio::NodeKind::Video : studio::NodeKind::Image;
                     n.source = value.toString().toStdString();
+                    if (!n.maskSource.empty())
+                        p.schemaVersion = std::max(p.schemaVersion, 17);
                 }
                 else if (key == "color")
                     n.color = value.toString().toStdString();
@@ -1117,7 +1131,16 @@ bool EditorController::insertLibraryNodes(std::vector<studio::Node> nodes) {
         const bool hasVersion15Data = std::any_of(nodes.begin(), nodes.end(), [](const auto &node) {
             return node.textAutoFit;
         });
-        p.schemaVersion = std::max(p.schemaVersion, hasVersion15Data ? 15 : 3);
+        const bool hasVersion17Data = std::any_of(nodes.begin(), nodes.end(), [](const auto &node) {
+            return !node.maskSource.empty();
+        });
+        const bool hasVideoLayer = std::any_of(nodes.begin(), nodes.end(), [](const auto &node) {
+            return node.kind == studio::NodeKind::Video;
+        });
+        p.schemaVersion = std::max(p.schemaVersion, hasVersion17Data ? 17
+                                                        : hasVideoLayer ? 5
+                                                        : hasVersion15Data ? 15
+                                                                            : 3);
         p.nodes.insert(p.nodes.end(), nodes.begin(), nodes.end());
     });
     if (!error.empty()) {
