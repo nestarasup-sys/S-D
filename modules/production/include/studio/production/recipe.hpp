@@ -27,6 +27,15 @@ struct DirectedKeyframe {
     std::string easing{"linear"};
     int wordIndex{-1};
 };
+struct DirectedPoseKeyframe {
+    DirectedTime at;
+    std::string pose;
+};
+struct DirectedWalkCycle {
+    DirectedTime start, end;
+    int stepFrames{6};
+    std::string stopPose{"neutral"};
+};
 struct DirectedCameraKeyframe {
     int cue{0};
     double progress{0};
@@ -65,6 +74,8 @@ struct DirectedElement {
     bool presetTiming{false}; // Preserved frame offsets, lifetimes and keys from a stored composition.
     bool premiumTemplate{false}; // Registered official template; internal animation scales to the measured cue span.
     std::vector<DirectedKeyframe> keyframes;
+    std::vector<DirectedPoseKeyframe> poseKeyframes;
+    std::optional<DirectedWalkCycle> walkCycle;
     std::vector<DirectedElement> children;
 };
 struct DirectedBeat {

@@ -26,6 +26,17 @@ struct TransformKeyframe {
     std::string easing{"linear"}; // Curve into this keyframe from its predecessor.
     bool operator==(const TransformKeyframe &) const = default;
 };
+struct PoseKeyframe {
+    std::int64_t frame{0};
+    std::string pose{"neutral"};
+    bool operator==(const PoseKeyframe &) const = default;
+};
+struct WalkCycle {
+    std::int64_t startFrame{0}, endFrame{0}; // Half-open interval: [startFrame, endFrame).
+    int stepFrames{6};
+    std::string stopPose{"neutral"};
+    bool operator==(const WalkCycle &) const = default;
+};
 struct CameraKeyframe {
     std::int64_t frame{0};
     double x{0}, y{0}, zoom{1}, rotation{0};
@@ -69,6 +80,8 @@ struct Node {
     bool animated{true};
     std::string nativeId, sceneId, role;
     std::string pose{"neutral"}, motion{"rise"}, secondaryColor{"#f3c49a"};
+    std::vector<PoseKeyframe> poseKeyframes;
+    std::optional<WalkCycle> walkCycle;
     double videoSourceInSeconds{0}, videoPlaybackRate{1};
     double videoCropX{0}, videoCropY{0}, videoCropWidth{1}, videoCropHeight{1};
     double rotation{0}, scale{1}, travelX{0}, travelY{0}, spinDegrees{0};
@@ -143,6 +156,7 @@ Project makeDemo();
 Project makeEmpty();
 const Node *findNode(const Project &, const std::string &id);
 VisualState evaluate(const Node &, std::int64_t frame);
+std::string evaluatePose(const Node &, std::int64_t frame);
 CameraState evaluateCamera(const Project &, std::int64_t frame);
 bool active(const Node &, std::int64_t frame);
 } // namespace studio

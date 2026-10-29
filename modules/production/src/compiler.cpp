@@ -30,6 +30,9 @@ std::int64_t cueFrame(const std::pair<std::int64_t, std::int64_t> &cue, double o
     }
     return cue.first / spf + std::llround(offsetSeconds * 30);
 }
+std::int64_t resolveTime(const DirectedTime &time,
+                         const std::vector<std::pair<std::int64_t, std::int64_t>> &cues,
+                         const std::vector<std::vector<std::int64_t>> &wordStarts);
 QString srtTime(std::int64_t sample) {
     auto ms = sample * 1000 / ProductionSampleRate;
     return QString("%1:%2:%3,%4")
@@ -138,6 +141,49 @@ bool compileElement(const DirectedElement &directed,
                 "Dois keyframes do elemento resolvem para o mesmo quadro: " + QString::fromStdString(node.id);
             return false;
         }
+    if (!directed.poseKeyframes.empty() || directed.walkCycle) {
+        if (node.kind != NodeKind::Native || node.nativeId != "person") {
+            error = "Animação de pose só pode ser aplicada ao nativo person: " +
+                    QString::fromStdString(node.id);
+            return false;
+        }
+        node.poseKeyframes.clear();
+        node.poseKeyframes.reserve(directed.poseKeyframes.size());
+        for (const auto &directedPose : directed.poseKeyframes) {
+            const auto poseFrame = resolveTime(directedPose.at, cues, wordStarts);
+            if (poseFrame < 0) {
+                error = "wordIndex sem timestamp de alinhamento disponível na troca de pose: " +
+                        QString::fromStdString(node.id);
+                return false;
+            }
+            if (poseFrame < node.start || poseFrame >= node.start + node.duration) {
+                error = "Troca de pose fica fora do intervalo do personagem: " +
+                        QString::fromStdString(node.id);
+                return false;
+            }
+            node.poseKeyframes.push_back({poseFrame, directedPose.pose});
+        }
+        std::stable_sort(node.poseKeyframes.begin(), node.poseKeyframes.end(),
+                         [](const auto &a, const auto &b) { return a.frame < b.frame; });
+        for (std::size_t i = 1; i < node.poseKeyframes.size(); ++i)
+            if (node.poseKeyframes[i - 1].frame == node.poseKeyframes[i].frame) {
+                error = "Duas trocas de pose resolvem para o mesmo quadro: " +
+                        QString::fromStdString(node.id);
+                return false;
+            }
+        if (directed.walkCycle) {
+            const auto start = resolveTime(directed.walkCycle->start, cues, wordStarts);
+            const auto end = resolveTime(directed.walkCycle->end, cues, wordStarts);
+            if (start < 0 || end < 0) {
+                error = "wordIndex sem timestamp de alinhamento disponível no ciclo de caminhada: " +
+                        QString::fromStdString(node.id);
+                return false;
+            }
+            node.walkCycle = WalkCycle{start, end, directed.walkCycle->stepFrames,
+                                       directed.walkCycle->stopPose};
+        }
+        project.schemaVersion = std::max(project.schemaVersion, 16);
+    }
     project.nodes.push_back(node);
     for (const auto &child : directed.children)
         if (!compileElement(child, cues, wordStarts, sceneStart, shotStart, sceneEnd, sceneId, shotId,

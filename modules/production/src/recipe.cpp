@@ -376,7 +376,7 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
     if (version >= 2)
         keys << "assetId" << "children" << "keyframes" << "cueProgress" << "palette" << "slots";
     if (version >= 3)
-        keys << "progress" << "wordIndex" << "video";
+        keys << "progress" << "wordIndex" << "video" << "poseKeyframes" << "walk";
     if (!allowed(e, keys))
         return fail("Elemento contém campo desconhecido.");
     if (!e["id"].isString() || !e["kind"].isString())
@@ -588,8 +588,11 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
         n.secondaryColor = e["secondaryColor"].toString().toStdString();
     if (e.contains("motion"))
         n.motion = e["motion"].toString().toStdString();
-    if (e.contains("pose"))
+    if (e.contains("pose")) {
+        if (kind != "native" || n.nativeId != "person" || !supportedPose(e["pose"].toString().toStdString()))
+            return fail("pose exige o nativo person e um nome de pose registrado.");
         n.pose = e["pose"].toString().toStdString();
+    }
     if (artDirection) {
         if (!e.contains("color")) {
             if (n.kind == NodeKind::Text)
@@ -782,6 +785,45 @@ bool parseElement(const QJsonObject &e, const QString &baseDirectory, const QJso
                     return fail("Transformação de keyframe inválida.");
             element.keyframes.push_back(parsed);
         }
+    }
+    if (e.contains("poseKeyframes")) {
+        if (version < 3 || kind != "native" || n.nativeId != "person" ||
+            !e["poseKeyframes"].isArray() || e["poseKeyframes"].toArray().size() > 256)
+            return fail("poseKeyframes exige person, uma lista de até 256 itens e receita v3.");
+        for (const auto value : e["poseKeyframes"].toArray()) {
+            if (!value.isObject())
+                return fail("Troca de pose inválida.");
+            const auto key = value.toObject();
+            if (key.size() != 2 || !key["at"].isObject() || !key["pose"].isString())
+                return fail("Troca de pose exige somente at e pose.");
+            DirectedPoseKeyframe parsed;
+            if (!parseTimeRef(key["at"].toObject(), cueCount, parsed.at, error,
+                              "Tempo de troca de pose"))
+                return false;
+            parsed.pose = key["pose"].toString().toStdString();
+            if (!supportedPose(parsed.pose))
+                return fail("Pose não suportada em poseKeyframes: " + key["pose"].toString());
+            element.poseKeyframes.push_back(std::move(parsed));
+        }
+    }
+    if (e.contains("walk")) {
+        if (version < 3 || kind != "native" || n.nativeId != "person" || !e["walk"].isObject())
+            return fail("walk exige o nativo person e uma receita v3.");
+        const auto walk = e["walk"].toObject();
+        if (walk.size() != 4 || !walk["start"].isObject() || !walk["end"].isObject() ||
+            !walk["stepFrames"].isDouble() || std::floor(walk["stepFrames"].toDouble()) != walk["stepFrames"].toDouble() ||
+            !walk["stopPose"].isString())
+            return fail("walk exige start, end, stepFrames e stopPose.");
+        DirectedWalkCycle parsed;
+        if (!parseTimeRef(walk["start"].toObject(), cueCount, parsed.start, error, "Início da caminhada") ||
+            !parseTimeRef(walk["end"].toObject(), cueCount, parsed.end, error, "Fim da caminhada"))
+            return false;
+        parsed.stepFrames = walk["stepFrames"].toInt();
+        parsed.stopPose = walk["stopPose"].toString().toStdString();
+        if (parsed.stepFrames < 2 || parsed.stepFrames > 30 || !supportedPose(parsed.stopPose) ||
+            parsed.stopPose == "walk-a" || parsed.stopPose == "walk-b")
+            return fail("walk.stepFrames deve ser 2..30 e stopPose deve ser uma pose estática suportada.");
+        element.walkCycle = std::move(parsed);
     }
     if (kind == "group")
         for (const auto &child : e["children"].toArray()) {

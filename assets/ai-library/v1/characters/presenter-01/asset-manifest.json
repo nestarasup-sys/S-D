@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "characterId": "presenter-01",
+  "originalImage": "Folha de sprites_ caminhada à direita.png",
+  "sourceSize": [
+    1448,
+    1086
+  ],
+  "sheetGrid": {
+    "rows": 3,
+    "columns": 4,
+    "cellWidth": 362,
+    "cellHeight": 362
+  },
+  "outputSize": [
+    410,
+    410
+  ],
+  "status": "integrated as default artwork for native ID person",
+  "preserveNativePersonAsFallback": true,
+  "integration": {
+    "nativeId": "person",
+    "poseField": "pose",
+    "poseAliases": {
+      "point": "point-right",
+      "worried": "thinking"
+    },
+    "poseTrack": "poseKeyframes",
+    "walkTrack": "walk",
+    "anchorPolicy": "align measured foot-support point; preserve full pose bounds",
+    "preview": "neutral.png"
+  },
+  "notes": [
+    "Original source is RGBA with real transparency",
+    "Each character remains in a fixed-size 410x410 image with 24px canvas padding",
+    "Bottom foot pixels of row 2 crossed the original grid boundary; moved them back into row 2 outputs, removed from row 3",
+    "Some hands/feet extend to cell boundaries; review at final video scale",
+    "walk-a and walk-b have noticeably different perspective; both original illustrations are retained and alternated discretely without crossfade",
+    "Walking requires ordinary node position keyframes in addition to the pose cycle"
+  ],
+  "poses": [
+    {
+      "pose": "neutral",
+      "row": 1,
+      "column": 1,
+      "file": "assets/ai-library/v1/characters/presenter-01/neutral.png",
+      "source_bbox": [
+        133,
+        15,
+        272,
+        360
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "smile",
+      "row": 1,
+      "column": 2,
+      "file": "assets/ai-library/v1/characters/presenter-01/smile.png",
+      "source_bbox": [
+        132,
+        14,
+        275,
+        361
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "wave",
+      "row": 1,
+      "column": 3,
+      "file": "assets/ai-library/v1/characters/presenter-01/wave.png",
+      "source_bbox": [
+        109,
+        15,
+        278,
+        361
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "point-right",
+      "row": 1,
+      "column": 4,
+      "file": "assets/ai-library/v1/characters/presenter-01/point-right.png",
+      "source_bbox": [
+        100,
+        15,
+        322,
+        362
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "point-left",
+      "row": 2,
+      "column": 1,
+      "file": "assets/ai-library/v1/characters/presenter-01/point-left.png",
+      "source_bbox": [
+        67,
+        22,
+        290,
+        362
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "explain",
+      "row": 2,
+      "column": 2,
+      "file": "assets/ai-library/v1/characters/presenter-01/explain.png",
+      "source_bbox": [
+        80,
+        23,
+        361,
+        362
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "thinking",
+      "row": 2,
+      "column": 3,
+      "file": "assets/ai-library/v1/characters/presenter-01/thinking.png",
+      "source_bbox": [
+        150,
+        21,
+        288,
+        362
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "surprised",
+      "row": 2,
+      "column": 4,
+      "file": "assets/ai-library/v1/characters/presenter-01/surprised.png",
+      "source_bbox": [
+        75,
+        21,
+        290,
+        362
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "tablet",
+      "row": 3,
+      "column": 1,
+      "file": "assets/ai-library/v1/characters/presenter-01/tablet.png",
+      "source_bbox": [
+        134,
+        0,
+        285,
+        360
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "thumbs-up",
+      "row": 3,
+      "column": 2,
+      "file": "assets/ai-library/v1/characters/presenter-01/thumbs-up.png",
+      "source_bbox": [
+        123,
+        0,
+        290,
+        360
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "walk-a",
+      "row": 3,
+      "column": 3,
+      "file": "assets/ai-library/v1/characters/presenter-01/walk-a.png",
+      "source_bbox": [
+        115,
+        0,
+        326,
+        357
+      ],
+      "border_warning": true
+    },
+    {
+      "pose": "walk-b",
+      "row": 3,
+      "column": 4,
+      "file": "assets/ai-library/v1/characters/presenter-01/walk-b.png",
+      "source_bbox": [
+        87,
+        0,
+        316,
+        355
+      ],
+      "border_warning": true
+    }
+  ],
+  "processingFix": "Grid-boundary feet pixel recovery for row2->row3 boundary"
+}

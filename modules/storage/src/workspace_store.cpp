@@ -490,8 +490,20 @@ bool WorkspaceStore::reload() {
         known.insert(entry.toObject()["id"].toString());
     for (const auto &item : nativeLibrary()) {
         const auto id = "native:" + QString::fromStdString(item.id);
-        if (known.contains(id))
+        if (known.contains(id)) {
+            if (item.id == "person")
+                for (qsizetype index = 0; index < assets.size(); ++index) {
+                    auto existing = assets[index].toObject();
+                    if (existing["id"] == id && existing["builtin"].toBool() &&
+                        existing["nativeId"] == QString::fromStdString(item.id) &&
+                        !existing["deleted"].toBool()) {
+                        existing["name"] = QString::fromStdString(item.name);
+                        existing["categoryId"] = nativeCategory(item.category);
+                        assets[index] = existing;
+                    }
+                }
             continue;
+        }
         assets.append(QJsonObject{{"id", id},
                                   {"nativeId", QString::fromStdString(item.id)},
                                   {"name", QString::fromStdString(item.name)},

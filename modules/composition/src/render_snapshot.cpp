@@ -73,6 +73,8 @@ RenderFrameSnapshot buildFrame(const Project &project, std::int64_t frame,
         const auto &node = project.nodes[i];
         RenderNodeSnapshot item;
         item.node = node;
+        if (node.kind == NodeKind::Native && node.nativeId == "person")
+            item.node.pose = evaluatePose(node, frame);
         item.drawOrder = i;
         item.state = evaluate(node, frame);
         item.localBounds = QRectF(0, 0, node.width, node.height);

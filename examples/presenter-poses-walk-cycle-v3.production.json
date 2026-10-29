@@ -1,0 +1,67 @@
+{
+  "format": "studio-dark-production",
+  "version": 3,
+  "catalogVersion": 1,
+  "title": "Apresentador IA · poses e caminhada",
+  "voice": "auto",
+  "captions": true,
+  "musicGain": 0,
+  "effectsGain": 0,
+  "canvas": { "width": 1280, "height": 720 },
+  "scenes": [
+    {
+      "id": "apresentador",
+      "narration": [
+        "Este é o apresentador do Studio Dark.",
+        "Ele explica o que os dados mostram.",
+        "Agora aponta para o gráfico à direita.",
+        "Caminha até o outro lado e encerra sorrindo."
+      ],
+      "shots": [
+        {
+          "id": "apresentacao-e-caminhada",
+          "name": "Apresentador em cena",
+          "start": { "cue": 0, "cueProgress": 0 },
+          "transitionIn": "cut",
+          "camera": { "x": 640, "y": 360, "zoom": 1, "rotation": 0 },
+          "elements": [
+            { "id": "fundo", "kind": "shape", "x": 0, "y": 0, "width": 1280, "height": 720, "color": "#08121B", "motion": "none" },
+            { "id": "titulo", "kind": "text", "text": "CONHEÇA O APRESENTADOR", "x": 72, "y": 54, "width": 850, "height": 72, "fontSize": 48, "color": "#F2F5F2", "motion": "none" },
+            { "id": "linha-editorial", "kind": "shape", "x": 76, "y": 137, "width": 96, "height": 4, "color": "#4CC9A9", "motion": "none" },
+            { "id": "rotulo-grafico", "kind": "text", "text": "DADOS EM MOVIMENTO", "x": 840, "y": 220, "width": 350, "height": 46, "fontSize": 27, "color": "#B8C9D2", "motion": "none" },
+            { "id": "grafico", "kind": "native", "asset": "bars", "x": 840, "y": 265, "width": 360, "height": 290, "color": "#4CC9A9", "secondaryColor": "#D89B59", "motion": "none" },
+            {
+              "id": "presenter",
+              "kind": "native",
+              "asset": "person",
+              "x": 84,
+              "y": 305,
+              "width": 280,
+              "height": 350,
+              "pose": "neutral",
+              "motion": "none",
+              "poseKeyframes": [
+                { "at": { "cue": 0, "cueProgress": 0.05 }, "pose": "smile" },
+                { "at": { "cue": 0, "wordIndex": 4 }, "pose": "wave" },
+                { "at": { "cue": 1, "cueProgress": 0.1 }, "pose": "explain" },
+                { "at": { "cue": 2, "cueProgress": 0.3 }, "pose": "point-right" }
+              ],
+              "keyframes": [
+                { "cue": 0, "cueProgress": 0, "x": 84, "y": 305, "rotation": 0, "scale": 1, "opacity": 1 },
+                { "cue": 2, "cueProgress": 0.9, "x": 84, "y": 305, "rotation": 0, "scale": 1, "opacity": 1 },
+                { "cue": 3, "cueProgress": 0, "x": 84, "y": 305, "rotation": 0, "scale": 1, "opacity": 1 },
+                { "cue": 3, "cueProgress": 0.88, "x": 540, "y": 305, "rotation": 0, "scale": 1, "opacity": 1, "easing": "ease-in-out" }
+              ],
+              "walk": {
+                "start": { "cue": 3, "cueProgress": 0 },
+                "end": { "cue": 3, "cueProgress": 0.88 },
+                "stepFrames": 6,
+                "stopPose": "smile"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         check(studio::serialize(studio::deserialize(studio::serialize(p)).project) == studio::serialize(p),
               "round trip rational fps and document");
         auto malformed = QJsonDocument::fromJson(studio::serialize(p)).object();
-        malformed["schemaVersion"] = 16;
+        malformed["schemaVersion"] = 17;
         check(!studio::deserialize(QJsonDocument(malformed).toJson()).error.isEmpty(),
               "reject future schema");
         auto shotProject = studio::makeEmpty();
@@ -205,6 +205,43 @@ int main(int argc, char **argv) {
               "schema 15 premium text policy and camera target provenance survive a project roundtrip");
         visualLayoutProject.schemaVersion = 14;
         check(!studio::validate(visualLayoutProject).empty(), "premium text layout requires schema 15");
+        auto presenterProject = studio::makeEmpty();
+        presenterProject.schemaVersion = 16;
+        presenterProject.duration = 120;
+        studio::Node presenter;
+        presenter.id = "presenter"; presenter.kind = studio::NodeKind::Native;
+        presenter.nativeId = "person"; presenter.duration = 120;
+        presenter.animated = false; presenter.motion = "none";
+        presenter.keyframes = {{0, 100, 180, 0, 1, 1, "linear"},
+                               {30, 100, 180, 0, 1, 1, "linear"},
+                               {90, 800, 180, 0, 1, 1, "ease-in-out"}};
+        presenter.poseKeyframes = {{0, "neutral"}, {20, "wave"}, {100, "point"}};
+        presenter.walkCycle = studio::WalkCycle{30, 90, 6, "smile"};
+        presenterProject.nodes.push_back(presenter);
+        const auto presenterRoundTrip = studio::deserialize(studio::serialize(presenterProject));
+        check(studio::validate(presenterProject).empty() && presenterRoundTrip.error.isEmpty() &&
+                  presenterRoundTrip.project.schemaVersion == 16 &&
+                  presenterRoundTrip.project.nodes.front().poseKeyframes == presenter.poseKeyframes &&
+                  presenterRoundTrip.project.nodes.front().walkCycle == presenter.walkCycle &&
+                  studio::evaluatePose(presenter, 19) == "neutral" &&
+                  studio::evaluatePose(presenter, 20) == "wave" &&
+                  studio::evaluatePose(presenter, 29) == "wave" &&
+                  studio::evaluatePose(presenter, 30) == "walk-a" &&
+                  studio::evaluatePose(presenter, 36) == "walk-b" &&
+                  studio::evaluatePose(presenter, 42) == "walk-a" &&
+                  studio::evaluatePose(presenter, 89) == "walk-b" &&
+                  studio::evaluatePose(presenter, 90) == "smile" &&
+                  studio::evaluatePose(presenter, 100) == "point-right",
+              "schema 16 persists discrete poses and a deterministic walk interval without changing transforms");
+        auto noMovementWalk = presenterProject;
+        noMovementWalk.nodes.front().keyframes.clear();
+        check(studio::validate(noMovementWalk).find("sem deslocamento") != std::string::npos,
+              "walking cycles require a real position-keyframe displacement");
+        auto unsupportedPose = presenterProject;
+        unsupportedPose.nodes.front().poseKeyframes[1].pose = "jump";
+        check(!studio::validate(unsupportedPose).empty(), "unsupported discrete presenter poses are rejected");
+        presenterProject.schemaVersion = 15;
+        check(!studio::validate(presenterProject).empty(), "presenter pose animation requires schema 16");
         auto linkedAudioProject = studio::makeEmpty();
         linkedAudioProject.schemaVersion = 13;
         linkedAudioProject.duration = 120;

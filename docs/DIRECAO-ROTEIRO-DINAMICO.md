@@ -64,6 +64,12 @@ Use `cameraPresets` ou Visual Beats de câmera em cada shot, sem combinar os doi
 
 Use easing como direção de aceleração: `linear` para movimento constante, `ease-in` para acelerar, `ease-out` para desacelerar, `ease-in-out` para iniciar e terminar suavemente. A curva do keyframe de destino controla o trecho que termina nele.
 
+## Apresentador ilustrado
+
+Use o ID nativo existente `person`; a arte padrão é o apresentador PNG em 12 poses, sem item duplicado na biblioteca. `pose` escolhe o estado inicial. Em receitas v3, `poseKeyframes` troca a pose no frame sincronizado por `cueProgress` ou por `wordIndex` quando a voz local fornece alinhamento real. A pose permanece até o próximo evento.
+
+`motion` continua sendo a animação de entrada/saída e não inicia a caminhada. `walk` alterna `walk-a` e `walk-b` apenas entre `start` e `end`. Para andar pelo cenário, anime a posição do mesmo nó com `keyframes` dentro desse intervalo; configure `stopPose` para o quadro após a caminhada. Use o exemplo executável [personagem, poses e caminhada](../examples/presenter-poses-walk-cycle-v3.production.json). Os PNGs mantêm cores fixas e não são recoloridos por `color`.
+
 ## Cinco operações temporais que não devem ser confundidas
 
 - `transitionIn` define como um shot entra em relação ao anterior.

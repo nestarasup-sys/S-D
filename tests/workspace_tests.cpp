@@ -56,15 +56,18 @@ int main(int argc, char **argv) {
                                             [](const auto &asset) { return !asset.resourcePath.empty(); });
         const auto previewCount = std::count_if(studio::nativeLibrary().begin(), studio::nativeLibrary().end(),
                                                 [](const auto &asset) { return asset.previewOnly; });
-        check(studio::nativeLibrary().size() == 72 && pngCount == 60 && previewCount == 12 &&
+        check(studio::nativeLibrary().size() == 72 && pngCount == 61 && previewCount == 12 &&
                   studio::libraryItem("illustrated:car") &&
                   studio::libraryItem("illustrated:car") == studio::libraryItem("car") &&
                   studio::libraryItem("car")->fallbackId == "car",
-              "60 original native IDs carry the default PNG art, with old illustrated IDs accepted only as aliases");
+              "72 native IDs include the presenter pose art without duplicates, with old illustrated IDs accepted only as aliases");
         const auto nativeCar = named(ui.assets(), "Carro");
         const auto nativeScene = named(ui.assets(), "Rua");
+        const auto nativePerson = named(ui.assets(), "Apresentador");
         check(nativeCar["id"] == "native:car" && nativeCar["nativeId"] == "car" &&
                   nativeCar["typeLabel"] == "ARTE IA" &&
+                  nativePerson["id"] == "native:person" && nativePerson["nativeId"] == "person" &&
+                  nativePerson["typeLabel"] == "ARTE IA" &&
                   nativeScene["id"] == "native:street" && nativeScene["nativeId"] == "street" &&
                   nativeScene["previewOnly"].toBool() && nativeScene["sourceWidth"].toInt() == 483 &&
                   nativeScene["sourceHeight"].toInt() == 272 && nativeScene["typeLabel"] == "PRÉVIA" &&
@@ -125,6 +128,32 @@ int main(int argc, char **argv) {
                   std::any_of(persistedArtwork.project.nodes.begin(), persistedArtwork.project.nodes.end(),
                               [](const auto &node) { return node.nativeId == "car"; }),
               "original native ID survives project serialization and reopening");
+        const auto beforePerson = editor.project().nodes.size();
+        check(ui.useAsset("native:person"), "the native person ID inserts the illustrated presenter");
+        const auto insertedPerson = std::find_if(editor.project().nodes.begin(), editor.project().nodes.end(),
+            [](const auto &node) { return node.nativeId == "person"; });
+        check(insertedPerson != editor.project().nodes.end() && insertedPerson->pose == "neutral" &&
+                  studio::libraryItem("person")->poseArtwork("neutral") &&
+                  studio::libraryItem("person")->poseArtwork("neutral")->resourcePath.ends_with("neutral.png"),
+              "insertion uses the same native person ID with its neutral illustration by default");
+        const auto personId = QString::fromStdString(insertedPerson->id);
+        editor.selectNode(personId);
+        editor.setSelectedPoseAtFrame("wave");
+        check(editor.selected()["pose"].toString() == "wave" &&
+                  editor.selected()["poseKeyframeCount"].toInt() == 1,
+              "inspector pose selection records a discrete key at the playhead");
+        editor.undo();
+        check(editor.selected()["pose"].toString() == "neutral" &&
+                  editor.selected()["poseKeyframeCount"].toInt() == 0,
+              "undo removes the inspector-recorded pose change");
+        editor.redo();
+        check(editor.selected()["pose"].toString() == "wave",
+              "redo restores the same pose keyframe");
+        editor.undo();
+        editor.undo();
+        editor.selectNode({});
+        check(editor.project().nodes.size() == beforePerson,
+              "undoing the pose test also restores the prior document contents");
         studio::CompositionPainter illustrationPainter;
         auto legacyCar = studio::makeEmpty();
         studio::Node legacyCarNode;

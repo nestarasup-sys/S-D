@@ -42,7 +42,7 @@ double eased(double t, const std::string &curve) {
 }
 } // namespace
 std::string validate(const Project &p) try {
-    if (p.schemaVersion < 2 || p.schemaVersion > 15)
+    if (p.schemaVersion < 2 || p.schemaVersion > 16)
         return "Versão de projeto não suportada.";
     if (p.id.empty() || p.name.empty())
         return "Projeto sem identificação ou nome.";
@@ -322,6 +322,33 @@ std::string validate(const Project &p) try {
                 return "Keyframes do elemento inválidos ou fora de ordem.";
             previous = key.frame;
         }
+        const bool hasPoseAnimation = !n.poseKeyframes.empty() || n.walkCycle.has_value();
+        if (hasPoseAnimation && (p.schemaVersion < 16 || n.kind != NodeKind::Native || n.nativeId != "person"))
+            return "Animação de pose exige o personagem person e schema 16.";
+        if (n.poseKeyframes.size() > 256)
+            return "Um personagem pode ter no máximo 256 trocas de pose.";
+        std::int64_t previousPoseFrame = -1;
+        for (const auto &key : n.poseKeyframes) {
+            if (key.frame < n.start || key.frame >= n.start + n.duration || key.frame <= previousPoseFrame ||
+                !supportedPose(key.pose))
+                return "Keyframes de pose inválidos, fora do intervalo ou fora de ordem.";
+            previousPoseFrame = key.frame;
+        }
+        if (n.walkCycle) {
+            const auto &walk = *n.walkCycle;
+            if (walk.startFrame < n.start || walk.endFrame <= walk.startFrame ||
+                walk.endFrame > n.start + n.duration || walk.stepFrames < 2 || walk.stepFrames > 30 ||
+                !supportedPose(walk.stopPose) || walk.stopPose == "walk-a" || walk.stopPose == "walk-b")
+                return "Intervalo, frequência ou pose final do ciclo de caminhada inválidos.";
+            if (std::any_of(n.poseKeyframes.begin(), n.poseKeyframes.end(), [&](const auto &key) {
+                    return key.frame >= walk.startFrame && key.frame < walk.endFrame;
+                }))
+                return "Trocas de pose não podem conflitar com o ciclo de caminhada; programe-as antes ou depois.";
+            const auto first = evaluate(n, walk.startFrame);
+            const auto last = evaluate(n, walk.endFrame - 1);
+            if (std::hypot(last.x - first.x, last.y - first.y) < 8.0)
+                return "Ciclo de caminhada sem deslocamento: grave keyframes de posição do personagem durante o intervalo.";
+        }
     }
     // Resolve every parent chain once. This detects cycles without recursive calls or
     // quadratic repeated walks in deeply nested documents.
@@ -547,6 +574,24 @@ VisualState evaluate(const Node &n, std::int64_t frame) {
     const auto mix = [mixAmount](double from, double to) { return from + (to - from) * mixAmount; };
     return {mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity), mix(a.rotation, b.rotation),
             mix(a.scale, b.scale)};
+}
+std::string evaluatePose(const Node &node, std::int64_t frame) {
+    auto upper = std::upper_bound(node.poseKeyframes.begin(), node.poseKeyframes.end(), frame,
+                                  [](std::int64_t value, const PoseKeyframe &key) {
+                                      return value < key.frame;
+                                  });
+    const PoseKeyframe *last = upper == node.poseKeyframes.begin() ? nullptr : &*(upper - 1);
+    auto pose = last ? last->pose : node.pose;
+    if (node.walkCycle) {
+        const auto &walk = *node.walkCycle;
+        if (frame >= walk.startFrame && frame < walk.endFrame) {
+            const auto step = (frame - walk.startFrame) / walk.stepFrames;
+            return (step % 2 == 0) ? "walk-a" : "walk-b";
+        }
+        if (frame >= walk.endFrame && (!last || last->frame < walk.endFrame))
+            pose = walk.stopPose;
+    }
+    return canonicalPoseName(pose);
 }
 CameraState evaluateCamera(const Project &p, std::int64_t frame) {
     CameraState state{p.width / 2.0, p.height / 2.0, 1, 0};

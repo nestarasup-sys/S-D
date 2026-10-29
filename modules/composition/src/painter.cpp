@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QCryptographicHash>
+#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QFont>
@@ -123,17 +124,42 @@ void paintNativeArtwork(QPainter &painter, const Node &node, std::int64_t frame,
         return;
     }
 
+    const auto *poseArtwork = node.nativeId == "person" ? asset->poseArtwork(node.pose) : nullptr;
+    const auto artworkPath = node.nativeId == "person" && poseArtwork
+                                 ? poseArtwork->resourcePath
+                                 : node.nativeId == "person" ? std::string{} : asset->resourcePath;
+    if (artworkPath.empty()) {
+        qWarning().noquote() << "Apresentador: pose sem imagem registrada; usando fallback interno:" <<
+                                    QString::fromStdString(node.pose);
+        paintNative(painter, node, frame);
+        return;
+    }
+
     initializeAiLibraryResources();
-    const auto path = QString::fromStdString(asset->resourcePath);
+    const auto path = QString::fromStdString(artworkPath);
     if (!images.contains(path)) {
         QImageReader reader(path);
         reader.setAutoTransform(true);
         auto *decoded = new QImage(reader.read());
+        if (decoded->isNull())
+            qWarning().noquote() << "Arte nativa não pôde ser decodificada; usando fallback interno:" <<
+                                        path << reader.errorString();
         const auto cost = std::max<qsizetype>(1, decoded->sizeInBytes() / 1024);
         images.insert(path, decoded, int(cost));
     }
     const auto *image = images.object(path);
     if (image && !image->isNull()) {
+        if (node.nativeId == "person" && poseArtwork) {
+            // All pose PNGs share one 410x410 canvas. Scale from the original
+            // 180x350 native size and align the measured feet/support point so
+            // gesture and walk frame changes do not move the character node.
+            const double scale = std::min(node.width / 180.0, node.height / 350.0);
+            const double side = image->width() * scale;
+            const QRectF target(node.width / 2.0 - poseArtwork->anchorX * scale,
+                                node.height - poseArtwork->anchorBottom * scale, side, side);
+            painter.drawImage(target, *image);
+            return;
+        }
         QSizeF fitted = image->size();
         fitted.scale(QSizeF(node.width, node.height), Qt::KeepAspectRatio);
         painter.drawImage(QRectF((node.width - fitted.width()) / 2.0,

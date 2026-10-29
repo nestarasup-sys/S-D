@@ -4,6 +4,7 @@
 #include <QGuiApplication>
 #include <QImage>
 #include <QImageReader>
+#include <QRegularExpression>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPainter>
@@ -1046,12 +1047,20 @@ int main(int argc, char **argv) {
                                                      [](const auto &asset) { return !asset.resourcePath.empty(); });
         const auto scenePreviewCount = std::count_if(studio::nativeLibrary().begin(), studio::nativeLibrary().end(),
                                                       [](const auto &asset) { return asset.previewOnly; });
-        check(imageBackedCount == 60 && scenePreviewCount == 12,
-              "60 original native IDs use embedded AI PNG artwork, including 12 preview-only scenes");
-        for (const auto *id : {"person", "bars", "chart-line", "chart-pie", "chart-donut", "chart-area",
+        check(imageBackedCount == 61 && scenePreviewCount == 12,
+              "60 original AI assets and the 12-pose presenter use embedded PNG artwork without new IDs");
+        for (const auto *id : {"bars", "chart-line", "chart-pie", "chart-donut", "chart-area",
                                "timeline", "flowchart", "network", "dashboard", "progress-ring", "data-table"})
             check(studio::libraryItem(id) && studio::libraryItem(id)->resourcePath.empty(),
-                  "person and dynamic graph/data natives retain their procedural renderer");
+                  "dynamic graph/data natives retain their procedural renderer");
+        const auto *personAsset = studio::libraryItem("person");
+        check(personAsset && personAsset->name == "Apresentador" &&
+                  personAsset->fallbackId == "person" && personAsset->poseArtworks.size() == 12 &&
+                  personAsset->resourcePath.ends_with("/neutral.png"),
+              "the existing person ID now resolves to twelve embedded pose PNGs with the native fallback");
+        check(personAsset && personAsset->poseArtwork("point") == personAsset->poseArtwork("point-right") &&
+                  personAsset->poseArtwork("worried") == personAsset->poseArtwork("thinking"),
+              "legacy point and worried names map to the documented presenter PNGs");
         check(studio::libraryItem("illustrated:car") == studio::libraryItem("car"),
               "legacy illustrated IDs resolve to the same original native entry");
         check(studio::libraryItem("rocket") && studio::libraryItem("night-city") &&
@@ -1074,6 +1083,62 @@ int main(int argc, char **argv) {
         const auto artworkFrame = painter.frame(artworkFixture, 30);
         check(!artworkFrame.isNull() && artworkFrame.size() == QSize(1280, 720),
               "QPainter composes AI artwork when the recipe uses ordinary original native IDs");
+        std::vector<std::pair<std::string, QImage>> presenterFrames;
+        QImage presenterSheet(1280, 1200, QImage::Format_ARGB32_Premultiplied);
+        presenterSheet.fill(QColor("#202b34"));
+        QPainter sheetPainter(&presenterSheet);
+        sheetPainter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform |
+                                    QPainter::TextAntialiasing);
+        const auto &poses = studio::poseNames();
+        for (std::size_t index = 0; index < poses.size(); ++index) {
+            const auto &pose = poses[index];
+            const int column = int(index % 4), row = int(index / 4);
+            auto sample = studio::makeEmpty();
+            sample.width = 320; sample.height = 400; sample.duration = 360;
+            sample.artDirection.backgroundColor = "#202b34";
+            sample.artDirection.glowColor = "#202b34";
+            studio::Node presenter;
+            presenter.id = "presenter"; presenter.name = "Apresentador";
+            presenter.kind = studio::NodeKind::Native; presenter.nativeId = "person";
+            presenter.pose = pose; presenter.x = 35; presenter.y = 8;
+            presenter.width = personAsset->width; presenter.height = personAsset->height;
+            presenter.animated = false; presenter.motion = "none";
+            sample.nodes.push_back(presenter);
+            const auto rendered = painter.frame(sample, 48);
+            check(!rendered.isNull() && rendered.size() == QSize(320, 400),
+                  "each registered presenter pose renders through the shared QPainter compositor");
+            presenterFrames.emplace_back(pose, rendered);
+            sheetPainter.drawImage(column * 320, row * 400, rendered);
+            sheetPainter.setPen(QColor("#e4f5e9"));
+            sheetPainter.drawText(QRect(column * 320 + 12, row * 400 + 365, 296, 24),
+                                  Qt::AlignLeft | Qt::AlignVCenter, QString::fromStdString(pose));
+        }
+        sheetPainter.end();
+        for (std::size_t index = 0; index < presenterFrames.size(); ++index) {
+            const auto *pose = personAsset->poseArtwork(presenterFrames[index].first);
+            check(pose && !pose->resourcePath.empty(), "pose resolver returns a packaged image and anchor");
+            const auto path = QString::fromStdString(pose->resourcePath);
+            QImageReader reader(path);
+            const auto decoded = reader.read();
+            check(!decoded.isNull() && decoded.size() == QSize(410, 410) && decoded.hasAlphaChannel(),
+                  "every source pose remains a transparent 410x410 RGBA PNG");
+            bool transparent = false, opaque = false;
+            for (int y = 0; y < decoded.height() && !(transparent && opaque); y += 5)
+                for (int x = 0; x < decoded.width(); x += 5) {
+                    const auto alpha = decoded.pixelColor(x, y).alpha();
+                    transparent |= alpha == 0;
+                    opaque |= alpha > 0;
+                    if (transparent && opaque) break;
+                }
+            check(transparent && opaque, "transparent pixels and presenter pixels are both retained");
+            check(index == 0 || sampledImageDifference(presenterFrames.front().second,
+                                                       presenterFrames[index].second) > .5,
+                  "each pose visibly differs while using the same person node geometry");
+        }
+        const auto presenterArtifactDir = QStringLiteral(STUDIO_SOURCE_DIR) + "/artifacts/presenter-01";
+        check(QDir().mkpath(presenterArtifactDir) &&
+                  presenterSheet.save(presenterArtifactDir + "/contact-sheet.png"),
+              "contact sheet of all twelve unmodified poses is generated from the production compositor");
         QFile aiAssetManifest(QStringLiteral(STUDIO_SOURCE_DIR) + "/assets/ai-library/asset-manifest.json");
         check(aiAssetManifest.open(QIODevice::ReadOnly), "integrated AI asset manifest is present");
         const auto aiManifest = QJsonDocument::fromJson(aiAssetManifest.readAll()).object();
@@ -1209,7 +1274,7 @@ int main(int argc, char **argv) {
                 ++activeNativeRows;
         check(activeNativeRows == 72, "workspace upgrade leaves exactly one active row for each native ID");
         check(upgraded.asset("personal:retained")["name"] == "Elemento pessoal" &&
-                  upgraded.asset("native:person")["name"] == "Personagem",
+                  upgraded.asset("native:person")["name"] == "Apresentador",
               "upgrade preserves personal files and previous native assets");
         check(upgraded.addCategory("Depois da migração").error.isEmpty(),
               "updated library categories and natives remain valid for new writes");
@@ -1712,6 +1777,7 @@ int main(int argc, char **argv) {
             "premium-smartphone-slots-v2.production.json",
             "premium-question-hook-slots-v2.production.json",
             "premium-statistic-callout-slots-v2.production.json",
+            "presenter-poses-walk-cycle-v3.production.json",
             "camera-path-spatial-v3.production.json",
             "camera-path-combined-v3.production.json",
             "premium-factory-stage14-demo-v3.production.json"};
@@ -1723,14 +1789,23 @@ int main(int argc, char **argv) {
             if (!parsedFixture.error.isEmpty())
                 throw std::runtime_error((fixtureName + ": " + parsedFixture.error).toStdString());
             QMap<QString, studio::PcmAudio> measuredFixtures;
+            studio::WordTimingMap fixtureWordStarts;
             for (const auto &scene : parsedFixture.recipe.scenes)
                 for (const auto &utterance : scene.narration) {
                     studio::PcmAudio audio;
                     audio.samples.resize(2 * 48000, .02f);
                     measuredFixtures.insert(utterance.id, std::move(audio));
+                    if (fixtureName == "presenter-poses-walk-cycle-v3.production.json") {
+                        std::vector<std::int64_t> starts;
+                        const auto words = utterance.text.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+                        for (int word = 0; word < words.size(); ++word)
+                            starts.push_back(std::min<std::int64_t>(word * 4000, 42000));
+                        fixtureWordStarts.insert(utterance.id, std::move(starts));
+                    }
                 }
             const auto fixtureProject = studio::compileProduction(
-                parsedFixture.recipe, measuredFixtures, directory.filePath(fixtureName + ".wav"));
+                parsedFixture.recipe, measuredFixtures, directory.filePath(fixtureName + ".wav"), nullptr,
+                fixtureWordStarts.isEmpty() ? nullptr : &fixtureWordStarts);
             if (!fixtureProject.error.isEmpty())
                 throw std::runtime_error((fixtureName + " compile: " + fixtureProject.error).toStdString());
             check(studio::validate(fixtureProject.project).empty() && fixtureProject.project.duration > 0,
@@ -1742,6 +1817,85 @@ int main(int argc, char **argv) {
             check(!proofFrame.isNull() && proofFrame.size() ==
                       QSize(fixtureProject.project.width, fixtureProject.project.height),
                   "official camera, reveal and color examples render a real QPainter frame");
+            if (fixtureName == "presenter-poses-walk-cycle-v3.production.json") {
+                const auto *person = studio::findNode(fixtureProject.project, "presenter");
+                auto invalidPoseRecipe = parsedFixture.recipe.original;
+                auto invalidScenes = invalidPoseRecipe["scenes"].toArray();
+                auto invalidScene = invalidScenes[0].toObject();
+                auto invalidShots = invalidScene["shots"].toArray();
+                auto invalidShot = invalidShots[0].toObject();
+                auto invalidElements = invalidShot["elements"].toArray();
+                auto invalidPerson = invalidElements.at(invalidElements.size() - 1).toObject();
+                invalidPerson["pose"] = "teleport";
+                invalidElements[invalidElements.size() - 1] = invalidPerson;
+                invalidShot["elements"] = invalidElements;
+                invalidShots[0] = invalidShot;
+                invalidScene["shots"] = invalidShots;
+                invalidScenes[0] = invalidScene;
+                invalidPoseRecipe["scenes"] = invalidScenes;
+                check(!studio::parseRecipe(QJsonDocument(invalidPoseRecipe).toJson(),
+                                           QFileInfo(fixture.fileName()).absolutePath(), catalog.data())
+                               .error.isEmpty(),
+                      "recipe parser rejects unregistered presenter pose names");
+                check(person && person->nativeId == "person" && person->walkCycle.has_value() &&
+                          person->poseKeyframes.size() == 4 && fixtureProject.project.schemaVersion == 16,
+                      "presenter production compiles timed poses and a walk cycle into one editable native identity");
+                check(person && studio::validate(fixtureProject.project).empty() &&
+                          studio::evaluatePose(*person, person->poseKeyframes[0].frame - 1) == "neutral" &&
+                          studio::evaluatePose(*person, person->poseKeyframes[0].frame) == "smile" &&
+                          studio::evaluatePose(*person, person->poseKeyframes[1].frame) == "wave" &&
+                          studio::evaluatePose(*person, person->poseKeyframes[2].frame) == "explain" &&
+                          studio::evaluatePose(*person, person->poseKeyframes[3].frame) == "point-right" &&
+                          studio::evaluatePose(*person, person->walkCycle->startFrame) == "walk-a" &&
+                          studio::evaluatePose(*person, person->walkCycle->startFrame + person->walkCycle->stepFrames) == "walk-b" &&
+                          studio::evaluatePose(*person, person->walkCycle->endFrame) == "smile",
+                      "pose cues persist until the next event and the walk alternates deterministically before stopping");
+                check(person && studio::evaluate(*person, person->walkCycle->startFrame).x !=
+                                      studio::evaluate(*person, person->walkCycle->endFrame - 1).x,
+                      "presenter recipe keyframes move the character across the scene while walking");
+                const auto unalignedCompile = studio::compileProduction(
+                    parsedFixture.recipe, measuredFixtures, directory.filePath("presenter-no-alignment.wav"));
+                check(unalignedCompile.error.contains("wordIndex"),
+                      "wordIndex pose timing is rejected when the voice has no word-boundary alignment");
+                const auto poseFolder = QStringLiteral(STUDIO_SOURCE_DIR) + "/artifacts/presenter-01/demo-frames";
+                QDir().mkpath(poseFolder);
+                studio::CompositionPainter presenterPainter;
+                QJsonArray poseFrames;
+                auto savePoseFrame = [&](std::int64_t frame, QString label) {
+                    const auto image = presenterPainter.frame(fixtureProject.project, frame);
+                    const auto path = QDir(poseFolder).filePath(label + QString("-%1.png").arg(frame));
+                    check(!image.isNull() && image.save(path), "presenter production frame saved for visual review");
+                    poseFrames.append(QJsonObject{{"frame", qint64(frame)}, {"pose", label},
+                                                  {"x", studio::evaluate(*person, frame).x},
+                                                  {"png", QFileInfo(path).fileName()}});
+                };
+                for (std::size_t i = 0; i < person->poseKeyframes.size(); ++i) {
+                    const auto &key = person->poseKeyframes[i];
+                    if (key.frame > 0)
+                        savePoseFrame(key.frame - 1, QString::fromStdString(studio::evaluatePose(*person, key.frame - 1)));
+                    savePoseFrame(key.frame, QString::fromStdString(key.pose));
+                }
+                savePoseFrame(person->walkCycle->startFrame, "walk-a");
+                savePoseFrame(person->walkCycle->startFrame + person->walkCycle->stepFrames, "walk-b");
+                savePoseFrame(person->walkCycle->endFrame, "smile-stop");
+                QFile frameReport(QDir(poseFolder).filePath("pose-states.json"));
+                check(frameReport.open(QIODevice::WriteOnly) &&
+                          frameReport.write(QJsonDocument(QJsonObject{{"frames", poseFrames}})
+                                                .toJson(QJsonDocument::Indented)) > 0,
+                      "presenter recipe records the tested pose frames and positions");
+                const auto savedProject = studio::deserialize(studio::serialize(fixtureProject.project));
+                const auto originalWalkFrame = presenterPainter.frame(
+                    fixtureProject.project,
+                    person->walkCycle->startFrame + person->walkCycle->stepFrames);
+                const auto reopenedWalkFrame = presenterPainter.frame(
+                    savedProject.project,
+                    person->walkCycle->startFrame + person->walkCycle->stepFrames);
+                check(savedProject.error.isEmpty() && studio::validate(savedProject.project).empty() &&
+                          originalWalkFrame == reopenedWalkFrame &&
+                          studio::evaluatePose(*studio::findNode(savedProject.project, "presenter"),
+                                               person->walkCycle->startFrame + person->walkCycle->stepFrames) == "walk-b",
+                      "presenter pose rendering and walk cycle survive project save and reopen identically");
+            }
             if (fixtureName == "premium-dramatic-quote-slots-v2.production.json" ||
                 fixtureName == "premium-comparison-slots-v2.production.json" ||
                 fixtureName == "premium-smartphone-slots-v2.production.json" ||
@@ -2098,11 +2252,12 @@ int main(int argc, char **argv) {
                 ++proceduralCount;
             }
         }
-        check(nativeCatalogue.size() == 72 && pngDefaultCount == 60 && lowResolutionSceneCount == 12 &&
-                  proceduralCount == 12 && !studio::capabilities().contains("illustratedAssets") &&
+        check(nativeCatalogue.size() == 72 && pngDefaultCount == 61 && lowResolutionSceneCount == 12 &&
+                  proceduralCount == 11 && !studio::capabilities().contains("illustratedAssets") &&
                   g.contains("asset: \"car\"") && g.contains("não alteram os pixels desses 60 PNGs") &&
-                  g.contains("prévias rasterizadas de baixa resolução"),
-              "AI catalogue exposes 60 default PNGs and 12 procedural natives under 72 original IDs without duplicates");
+                  g.contains("prévias rasterizadas de baixa resolução") &&
+                  g.contains("person"),
+              "AI catalogue exposes 61 default PNGs and 11 dynamic natives under 72 original IDs without duplicates");
         std::cout << "PASS: " << checks
                   << " production checks (recipe, audio timing, mix, migration, catalogue, rendering)\n";
         return 0;

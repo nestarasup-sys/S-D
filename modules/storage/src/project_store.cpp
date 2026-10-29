@@ -170,6 +170,18 @@ QByteArray serialize(const Project &p) {
             serializedNode["textLayout"] = QJsonObject{{"mode", "shrink"},
                                                         {"minimumFontSize", n.textMinFontSize},
                                                         {"padding", n.textPadding}};
+        if (p.schemaVersion >= 16 && (!n.poseKeyframes.empty() || n.walkCycle)) {
+            QJsonArray poseKeyframes;
+            for (const auto &key : n.poseKeyframes)
+                poseKeyframes.append(QJsonObject{{"frame", double(key.frame)}, {"pose", text(key.pose)}});
+            QJsonObject animation{{"keyframes", poseKeyframes}};
+            if (n.walkCycle)
+                animation["walk"] = QJsonObject{{"startFrame", double(n.walkCycle->startFrame)},
+                                                 {"endFrame", double(n.walkCycle->endFrame)},
+                                                 {"stepFrames", n.walkCycle->stepFrames},
+                                                 {"stopPose", text(n.walkCycle->stopPose)}};
+            serializedNode["poseAnimation"] = animation;
+        }
         nodes.append(serializedNode);
     }
     QJsonArray scenes;
@@ -303,7 +315,7 @@ LoadResult deserialize(const QByteArray &bytes) try {
                                          o["schemaVersion"] != 9 && o["schemaVersion"] != 10 &&
                                          o["schemaVersion"] != 11 && o["schemaVersion"] != 12 &&
                                          o["schemaVersion"] != 13 && o["schemaVersion"] != 14 &&
-                                         o["schemaVersion"] != 15))
+                                         o["schemaVersion"] != 15 && o["schemaVersion"] != 16))
         return fail("Formato ou versão não suportada; original preservado.");
     for (auto key : {"width", "height", "duration"})
         if (!integer(o[key]))
@@ -539,6 +551,32 @@ LoadResult deserialize(const QByteArray &bytes) try {
                                    key["rotation"].toDouble(), key["scale"].toDouble(),
                                    key["opacity"].toDouble(),
                                    key["easing"].toString("linear").toStdString()});
+        }
+        if (v.contains("poseAnimation")) {
+            if (p.schemaVersion < 16 || n.kind != NodeKind::Native || n.nativeId != "person" ||
+                !v["poseAnimation"].isObject())
+                return fail("Animação de pose exige o personagem person e schema 16.");
+            const auto animation = v["poseAnimation"].toObject();
+            if (animation.size() < 1 || animation.size() > 2 || !animation["keyframes"].isArray())
+                return fail("Dados de animação de pose inválidos ou com campos desconhecidos.");
+            for (const auto value : animation["keyframes"].toArray()) {
+                if (!value.isObject())
+                    return fail("Keyframe de pose inválido.");
+                const auto key = value.toObject();
+                if (key.size() != 2 || !integer(key["frame"]) || !key["pose"].isString())
+                    return fail("Keyframe de pose incompleto ou com campos desconhecidos.");
+                n.poseKeyframes.push_back({key["frame"].toInteger(), key["pose"].toString().toStdString()});
+            }
+            if (animation.contains("walk")) {
+                if (!animation["walk"].isObject())
+                    return fail("Configuração do ciclo de caminhada inválida.");
+                const auto walk = animation["walk"].toObject();
+                if (walk.size() != 4 || !integer(walk["startFrame"]) || !integer(walk["endFrame"]) ||
+                    !integer(walk["stepFrames"]) || !walk["stopPose"].isString())
+                    return fail("Ciclo de caminhada incompleto ou com campos desconhecidos.");
+                n.walkCycle = WalkCycle{walk["startFrame"].toInteger(), walk["endFrame"].toInteger(),
+                                        walk["stepFrames"].toInt(), walk["stopPose"].toString().toStdString()};
+            }
         }
         p.nodes.push_back(n);
     }

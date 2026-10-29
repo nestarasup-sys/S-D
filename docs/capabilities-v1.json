@@ -11,6 +11,10 @@
     "format": "studio-dark-capabilities",
     "fps": 30,
     "height": 720,
+    "legacyPoseAliases": {
+        "point": "point-right",
+        "worried": "thinking"
+    },
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": null,
@@ -57,9 +61,13 @@
             "category": "personagens",
             "height": 350,
             "id": "person",
-            "name": "Personagem",
-            "rendering": "procedural",
-            "width": 180
+            "name": "Apresentador",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 410,
+            "sourceWidth": 410,
+            "width": 280
         },
         {
             "category": "objetos",
@@ -861,9 +869,17 @@
     "nodeLimitPolicy": "resource-bound",
     "poses": [
         "neutral",
-        "point",
+        "smile",
         "wave",
-        "worried"
+        "point-right",
+        "point-left",
+        "explain",
+        "thinking",
+        "surprised",
+        "tablet",
+        "thumbs-up",
+        "walk-a",
+        "walk-b"
     ],
     "premiumAssetCategories": [
         "basic-native",
@@ -1527,6 +1543,9 @@
         "personal-library-video-assets",
         "native-id-ai-png-default-artwork",
         "low-resolution-native-scene-previews",
+        "presenter-12-raster-poses",
+        "timed-presenter-pose-keyframes",
+        "presenter-walk-cycle-with-position-keyframes",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",
@@ -1541,6 +1560,8 @@
         "shot-ownership",
         "visual-beat-markers",
         "audio-tracks",
+        "presenter-discrete-pose-keyframes",
+        "presenter-walk-cycle",
         "visual-beat-linked-audio-tracks",
         "video-layers",
         "video-trim-speed-crop",
@@ -1552,7 +1573,7 @@
         "word-animated-caption-presets",
         "independent-caption-highlight-color"
     ],
-    "projectVersion": 15,
+    "projectVersion": 16,
     "shotTransitionTypes": [
         "cut",
         "fade",

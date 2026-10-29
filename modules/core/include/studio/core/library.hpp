@@ -7,6 +7,10 @@
 
 namespace studio {
 struct LibraryItem {
+    struct PoseArtwork {
+        std::string pose, resourcePath;
+        double anchorX{205}, anchorBottom{386};
+    };
     std::string id, name, category;
     double width, height;
     // Optional immutable artwork embedded for this native ID. The original procedural
@@ -14,6 +18,7 @@ struct LibraryItem {
     std::string resourcePath, fallbackId;
     int sourceWidth{0}, sourceHeight{0};
     bool previewOnly{false};
+    std::vector<PoseArtwork> poseArtworks;
 
     LibraryItem(std::string itemId, std::string itemName, std::string itemCategory,
                 double itemWidth, double itemHeight, std::string itemResourcePath = {},
@@ -23,6 +28,8 @@ struct LibraryItem {
           width(itemWidth), height(itemHeight), resourcePath(std::move(itemResourcePath)),
           fallbackId(std::move(itemFallbackId)), sourceWidth(imageWidth),
           sourceHeight(imageHeight), previewOnly(isPreviewOnly) {}
+    const PoseArtwork *poseArtwork(const std::string &pose) const;
+    std::string artworkForPose(const std::string &pose) const;
 };
 const std::vector<LibraryItem> &nativeLibrary();
 const LibraryItem *libraryItem(const std::string &id);
@@ -78,4 +85,5 @@ const std::vector<std::string> &motionNames();
 const std::vector<std::string> &poseNames();
 bool supportedMotion(const std::string &name);
 bool supportedPose(const std::string &name);
+std::string canonicalPoseName(const std::string &name);
 } // namespace studio

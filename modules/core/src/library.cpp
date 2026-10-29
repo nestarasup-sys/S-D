@@ -13,7 +13,7 @@ const std::vector<LibraryItem> &nativeLibrary() {
     static const std::vector<LibraryItem> items = [] {
       std::vector<LibraryItem> result{
         {"car", "Carro", "objetos", 460, 210},
-        {"person", "Personagem", "personagens", 180, 350},
+        {"person", "Apresentador", "personagens", 280, 350},
         {"house", "Casa", "objetos", 240, 210},
         {"building", "Prédio", "objetos", 160, 300},
         {"document", "Documento", "objetos", 200, 250},
@@ -171,6 +171,32 @@ void applyAiArtworkMetadata(std::vector<LibraryItem> &items) {
         item->sourceWidth = spec.sourceWidth;
         item->sourceHeight = spec.sourceHeight;
         item->previewOnly = spec.previewOnly;
+    }
+    const auto person = std::find_if(items.begin(), items.end(), [](const auto &value) {
+        return value.id == "person";
+    });
+    if (person != items.end()) {
+        constexpr const char *base = ":/studio/ai-library/v1/characters/presenter-01/";
+        person->resourcePath = std::string(base) + "neutral.png";
+        person->fallbackId = "person";
+        person->sourceWidth = 410;
+        person->sourceHeight = 410;
+        // Alpha-silhouette anchors measured from the supplied artwork at alpha >= 128.
+        // Each pose is aligned by its foot support and scaled by the same 350 px height.
+        person->poseArtworks = {
+            {"neutral", std::string(base) + "neutral.png", 229.4, 384},
+            {"smile", std::string(base) + "smile.png", 232.0, 385},
+            {"wave", std::string(base) + "wave.png", 230.0, 385},
+            {"point-right", std::string(base) + "point-right.png", 211.3, 385},
+            {"point-left", std::string(base) + "point-left.png", 229.4, 394},
+            {"explain", std::string(base) + "explain.png", 244.3, 394},
+            {"thinking", std::string(base) + "thinking.png", 239.4, 394},
+            {"surprised", std::string(base) + "surprised.png", 208.9, 395},
+            {"tablet", std::string(base) + "tablet.png", 234.6, 384},
+            {"thumbs-up", std::string(base) + "thumbs-up.png", 237.1, 384},
+            {"walk-a", std::string(base) + "walk-a.png", 245.0, 380},
+            {"walk-b", std::string(base) + "walk-b.png", 228.9, 378},
+        };
     }
 }
 } // namespace
@@ -553,12 +579,26 @@ const LibraryItem *libraryItem(const std::string &id) {
     });
     return it == items.end() ? nullptr : &*it;
 }
+const LibraryItem::PoseArtwork *LibraryItem::poseArtwork(const std::string &pose) const {
+    const auto canonical = canonicalPoseName(pose);
+    const auto found = std::find_if(poseArtworks.begin(), poseArtworks.end(), [&](const auto &entry) {
+        return entry.pose == canonical;
+    });
+    return found == poseArtworks.end() ? nullptr : &*found;
+}
+std::string LibraryItem::artworkForPose(const std::string &pose) const {
+    if (poseArtworks.empty())
+        return resourcePath;
+    const auto *artwork = poseArtwork(pose);
+    return artwork ? artwork->resourcePath : std::string{};
+}
 const std::vector<std::string> &motionNames() {
     static const std::vector<std::string> v{"none", "fade", "rise", "slide-left", "slide-right", "pop"};
     return v;
 }
 const std::vector<std::string> &poseNames() {
-    static const std::vector<std::string> v{"neutral", "point", "wave", "worried"};
+    static const std::vector<std::string> v{"neutral", "smile", "wave", "point-right", "point-left", "explain",
+                                            "thinking", "surprised", "tablet", "thumbs-up", "walk-a", "walk-b"};
     return v;
 }
 bool supportedMotion(const std::string &name) {
@@ -567,6 +607,13 @@ bool supportedMotion(const std::string &name) {
 }
 bool supportedPose(const std::string &name) {
     const auto &v = poseNames();
-    return std::find(v.begin(), v.end(), name) != v.end();
+    return name == "point" || name == "worried" || std::find(v.begin(), v.end(), name) != v.end();
+}
+std::string canonicalPoseName(const std::string &name) {
+    if (name == "point")
+        return "point-right";
+    if (name == "worried")
+        return "thinking";
+    return name;
 }
 } // namespace studio

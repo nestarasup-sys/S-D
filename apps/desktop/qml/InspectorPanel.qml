@@ -313,13 +313,28 @@ Rectangle {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: "#2b3540" }
                 Label { text: "APARÊNCIA"; color: "#8193a2"; font.pixelSize: 10; font.letterSpacing: 1; visible: panel.node.kind !== "group" }
-                Field { caption: "Cor · #RRGGBB"; propertyKey: "color"; currentValue: panel.node.color; number: false; visible: panel.node.kind !== "image" && panel.node.kind !== "group" }
-                Field { caption: "Cor da pele · #RRGGBB"; propertyKey: "secondaryColor"; currentValue: panel.node.secondaryColor; number: false; visible: panel.node.nativeId === "person" }
+                Field { caption: "Cor · #RRGGBB"; propertyKey: "color"; currentValue: panel.node.color; number: false; visible: panel.node.kind !== "image" && panel.node.kind !== "group" && panel.node.nativeId !== "person" }
+                Label {
+                    text: "Cores incorporadas na ilustração; não são recoloridas pelo inspetor ou JSON."
+                    color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                    visible: panel.node.nativeId === "person"
+                }
                 StudioComboBox {
                     Layout.fillWidth: true; visible: panel.node.nativeId === "person"
-                    model: ["neutral", "point", "wave", "worried"]
+                    model: ["neutral", "smile", "wave", "point-right", "point-left", "explain",
+                            "thinking", "surprised", "tablet", "thumbs-up", "walk-a", "walk-b"]
                     currentIndex: Math.max(0, model.indexOf(panel.node.pose))
-                    onActivated: editor.updateSelected("pose", currentText)
+                    onActivated: editor.setSelectedPoseAtFrame(currentText)
+                }
+                Label {
+                    text: panel.node.poseKeyframeAtFrame ? "Pose registrada neste quadro; use desfazer para removê-la." : "Escolha uma pose para gravar uma troca no quadro atual. A caminhada controla este campo durante o ciclo."
+                    color: "#708393"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                    visible: panel.node.nativeId === "person"
+                }
+                Label {
+                    text: "Caminhada ativa: alterna a cada " + panel.node.walkStepFrames + " quadros e termina na pose configurada."
+                    color: "#8193a2"; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                    visible: panel.node.nativeId === "person" && panel.node.walkCycleConfigured
                 }
                 Field { caption: "Tamanho do texto"; propertyKey: "fontSize"; currentValue: panel.node.fontSize; visible: panel.node.kind === "text" }
                 Field {

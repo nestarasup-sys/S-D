@@ -1,6 +1,6 @@
 # Studio Dark — guia para dirigir um vídeo com IA
 
-Catálogo 1 · Receita 3 · Projeto 15 · Native Lab 0.5
+Catálogo 1 · Receita 3 · Projeto 16 · Native Lab 0.5
 
 Você é o diretor audiovisual. Transforme o roteiro em uma produção editável. Preserve o texto do usuário, salvo pedido explícito de reescrita. Escolha enquadramentos e composições livres usando somente os recursos abaixo. Entregue JSON puro, sem cercas Markdown.
 
@@ -1388,7 +1388,7 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 ## Catálogo nativo do aplicativo
 
 - `car` — Carro (objetos), 460×210.
-- `person` — Personagem (personagens), 180×350.
+- `person` — Apresentador (personagens), 280×350.
 - `house` — Casa (objetos), 240×210.
 - `building` — Prédio (objetos), 160×300.
 - `document` — Documento (objetos), 200×250.
@@ -1463,19 +1463,33 @@ Propriedades visuais passadas à referência alteram a raiz; keyframes salvos co
 
 ### Aparência padrão dos recursos nativos
 
-Os 48 objetos ilustrados e os 12 cenários usam os **IDs nativos originais** e agora têm PNG incorporado como aparência padrão. Por exemplo, `asset: "car"` já mostra a nova arte do carro; não existe uma variante separada para selecionar. As imagens aceitam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. Os pixels são estáticos: `color`, `secondaryColor` e `palette` não recolorem a imagem, e poses ou animações internas não se aplicam. Esses campos antigos continuam sendo aceitos para compatibilidade, mas não alteram os pixels desses 60 PNGs.
+Os 48 objetos ilustrados e os 12 cenários usam os **IDs nativos originais** e agora têm PNG incorporado como aparência padrão. Por exemplo, `asset: "car"` já mostra a nova arte do carro; não existe uma variante separada para selecionar. As imagens aceitam posição, dimensão, escala, rotação, opacidade, keyframes, grupos, câmera e movimentos gerais do nó. Nos 60 PNGs de objetos e cenários, os pixels são estáticos: `color`, `secondaryColor` e `palette` não recolorem a imagem, e poses ou animações internas não se aplicam. Esses campos antigos continuam sendo aceitos para compatibilidade, mas não alteram os pixels desses 60 PNGs.
 
-Os 12 cenários nativos — `street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room` — são temporariamente prévias rasterizadas de baixa resolução, aproximadamente 482–483×271–272 pixels. A biblioteca os marca como **PRÉVIA**. Uma atualização futura poderá substituir os arquivos mantendo os mesmos IDs. O personagem `person` e os 11 recursos de gráficos/dados (`bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, `data-table`) continuam procedurais para preservar poses ou evolução dinâmica. Para os outros PNGs, o desenho procedural anterior é apenas fallback técnico interno, não uma opção visual da biblioteca. IDs `illustrated:<id>` publicados temporariamente em versões anteriores ainda são aceitos ao abrir projetos/receitas antigas, mas novos conteúdos devem usar o ID original. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
+Os 12 cenários nativos — `street`, `office`, `showroom`, `studio`, `night-city`, `server-room`, `newsroom`, `laboratory-scene`, `map-room`, `financial-district`, `cyber-grid` e `archive-room` — são temporariamente prévias rasterizadas de baixa resolução, aproximadamente 482–483×271–272 pixels. A biblioteca os marca como **PRÉVIA**. Uma atualização futura poderá substituir os arquivos mantendo os mesmos IDs. O personagem `person` agora usa, sob o mesmo ID nativo, as 12 imagens transparentes incorporadas listadas em `poses`: `neutral`, `smile`, `wave`, `point-right`, `point-left`, `explain`, `thinking`, `surprised`, `tablet`, `thumbs-up`, `walk-a` e `walk-b`. As imagens têm cores fixas; o campo `color` não recolore rosto ou roupa. Os 11 recursos de gráficos/dados (`bars`, `chart-line`, `chart-pie`, `chart-donut`, `chart-area`, `timeline`, `flowchart`, `network`, `dashboard`, `progress-ring`, `data-table`) continuam procedurais e dinâmicos. O desenho procedural anterior de `person` e dos outros recursos ilustrados fica apenas como fallback técnico interno, não como opção visual da biblioteca. IDs `illustrated:<id>` publicados temporariamente em versões anteriores ainda são aceitos ao abrir projetos/receitas antigas, mas novos conteúdos devem usar o ID original. O pacote declara arte original gerada pelo usuário; isso não concede direitos sobre marcas ou conteúdo de terceiros.
+
+### Apresentador `person`: poses, fala e caminhada
+
+O ID nativo `person` mostra por padrão `neutral`. Para escolher uma pose inicial, use a propriedade `pose` no elemento native. Os nomes aceitos são `neutral`, `smile`, `wave`, `point-right`, `point-left`, `explain`, `thinking`, `surprised`, `tablet`, `thumbs-up`, `walk-a` e `walk-b`. Para compatibilidade, `point` significa `point-right` e `worried` significa `thinking`. Não use `color` para recolorir o PNG.
+
+Em receita v3, `poseKeyframes` troca a imagem no instante exato e mantém a pose até o próximo evento. Cada item usa `at`, com as referências de tempo já aceitas (`cue` + `cueProgress`, `offsetSeconds` ou `wordIndex` alinhado à voz real). O evento `wordIndex` só pode ser compilado quando a síntese local fornece o limite de palavra. A troca ocorre no mesmo nó e não muda posição, escala, grupo ou transform keyframes.
+
+`walk` executa somente o ciclo de `walk-a`/`walk-b` entre `start` inclusivo e `end` exclusivo. `stepFrames` aceita 2–30 quadros e controla a alternância; `stopPose` escolhe a pose estática após a caminhada. Para o personagem realmente andar, inclua `keyframes` com deslocamento de posição durante esse mesmo intervalo. O app não inventa o percurso, não usa física e não aplica caminhada continuamente. Não coloque poseKeyframes dentro do intervalo de caminhada; agende a pose final depois do intervalo ou use `stopPose`.
+
+Veja o exemplo v3 executável [apresentador com poses e caminhada](../examples/presenter-poses-walk-cycle-v3.production.json). A propriedade `motion` continua controlando apenas a entrada/saída geral do nó; ela não é a caminhada nem a troca de expressão. Os PNGs originais permanecem incorporados e o renderizador compartilha o cache de imagens entre prévia e exportação.
+
+```json
+{"id":"apresentador","kind":"native","asset":"person","pose":"neutral","cue":0,"poseKeyframes":[{"at":{"cue":0,"cueProgress":0.05},"pose":"smile"},{"at":{"cue":0,"wordIndex":4},"pose":"wave"}],"keyframes":[{"cue":0,"cueProgress":0,"x":84,"y":305,"rotation":0,"scale":1,"opacity":1},{"cue":0,"cueProgress":0.2,"x":84,"y":305,"rotation":0,"scale":1,"opacity":1},{"cue":0,"cueProgress":0.9,"x":540,"y":305,"rotation":0,"scale":1,"opacity":1,"easing":"ease-in-out"}],"walk":{"start":{"cue":0,"cueProgress":0.2},"end":{"cue":0,"cueProgress":0.9},"stepFrames":6,"stopPose":"smile"}}
+```
 
 ### Direção para roteiro dinâmico
 
 Alterne **texto cinematográfico**, **elementos nativos**, **infográficos ilustrativos**, **travelling entre pontos A/B/C**, **parallax simulado em grupos** e **respiros visuais**. Cada mudança deve revelar informação nova, não apenas movimentar a tela. Use `cameraPresets` ou Visual Beats de câmera para travelling; não combine os dois no mesmo shot. Use `cueProgress` para sincronização sem estimar segundos da fala. Textos grandes devem ter leitura confortável e não disputar espaço com legendas. Cenas com uma frase forte podem ser inteiramente tipográficas. Não mostre gráfico ilustrativo como evidência factual. Para os métodos completos, consulte `docs/DIRECAO-ROTEIRO-DINAMICO.md`.
 
-**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 60 recursos com arte incorporada são PNGs estáticos transformáveis; os gráficos/dados e `person` continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
+**Exemplo de elemento nativo:** `{"id":"chip-ia","kind":"native","asset":"chip","x":420,"y":170,"width":320,"height":240}`. Para fundos, use `night-city`, `server-room`, `newsroom` ou outros IDs do catálogo, dimensionados ao canvas. Os 48 objetos ilustrados, os 12 cenários e `person` usam PNG incorporado (72 imagens em 61 IDs nativos); os 11 gráficos/dados continuam desenhados proceduralmente. Use `image`/`video` e fontes locais para fotografias e B-roll reais.
 
 `musicGain`: 0 a 0.08; zero desliga a trilha procedural. `effectsGain`: 0 a 0.15; zero desliga sinais de troca de cena. `sources` pode registrar título e URL HTTPS; é referência editorial, não verificação factual. Revise fatos, fontes e direitos de mídia antes de publicar.
 
-A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio e animação de legenda por palavra. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14 e políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15.
+A receita v1 antiga continua sendo lida, com cabeçalho/cenário/layout legado. Receitas v2 mantêm grupos, presets, câmera e keyframes; v3 acrescenta shots, beats, direção de arte por escopo, camadas de vídeo, fades, automação de áudio, animação de legenda por palavra e, para `person`, poseKeyframes e caminhada sincronizados. Campos desconhecidos, IDs duplicados, itens pessoais inativos, arquivos ausentes e valores fora da faixa são rejeitados com mensagem. Projetos v1–v15 continuam abrindo; camadas de vídeo usam schema 5, fades de pista não nulos usam schema 6, legendas com destaque sincronizado por palavra usam schema 7, automação de ganho usa schema 8, efeitos de Visual Beat usam schema 9, controles de fonte de vídeo usam schema 10, estilos por cena/shot usam schema 11, presets de animação por palavra usam schema 12, trim/velocidade da fonte de áudio usa schema 13, cor independente do destaque de palavra usa schema 14, políticas de texto premium e proveniência dos alvos de `camera.path` usam schema 15, e keyframes discretos de pose/ciclo de caminhada do `person` usam schema 16.
 
 ## Checklist de limites e publicação
 
@@ -1499,6 +1513,10 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
     "format": "studio-dark-capabilities",
     "fps": 30,
     "height": 720,
+    "legacyPoseAliases": {
+        "point": "point-right",
+        "worried": "thinking"
+    },
     "maxAudioTracks": 32,
     "maxNarrationCharactersPerCue": 150,
     "maxNodes": null,
@@ -1545,9 +1563,13 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
             "category": "personagens",
             "height": 350,
             "id": "person",
-            "name": "Personagem",
-            "rendering": "procedural",
-            "width": 180
+            "name": "Apresentador",
+            "pixelRecoloring": false,
+            "previewOnly": false,
+            "rendering": "embedded-ai-png",
+            "sourceHeight": 410,
+            "sourceWidth": 410,
+            "width": 280
         },
         {
             "category": "objetos",
@@ -2349,9 +2371,17 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
     "nodeLimitPolicy": "resource-bound",
     "poses": [
         "neutral",
-        "point",
+        "smile",
         "wave",
-        "worried"
+        "point-right",
+        "point-left",
+        "explain",
+        "thinking",
+        "surprised",
+        "tablet",
+        "thumbs-up",
+        "walk-a",
+        "walk-b"
     ],
     "premiumAssetCategories": [
         "basic-native",
@@ -3015,6 +3045,9 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "personal-library-video-assets",
         "native-id-ai-png-default-artwork",
         "low-resolution-native-scene-previews",
+        "presenter-12-raster-poses",
+        "timed-presenter-pose-keyframes",
+        "presenter-walk-cycle-with-position-keyframes",
         "landscape-and-portrait-canvas-presets",
         "word-timed-karaoke-captions",
         "word-animated-karaoke-captions",
@@ -3029,6 +3062,8 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "shot-ownership",
         "visual-beat-markers",
         "audio-tracks",
+        "presenter-discrete-pose-keyframes",
+        "presenter-walk-cycle",
         "visual-beat-linked-audio-tracks",
         "video-layers",
         "video-trim-speed-crop",
@@ -3040,7 +3075,7 @@ Vídeo local como camada com trim de entrada, velocidade, recorte manual, cache 
         "word-animated-caption-presets",
         "independent-caption-highlight-color"
     ],
-    "projectVersion": 15,
+    "projectVersion": 16,
     "shotTransitionTypes": [
         "cut",
         "fade",

@@ -77,6 +77,9 @@ QVariantMap map(const studio::Node &n) {
             {"nativeId", q(n.nativeId)},
             {"role", q(n.role)},
             {"pose", q(n.pose)},
+            {"poseKeyframeCount", int(n.poseKeyframes.size())},
+            {"walkCycleConfigured", n.walkCycle.has_value()},
+            {"walkStepFrames", n.walkCycle ? n.walkCycle->stepFrames : 0},
             {"motion", q(n.motion)},
             {"secondaryColor", q(n.secondaryColor)},
             {"wordAnimationPreset", q(n.wordAnimationPreset)},
@@ -195,6 +198,9 @@ QVariantMap EditorController::selected() const {
     if (!n)
         return {};
     auto result = map(*n);
+    result["pose"] = q(studio::evaluatePose(*n, frame_));
+    result["poseKeyframeAtFrame"] = std::any_of(n->poseKeyframes.begin(), n->poseKeyframes.end(),
+                                                 [this](const auto &key) { return key.frame == frame_; });
     if (!n->keyframes.empty()) {
         auto key = std::find_if(n->keyframes.begin(), n->keyframes.end(),
                                 [this](const auto &k) { return k.frame == frame_; });
@@ -465,6 +471,44 @@ void EditorController::updateSelected(QString key, QVariant value) {
     if (error.empty())
         changed();
     else
+        notify(q(error));
+}
+void EditorController::setSelectedPoseAtFrame(QString pose) {
+    if (!studio::supportedPose(pose.toStdString())) {
+        notify("Escolha uma das 12 poses registradas do apresentador.");
+        return;
+    }
+    const auto *selectedNode = studio::findNode(project(), selectedId_.toStdString());
+    if (!selectedNode || selectedNode->kind != studio::NodeKind::Native || selectedNode->nativeId != "person") {
+        notify("Selecione o apresentador para gravar uma troca de pose.");
+        return;
+    }
+    if (selectedNode->walkCycle && frame_ >= selectedNode->walkCycle->startFrame &&
+        frame_ < selectedNode->walkCycle->endFrame) {
+        notify("A pose do personagem é controlada pelo ciclo de caminhada neste intervalo.");
+        return;
+    }
+    const auto id = selectedNode->id;
+    const auto error = editor_.execute([&](studio::Project &p) {
+        auto node = std::find_if(p.nodes.begin(), p.nodes.end(), [&](const auto &candidate) {
+            return candidate.id == id;
+        });
+        if (node == p.nodes.end())
+            return;
+        auto at = std::lower_bound(node->poseKeyframes.begin(), node->poseKeyframes.end(),
+                                   std::int64_t(frame_), [](const auto &key, std::int64_t frame) {
+                                       return key.frame < frame;
+                                   });
+        if (at != node->poseKeyframes.end() && at->frame == frame_)
+            at->pose = pose.toStdString();
+        else
+            node->poseKeyframes.insert(at, {frame_, pose.toStdString()});
+        p.schemaVersion = std::max(p.schemaVersion, 16);
+    });
+    if (error.empty()) {
+        changed();
+        notify(QString("Pose %1 gravada no quadro %2.").arg(pose).arg(frame_));
+    } else
         notify(q(error));
 }
 void EditorController::setManagedMediaRoot(QString path) {
