@@ -1,6 +1,117 @@
 # Direção de roteiro dinâmico — Studio Dark
 
-Guia criativo complementar ao [guia técnico para IA](GUIA-PARA-IA.md). Versão 1.2, outubro de 2026. Esta página orienta composição e ritmo; o guia técnico define os campos JSON aceitos.
+Guia criativo complementar ao [guia técnico para IA](GUIA-PARA-IA.md). Versão 1.3, outubro de 2026. Esta página orienta composição e ritmo; o guia técnico define os campos JSON aceitos.
+
+## Identidade editorial — investigação visual cinematográfica
+
+Esta diretriz é uma **preferência criativa do canal**, não uma nova função do parser. Objetivo: vídeos informativos e investigativos com alta clareza, curiosidade sustentada, provas apresentadas com honestidade e montagem visual variada. Os recursos da biblioteca devem **mostrar algo que a narração ainda não conseguiria transmitir sozinha**; não devem funcionar como apresentação de slides com título, subtítulo, ícone e legenda repetidos.
+
+### A unidade narrativa: voz + revelação visual
+
+Planeje cada trecho a partir de cinco perguntas:
+
+1. **O que a voz revela agora?** Identifique uma única descoberta, explicação ou relação por beat.
+2. **Qual dúvida o espectador tem nesse instante?** Uma pergunta real, não suspense artificial.
+3. **O que a tela demonstra?** Processo, evidência, trajetória, comparação, escala, localização ou consequência.
+4. **O que muda no quadro e por quê?** Um detalhe ganha foco, um componente abre, o fluxo atravessa uma tubulação, a câmera encontra um alvo, uma fonte é ampliada.
+5. **Como sabemos disso?** Fonte verificável, dado contextualizado ou rótulo claro de hipótese, exemplo ilustrativo ou reconstrução.
+
+Se a tela só repetir a frase narrada em letras grandes, substitua por uma ação visual ou deixe um silêncio visual intencional. O espectador deve conseguir acompanhar a lógica mesmo quando a informação visual é não verbal.
+
+### Ritmo, densidade e duração
+
+Não existe regra universal de corte a cada três segundos. Use **~3 s sem mudança visual significativa como alerta editorial**, jamais como limite rígido para duração de plano, shot ou quadro. Um plano de sete segundos pode funcionar se evoluir internamente: enquadramento amplo → revelação do fluxo → detalhe crítico → pausa de compreensão. Um corte de um segundo pode ser útil para contraste, mas ruim para um dado que precisa ser lido.
+
+Referências iniciais para experimentar, não obrigações:
+
+| Função | Cadência ilustrativa | Intenção |
+|---|---|---|
+| Impacto ou contraste | fração de segundo a ~2 s | quebrar expectativa com informação real |
+| Objeto ou ideia simples | ~2–4 s | localizar, reconhecer e avançar |
+| Processo ou comparação | ~4–8 s ou mais | permitir evolução e causalidade |
+| Documento, gráfico ou prova | tempo necessário à leitura | compreender origem, escala, unidade e implicação |
+| Pausa após descoberta | variável | consolidar o significado, sem efeitos competitivos |
+
+Um movimento permanente, sem foco narrativo, também vira ruído. Alterne velocidade, contraste, silêncio, detalhes, planos amplos e momentos estáveis. Cada corte, travelling ou efeito deve justificar sua existência.
+
+### Texto na tela — excepcional e útil
+
+- Dê preferência a **datas, valores com unidade, nomes, locais, fontes, citações curtas e palavras indispensáveis** para entender relações.
+- Evite título/subtítulo de assunto repetidos em cada shot. A abertura pode ser tipográfica quando isso cria sentido; não é uma obrigação.
+- Quando `captions` estiver ligado, evite também um segundo texto que copie a mesma frase. Considere a área segura das legendas.
+- Para evidência longa, mostre primeiro a peça e depois destaque o trecho relevante, respeitando o tempo de leitura; nunca atribua ao documento dados que ele não contém.
+- Textos em telas de dispositivos e molduras são conteúdo editável, mas sua existência só melhora o filme quando acrescenta informação.
+
+### Gramática da investigação
+
+| Momento da história | Resposta visual preferida |
+|---|---|
+| Pergunta ou suspeita | detalhe concreto que provoca a dúvida |
+| Contexto | mapa, percurso, escala, linha causal ou situação |
+| Prova | documento real, imagem fornecida, dado com fonte e unidade |
+| Contradição | comparação de duas condições equivalentes |
+| Mecanismo | animação gradual de processo, peça por peça |
+| Consequência | retorno ao contexto com implicação visual clara |
+| Conclusão | síntese visual e limite honesto do que é conhecido |
+
+O gancho inicial deve apresentar uma pergunta verdadeira ou uma diferença intrigante. Não prometa revelações inexistentes, não use suspense para fabricar incerteza e não adie indefinidamente a resposta. Fatos contestados exigem contexto e atribuição.
+
+### Repertório visual disponível na biblioteca atual
+
+**Não substitua recursos antigos por novos nesta etapa.** Os 48 objetos PNG e os 12 cenários PNG continuam nos IDs nativos; o `person` usa 12 poses com `poseKeyframes` e ciclo `walk`; os 11 gráficos/dados seguem procedurais. Os 66 componentes adicionais `ui:*` têm categorias próprias:
+
+- **Painéis editoriais:** conteúdo textual curto, fato verificável, comparação ou fonte; use `slotDefinitions` efetivos.
+- **Dispositivos vazados:** imagem, texto ou vídeo nos slots mascarados declarados, sempre atrás da moldura; não invente perspectiva 3D automática.
+- **Arquivo documental:** organize imagens e documentos reais fornecidos, com origem atribuída; moldura não transforma uma ilustração em prova.
+- **Peças de cenário:** primeiro plano, plano intermediário e deslocamentos relativos para parallax **simulado em 2D**.
+- **Op Art:** abertura, transição e textura gráfica usadas com moderação; não sobrepor linhas finas a textos críticos.
+- **Equipamentos e processos:** explique como um sistema funciona, usando fluxos, revelações e relações entre objetos. Uma janela transparente só é animável como slot quando o manifesto a declara.
+
+Todos os recursos rasterizados têm cores internas fixas e resolução finita. Os 12 cenários nativos atuais são prévias de baixa resolução: para zoom forte ou uso definitivo em tela cheia, prefira mídia real fornecida ou arte de maior resolução, se disponível.
+
+### Do roteiro ao storyboard, antes do JSON
+
+Para cada shot, registre internamente:
+
+| Campo de planejamento | Exemplo de pergunta |
+|---|---|
+| Fala e descoberta | O que está sendo afirmado, e com qual grau de certeza? |
+| Papel visual | É evidência, processo, contexto, comparação ou respiro? |
+| Asset ou mídia | O ID existe no catálogo? O arquivo local existe? |
+| Estado inicial | O que já está visível? A legenda o encobre? |
+| Mudança no tempo | Que elemento, câmera ou slot muda ao longo da fala? |
+| Sincronização | Que cue, cueProgress ou wordIndex real dispara a mudança? |
+| Prova e revisão | Há fonte, unidade e contexto? É ilustração ou registro real? |
+
+Depois traduza esse plano para a receita **v3** usando as estruturas reais de `shots`, `visualBeats`, `camera.path`, `keyframes` e `slots`. Não invente campos como "investigativeMode", "autoParallax" ou "evidenceLayer": são ideias de direção, não propriedades implementadas.
+
+### Miniestudo — explicar um percurso sem repetir a voz
+
+*Situação ilustrativa, sem alegação sobre uma empresa ou cidade real.* Voz: "Um resultado na estação descreve aquele ponto de coleta. A água ainda percorre a rede até chegar às casas."
+
+1. Mostrar o ponto de coleta, **identificado como exemplo**; não fabricar um laudo real.
+2. Revelar uma rota visual do ponto inicial à rede; a câmera segue o fluxo.
+3. Aproximar um trecho da tubulação com destaque para a direção do percurso.
+4. Terminar numa residência, fazendo a comparação entre local de medição e destino.
+5. Se houver documento real fornecido, introduzi-lo com uma moldura `ui:archive-photo-frame` e citar sua origem. Sem documento, não exiba uma "prova" fictícia.
+
+Essa sequência pode ocupar um shot mais longo com estados sucessivos ou vários shots curtos. O valor é a progressão, não o número de cortes.
+
+### Áudio, tensão e pausas
+
+Narração pt-BR natural, frases faláveis, pausas onde há inferência ou surpresa. Som reforça ações específicas; não coloque `sound` em cada corte por hábito. Use trilha, ducking e automação com moderação, sem competir com a inteligibilidade da voz. Para sincronizar, prefira `cueProgress` e `wordIndex` **quando o alinhamento real da voz estiver disponível**; nunca invente timestamps de palavras.
+
+### Verificação antes de exportar
+
+1. Cada trecho importante tem função visual além da decoração?
+2. O ritmo alterna rapidez com tempo de leitura e compreensão?
+3. Há algum plano estagnado sem intenção? Há algum corte rápido demais para entender?
+4. Textos, captions, mãos do personagem, UI e elementos em primeiro plano se sobrepõem?
+5. Máscaras, slots de imagem/vídeo e percursos de câmera ficam corretos na prévia e no MP4?
+6. Datas, números, unidades e fontes foram verificados externamente? Uma reconstrução está claramente identificada?
+7. O que o público pensa que está vendo corresponde ao que a imagem realmente é?
+
+O `VisualQualityAnalyzer` do Studio Dark é **consultivo e parcial**: não verifica todos os frames, não conhece a intenção artística e não substitui checagem factual ou revisão humana. Confira primeiros quadros, beats, pausas, cortes, destinos de câmera, capturas de momentos importantes e o arquivo exportado.
 
 ## Diagnóstico de staging e câmera
 
@@ -95,6 +206,9 @@ Exemplos pequenos e validados pelo parser:
 - [Smartphone com texto, imagem e paleta](../examples/premium-smartphone-slots-v2.production.json)
 - [Question Hook declarativo](../examples/premium-question-hook-slots-v2.production.json)
 - [Statistic Callout declarativo](../examples/premium-statistic-callout-slots-v2.production.json)
+
+- [Apresentador com poses e caminhada](../examples/presenter-poses-walk-cycle-v3.production.json)
+- [66 componentes de UI, texto e slots mascarados](../examples/ui-components-additional-v1.production.json)
 - [Demonstração integrada da Etapa 14](../examples/premium-factory-stage14-demo-v3.production.json)
 - [Demonstração combinada da Premium Factory](../examples/premium-factory-motion-showcase-v3.production.json)
 
